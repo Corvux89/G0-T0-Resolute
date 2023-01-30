@@ -2,15 +2,14 @@ import asyncio
 import logging
 import sys
 import traceback
-from datetime import datetime
 from os import listdir
 import discord
 from discord import Intents, ApplicationContext, Embed
 from discord.ext import commands
-from ProphetBot.bot import BpBot
-from ProphetBot.constants import BOT_TOKEN, DEFAULT_PREFIX, DEBUG_GUILDS
-from ProphetBot.helpers import get_character, get_player_adventures, get_shop
-from ProphetBot.models.db_objects import PlayerCharacter, Shop
+from Resolute.bot import G0T0Bot
+from Resolute.constants import BOT_TOKEN, DEFAULT_PREFIX, DEBUG_GUILDS
+from Resolute.helpers import get_character, get_player_adventures
+from Resolute.models.db_objects import PlayerCharacter
 
 intents = Intents.default()
 intents.members = True
@@ -39,17 +38,17 @@ log = logging.getLogger("bot")
 if sys.version_info >= (3, 8) and sys.platform.lower().startswith("win"):
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
-bot = BpBot(command_prefix=DEFAULT_PREFIX,
-            description='ProphetBot - Created and maintained by Nick!#8675 and Alesha#0362',
-            case_insensitive=True,
-            help_command=MyHelpCommand(),
-            intents=intents,
-            debug_guilds=DEBUG_GUILDS
-            )
+bot = G0T0Bot(command_prefix=DEFAULT_PREFIX,
+              description='Resolute - Created and maintained by Nick!#8675 and Alesha#0362',
+              case_insensitive=True,
+              help_command=MyHelpCommand(),
+              intents=intents,
+              debug_guilds=DEBUG_GUILDS
+              )
 
-for filename in listdir('ProphetBot/cogs'):
+for filename in listdir('Resolute/cogs'):
     if filename.endswith('.py'):
-        bot.load_extension(f'ProphetBot.cogs.{filename[:-3]}')
+        bot.load_extension(f'Resolute.cogs.{filename[:-3]}')
 
 
 @bot.command()
@@ -128,17 +127,6 @@ async def on_member_remove(member):
             embed.description=f"**Character:** {character.name}\n" \
                               f"**Level:** {character.get_level()}\n" \
                               f"**Faction:** {character.faction.value}"
-
-        if shopkeeper_role := discord.utils.get(member.guild.roles, name="Shopkeeper"):
-            if shopkeeper_role in member.roles:
-                shop: Shop = await get_shop(bot, member.id, member.guild.id)
-                if shop is None:
-                    value = "Has role, but no shop found"
-                else:
-                    value = f"{shop.name}"
-            else:
-                value = "*None*"
-        embed.add_field(name=f"Shopkeeper", value=value, inline=False)
 
         if len(adventures['player']) > 0 or len(adventures['dm']) > 0:
             value = "\n".join([f'\u200b - {a.name}*' for a in adventures['dm']])

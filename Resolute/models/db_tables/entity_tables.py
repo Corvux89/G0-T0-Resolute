@@ -2,7 +2,7 @@ from datetime import datetime
 
 import sqlalchemy as sa
 from sqlalchemy import Column, Integer, BigInteger, String, BOOLEAN, DateTime, null, func
-from ProphetBot.models.db_tables.base import metadata
+from Resolute.models.db_tables.base import metadata
 
 arenas_table = sa.Table(
     "arenas",
@@ -38,15 +38,14 @@ characters_table = sa.Table(
     metadata,
     Column("id", Integer, primary_key=True, autoincrement='auto'),
     Column("name", String, nullable=False),
-    Column("race", Integer, nullable=False),  # ref: > c_character_race.id
-    Column("subrace", Integer, nullable=True),  # ref: > c_character_subrace_id
+    Column("species", Integer, nullable=False),  # ref: > c_character_race.id
     Column("xp", Integer, nullable=False, default=0),
     Column("div_xp", Integer, nullable=False, default=0),
     Column("gold", Integer, nullable=False,default=0),
     Column("div_gold", Integer, nullable=False, default=0),
+    Column("cc", Integer, nullable=False, default=0)
     Column("player_id", BigInteger, nullable=False),
     Column("guild_id", BigInteger, nullable=False),  # ref: > guilds.id
-    Column("faction", Integer, nullable=True),  # ref: <> c_faction.id
     Column("reroll", BOOLEAN, nullable=True),
     Column("active", BOOLEAN, nullable=False, default=True)
 )

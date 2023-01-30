@@ -3,7 +3,7 @@ import datetime
 import calendar
 from typing import List
 import discord
-from ProphetBot.models.db_objects.category_objects import *
+from Resolute.models.db_objects.category_objects import *
 
 
 class PlayerCharacterClass(object):

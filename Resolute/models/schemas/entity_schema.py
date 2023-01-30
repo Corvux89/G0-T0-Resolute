@@ -1,6 +1,6 @@
 from discord import ApplicationContext
 from marshmallow import Schema, fields, post_load
-from ProphetBot.models.db_objects import PlayerCharacter, PlayerCharacterClass, PlayerGuild, DBLog, Adventure, Arena, \
+from Resolute.models.db_objects import PlayerCharacter, PlayerCharacterClass, PlayerGuild, DBLog, Adventure, Arena, \
     Shop
 
 

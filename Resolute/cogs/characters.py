@@ -58,10 +58,10 @@ class Character(commands.Cog):
         :param player: Member
         :param name: Name of the PlayerCharacter
         :param character_class: CharacterClass
-        :param character_race: CharacterRace
+        :param character_race: CharacterSpecies
         :param gold: Starting gold
         :param character_subrace: CharacterSubrace
-        :param character_subclass: CharacterSubclass
+        :param character_subclass: CharacterArchetype
         :param level: Starting level if starting higher than 1
         """
         start = timer()
@@ -217,7 +217,7 @@ class Character(commands.Cog):
 
         :param ctx: Context
         :param player: Member
-        :param character_race: CharacterRace
+        :param character_race: CharacterSpecies
         :param character_subrace: CharacterSubrace
         """
 
@@ -265,7 +265,7 @@ class Character(commands.Cog):
         :param ctx: Context
         :param player: Member
         :param character_class: CharacterClass
-        :param character_subclass: CharacterSubclass
+        :param character_subclass: CharacterArchetype
         """
         await ctx.defer()
 
@@ -317,7 +317,7 @@ class Character(commands.Cog):
         :param ctx: Context
         :param player: Member
         :param character_class: CharacterClass
-        :param character_subclass: CharacterSubclass
+        :param character_subclass: CharacterArchetype
         """
         await ctx.defer()
 

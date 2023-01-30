@@ -1,54 +1,6 @@
 import discord.utils
 from discord import ApplicationContext, Role
 
-
-class Rarity(object):
-    def __init__(self, id, value, abbreviation, seek_dc):
-        """
-        :param id: int
-        :param value: str
-        :param abbreviation: List[str]
-        """
-
-        self.id = id
-        self.value = value
-        self.abbreviation = abbreviation
-        self.seek_dc = seek_dc
-
-
-class BlacksmithType(object):
-    def __init__(self, id, value):
-        """
-        :param id: int
-        :param value: str
-        """
-
-        self.id = id
-        self.value = value
-
-
-class ConsumableType(object):
-    def __init__(self, id, value):
-        """
-        :param id: int
-        :param value: str
-        """
-
-        self.id = id
-        self.value = value
-
-
-class MagicSchool(object):
-    def __init__(self, id, value):
-        """
-        :param id: int
-        :param value: str
-        """
-
-        self.id = id
-        self.value = value
-
-
 class CharacterClass(object):
     def __init__(self, id, value):
         """
@@ -60,7 +12,7 @@ class CharacterClass(object):
         self.value = value
 
 
-class CharacterSubclass(object):
+class CharacterArchetype(object):
     def __init__(self, id, parent, value):
         """
         :param id: int
@@ -73,7 +25,7 @@ class CharacterSubclass(object):
         self.value = value
 
 
-class CharacterRace(object):
+class CharacterSpecies(object):
     def __init__(self, id, value):
         """
         :param id: int
@@ -82,20 +34,6 @@ class CharacterRace(object):
 
         self.id = id
         self.value = value
-
-
-class CharacterSubrace(object):
-    def __init__(self, id, parent, value):
-        """
-        :param id: int
-        :param parent: int
-        :param value: str
-        """
-
-        self.id = id
-        self.parent = parent
-        self.value = value
-
 
 class GlobalModifier(object):
     def __init__(self, id, value, adjustment, max):
@@ -147,21 +85,6 @@ class AdventureTier(object):
         self.avg_level = avg_level
 
 
-class ShopType(object):
-    def __init__(self, id, value, synonyms, tools):
-        """
-        :param id: int
-        :param value: str
-        :param synonyms: List[str]
-        :param tools: List[str]
-        """
-
-        self.id = id
-        self.value = value
-        self.synonyms = synonyms
-        self.tools = tools
-
-
 class Activity(object):
     def __init__(self, id, value, ratio, diversion):
         """
@@ -175,21 +98,6 @@ class Activity(object):
         self.value = value
         self.ratio = ratio
         self.diversion = diversion
-
-
-class Faction(object):
-    def __init__(self, id, value):
-        """
-        :param id: int
-        :param value: str
-        """
-
-        self.id = id
-        self.value = value
-
-    def get_faction_role(self, ctx: ApplicationContext) -> Role:
-        return discord.utils.get(ctx.guild.roles, name=self.value)
-
 
 class DashboardType(object):
     def __init__(self, id, value):
@@ -227,15 +135,4 @@ class AdventureRewards(object):
         self.id = id
         self.ep = ep
         self.tier = tier
-        self.rarity = rarity
-
-
-class ShopTier(object):
-    def __init__(self, id, rarity):
-        """
-        :param id: int
-        :param rarity: int
-        """
-
-        self.id = id
         self.rarity = rarity

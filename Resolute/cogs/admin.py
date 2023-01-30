@@ -12,11 +12,6 @@ from ProphetBot.bot import BpBot
 
 log = logging.getLogger(__name__)
 
-
- # TODO: Command to modify item
- # TODO: Command to add item
- # TODO: Command to remove item
-
 def setup(bot: commands.Bot):
     bot.add_cog(Admin(bot))
 
@@ -50,7 +45,7 @@ class Admin(commands.Cog):
         :param cog: Cog name to load
         """
         try:
-            self.bot.load_extension(f'ProphetBot.cogs.{cog}')
+            self.bot.load_extension(f'Resolute.cogs.{cog}')
         except ExtensionAlreadyLoaded:
             return await ctx.respond(f'Cog already loaded', ephemeral=True)
         except ExtensionNotFound:
@@ -73,7 +68,7 @@ class Admin(commands.Cog):
         :param cog: Cog name to unload
         """
         try:
-            self.bot.unload_extension(f'ProphetBot.cogs.{cog}')
+            self.bot.unload_extension(f'Resolute.cogs.{cog}')
         except ExtensionNotLoaded:
             return await ctx.respond(f'Cog was already unloaded', ephemeral=True)
         except ExtensionNotFound:
@@ -99,11 +94,11 @@ class Admin(commands.Cog):
         await ctx.defer()
 
         if str(cog).upper() == 'ALL':
-            for file_name in listdir('./ProphetBot/cogs'):
+            for file_name in listdir('./Resolute/cogs'):
                 if file_name.endswith('.py'):
                     ext = file_name.replace('.py', '')
-                    self.bot.unload_extension(f'ProphetBot.cogs.{ext}')
-                    self.bot.load_extension(f'ProphetBot.cogs.{ext}')
+                    self.bot.unload_extension(f'Resolute.cogs.{ext}')
+                    self.bot.load_extension(f'Resolute.cogs.{ext}')
             await ctx.respond("All cogs reloaded")
             await self._reload_sheets(ctx)
         elif str(cog).upper() in ['DB', 'COMPENDIUM']:
@@ -114,7 +109,7 @@ class Admin(commands.Cog):
             await ctx.respond(f'Done')
         else:
             try:
-                self.bot.unload_extension(f'ProphetBot.cogs.{cog}')
+                self.bot.unload_extension(f'Resolute.cogs.{cog}')
             except ExtensionNotLoaded:
                 return await ctx.respond(f'Cog was already unloaded', ephemeral=True)
             except ExtensionNotFound:
@@ -122,7 +117,7 @@ class Admin(commands.Cog):
             except:
                 return await ctx.respond(f'Something went wrong', ephemeral=True)
 
-            self.bot.load_extension(f'ProphetBot.cogs.{cog}')
+            self.bot.load_extension(f'Resolute.cogs.{cog}')
             await ctx.respond(f'Cog {cog} reloaded')
 
     @admin_commands.command(
@@ -138,7 +133,7 @@ class Admin(commands.Cog):
         """
 
         files = []
-        for file_name in listdir('./ProphetBot/cogs'):
+        for file_name in listdir('./Resolute/cogs'):
             if file_name.endswith('.py'):
                 files.append(file_name[:-3])
         await ctx.respond("\n".join(files))

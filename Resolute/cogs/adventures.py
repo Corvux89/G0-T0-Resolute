@@ -7,18 +7,18 @@ from typing import List
 import discord
 from discord import ApplicationContext, Option, SlashCommandGroup, Role, Member
 from discord.ext import commands
-from ProphetBot.bot import BpBot
-from ProphetBot.helpers import update_dm, get_adventure, get_character, get_adventure_from_role, is_admin, \
+from Resolute.bot import G0T0Bot
+from Resolute.helpers import update_dm, get_adventure, get_character, get_adventure_from_role, is_admin, \
     get_player_adventures, get_player_character_class, confirm
-from ProphetBot.models.db_objects import Adventure, PlayerCharacter, PlayerCharacterClass
-from ProphetBot.models.embeds import AdventureCloseEmbed, ErrorEmbed, AdventureStatusEmbed, AdventuresEmbed
-from ProphetBot.queries import insert_new_adventure, update_adventure
+from Resolute.models.db_objects import Adventure, PlayerCharacter, PlayerCharacterClass
+from Resolute.models.embeds import AdventureCloseEmbed, ErrorEmbed, AdventureStatusEmbed, AdventuresEmbed
+from Resolute.queries import insert_new_adventure, update_adventure
 
 log = logging.getLogger(__name__)
 
 
-def setup(bot: commands.Bot):
-    bot.add_cog(Adventures(bot))
+# def setup(bot: commands.Bot):
+#     bot.add_cog(Adventures(bot))
 
 
  # TODO: Add @Spectator role option for view only into all IC channels; @Quester for sign-ups and spectator for viewing
@@ -26,7 +26,7 @@ def setup(bot: commands.Bot):
  # TODO: Set tier command
 
 class Adventures(commands.Cog):
-    bot: BpBot  # Typing annotation for my IDE's sake
+    bot: G0T0Bot  # Typing annotation for my IDE's sake
     adventure_commands = SlashCommandGroup("adventure", "Adventure commands")
 
     def __init__(self, bot):
@@ -334,7 +334,7 @@ class Adventures(commands.Cog):
             if len(characters) == 0:
                 return await ctx.respond(f"Error: players don't have characters")
 
-            avg_level = mean([c.get_level() for c in characters])
+            avg_level = mean([c.level for c in characters])
 
             tier = bisect.bisect([t.avg_level for t in list(ctx.bot.compendium.c_adventure_tier[0].values())],
                                  avg_level)

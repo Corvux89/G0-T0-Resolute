@@ -7,14 +7,14 @@ from discord.commands import SlashCommandGroup, Option
 from discord.commands.context import ApplicationContext
 from discord.ext import commands
 
-from ProphetBot.bot import BpBot
-from ProphetBot.helpers import get_arena, get_character, add_player_to_arena, update_arena_tier, create_logs, \
+from Resolute.bot import G0T0Bot
+from Resolute.helpers import get_arena, get_character, add_player_to_arena, update_arena_tier, create_logs, \
     update_arena_status, end_arena, confirm
-from ProphetBot.models.db_objects import Arena, PlayerCharacter, Activity
-from ProphetBot.models.embeds import ArenaStatusEmbed, ArenaPhaseEmbed
-from ProphetBot.models.schemas import CharacterSchema
-from ProphetBot.models.views.entity_view import ArenaView
-from ProphetBot.queries import insert_new_arena, get_multiple_characters, update_arena
+from Resolute.models.db_objects import Arena, PlayerCharacter, Activity
+from Resolute.models.embeds import ArenaStatusEmbed, ArenaPhaseEmbed
+from Resolute.models.schemas import CharacterSchema
+from Resolute.models.views.entity_view import ArenaView
+from Resolute.queries import insert_new_arena, get_multiple_characters, update_arena
 
 log = logging.getLogger(__name__)
 
@@ -23,7 +23,7 @@ def setup(bot):
 
 
 class Arenas(commands.Cog):
-    bot: BpBot  # Typing annotation for my IDE's sake
+    bot: G0T0Bot  # Typing annotation for my IDE's sake
     arena_commands = SlashCommandGroup("arena", "Commands for arenas!")
 
     def __init__(self, bot):
@@ -58,7 +58,7 @@ class Arenas(commands.Cog):
         else:
             if not (channel_role := discord.utils.get(ctx.guild.roles, name=ctx.channel.name)):
                 return await ctx.respond(f"Error: Role @{ctx.channel.name} doesn't exist. \n"
-                                         f"A Council member may need to create it")
+                                         f"A Senate member may need to create it")
             else:
                 await ctx.author.add_roles(channel_role, reason=f"Claiming {ctx.channel.name}")
 
@@ -101,7 +101,7 @@ class Arenas(commands.Cog):
             return await ctx.respond(embed=embed, ephemeral=False)
         elif not (channel_role := discord.utils.get(ctx.guild.roles, name=ctx.channel.name)):
             return await ctx.respond(f"Error: Role @{ctx.channel.name} doesn't exist."
-                                     f"A Council member may need to create it", ephemeral=False)
+                                     f"A Senate member may need to create it", ephemeral=False)
         embed = ArenaStatusEmbed(ctx, arena)
 
         await ctx.respond(embed=embed, ephemeral=False)
@@ -124,7 +124,7 @@ class Arenas(commands.Cog):
             return await ctx.respond(f"Error: No active arena present in this channel", ephemeral=True)
         elif not (channel_role := discord.utils.get(ctx.guild.roles, id=arena.role_id)):
             return await ctx.respond(f"Error: Role @{ctx.channel.name} doesn't exist. "
-                                     f"A Council member may need to create it", ephemeral=True)
+                                     f"A Senate member may need to create it", ephemeral=True)
         elif player.id == arena.host_id:
             return await ctx.respond(f"Error: {player.mention} is the host of the arena.")
         elif player in channel_role.members:
@@ -152,7 +152,7 @@ class Arenas(commands.Cog):
             return await ctx.respond(f"Error: No active arena present in this channel", ephemeral=True)
         elif not (channel_role := discord.utils.get(ctx.guild.roles, id=arena.role_id)):
             return await ctx.respond(f"Error: Role @{ctx.channel.name} doesn't exist. "
-                                     f"A Council member may need to create it", ephemeral=True)
+                                     f"A Senate member may need to create it", ephemeral=True)
         elif player not in channel_role.members:
             return await ctx.respond(f"Error: {player.mention} is not a participant in this arena.", ephemeral=True)
         else:
@@ -250,5 +250,5 @@ class Arenas(commands.Cog):
             return await ctx.respond(f"Error: No active arena present in this channel", ephemeral=True)
         elif not (channel_role := discord.utils.get(ctx.guild.roles, id=arena.role_id)):
             return await ctx.respond(f"Error: Role @{ctx.channel.name} doesn't exist. "
-                                     f"A Council member may need to create it", ephemeral=True)
+                                     f"A Senate member may need to create it", ephemeral=True)
         await end_arena(ctx, arena)

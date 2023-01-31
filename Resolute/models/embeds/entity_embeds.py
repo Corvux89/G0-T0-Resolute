@@ -5,10 +5,9 @@ import discord
 from d20 import RollResult
 from discord import Embed, Member, ApplicationContext, Color
 
-from ProphetBot.constants import THUMBNAIL
-from ProphetBot.models.db_objects import PlayerCharacter, PlayerCharacterClass, DBLog, LevelCaps, Arena, Adventure, \
-    PlayerGuild, Shop
-from ProphetBot.models.db_objects.item_objects import ItemBlacksmith, ItemWondrous, ItemConsumable, ItemScroll
+from Resolute.constants import THUMBNAIL
+from Resolute.models.db_objects import PlayerCharacter, PlayerCharacterClass, DBLog, LevelCaps, Arena, Adventure, \
+    PlayerGuild
 
 
 class NewCharacterEmbed(Embed):
@@ -16,10 +15,11 @@ class NewCharacterEmbed(Embed):
                  log: DBLog, ctx: ApplicationContext):
         super().__init__(title=f"Character Created - {character.name}",
                          description=f"**Player:** {player.mention}\n"
-                                     f"**Race:** {character.get_formatted_race()}\n"
+                                     f"**Species:** {character.species.value}\n"
                                      f"**Class:** {char_class.get_formatted_class()}\n"
-                                     f"**Starting Gold:** {character.gold}\n"
-                                     f"**Starting Level:** {character.get_level()}\n",
+                                     f"**Starting Credits:** {character.credits}\n"
+                                     f"**Starting Chain Code:** {character.cc}\n"
+                                     f"**Starting Level:** {character.level}\n",
                          color=discord.Color.random())
         self.set_thumbnail(url=player.display_avatar.url)
         self.set_footer(text=f"Created by: {ctx.author} - Log #: {log.id}",
@@ -33,18 +33,16 @@ class CharacterGetEmbed(Embed):
 
         self.description = f"**Class:**" if len(char_class) == 1 else f"**Classes:**"
         self.description += f"\n".join([f" {c.get_formatted_class()}" for c in char_class])
-        self.description += f"\n**Race: ** {character.get_formatted_race()}\n" \
-                            f"**Faction:** {character.faction.value}\n" \
-                            f"**Level:** {character.get_level()}\n" \
-                            f"**Experience:** {character.xp}\n" \
-                            f"**Wealth:** {character.gold} gp\n"
+        self.description += f"\n**Species: ** {character.species.value}\n" \
+                            f"**Level:** {character.level}\n" \
+                            f"**Credits:** {character.credits}\n" \
+                            f"**Chain Codes:** {character.cc} \n"
 
-        faction_role = character.faction.get_faction_role(ctx)
-        self.color = faction_role.color if faction_role else Color.dark_grey()
+        self.color = character.get_member(ctx).color
         self.set_thumbnail(url=character.get_member(ctx).display_avatar.url)
 
         self.add_field(name="Weekly Limits: ",
-                       value=f"\u200b \u200b \u200b Diversion GP: {character.div_gold}/{cap.max_gold}\n"
+                       value=f"\u200b \u200b \u200b Diversion Chain Codes: {character.div_gold}/{cap.max_gold}\n"
                              f"\u200b \u200b \u200b Diversion XP: {character.div_xp}/{cap.max_xp}",
                        inline=False)
 
@@ -77,9 +75,8 @@ class HxLogEmbed(Embed):
 
             value = f"**Author:** {author}\n" \
                     f"**Activity:** {log.activity.value}\n" \
-                    f"**Gold:** {log.gold}\n" \
-                    f"**XP:** {log.xp}\n" \
-                    f"**Server XP:** {log.server_xp}\n" \
+                    f"**Chain Codes:** {log.cc}\n" \
+                    f"**Credits:** {log.credits}\n" \
                     f"**Invalidated?:** {log.invalid}\n"
 
             if log.notes is not None:
@@ -97,19 +94,17 @@ class DBLogEmbed(Embed):
         player = character.get_member(ctx)
         description = f"**Player:** {player.mention}\n"
         if show_amounts:
-            if log_entry.gold is not None and log_entry.gold != 0:
-                description += f"**Gold:** {log_entry.gold}\n"
-            if log_entry.xp is not None and log_entry.xp != 0:
-                description += f"**Experience:** {log_entry.xp}\n"
-            if log_entry.server_xp is not None and log_entry.server_xp > 0:
-                description += f"**Server Experience Contributed:** {log_entry.server_xp}\n"
+            if log_entry.cc is not None and log_entry.cc != 0:
+                description += f"**Chain Codes:** {log_entry.cc}\n"
+            if log_entry.credits is not None and log_entry.credits != 0:
+                description += f"**Credits:** {log_entry.credits}\n"
         if hasattr(log_entry, "notes") and log_entry.notes is not None:
             description += f"**Notes:** {log_entry.notes}\n"
 
         self.description = description
         self.set_thumbnail(url=player.display_avatar.url)
         self.set_footer(text=f"Logged by {ctx.author} - ID: {log_entry.id}",
-                        icon_url=ctx.author.display_avatar.url)  # TODO: Something wrong here
+                        icon_url=ctx.author.display_avatar.url)
 
 
 class ArenaPhaseEmbed(Embed):

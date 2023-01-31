@@ -1,10 +1,10 @@
 from typing import List
 
-from ProphetBot.models.db_tables import *
+from Resolute.models.db_tables import *
 from sqlalchemy import null, and_, or_
 from sqlalchemy.sql.selectable import FromClause, TableClause
 
-from ProphetBot.models.db_objects import RefCategoryDashboard, RefWeeklyStipend, GlobalEvent, GlobalPlayer
+from Resolute.models.db_objects import RefCategoryDashboard, RefWeeklyStipend, GlobalEvent, GlobalPlayer
 
 
 def get_dashboard_by_category_channel(category_channel_id: int) -> FromClause:
@@ -88,8 +88,7 @@ def insert_new_global_event(g_event: GlobalEvent) -> TableClause:
     return ref_gb_staging_table.insert().values(
         guild_id=g_event.guild_id,
         name=g_event.name,
-        base_gold=g_event.base_gold,
-        base_xp=g_event.base_xp,
+        base_cc=g_event.base_cc,
         base_mod=g_event.base_mod.id,
         combat=g_event.combat
     )
@@ -106,8 +105,7 @@ def update_global_event(g_event: GlobalEvent):
         .where(ref_gb_staging_table.c.guild_id == g_event.guild_id) \
         .values(
         name=g_event.name,
-        base_gold=g_event.base_gold,
-        base_xp=g_event.base_xp,
+        base_cc=g_event.base_cc,
         base_mod=g_event.base_mod.id,
         combat=g_event.combat,
         channels=g_event.channels
@@ -132,8 +130,7 @@ def update_global_player(g_player: GlobalPlayer):
         .values(
         modifier=g_player.modifier.id,
         host=None if g_player.host is None else g_player.host.id,
-        gold=g_player.gold,
-        xp=g_player.xp,
+        cc=g_player.cc,
         update=g_player.update,
         active=g_player.active,
         num_messages=g_player.num_messages,
@@ -157,8 +154,7 @@ def add_global_player(g_player: GlobalPlayer):
         player_id=g_player.player_id,
         modifier=g_player.modifier.id,
         host=None if g_player.host is None else g_player.host.id,
-        gold=g_player.gold,
-        xp=g_player.xp,
+        cc=g_player.cc,
         update=g_player.update,
         active=g_player.active,
         num_messages=g_player.num_messages,

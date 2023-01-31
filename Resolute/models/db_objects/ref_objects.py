@@ -3,7 +3,7 @@ from typing import List
 import discord.utils
 from discord import ApplicationContext, TextChannel, CategoryChannel, Message, Bot
 
-from ProphetBot.models.db_objects import DashboardType, GlobalModifier, HostStatus
+from Resolute.models.db_objects import DashboardType, GlobalModifier, HostStatus
 
 
 class RefCategoryDashboard(object):
@@ -55,8 +55,7 @@ class GlobalPlayer(object):
     player_id: int
     modifier: GlobalModifier
     host: HostStatus
-    gold: int
-    xp: int
+    cc: int
     update: bool
     active: bool
     num_messages: int
@@ -80,8 +79,7 @@ class GlobalPlayer(object):
 class GlobalEvent(object):
     guild_id: int
     name: str
-    base_gold: int
-    base_xp: int
+    base_cc: int
     base_mod: GlobalModifier
     combat: bool
     channels: List[int]

@@ -8,14 +8,14 @@ import aiopg
 import discord
 from discord import ApplicationContext, Member, Role, Bot, Client
 
-from ProphetBot.compendium import Compendium
-from ProphetBot.models.db_objects import PlayerGuild, PlayerCharacter, Adventure, Arena, Shop
-from ProphetBot.models.embeds import ArenaStatusEmbed
-from ProphetBot.models.schemas import GuildSchema, CharacterSchema, AdventureSchema, ArenaSchema, \
+from Resolute.compendium import Compendium
+from Resolute.models.db_objects import PlayerGuild, PlayerCharacter, Adventure, Arena, Shop
+from Resolute.models.embeds import ArenaStatusEmbed
+from Resolute.models.schemas import GuildSchema, CharacterSchema, AdventureSchema, ArenaSchema, \
     ShopSchema
-from ProphetBot.queries import get_guild, insert_new_guild, get_adventure_by_category_channel_id, \
+from Resolute.queries import get_guild, insert_new_guild, get_adventure_by_category_channel_id, \
     get_arena_by_channel, get_multiple_characters, update_arena, get_adventure_by_role_id, get_characters, \
-    get_logs_in_past, get_shop_by_owner, get_shop_by_channel
+    get_logs_in_past
 
 
 async def get_or_create_guild(db: aiopg.sa.Engine, guild_id: int) -> PlayerGuild:
@@ -31,7 +31,7 @@ async def get_or_create_guild(db: aiopg.sa.Engine, guild_id: int) -> PlayerGuild
         g_row = await results.first()
 
     if g_row is None:
-        g = PlayerGuild(id=guild_id, max_level=3, server_xp=0, weeks=0, week_xp=0, max_reroll=1, xp_adjust=1)
+        g = PlayerGuild(id=guild_id, max_level=3, weeks=0, max_reroll=1)
 
         async with db.acquire() as conn:
             results = await conn.execute(insert_new_guild(g))
@@ -184,7 +184,7 @@ async def update_arena_tier(ctx: discord.Interaction, db: aiopg.sa.Engine, arena
                     character: PlayerCharacter = CharacterSchema(compendium).load(row)
                     chars.append(character)
         if len(chars) > 0:
-            avg_level = mean(c.get_level() for c in chars)
+            avg_level = mean(c.level for c in chars)
             tier = bisect.bisect([t.avg_level for t in list(compendium.c_arena_tier[0].values())], avg_level)
             arena.tier = compendium.get_object("c_arena_tier", tier)
 
@@ -255,76 +255,6 @@ async def get_guild_character_summary_stats(bot: Bot, guild_id: int):
         inactive = None
 
     return total, inactive
-
-
-def roll_stock(compendium, g: PlayerGuild, items: [], quantity: int, max_qty: int, max_cost: int = 1000000, num_offset: int = 0):
-    idx = bisect.bisect(list(compendium.c_shop_tier[0].keys()), g.max_level)
-    id = list(compendium.c_shop_tier[0].keys())[idx - 1]
-    tier = compendium.get_object("c_shop_tier", id)
-    max_cost = 1000000 if max_cost is None else max_cost
-
-    if len(items) == 0:
-        return None
-    elif hasattr(items[1], "seeking_only"):
-        filtered_items = list(
-            filter(lambda i: i.cost <= max_cost and i.seeking_only is False and i.rarity.id <= tier.rarity,
-                   items))
-    else:
-        filtered_items = list(
-            filter(lambda i: i.cost <= max_cost and i.rarity.id <= tier.rarity,
-                   items))
-    if len(filtered_items) == 0:
-        return None
-
-    stock = dict()
-
-    if quantity - num_offset <= 0:
-        return None
-
-    for i in range(quantity - num_offset):
-        rand_item = random.choice(filtered_items)
-        qty = random.randint(1, max_qty if max_qty > 1 else 1)
-
-        if rand_item.name in stock.keys():
-            stock[rand_item.name] = stock[rand_item.name] + qty
-        else:
-            stock[rand_item.name] = qty
-
-    return stock
-
-
-def sort_stock(stock):
-    # reverse = None (Sorts in Ascending order)
-    # key is set to sort using third element of sublist
-    return sorted(stock, key=lambda x: int(re.sub(r'\D+', '', x[2])))
-
-
-async def paginate(ctx: ApplicationContext, result: str):
-    if len(result) > 1998:
-        lines = result.split('\n')
-        partial_table = '\n'.join(lines[:46])
-        await ctx.send(f'`{partial_table}`')
-        await paginate(ctx, '\n'.join(lines[46:]))
-    else:
-        await ctx.send(f'`{result}`')
-
-
-async def get_shop(bot: Bot | Client, owner_id: int | None, guild_id: int | None, channel_id: int | None = None) -> Shop | None:
-
-    if channel_id is None:
-        async with bot.db.acquire() as conn:
-            results = await conn.execute(get_shop_by_owner(owner_id, guild_id))
-            row = await results.first()
-    else:
-        async with bot.db.acquire() as conn:
-            results = await conn.execute(get_shop_by_channel(channel_id))
-            row = await results.first()
-
-    if row is None:
-        return None
-    else:
-        shop: Shop = ShopSchema(bot.compendium).load(row)
-        return shop
 
 async def get_player_adventures(bot: Bot | Client, player: Member):
     adventures = {}

@@ -1,6 +1,11 @@
 import discord.utils
 from discord import ApplicationContext, Role
 
+class Rarity(object):
+    def __init__(self, id, value):
+        self.id = id
+        self.value = value
+
 class CharacterClass(object):
     def __init__(self, id, value):
         """
@@ -86,7 +91,7 @@ class AdventureTier(object):
 
 
 class Activity(object):
-    def __init__(self, id, value, ratio, diversion):
+    def __init__(self, id, value, cc, diversion):
         """
         :param id: int
         :param value: str
@@ -96,7 +101,7 @@ class Activity(object):
 
         self.id = id
         self.value = value
-        self.ratio = ratio
+        self.cc = cc
         self.diversion = diversion
 
 class DashboardType(object):
@@ -111,7 +116,7 @@ class DashboardType(object):
 
 
 class LevelCaps(object):
-    def __init__(self, id, max_gold, max_xp):
+    def __init__(self, id, max_cc, max_items):
         """
         :param id: int
         :param max_gold: int
@@ -119,8 +124,8 @@ class LevelCaps(object):
         """
 
         self.id = id
-        self.max_gold = max_gold
-        self.max_xp = max_xp
+        self.max_cc = max_cc
+        self.max_items = max_items
 
 
 class AdventureRewards(object):

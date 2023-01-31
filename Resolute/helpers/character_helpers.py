@@ -3,10 +3,10 @@ from typing import Optional, List
 import discord
 from discord import ApplicationContext, Member, Bot, Role
 
-from ProphetBot.compendium import Compendium
-from ProphetBot.models.db_objects import PlayerCharacter, PlayerCharacterClass, PlayerGuild, LevelCaps
-from ProphetBot.models.schemas import CharacterSchema, PlayerCharacterClassSchema
-from ProphetBot.queries import get_log_by_player_and_activity, get_active_character, get_character_class, \
+from Resolute.compendium import Compendium
+from Resolute.models.db_objects import PlayerCharacter, PlayerCharacterClass, PlayerGuild, LevelCaps
+from Resolute.models.schemas import CharacterSchema, PlayerCharacterClassSchema
+from Resolute.queries import get_log_by_player_and_activity, get_active_character, get_character_class, \
     get_character_from_id
 
 
@@ -18,8 +18,8 @@ async def remove_fledgling_role(ctx: ApplicationContext, member: Member, reason:
     :param member: Member to remove the role from
     :param reason: Reason in the audit to remove the role
     """
-    fledgling_role = discord.utils.get(ctx.guild.roles, name="Fledgling")
-    initiate_role = discord.utils.get(ctx.guild.roles, name="Guild Initiate")
+    fledgling_role = discord.utils.get(ctx.guild.roles, name="Fledgling")  # TODO: What is this?
+    initiate_role = discord.utils.get(ctx.guild.roles, name="Acolyte")
     if fledgling_role and (fledgling_role in member.roles):
         await member.remove_roles(fledgling_role, reason=reason)
 
@@ -136,7 +136,7 @@ def get_faction_roles(compendium: Compendium, player: Member) -> List[Role] | No
         return None
     return roles
 
-
+# TODO: Fix this to figure out caps
 def get_level_cap(character: PlayerCharacter, guild: PlayerGuild, compendium: Compendium, adjust: bool=True) -> LevelCaps:
     cap: LevelCaps = compendium.get_object("c_level_caps", character.get_level())
     return_cap = LevelCaps(cap.id, cap.max_gold, cap.max_xp)

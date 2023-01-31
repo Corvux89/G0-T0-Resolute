@@ -5,9 +5,9 @@ import discord
 from discord import ButtonStyle
 from discord.ui import Button
 
-from ProphetBot.helpers import get_arena
-from ProphetBot.helpers.entity_helpers import add_player_to_arena
-from ProphetBot.models.db_objects import Arena, ArenaTier
+from Resolute.helpers import get_arena
+from Resolute.helpers.entity_helpers import add_player_to_arena
+from Resolute.models.db_objects import Arena, ArenaTier
 
 
 class ArenaView(discord.ui.View):
@@ -26,7 +26,7 @@ class ArenaView(discord.ui.View):
                                                            ephemeral=True)
         elif not (channel_role := discord.utils.get(interaction.guild.roles, id=arena.role_id)):
             return await interaction.response.send_message(f"Error: Role @{interaction.channel.name} doesn't exist. "
-                                                           f"A Council member may need to create it.", ephemeral=True)
+                                                           f"A Senate member may need to create it.", ephemeral=True)
         elif interaction.user.id == arena.host_id:
             return await interaction.response.send_message(f"Error: You're the host.", ephemeral=True)
         elif interaction.user in channel_role.members:

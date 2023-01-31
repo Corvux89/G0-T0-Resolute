@@ -40,6 +40,7 @@ class Compendium:
         This can help ensure o(1) for lookups on id/value. o(n) for any filtering
         """
 
+        self.c_rarity = []
         self.c_character_species = []
         self.c_character_class = []
         self.c_character_archetype = []
@@ -60,8 +61,13 @@ class Compendium:
             return
 
         async with bot.db.acquire() as conn:
+            self.c_rarity = await get_table_values(conn, get_c_rarity(), Rarity, RaritySchema())
+            self.c_character_species = await get_table_values(conn, get_c_character_species(), CharacterSpecies,
+                                                              CharacterSpeciesSchema())
             self.c_character_class = await get_table_values(conn, get_c_character_class(), CharacterClass,
                                                             CharacterClassSchema())
+            self.c_character_archetype = await get_table_values(conn, get_c_character_archetype(), CharacterArchetype,
+                                                                CharacterArchetypeSchema())
             self.c_global_modifier = await get_table_values(conn, get_c_global_modifier(), GlobalModifier,
                                                             GlobalModifierSchema())
             self.c_host_status = await get_table_values(conn, get_c_host_status(), HostStatus,

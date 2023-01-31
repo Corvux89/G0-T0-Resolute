@@ -9,7 +9,7 @@ from Resolute.models.db_objects.category_objects import *
 class PlayerCharacterClass(object):
     character_id: int
     primary_class: CharacterClass
-    subclass: CharacterSubclass
+    archetype: CharacterArchetype
     active: bool
 
     def __init__(self, **kwargs):
@@ -17,8 +17,8 @@ class PlayerCharacterClass(object):
             setattr(self, key, value)
 
     def get_formatted_class(self):
-        if self.subclass is not None:
-            return f"{self.subclass.value} {self.primary_class.value}"
+        if self.archetype is not None:
+            return f"{self.archetype.value} {self.primary_class.value}"
         else:
             return f"{self.primary_class.value}"
 
@@ -28,23 +28,18 @@ class PlayerCharacter(object):
     player_id: int
     guild_id: int
     name: str
-    race: CharacterRace
-    subrace: CharacterSubrace
-    xp: int
-    div_xp: int
-    gold: int
-    div_gold: int
+    species: CharacterSpecies
+    credits: int
+    cc: int
+    div_cc: int
+    enhanced_items: str
+    level: int
     active: bool
-    faction: Faction
     reroll: bool
 
     def __init__(self, **kwargs):
         for key, value in kwargs.items():
             setattr(self, key, value)
-
-    def get_level(self):
-        level = math.ceil((self.xp + 1) / 1000)
-        return level if level <= 20 else 20
 
     def get_member(self, ctx: ApplicationContext) -> discord.Member:
         return discord.utils.get(ctx.guild.members, id=self.player_id)
@@ -61,20 +56,11 @@ class PlayerCharacter(object):
     def mention(self) -> str:
         return f"<@{self.player_id}>"
 
-    def get_formatted_race(self):
-        if self.subrace is not None:
-            return f"{self.subrace.value} {self.race.value}"
-        else:
-            return f"{self.race.value}"
-
 
 class PlayerGuild(object):
     id: int
     max_level: int
-    server_xp: int
     weeks: int
-    week_xp: int
-    xp_adjust: int
     max_reroll: int
 
     def __init__(self, **kwargs):
@@ -108,20 +94,6 @@ class PlayerGuild(object):
     def get_last_reset(self):
         return calendar.timegm(self.last_reset.utctimetuple())
 
-    def get_xp_goal(self, total: int, inactive: List[PlayerCharacter] | None) -> int:
-        in_count = 0 if inactive is None else len(inactive)
-        return ((self.max_level + 1) * (total - in_count)) * self.xp_adjust
-
-    def get_xp_percent(self, total: int, inactive: List[PlayerCharacter | None]) -> float:
-        return round((self.total_xp() / self.get_xp_goal(total, inactive)) * 100,2)
-
-    def get_xp_float(self, total: int, inactive: List[PlayerCharacter] | None) -> float:
-        return round((self.total_xp() / self.get_xp_goal(total, inactive)), 2)
-    def total_xp(self) -> int:
-        return self.week_xp + self.server_xp
-
-
-
 
 class Adventure(object):
     guild_id: int
@@ -142,9 +114,8 @@ class Adventure(object):
 
 class DBLog(object):
     author: int
-    xp: int
-    server_xp: int
-    gold: int
+    cc: int
+    credits: int
     character_id: int
     activity: Activity
     notes: str
@@ -176,25 +147,3 @@ class Arena(object):
 
     def get_host(self, ctx: ApplicationContext | discord.Interaction) -> discord.Member:
         return discord.utils.get(ctx.guild.members, id=self.host_id)
-
-
-class Shop(object):
-    guild_id: int
-    name: str
-    type: ShopType
-    owner_id: int
-    channel_id: int
-    shelf: int
-    network: int
-    mastery: int
-    seeks_remaining: int
-    max_cost: int | None
-    seek_roll: str | None
-    active: bool
-
-    def __init__(self, **kwargs):
-        for key, value in kwargs.items():
-            setattr(self, key, value)
-
-    def get_owner(self, ctx: ApplicationContext | discord.Interaction) -> discord.Member:
-        return discord.utils.get(ctx.guild.members, id=self.owner_id)

@@ -3,12 +3,12 @@ import discord
 from discord import ApplicationContext, TextChannel, Role
 from discord.ext.commands import Bot
 
-from ProphetBot.compendium import Compendium
-from ProphetBot.models.db_objects import RefCategoryDashboard, RefWeeklyStipend, GlobalPlayer, GlobalEvent, \
+from Resolute.compendium import Compendium
+from Resolute.models.db_objects import RefCategoryDashboard, RefWeeklyStipend, GlobalPlayer, GlobalEvent, \
     GlobalModifier, HostStatus
-from ProphetBot.models.schemas import RefCategoryDashboardSchema, RefWeeklyStipendSchema, GlobalPlayerSchema, \
+from Resolute.models.schemas import RefCategoryDashboardSchema, RefWeeklyStipendSchema, GlobalPlayerSchema, \
     GlobalEventSchema
-from ProphetBot.queries import get_dashboard_by_category_channel, get_weekly_stipend_query, get_all_global_players, \
+from Resolute.queries import get_dashboard_by_category_channel, get_weekly_stipend_query, get_all_global_players, \
     get_active_global, get_global_player, delete_global_event, delete_global_players
 
 

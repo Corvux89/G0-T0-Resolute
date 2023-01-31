@@ -3,13 +3,13 @@ import logging
 from discord import SlashCommandGroup, Option, ApplicationContext, Member, Role, Embed, Color
 from discord.ext import commands
 
-from ProphetBot.helpers import get_character, create_logs, get_adventure_from_role, get_or_create_guild, get_level_cap, \
+from Resolute.helpers import get_character, create_logs, get_adventure_from_role, get_or_create_guild, get_level_cap, \
     get_log, get_character_from_char_id, confirm, is_admin
-from ProphetBot.bot import BpBot
-from ProphetBot.models.db_objects import PlayerCharacter, Activity, DBLog, Adventure, LevelCaps, PlayerGuild
-from ProphetBot.models.embeds import ErrorEmbed, HxLogEmbed, DBLogEmbed, AdventureEPEmbed
-from ProphetBot.models.schemas import LogSchema, CharacterSchema
-from ProphetBot.queries import get_n_player_logs, get_multiple_characters, update_adventure, update_log, update_guild, \
+from Resolute.bot import G0T0Bot
+from Resolute.models.db_objects import PlayerCharacter, Activity, DBLog, Adventure, LevelCaps, PlayerGuild
+from Resolute.models.embeds import ErrorEmbed, HxLogEmbed, DBLogEmbed, AdventureEPEmbed
+from Resolute.models.schemas import LogSchema, CharacterSchema
+from Resolute.queries import get_n_player_logs, get_multiple_characters, update_adventure, update_log, update_guild, \
     update_character, insert_new_log
 
 log = logging.getLogger(__name__)
@@ -20,8 +20,8 @@ def setup(bot: commands.Bot):
 
 
 class Log(commands.Cog):
-    bot: BpBot
-    log_commands = SlashCommandGroup("log", "Logging commands for the magewrongs")
+    bot: G0T0Bot
+    log_commands = SlashCommandGroup("log", "Logging commands for the Archivist")
 
     def __init__(self, bot):
         self.bot = bot
@@ -95,8 +95,8 @@ class Log(commands.Cog):
     async def bonus_log(self, ctx: ApplicationContext,
                         player: Option(Member, description="Player receiving the bonus", required=True),
                         reason: Option(str, description="The reason for the bonus", required=True),
-                        gold: Option(int, description="The amount of gold", default=0, min_value=0, max_value=2000),
-                        xp: Option(int, description="The amount of xp", default=0, min_value=0, max_value=150)):
+                        cc: Option(int, description="The amount of Chain Codes", default=0, min_value=0, max_value=5),
+                        credits: Option(int, description="The amount of Credits", default=0, min_value=0, max_value=250)):
         """
         Log a bonus for a player
         :param ctx: Context
@@ -117,15 +117,17 @@ class Log(commands.Cog):
 
         act: Activity = ctx.bot.compendium.get_object("c_activity", "BONUS")
 
-        log_entry = await create_logs(ctx, character, act, reason, gold, xp)
+        log_entry = await create_logs(ctx, character, act, reason, cc, credits)
 
         await ctx.respond(embed=DBLogEmbed(ctx, log_entry, character))
 
-    @log_commands.command(
-        name="ep",
-        description="Grants adventure rewards to the players of a given adventure role"
-    )
-    @commands.check(is_admin)
+
+    # TODO: Figure out how EP will work
+    # @log_commands.command(
+    #     name="ep",
+    #     description="Grants adventure rewards to the players of a given adventure role"
+    # )
+    # @commands.check(is_admin)
     async def ep_log(self, ctx: ApplicationContext,
                      role: Option(Role, description="The adventure role to get rewards", required=True),
                      ep: Option(int, description="The number of EP to give rewards for")):
@@ -189,7 +191,7 @@ class Log(commands.Cog):
             else:
                 conf = await confirm(ctx,
                                      f"Are you sure you want to inactivate nullify the `{log_entry.activity.value}` log"
-                                     f" for {character.name} for ( {log_entry.gold}gp and {log_entry.xp} xp)?"
+                                     f" for {character.name} for ( {log_entry.cc} Chain Codes and {log_entry.credits} credits?)?"
                                      f" (Reply with yes/no)", True)
 
                 if conf is None:
@@ -199,25 +201,21 @@ class Log(commands.Cog):
 
                 g: PlayerGuild = await get_or_create_guild(ctx.bot.db, ctx.guild_id)
 
-                character.gold -= log_entry.gold
-                character.xp -= log_entry.xp
+                character.cc -= log_entry.cc
+                character.credits -= log_entry.credits
 
                 if log_entry.created_ts > g.last_reset:
                     g.week_xp -= log_entry.server_xp
                     if log_entry.activity.diversion:
-                        character.div_gold -= log_entry.gold
-                        character.div_xp -= log_entry.xp
-                else:
-                    g.server_xp -= log_entry.server_xp
+                        character.div_cc -= log_entry.cc
 
                 note = f"{log_entry.activity.value} log # {log_entry.id} nulled by " \
                        f"{ctx.author.name}#{ctx.author.discriminator} for reason: {reason}"
 
                 act = ctx.bot.compendium.get_object("c_activity", "MOD")
 
-                mod_log = DBLog(author=ctx.bot.user.id, xp=-log_entry.xp, gold=-log_entry.gold,
-                                character_id=character.id, activity=act, notes=note, server_xp=-log_entry.server_xp,
-                                invalid=False)
+                mod_log = DBLog(author=ctx.bot.user.id, cc=-log_entry.cc, credits=-log_entry.credits,
+                                character_id=character.id, activity=act, notes=note, invalid=False)
                 log_entry.invalid = True
 
                 async with ctx.bot.db.acquire() as conn:
@@ -231,10 +229,12 @@ class Log(commands.Cog):
 
                 await ctx.respond(embed=DBLogEmbed(ctx, result_log, character))
 
-    @log_commands.command(
-        name="global",
-        description="Manually log a global event for a character"
-    )
+
+    # TODO: I'll worry about this later
+    # @log_commands.command(
+    #     name="global",
+    #     description="Manually log a global event for a character"
+    # )
     async def global_log(self, ctx: ApplicationContext,
                          player: Option(Member, description="Player receiving the bonus", required=True),
                          global_name: Option(str, description="The reason for the bonus", required=True),
@@ -285,12 +285,12 @@ class Log(commands.Cog):
                 embed=ErrorEmbed(description=f"No character information found for {player.mention}"),
                 ephemeral=True)
 
-        if character.gold < cost:
-            return await ctx.respond(embed=ErrorEmbed(description=f"{player.mention} cannot afford the {cost}gp cost"))
+        if character.credits < cost:
+            return await ctx.respond(embed=ErrorEmbed(description=f"{player.mention} cannot afford the {cost} credit cost"))
 
         act = ctx.bot.compendium.get_object("c_activity", "BUY")
 
-        log_entry: DBLog = await create_logs(ctx, character, act, item, -cost)
+        log_entry: DBLog = await create_logs(ctx, character, act, item, 0, -cost)
 
         await ctx.respond(embed=DBLogEmbed(ctx, log_entry, character))
 
@@ -314,6 +314,6 @@ class Log(commands.Cog):
 
         act = ctx.bot.compendium.get_object("c_activity", "SELL")
 
-        log_entry: DBLog = await create_logs(ctx, character, act, item, cost)
+        log_entry: DBLog = await create_logs(ctx, character, act, item, 0, cost)
 
         await ctx.respond(embed=DBLogEmbed(ctx, log_entry, character))

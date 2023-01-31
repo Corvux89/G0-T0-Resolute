@@ -1,6 +1,6 @@
 from marshmallow import Schema, fields, post_load
 
-from ProphetBot.models.db_objects.ref_objects import *
+from Resolute.models.db_objects.ref_objects import *
 
 
 class RefCategoryDashboardSchema(Schema):
@@ -30,8 +30,7 @@ class RefWeeklyStipendSchema(Schema):
 class GlobalEventSchema(Schema):
     guild_id = fields.Integer(data_key='guild_id', required=True)
     name = fields.String(data_key='name', required=True)
-    base_gold = fields.Integer(data_key='base_gold', required=True)
-    base_xp = fields.Integer(data_key='base_xp', required=True)
+    base_cc = fields.Integer(data_key='base_cc', required=True)
     base_mod = fields.Method(None, "get_base_mod")
     combat = fields.Boolean(data_key='combat', required=True)
     channels = fields.List(fields.Integer, data_key='channels', load_default=[], required=False)
@@ -54,8 +53,7 @@ class GlobalPlayerSchema(Schema):
     player_id = fields.Integer(data_key='player_id', required=True)
     modifier = fields.Method(None, "get_mod")
     host = fields.Method(None, "get_host_status", allow_none=True)
-    gold = fields.Integer(data_key='gold', required=True)
-    xp = fields.Integer(data_key='xp', required=True)
+    cc = fields.Integer(data_key='cc', required=True)
     update = fields.Boolean(data_key='update', required=True)
     active = fields.Boolean(data_key='active', required=True)
     num_messages = fields.Integer(data_key="num_messages", required=True)

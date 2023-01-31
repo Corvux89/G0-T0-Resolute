@@ -2,6 +2,14 @@ from marshmallow import Schema, fields, post_load
 
 from Resolute.models.db_objects.category_objects import *
 
+class RaritySchema(Schema):
+    id = fields.Integer(data_key="id", required=True)
+    value = fields.String(data_key="value", required=True)
+
+    @post_load
+    def make_c_rarity(self, data, **kwargs):
+        return Rarity(**data)
+
 
 class CharacterClassSchema(Schema):
     id = fields.Integer(data_key="id", required=True)
@@ -72,7 +80,7 @@ class AdventureTierSchema(Schema):
 class ActivitySchema(Schema):
     id = fields.Integer(data_key="id", required=True)
     value = fields.String(data_key="value", required=True)
-    ratio = fields.Float(data_key="ratio", required=False, allow_none=True)
+    cc = fields.Integer(data_key="cc", required=False, allow_none=True)
     diversion = fields.Boolean(data_key="diversion", required=True)
 
     @post_load
@@ -91,8 +99,8 @@ class DashboardTypeSchema(Schema):
 
 class LevelCapsSchema(Schema):
     id = fields.Integer(data_key="id", required=True)
-    max_gold = fields.Integer(data_key="max_gold", required=True)
-    max_xp = fields.Integer(data_key="max_xp", required=True)
+    max_cc = fields.Integer(data_key="max_cc", required=True)
+    max_items = fields.String(data_key="max_items", required=True)
 
     @post_load
     def make_level_caps(self, data, **kwargs):

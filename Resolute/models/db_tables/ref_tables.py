@@ -1,6 +1,6 @@
 import sqlalchemy as sa
 from sqlalchemy import Column, Integer, BigInteger, Numeric, String, BOOLEAN
-from ProphetBot.models.db_tables.base import metadata
+from Resolute.models.db_tables.base import metadata
 
 ref_category_dashboard_table = sa.Table(
     "ref_category_dashboard",
@@ -27,8 +27,7 @@ ref_gb_staging_table = sa.Table(
     metadata,
     Column("guild_id", BigInteger, primary_key=True, nullable=False),  # ref: > guilds.id
     Column("name", String, nullable=False),
-    Column("base_gold", Integer, nullable=False),
-    Column("base_xp", Integer, nullable=False),
+    Column("base_cc", Integer, nullable=False),
     Column("base_mod", Integer, nullable=False),  # ref: c_global_modifier.id
     Column("combat", BOOLEAN, nullable=False),
     Column("channels", sa.ARRAY(BigInteger), nullable=True, default=[]),
@@ -42,8 +41,7 @@ ref_gb_staging_player_table = sa.Table(
     Column("player_id", BigInteger, nullable=False),  # ref: > characters.player_id
     Column("modifier", Integer, nullable=True),  # ref: > c_global_modifier.id
     Column("host", Integer, nullable=True),  # ref: > c_host_status.id
-    Column("gold", Integer, nullable=False),
-    Column("xp", Integer, nullable=False),
+    Column("cc", Integer, nullable=False),
     Column("update", BOOLEAN, nullable=False, default=True),
     Column("active", BOOLEAN, nullable=False, default=True),
     Column("num_messages", Integer, nullable=False, default=0),

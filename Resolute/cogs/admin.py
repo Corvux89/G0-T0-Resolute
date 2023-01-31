@@ -6,9 +6,9 @@ from discord import SlashCommandGroup, Option, ExtensionAlreadyLoaded, Extension
 from discord.ext import commands, tasks
 from os import listdir
 
-from ProphetBot.constants import ADMIN_GUILDS
-from ProphetBot.helpers import is_owner
-from ProphetBot.bot import BpBot
+from Resolute.constants import ADMIN_GUILDS
+from Resolute.helpers import is_owner
+from Resolute.bot import G0T0Bot
 
 log = logging.getLogger(__name__)
 
@@ -17,7 +17,7 @@ def setup(bot: commands.Bot):
 
 
 class Admin(commands.Cog):
-    bot: BpBot  # Typing annotation for my IDE's sake
+    bot: G0T0Bot  # Typing annotation for my IDE's sake
     admin_commands = SlashCommandGroup("admin", "Bot administrative commands", guild_ids=ADMIN_GUILDS)
 
     def __init__(self, bot):
@@ -28,8 +28,6 @@ class Admin(commands.Cog):
     async def on_ready(self):
         await asyncio.sleep(3.0)
         asyncio.ensure_future(self.reload_category_task.start())
-        await asyncio.sleep(6.0)
-        asyncio.ensure_future(self.reload_item_task.start())
 
     @admin_commands.command(
         name="load",
@@ -104,9 +102,6 @@ class Admin(commands.Cog):
         elif str(cog).upper() in ['DB', 'COMPENDIUM']:
             await self._reload_DB(ctx)
             await ctx.respond(f'Done')
-        elif str(cog).upper() in ['INVENTORY']:
-            await self._reload_items(ctx)
-            await ctx.respond(f'Done')
         else:
             try:
                 self.bot.unload_extension(f'Resolute.cogs.{cog}')
@@ -147,17 +142,9 @@ class Admin(commands.Cog):
         await self.bot.compendium.reload_categories(self.bot)
         await ctx.send("Compendium reloaded")
 
-    async def _reload_items(self, ctx):
-        await self.bot.compendium.load_items(self.bot)
-        await ctx.send("Items reloading")
-
     # --------------------------- #
     # Tasks
     # --------------------------- #
     @tasks.loop(minutes=30)
     async def reload_category_task(self):
         await self.bot.compendium.reload_categories(self.bot)
-
-    @tasks.loop(hours=24)
-    async def reload_item_task(self):
-        await self.bot.compendium.load_items(self.bot)

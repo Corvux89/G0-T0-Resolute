@@ -3,7 +3,7 @@ from PIL import Image, ImageDraw
 from discord import ApplicationContext
 from sqlalchemy.util import asyncio
 
-from ProphetBot.constants import BOT_OWNERS
+from Resolute.constants import BOT_OWNERS
 
 
 def is_owner(ctx: ApplicationContext):

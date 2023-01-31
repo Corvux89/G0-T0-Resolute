@@ -4,14 +4,14 @@ from typing import List
 
 from discord import SlashCommandGroup, Option, ApplicationContext, Member, Embed, Color
 from discord.ext import commands
-from ProphetBot.bot import BpBot
-from ProphetBot.helpers import remove_fledgling_role, get_character_quests, get_character, get_player_character_class, \
+from Resolute.bot import G0T0Bot
+from Resolute.helpers import remove_fledgling_role, get_character_quests, get_character, get_player_character_class, \
     create_logs, get_faction_roles, get_level_cap, get_or_create_guild, confirm, is_admin
-from ProphetBot.helpers.autocomplete_helpers import *
-from ProphetBot.models.db_objects import PlayerCharacter, PlayerCharacterClass, DBLog, Faction, LevelCaps, PlayerGuild
-from ProphetBot.models.embeds import ErrorEmbed, NewCharacterEmbed, CharacterGetEmbed
-from ProphetBot.models.schemas import CharacterSchema
-from ProphetBot.queries import insert_new_character, insert_new_class, update_character, update_class
+from Resolute.helpers.autocomplete_helpers import *
+from Resolute.models.db_objects import PlayerCharacter, PlayerCharacterClass, DBLog, LevelCaps, PlayerGuild
+from Resolute.models.embeds import ErrorEmbed, NewCharacterEmbed, CharacterGetEmbed
+from Resolute.models.schemas import CharacterSchema
+from Resolute.queries import insert_new_character, insert_new_class, update_character, update_class
 
 log = logging.getLogger(__name__)
 
@@ -21,9 +21,8 @@ def setup(bot: commands.Bot):
 
 
 class Character(commands.Cog):
-    bot: BpBot
+    bot: G0T0Bot
     character_admin_commands = SlashCommandGroup("character_admin", "Character administration commands")
-    faction_commands = SlashCommandGroup("faction", "Faction commands")
 
     def __init__(self, bot):
         self.bot = bot
@@ -39,16 +38,15 @@ class Character(commands.Cog):
                                character_class: Option(str, description="Character's initial class",
                                                        autocomplete=character_class_autocomplete,
                                                        required=True),
-                               character_race: Option(str, description="Character's race",
-                                                      autocomplete=character_race_autocomplete,
+                               character_species: Option(str, description="Character's species",
+                                                      autocomplete=character_species_autocomplete,
                                                       required=True),
-                               gold: Option(int, description="Unspent starting gold", min=0, max=99999, required=True),
-                               character_subrace: Option(str, description="Character's subrace",
-                                                         autocomplete=character_subrace_autocomplete,
-                                                         required=False),
-                               character_subclass: Option(str, description="Character's subclass",
-                                                          autocomplete=character_subclass_autocomplete,
+                               credits: Option(int, description="Unspent starting credits", min=0, max=99999, required=True),
+                               character_archetype: Option(str, description="Character's archetype",
+                                                          autocomplete=character_archetype_autocomplete,
                                                           required=False),
+                               cc: Option(int, description="Any starting Chain Codes", min=0, max=99999, required=False,
+                                          default=0),
                                level: Option(int, description="Starting level for higher-level character", min_value=1,
                                              max_value=20, default=1)):
         """
@@ -76,16 +74,13 @@ class Character(commands.Cog):
 
         # Resolve inputs
         c_class = ctx.bot.compendium.get_object("c_character_class", character_class)
-        c_race = ctx.bot.compendium.get_object("c_character_race", character_race)
-        c_subclass = ctx.bot.compendium.get_object("c_character_subclass", character_subclass)
-        c_subrace = ctx.bot.compendium.get_object("c_character_subrace", character_subrace)
-        init_faction = ctx.bot.compendium.get_object("c_faction", "Guild Initiate") if level < 3 \
-            else ctx.bot.compendium.get_object("c_faction", "Guild Member")
+        c_species = ctx.bot.compendium.get_object("c_character_species", character_species)
+        c_archetype = ctx.bot.compendium.get_object("c_character_archetype", character_archetype)
 
         # Create new object
-        character = PlayerCharacter(player_id=player.id, guild_id=ctx.guild.id, name=name, race=c_race,
-                                    subrace=c_subrace, xp=(level - 1) * 1000, div_xp=0, gold=gold, div_gold=0,
-                                    active=True, reroll=False, faction=init_faction)
+        character = PlayerCharacter(player_id=player.id, guild_id=ctx.guild.id, name=name, species=c_species,
+                                    cc=cc, credits=credits, div_cc=0,
+                                    active=True, reroll=False)
 
         async with self.bot.db.acquire() as conn:
             results = await conn.execute(insert_new_character(character))
@@ -100,7 +95,7 @@ class Character(commands.Cog):
         character: PlayerCharacter = CharacterSchema(ctx.bot.compendium).load(row)
 
         player_class = PlayerCharacterClass(character_id=character.id, primary_class=c_class,
-                                            subclass=c_subclass, active=True)
+                                            archetype=c_archetype, active=True)
 
         async with self.bot.db.acquire() as conn:
             await conn.execute(insert_new_class(player_class))
@@ -144,7 +139,7 @@ class Character(commands.Cog):
 
         caps: LevelCaps = get_level_cap(character, g, ctx.bot.compendium)
 
-        if character.get_level() < 3:
+        if character.level < 3:
             character = await get_character_quests(ctx.bot, character)
 
         await ctx.respond(embed=CharacterGetEmbed(character, class_ary, caps, ctx))
@@ -171,27 +166,22 @@ class Character(commands.Cog):
                 embed=ErrorEmbed(description=f"No character information found for {player.mention}"),
                 ephemeral=True)
 
-        if character.get_level() > 2:
-            return await ctx.respond(embed=ErrorEmbed(description=
-                                                      f"{player.mention} is already level {character.get_level()}. "
-                                                      f"If they leveled the hard way then, well, congrats"),
-                                     ephemeral=True)
+        if character.level < 3:
+            character = await get_character_quests(ctx.bot, character)
 
-        character = await get_character_quests(ctx.bot, character)
-
-        if character.needed_rps > character.completed_rps or character.needed_arenas > character.completed_arenas:
-            return await ctx.respond(embed=ErrorEmbed(
-                description=f"{player.mention} has not completed their requirements to level up.\n"
-                            f"Completed RPs: {character.completed_rps}/{character.needed_rps}\n"
-                            f"Completed Arenas: {character.completed_arenas}/{character.needed_arenas}"),
-                ephemeral=True)
+            if character.needed_rps > character.completed_rps or character.needed_arenas > character.completed_arenas:
+                return await ctx.respond(embed=ErrorEmbed(
+                    description=f"{player.mention} has not completed their requirements to level up.\n"
+                                f"Completed RPs: {character.completed_rps}/{character.needed_rps}\n"
+                                f"Completed Arenas: {character.completed_arenas}/{character.needed_arenas}"),
+                    ephemeral=True)
 
         log.info(f"Leveling up character [ {character.id} ] with player id [ {player.id} ]. "
-                 f"New level: [ {character.get_level() + 1} ]")
+                 f"New level: [ {character.level + 1} ]")
 
-        act = ctx.bot.compendium.get_object("c_activity", "BONUS")
+        act = ctx.bot.compendium.get_object("c_activity", "LEVEL")
 
-        await create_logs(ctx, character, act, "New player level up", 0, 1000)
+        await create_logs(ctx, character, act, "Player level up", 0, 0)
 
         embed = Embed(title="Level up successful!",
                       description=f"{player.mention} is now level {character.get_level()}",

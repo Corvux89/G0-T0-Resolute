@@ -14,4 +14,4 @@ DASHBOARD_REFRESH_INTERVAL = float(os.environ.get("DASHBOARD_REFRESH_INTERVAL", 
 DB_URL = os.environ.get("DATABASE_URL", "")
 
 # Misc
-THUMBNAIL = "https://cdn.discordapp.com/attachments/794989941690990602/972998353103233124/IMG_2177.jpg"
+THUMBNAIL = "https://cdn.discordapp.com/attachments/1069074273190285353/1070477277852340339/image.png"

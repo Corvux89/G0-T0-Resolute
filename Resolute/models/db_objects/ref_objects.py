@@ -41,7 +41,7 @@ class RefCategoryDashboard(object):
 class RefWeeklyStipend(object):
     guild_id: int
     role_id: int
-    ratio: float
+    amount: int
     reason: str
     leadership: bool
 

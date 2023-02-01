@@ -4,29 +4,29 @@ import io
 
 import discord.utils
 from PIL import Image, ImageDraw, ImageFilter
-from discord import SlashCommandGroup, ApplicationContext, TextChannel, Option, Message
+from discord import SlashCommandGroup
 from discord.ext import commands, tasks
 
-from ProphetBot.bot import BpBot
-from ProphetBot.constants import DASHBOARD_REFRESH_INTERVAL
-from ProphetBot.helpers import get_dashboard_from_category_channel_id, get_last_message, get_or_create_guild, \
+from Resolute.bot import G0T0Bot
+from Resolute.constants import DASHBOARD_REFRESH_INTERVAL
+from Resolute.helpers import get_last_message, get_or_create_guild, \
     get_guild_character_summary_stats, draw_progress_bar
-from ProphetBot.models.db_objects import RefCategoryDashboard, DashboardType, Shop, PlayerGuild
-from ProphetBot.models.embeds import ErrorEmbed, RpDashboardEmbed, ShopDashboardEmbed, \
+from Resolute.models.db_objects import RefCategoryDashboard, DashboardType, PlayerGuild
+from Resolute.models.embeds import RpDashboardEmbed, ShopDashboardEmbed, \
     GuildProgress
-from ProphetBot.models.schemas import RefCategoryDashboardSchema, ShopSchema
-from ProphetBot.queries import insert_new_dashboard, get_dashboards, delete_dashboard, update_dashboard, get_shops
+from Resolute.models.schemas import RefCategoryDashboardSchema
+from Resolute.queries import get_dashboards, delete_dashboard
 from timeit import default_timer as timer
 
 log = logging.getLogger(__name__)
 
 
-def setup(bot: commands.Bot):
-    bot.add_cog(Dashboards(bot))
+# def setup(bot: commands.Bot):
+#     bot.add_cog(Dashboards(bot))
 
 
 class Dashboards(commands.Cog):
-    bot: BpBot
+    bot: G0T0Bot
     dashboard_commands = SlashCommandGroup("dashboard", "Dashboard commands")
 
     def __init__(self, bot):
@@ -38,157 +38,6 @@ class Dashboards(commands.Cog):
         await asyncio.sleep(6.0)
         log.info(f"Reloading dashboards every {DASHBOARD_REFRESH_INTERVAL} minutes.")
         await self.update_dashboards.start()
-
-    @dashboard_commands.command(
-        name="rp_create",
-        description="Creates a dashboard which shows the status of RP channels in this category"
-    )
-    async def dashboard_rp_create(self, ctx: ApplicationContext,
-                                  excluded_channel_1: Option(TextChannel, "The first channel to exclude",
-                                                             required=False, default=None),
-                                  excluded_channel_2: Option(TextChannel, "The second channel to exclude",
-                                                             required=False, default=None),
-                                  excluded_channel_3: Option(TextChannel, "The third channel to exclude",
-                                                             required=False, default=None),
-                                  excluded_channel_4: Option(TextChannel, "The fourth channel to exclude",
-                                                             required=False, default=None),
-                                  excluded_channel_5: Option(TextChannel, "The fifth channel to exclude",
-                                                             required=False, default=None)):
-        """
-        Creates a RP Dashboard in the channel to show channel availability
-
-        :param ctx: Context
-        :param excluded_channel_1: TextChannel to exclude from the dashboard
-        :param excluded_channel_2: TextChannel to exclude from the dashboard
-        :param excluded_channel_3: TextChannel to exclude from the dashboard
-        :param excluded_channel_4: TextChannel to exclude from the dashboard
-        :param excluded_channel_5: TextChannel to exclude from the dashboard
-        """
-
-        await ctx.defer()
-
-        dashboard: RefCategoryDashboard = await get_dashboard_from_category_channel_id(ctx)
-
-        if dashboard is not None:
-            return await ctx.respond(embed=ErrorEmbed(description="There is already a dashboard for this category. "
-                                                                  "Delete that before creating another"),
-                                     ephemeral=True)
-
-        excluded_channels = list(set(filter(
-            lambda c: c is not None,
-            [excluded_channel_1, excluded_channel_2, excluded_channel_3, excluded_channel_4, excluded_channel_5]
-        )))
-
-        # Create post with dummy text in it
-        interaction = await ctx.respond("Fetching dashboard data. This may take a moment")
-        msg: Message = await ctx.channel.fetch_message(interaction.id)
-        await msg.pin(reason=f"RP Dashboard for {ctx.channel.category.name} created by {ctx.author.name}")
-
-        dType = ctx.bot.compendium.get_object("c_dashboard_type", "RP")
-
-        dashboard = RefCategoryDashboard(category_channel_id=ctx.channel.category.id,
-                                         dashboard_post_channel_id=ctx.channel_id,
-                                         dashboard_post_id=msg.id,
-                                         excluded_channel_ids=[c.id for c in excluded_channels],
-                                         dashboard_type=dType.id)
-
-        async with ctx.bot.db.acquire() as conn:
-            await conn.execute(insert_new_dashboard(dashboard))
-
-        await self.update_dashboard(dashboard)
-
-    @dashboard_commands.command(
-        name="shop_create",
-        description="Creates a dashboard showing available shops"
-    )
-    async def dashboard_shop_create(self, ctx: ApplicationContext):
-        await ctx.defer()
-
-        dashboard: RefCategoryDashboard = await get_dashboard_from_category_channel_id(ctx)
-
-        if dashboard is not None:
-            return await ctx.respond(embed=ErrorEmbed(description="There is already a dashboard for this category. "
-                                                                  "Delete that before creating another"),
-                                     ephemeral=True)
-
-        # Create post with dummy text in it
-        interaction = await ctx.respond("Fetching dashboard data. This may take a moment")
-        msg: Message = await ctx.channel.fetch_message(interaction.id)
-        await msg.pin(reason=f"Shop dashboard created by {ctx.author.name}")
-
-        dType = ctx.bot.compendium.get_object("c_dashboard_type", "SHOP")
-
-        dashboard = RefCategoryDashboard(category_channel_id=ctx.channel.category.id,
-                                         dashboard_post_channel_id=ctx.channel_id,
-                                         dashboard_post_id=msg.id,
-                                         excluded_channel_ids=[],
-                                         dashboard_type=dType.id)
-
-        async with ctx.bot.db.acquire() as conn:
-            await conn.execute(insert_new_dashboard(dashboard))
-
-        await self.update_dashboard(dashboard)
-
-    @dashboard_commands.command(
-        name="guild_create",
-        description="Creates a dashboard showing guild progress"
-    )
-    async def dashboard_guild_create(self, ctx: ApplicationContext):
-        await ctx.defer()
-
-        dashboard: RefCategoryDashboard = await get_dashboard_from_category_channel_id(ctx)
-
-        if dashboard is not None:
-            return await ctx.respond(embed=ErrorEmbed(description="There is already a dashboard for this category. "
-                                                                  "Delete that before creating another"),
-                                     ephemeral=True)
-
-        # Create post with dummy text in it
-        interaction = await ctx.respond("Fetching dashboard data. This may take a moment")
-        msg: Message = await ctx.channel.fetch_message(interaction.id)
-        await msg.pin(reason=f"Shop dashboard created by {ctx.author.name}")
-
-        dType = ctx.bot.compendium.get_object("c_dashboard_type", "GUILD")
-
-        dashboard = RefCategoryDashboard(category_channel_id=ctx.channel.category.id,
-                                         dashboard_post_channel_id=ctx.channel_id,
-                                         dashboard_post_id=msg.id,
-                                         excluded_channel_ids=[],
-                                         dashboard_type=dType.id)
-
-        async with ctx.bot.db.acquire() as conn:
-            await conn.execute(insert_new_dashboard(dashboard))
-
-        await self.update_dashboard(dashboard)
-
-    @dashboard_commands.command(
-        name="rp_exclude",
-        description="Add a channel to the exclusions list"
-    )
-    async def dashboard_rp_exclude(self, ctx: ApplicationContext,
-                                   excluded_channel: Option(TextChannel, description="Channel to exclude",
-                                                            required=True)):
-        """
-        Add a channel to the exclusions list
-
-        :param ctx: Context
-        :param excluded_channel: TextChannel to exclude from the dashboard
-        """
-        await ctx.defer()
-
-        dashboard: RefCategoryDashboard = await get_dashboard_from_category_channel_id(ctx)
-
-        if dashboard is None:
-            return await ctx.respond(embed=ErrorEmbed(description=f"No dashboard found for this category"),
-                                     ephemeral=True)
-
-        dashboard.excluded_channel_ids.append(excluded_channel.id)
-
-        async with ctx.bot.db.acquire() as conn:
-            await conn.execute(update_dashboard(dashboard))
-
-        await self.update_dashboard(dashboard)
-        await ctx.respond(f"Exclusion added", ephemeral=True)
 
     async def update_dashboard(self, dashboard: RefCategoryDashboard):
         """

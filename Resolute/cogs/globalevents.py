@@ -1,25 +1,25 @@
 from discord import *
 from discord.ext import commands
-from ProphetBot.bot import BpBot
-from ProphetBot.helpers import calc_amt, confirm, get_all_players, global_mod_autocomplete, get_global, get_player, \
+from Resolute.bot import G0T0Bot
+from Resolute.helpers import calc_amt, confirm, get_all_players, global_mod_autocomplete, get_global, get_player, \
     get_character, create_logs, close_global, global_host_autocomplete
-from ProphetBot.models.db_objects import GlobalEvent, GlobalPlayer, PlayerCharacter
-from ProphetBot.models.embeds import GlobalEmbed
+from Resolute.models.db_objects import GlobalEvent, GlobalPlayer, PlayerCharacter
+from Resolute.models.embeds import GlobalEmbed
 from discord.commands import SlashCommandGroup
-from ProphetBot.models.schemas import GlobalPlayerSchema
-from ProphetBot.queries import insert_new_global_event, update_global_event, \
+from Resolute.models.schemas import GlobalPlayerSchema
+from Resolute.queries import insert_new_global_event, update_global_event, \
     add_global_player, update_global_player
 
 log = logging.getLogger(__name__)
 
 
-def setup(bot):
-    bot.add_cog(GlobalEvents(bot))
+# def setup(bot):
+#     bot.add_cog(GlobalEvents(bot))
 
 
 # TODO: Add command to mass alter modifier based on # of messages
 class GlobalEvents(commands.Cog):
-    bot: BpBot  # Typing annotation for my IDE's sake
+    bot: G0T0Bot  # Typing annotation for my IDE's sake
     global_event_commands = SlashCommandGroup("global_event", "Commands related to global event management.")
 
     def __init__(self, bot):

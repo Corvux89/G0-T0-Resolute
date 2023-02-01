@@ -18,7 +18,7 @@ class RefCategoryDashboardSchema(Schema):
 class RefWeeklyStipendSchema(Schema):
     role_id = fields.Integer(data_key="role_id", required=True)
     guild_id = fields.Integer(data_key="guild_id", required=True)
-    ratio = fields.Float(data_key="ratio", required=True)
+    amount = fields.Integer(data_key="amount", required=True)
     reason = fields.String(data_key="reason", required=False, allow_none=True)
     leadership = fields.Boolean(data_key="leadership", required=True)
 

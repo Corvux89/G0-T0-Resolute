@@ -3,9 +3,9 @@ import logging
 import discord
 from discord import SlashCommandGroup, ApplicationContext, Member, Option, CategoryChannel, TextChannel
 from discord.ext import commands
-from ProphetBot.bot import  BpBot
-from ProphetBot.helpers import is_admin
-from ProphetBot.models.embeds import ErrorEmbed
+from Resolute.bot import G0T0Bot
+from Resolute.helpers import is_admin
+from Resolute.models.embeds import ErrorEmbed
 
 log = logging.getLogger(__name__)
 
@@ -15,7 +15,7 @@ def setup(bot: commands.Bot):
 
 
 class Holdings(commands.Cog):
-    bot: BpBot
+    bot: G0T0Bot
     holding_admin = SlashCommandGroup("holding_admin", "Commands related to holding administration")
 
 
@@ -49,11 +49,11 @@ class Holdings(commands.Cog):
             chan_perms[bots_role] = discord.PermissionOverwrite(view_channel=True,
                                                                 send_messages=True)
 
-        if guild_member := discord.utils.get(ctx.guild.roles, name="Guild Member"):
+        if guild_member := discord.utils.get(ctx.guild.roles, name="Citizen"):
             chan_perms[guild_member] = discord.PermissionOverwrite(view_channel=True,
                                                                    send_messages=False)
 
-        if guild_initiate := discord.utils.get(ctx.guild.roles, name="Guild Initiate"):
+        if guild_initiate := discord.utils.get(ctx.guild.roles, name="Acolyte"):
             chan_perms[guild_initiate] = discord.PermissionOverwrite(view_channel=True,
                                                                      send_messages=False)
 

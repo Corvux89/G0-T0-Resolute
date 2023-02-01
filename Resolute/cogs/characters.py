@@ -179,29 +179,31 @@ class Character(commands.Cog):
         log.info(f"Leveling up character [ {character.id} ] with player id [ {player.id} ]. "
                  f"New level: [ {character.level + 1} ]")
 
+        character.level += 1
+
         act = ctx.bot.compendium.get_object("c_activity", "LEVEL")
 
         await create_logs(ctx, character, act, "Player level up", 0, 0)
 
+        async with ctx.bot.db.acquire() as conn:
+            await conn.execute(update_character(character))
+
         embed = Embed(title="Level up successful!",
-                      description=f"{player.mention} is now level {character.get_level()}",
+                      description=f"{player.mention} is now level {character.level}",
                       color=Color.random())
         embed.set_thumbnail(url=player.display_avatar.url)
 
         await ctx.respond(embed=embed)
 
     @character_admin_commands.command(
-        name="race",
-        description="Set a characters race/subrace"
+        name="species",
+        description="Set a characters species"
     )
     async def character_race(self, ctx: ApplicationContext,
-                             player: Option(Member, description="Player to set the race/subrace for", required=True),
-                             character_race: Option(str, description="Character's race",
-                                                    autocomplete=character_race_autocomplete,
-                                                    required=True),
-                             character_subrace: Option(str, description="Character's subrace",
-                                                       autocomplete=character_subrace_autocomplete,
-                                                       required=False)):
+                             player: Option(Member, description="Player to set the species for", required=True),
+                             character_species: Option(str, description="Character's race",
+                                                    autocomplete=character_species_autocomplete,
+                                                    required=True)):
         """
         Sets a characters race/subrace
 
@@ -220,42 +222,40 @@ class Character(commands.Cog):
                 embed=ErrorEmbed(description=f"No character information found for {player.mention}"),
                 ephemeral=True)
 
-        c_race = ctx.bot.compendium.get_object("c_character_race", character_race)
-        c_subrace = ctx.bot.compendium.get_object("c_character_subrace", character_subrace)
+        c_species = ctx.bot.compendium.get_object("c_character_race", character_species)
 
-        character.race = c_race
-        character.subrace = c_subrace
+        character.species = c_species
 
         async with ctx.bot.db.acquire() as conn:
             await conn.execute(update_character(character))
 
         embed = Embed(title="Update successful!",
-                      description=f"{character.name}'s race/subrace updated to {character.get_formatted_race()}",
+                      description=f"{character.name}'s race/subrace updated to {character.species.value}",
                       color=Color.random())
         embed.set_thumbnail(url=player.display_avatar.url)
 
         await ctx.respond(embed=embed)
 
     @character_admin_commands.command(
-        name="subclass",
-        description="Sets the subclass for a given player and class"
+        name="archetype",
+        description="Sets the archetype for a given player and class"
     )
     async def character_subclass(self, ctx: ApplicationContext,
-                                 player: Option(Member, description="Player to set the race/subrace for",
+                                 player: Option(Member, description="Player to set the class/archetype for",
                                                 required=True),
                                  character_class: Option(str, description="Character's class to modify",
                                                          autocomplete=character_class_autocomplete,
                                                          required=True),
-                                 character_subclass: Option(str, description="Character's subclass",
-                                                            autocomplete=character_subclass_autocomplete,
-                                                            required=False)):
+                                 character_archetype: Option(str, description="Character's archetype",
+                                                             autocomplete=character_archetype_autocomplete,
+                                                             required=False)):
         """
         Given a player and class, will update the subclass
 
         :param ctx: Context
         :param player: Member
         :param character_class: CharacterClass
-        :param character_subclass: CharacterArchetype
+        :param character_archetype: CharacterArchetype
         """
         await ctx.defer()
 
@@ -267,13 +267,13 @@ class Character(commands.Cog):
                 ephemeral=True)
 
         c_class = ctx.bot.compendium.get_object("c_character_class", character_class)
-        c_subclass = ctx.bot.compendium.get_object("c_character_subclass", character_subclass)
+        c_archetype = ctx.bot.compendium.get_object("c_character_archetype", character_archetype)
 
         class_ary: List[PlayerCharacterClass] = await get_player_character_class(ctx.bot, character.id)
 
         for c in class_ary:
             if c.primary_class.id == c_class.id:
-                c.subclass = c_subclass
+                c.archetype = c_archetype
 
                 async with ctx.bot.db.acquire() as conn:
                     await conn.execute(update_class(c))
@@ -293,21 +293,21 @@ class Character(commands.Cog):
         description="Adds a multiclass to a player"
     )
     async def character_multiclass_add(self, ctx: ApplicationContext,
-                                       player: Option(Member, description="Player to set the race/subrace for",
+                                       player: Option(Member, description="Player to set the class/archetype for",
                                                       required=True),
                                        character_class: Option(str, description="Character's class to modify",
                                                                autocomplete=character_class_autocomplete,
                                                                required=True),
-                                       character_subclass: Option(str, description="Character's subclass",
-                                                                  autocomplete=character_subclass_autocomplete,
-                                                                  required=False)):
+                                       character_archetype: Option(str, description="Character's archetype",
+                                                                   autocomplete=character_archetype_autocomplete,
+                                                                   required=False)):
         """
         Adds a new class to a player
 
         :param ctx: Context
         :param player: Member
         :param character_class: CharacterClass
-        :param character_subclass: CharacterArchetype
+        :param character_archetype: CharacterArchetype
         """
         await ctx.defer()
 
@@ -319,7 +319,7 @@ class Character(commands.Cog):
                 ephemeral=True)
 
         c_class = ctx.bot.compendium.get_object("c_character_class", character_class)
-        c_subclass = ctx.bot.compendium.get_object("c_character_subclass", character_subclass)
+        c_archetype = ctx.bot.compendium.get_object("c_character_archetype", character_archetype)
 
         class_ary: List[PlayerCharacterClass] = await get_player_character_class(ctx.bot, character.id)
 
@@ -327,12 +327,12 @@ class Character(commands.Cog):
             return await ctx.respond(
                 embed=ErrorEmbed(description=f"Character already has class {c_class.value}"),
                 ephemeral=True)
-        elif len(class_ary) + 1 > character.get_level():
+        elif len(class_ary) + 1 > character.level:
             return await ctx.respond(
                 embed=ErrorEmbed(description=f"Can't add more classes than the player has levels"),
                 ephemeral=True)
         else:
-            new_class = PlayerCharacterClass(character_id=character.id, primary_class=c_class, subclass=c_subclass,
+            new_class = PlayerCharacterClass(character_id=character.id, primary_class=c_class, archetype=c_archetype,
                                              active=True)
 
             async with ctx.bot.db.acquire() as conn:
@@ -353,7 +353,7 @@ class Character(commands.Cog):
         description="Removes a class from a player"
     )
     async def character_multiclass_remove(self, ctx: ApplicationContext,
-                                          player: Option(Member, description="Player to set the race/subrace for",
+                                          player: Option(Member, description="Player to set the class/archetype for",
                                                          required=True),
                                           character_class: Option(str, description="Character's class to modify",
                                                                   autocomplete=character_class_autocomplete,
@@ -435,10 +435,10 @@ class Character(commands.Cog):
 
         await ctx.respond(f"Character inactivated")
 
-    @character_admin_commands.command(
-        name="reroll",
-        description="Reroll's a character"
-    )
+    # @character_admin_commands.command(
+    #     name="reroll",
+    #     description="Reroll's a character"
+    # )
     async def character_reroll(self, ctx: ApplicationContext,
                                player: Option(Member, description="Player rerolling.", required=True),
                                name: Option(str, description="Character's name", required=True),
@@ -564,10 +564,10 @@ class Character(commands.Cog):
 
 
 
-    @character_admin_commands.command(
-        name="resurrect",
-        description="Logs a resurrection for a character"
-    )
+    # @character_admin_commands.command(
+    #     name="resurrect",
+    #     description="Logs a resurrection for a character"
+    # )
     async def character_resurrect(self, ctx: ApplicationContext,
                                   player: Option(Member, description="Player being resurrected", required=True),
                                   cost: Option(int, description="Any cost associated to be deducted", required=False,
@@ -596,65 +596,5 @@ class Character(commands.Cog):
         embed.set_thumbnail(url=player.display_avatar.url)
         embed.set_footer(text=f"Logged by {ctx.author} - ID: {log_entry.id}",
                         icon_url=ctx.author.display_avatar.url)
-
-        await ctx.respond(embed=embed)
-
-
-
-
-    @faction_commands.command(
-        name="set",
-        description="Sets the target player's faction"
-    )
-    async def faction_set(self, ctx: ApplicationContext,
-                          player: Option(Member, description="Player joining the faction", required=True),
-                          faction: Option(str, autocomplete=faction_autocomplete, required=True)):
-        """
-        Updates a player's faction
-
-        :param ctx: Context
-        :param player: Member
-        :param faction: Faction
-        """
-        await ctx.defer()
-
-        current_faction_roles = get_faction_roles(ctx.bot.compendium, player)
-        faction: Faction = ctx.bot.compendium.get_object("c_faction", faction)
-
-        character: PlayerCharacter = await get_character(ctx.bot, player.id, ctx.guild_id)
-
-        if character is None:
-            return await ctx.respond(embed=ErrorEmbed(f"No character information found for {player.mention}"),
-                                     ephemeral=True)
-        elif faction is None:
-            if current_faction_roles is None:
-                return await ctx.respond(embed=ErrorEmbed(description=f"Player already doesn't belong to a faction."))
-
-            await player.remove_roles(*current_faction_roles, reason=f"Leaving faction")
-            embed = Embed(title="Success!",
-                          description=f"{player.mention} has left their faction!",
-                          color=Color.random())
-            embed.set_thumbnail(url=player.display_avatar.url)
-            return await ctx.respond(embed=embed, ephemeral=True)
-        elif not (new_faction_role := discord.utils.get(ctx.guild.roles, name=faction.value)):
-            return await ctx.respond(embed=ErrorEmbed(description=f"Faction role with name {faction.value}"
-                                                                  f" could not be found"),
-                                     ephemeral=True)
-
-        if current_faction_roles is not None:
-            await player.remove_roles(*current_faction_roles, reason=f"Joining new faction[ {faction.value} ]")
-
-        character.faction = faction
-        await player.add_roles(new_faction_role, reason=f"Joining new faction [ {faction.value} ]")
-
-        async with ctx.bot.db.acquire() as conn:
-            await conn.execute(update_character(character))
-
-        await remove_fledgling_role(ctx, player, "Faction Updated")
-
-        embed = Embed(title="Success!",
-                      description=f"{player.mention} has joined {faction.value}!",
-                      color=new_faction_role.color)
-        embed.set_thumbnail(url=player.display_avatar.url)
 
         await ctx.respond(embed=embed)

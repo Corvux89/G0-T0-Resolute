@@ -17,7 +17,7 @@ ref_weekly_stipend_table = sa.Table(
     metadata,
     Column("role_id", BigInteger, primary_key=True, nullable=False),
     Column("guild_id", BigInteger, nullable=False),  # ref: > guilds.id
-    Column("ratio", Numeric(precision=5, scale=2), nullable=False),
+    Column("amount", Integer, nullable=False),
     Column("reason", String, nullable=True),
     Column("leadership", BOOLEAN, nullable=False, default=False)
 )

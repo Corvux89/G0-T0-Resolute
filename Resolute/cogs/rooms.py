@@ -4,10 +4,10 @@ import discord
 from discord import SlashCommandGroup, ApplicationContext, Option
 from discord.ext import commands
 
-from ProphetBot.bot import BpBot
-from ProphetBot.helpers import get_adventure, is_admin
-from ProphetBot.models.db_objects import Adventure
-from ProphetBot.models.embeds import ErrorEmbed
+from Resolute.bot import G0T0Bot
+from Resolute.helpers import get_adventure, is_admin
+from Resolute.models.db_objects import Adventure
+from Resolute.models.embeds import ErrorEmbed
 
 log = logging.getLogger(__name__)
 
@@ -16,7 +16,7 @@ def setup(bot: commands.Bot):
 
 
 class Room(commands.Cog):
-    bot: BpBot
+    bot: G0T0Bot
 
     room_commands = SlashCommandGroup("room", "Room commands")
 
@@ -104,11 +104,11 @@ class Room(commands.Cog):
             if "holding" in ctx.channel.category.name.lower():
                 overwrites = ctx.channel.overwrites
                 if ctx.author in overwrites or is_admin(ctx):
-                    if guild_member := discord.utils.get(ctx.guild.roles, name="Guild Member"):
+                    if guild_member := discord.utils.get(ctx.guild.roles, name="Citizen"):
                         overwrites[guild_member] = discord.PermissionOverwrite(view_channel=room_view,
                                                                                send_messages=allow_post)
 
-                    if guild_initiate := discord.utils.get(ctx.guild.roles, name="Guild Initiate"):
+                    if guild_initiate := discord.utils.get(ctx.guild.roles, name="Acolyte"):
                         overwrites[guild_initiate] = discord.PermissionOverwrite(view_channel=room_view,
                                                                                send_messages=allow_post)
 

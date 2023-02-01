@@ -254,8 +254,7 @@ class GuildEmbed(Embed):
 
         self.add_field(name="**Settings**",
                        value=f"**Max Level:** {g.max_level}\n"
-                             f"**Max Rerolls:** {g.max_reroll}\n"
-                             f"**XP Adjust:** {g.xp_adjust}",
+                             f"**Max Rerolls:** {g.max_reroll}",
                        inline=False)
 
         if g.reset_hour is not None:
@@ -270,17 +269,11 @@ class GuildStatus(Embed):
         super().__init__(title=f"Server Info - {ctx.guild.name}",
                          color=Color.random(),
                          description=f"**Max Level:** {g.max_level}\n"
-                                     f"**Server XP:** {g.server_xp}\n"
-                                     f"**Week XP:** {g.week_xp}\n"
-                                     f"**Total XP:** {g.total_xp()}\n"
                                      f"**# Weeks:** {g.weeks}\n")
 
         self.set_thumbnail(url=THUMBNAIL)
 
         in_count = 0 if inactive is None else len(inactive)
-
-        self.description +=f"\n **XP Goal: ** {g.get_xp_goal(total, inactive)} (*{g.get_xp_percent(total, inactive)}%*)\n" \
-                           f"**XP Adjust:** {g.xp_adjust}\n"
 
         self.description += f"\n**Total Characters:** {total}\n" \
                             f"**Inactive Characters:** {in_count}\n" \
@@ -294,148 +287,6 @@ class GuildStatus(Embed):
         if display_inact and inactive is not None:
             self.add_field(name="Inactive Characters",
                            value="\n".join([f"\u200b - {p.get_member_mention(ctx)}" for p in inactive]), inline=False)
-
-class BlacksmithItemEmbed(Embed):
-    def __init__(self, item: ItemBlacksmith):
-        super().__init__(title=f"{item.name}",
-                         color=Color.random(),
-                         description=f"**Type:** {item.sub_type.value}\n"
-                                     f"**Rarity:** {item.rarity.value}\n"
-                                     f"**Cost:** {item.display_cost()} gp\n"
-                                     f"**Shop:** Blacksmith\n")
-
-        if item.attunement:
-            self.description += f"**Attunement Required:** Yes\n"
-        else:
-            self.description += f"**Attunement Required:** No\n"
-
-        if item.seeking_only:
-            self.description += f"**Seeking:** Yes\n"
-        else:
-            self.description += f"**Seeking:** No\n"
-
-        if item.notes is not None:
-            self.add_field(name="Notes", value=item.notes, inline=False)
-
-        self.set_footer(text=f"Source: {item.source} | id: {item.id}")
-
-
-class MagicItemEmbed(Embed):
-    def __init__(self, item: ItemWondrous):
-        super().__init__(title=f"{item.name}",
-                         color=Color.random(),
-                         description=f"**Rarity:** {item.rarity.value}\n"
-                                     f"**Cost:** {item.cost} gp\n"
-                                     f"**Shop:** Magic Items\n")
-
-        if item.attunement:
-            self.description += f"**Attunement Required:** Yes\n"
-        else:
-            self.description += f"**Attunement Required:** No\n"
-
-        if item.seeking_only:
-            self.description += f"**Seeking:** Yes\n"
-        else:
-            self.description += f"**Seeking:** No\n"
-
-        if item.notes is not None:
-            self.add_field(name="Notes", value=item.notes, inline=False)
-
-        self.set_footer(text=f"Source: {item.source} | id: {item.id}")
-
-
-class ConsumableItemEmbed(Embed):
-    def __init__(self, item: ItemConsumable):
-        super().__init__(title=f"{item.name}",
-                         color=Color.random(),
-                         description=f"**Type:** {item.sub_type.value}\n"
-                                     f"**Rarity:** {item.rarity.value}\n"
-                                     f"**Cost:** {item.cost} gp\n"
-                                     f"**Shop:** Consumables\n")
-
-        if item.attunement:
-            self.description += f"**Attunement Required:** Yes\n"
-        else:
-            self.description += f"**Attunement Required:** No\n"
-
-        if item.seeking_only:
-            self.description += f"**Seeking:** Yes\n"
-        else:
-            self.description += f"**Seeking:** No\n"
-
-        if item.notes is not None:
-            self.add_field(name="Notes", value=item.notes, inline=False)
-
-        self.set_footer(text=f"Source: {item.source} | id: {item.id}")
-
-
-class ScrollItemEmbed(Embed):
-    def __init__(self, item: ItemScroll):
-        super().__init__(title=f"{item.display_name()}",
-                         color=Color.random(),
-                         description=f"**Type:** Scroll\n"
-                                     f"**Rarity:** {item.rarity.value}\n"
-                                     f"**Cost:** {item.cost} gp\n"
-                                     f"**School:** {item.school.value}\n"
-                                     f"**Shop:** Consumables\n")
-
-        if len(item.classes) > 0:
-            self.description += f"**Classes:** "
-            self.description += ", ".join([f"{c.value}" for c in item.classes])
-
-        if item.notes is not None:
-            self.add_field(name="Notes", value=item.notes, inline=False)
-
-        self.set_footer(text=f"Source: {item.source} | id: {item.id}")
-
-
-class NewShopEmbed(Embed):
-    def __init__(self, ctx: ApplicationContext, shop: Shop):
-        super().__init__(title=f"New Shop - {shop.name}",
-                         color=Color.random(),
-                         description=f"**Owner:** {shop.get_owner(ctx).mention}\n"
-                                     f"**Shop Type:** {shop.type.value}")
-
-        self.set_thumbnail(url=shop.get_owner(ctx).display_avatar.url)
-        self.set_footer(text=f"Created by {ctx.author}",
-                        icon_url=ctx.author.display_avatar.url)
-
-
-class ShopEmbed(Embed):
-    def __init__(self, ctx: ApplicationContext, shop: Shop):
-        super().__init__(title=f"{shop.name}",
-                         color=Color.random(),
-                         description=f"**Owner:** {shop.get_owner(ctx).mention}\n"
-                                     f"**Shop Type:** {shop.type.value}\n"
-                                     f"**Shelf Upgrades:** {shop.shelf}\n"
-                                     f"**Network Upgrades:** {shop.network}\n"
-                                     f"**Mastery Upgrades:** {shop.mastery}\n"
-                                     f"**Max Cost:** {shop.max_cost}\n\n"
-                                     f"**Seek Roll:** `{shop.seek_roll}`\n"
-                                     f"**Seeks:** {shop.seeks_remaining} / {shop.network + 1}")
-
-        self.set_thumbnail(url=shop.get_owner(ctx).display_avatar.url)
-
-class ShopSeekEmbed(Embed):
-    def __init__(self, shop: Shop, roll: RollResult, dc: int | None, phrase: str | None):
-        super().__init__(title=f"{shop.name}",
-                         color=Color.random())
-
-        if phrase is not None:
-            self.title += f" - {phrase}"
-        else:
-            self.title += f" - Seeking"
-
-        if dc is not None:
-            result = "**Success!**" if roll.total >= dc else "*Failure*"
-            self.add_field(name=f"DC {dc}",
-                           value=f"{str(roll)}\n\n"
-                                 f"{result}")
-        else:
-            self.description=f"{str(roll)}"
-
-        self.set_footer(text=f"{shop.seeks_remaining} / {shop.network + 1} seeks remaining")
-
 
 class AdventuresEmbed(Embed):
     def __init__(self, ctx: ApplicationContext, character: PlayerCharacter, class_ary: List[PlayerCharacterClass],

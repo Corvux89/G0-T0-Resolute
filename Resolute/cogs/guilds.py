@@ -2,17 +2,17 @@ import datetime
 
 import discord
 from discord import *
-from ProphetBot.bot import BpBot
+from Resolute.bot import G0T0Bot
 from discord.ext import commands, tasks
 from timeit import default_timer as timer
-from ProphetBot.helpers import get_or_create_guild, get_weekly_stipend, create_logs, \
+from Resolute.helpers import get_or_create_guild, get_weekly_stipend, create_logs, \
     get_guild_character_summary_stats, get_level_cap
-from ProphetBot.models.embeds import GuildEmbed, GuildStatus
-from ProphetBot.models.schemas import CharacterSchema, RefWeeklyStipendSchema, GuildSchema, ShopSchema
-from ProphetBot.queries import update_guild, get_characters, update_character, insert_weekly_stipend, \
+from Resolute.models.embeds import GuildEmbed, GuildStatus
+from Resolute.models.schemas import CharacterSchema, RefWeeklyStipendSchema, GuildSchema
+from Resolute.queries import update_guild, get_characters, update_character, insert_weekly_stipend, \
     update_weekly_stipend, delete_weekly_stipend, get_guild_weekly_stipends, get_multiple_characters, \
-    get_guilds_with_reset, get_shops, update_shop
-from ProphetBot.models.db_objects import PlayerGuild, PlayerCharacter, RefWeeklyStipend, LevelCaps, Shop
+    get_guilds_with_reset
+from Resolute.models.db_objects import PlayerGuild, PlayerCharacter, RefWeeklyStipend, LevelCaps
 
 log = logging.getLogger(__name__)
 
@@ -22,7 +22,7 @@ def setup(bot: commands.Bot):
 
 
 class Guilds(commands.Cog):
-    bot: BpBot
+    bot: G0T0Bot
     guilds_commands = SlashCommandGroup("guild", "Commands related to guild specific settings")
 
     def __init__(self, bot):
@@ -59,29 +59,6 @@ class Guilds(commands.Cog):
         await ctx.respond(embed=GuildEmbed(ctx, g))
 
     @guilds_commands.command(
-        name="set_xp",
-        description="Override the server's current XP"
-    )
-    async def set_guild_xpl(self, ctx: ApplicationContext,
-                            amount: Option(int, description="XP Amount to set", required=True)):
-        """
-        Sets the current server XP
-
-        :param ctx: Context
-        :param amount: XP amount to set
-        """
-
-        await ctx.defer()
-
-        g: PlayerGuild = await get_or_create_guild(ctx.bot.db, ctx.guild_id)
-
-        g.server_xp = amount
-        async with self.bot.db.acquire() as conn:
-            await conn.execute(update_guild(g))
-
-        await ctx.respond(embed=GuildEmbed(ctx, g))
-
-    @guilds_commands.command(
         name="max_level",
         description="Set the maximum character level for the server. Default is 3"
     )
@@ -99,8 +76,6 @@ class Guilds(commands.Cog):
 
         g: PlayerGuild = await get_or_create_guild(ctx.bot.db, ctx.guild_id)
         g.max_level = amount
-        g.week_xp = 0
-        g.server_xp = 0
         async with self.bot.db.acquire() as conn:
             await conn.execute(update_guild(g))
 
@@ -134,7 +109,7 @@ class Guilds(commands.Cog):
     )
     async def stipend_add(self, ctx: ApplicationContext,
                           role: Option(Role, description="Role to give a stipend for", required=True),
-                          ratio: Option(float, description="Ratio of the stipend", required=True),
+                          amount: Option(float, description="Amount of the stipend in Chain Codes", required=True),
                           reason: Option(str, description="Reason for the stipend", required=False),
                           leadership: Option(bool, description="Note if this is a leadership stipend. "
                                                                "These will not stack", required=False, default=False)):
@@ -143,7 +118,7 @@ class Guilds(commands.Cog):
 
         :param ctx: Context
         :param role: Role for stipend
-        :param ratio: Ratio of weekly cap for the stipend
+        :param amount: Ratio of weekly cap for the stipend
         :param reason: Reason for the stipend
         :param leadership: Whether or not this stipend is for a leadership position
         """
@@ -152,14 +127,14 @@ class Guilds(commands.Cog):
         stipend: RefWeeklyStipend = await get_weekly_stipend(ctx.bot.db, role)
 
         if stipend is None:
-            stipend = RefWeeklyStipend(role_id=role.id, ratio=ratio, guild_id=ctx.guild_id, reason=reason,
+            stipend = RefWeeklyStipend(role_id=role.id, ratio=amount, guild_id=ctx.guild_id, reason=reason,
                                        leadership=leadership)
             async with ctx.bot.db.acquire() as conn:
                 await conn.execute(insert_weekly_stipend(stipend))
         elif stipend.guild_id != ctx.guild_id:
             return await ctx.respond(f"Error: Stipend is not for this server")
         else:
-            stipend.ratio = ratio
+            stipend.ratio = amount
             stipend.reason = stipend.reason if reason is None else reason
             stipend.leadership = leadership
             async with ctx.bot.db.acquire() as conn:

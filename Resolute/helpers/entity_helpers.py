@@ -9,10 +9,9 @@ import discord
 from discord import ApplicationContext, Member, Role, Bot, Client
 
 from Resolute.compendium import Compendium
-from Resolute.models.db_objects import PlayerGuild, PlayerCharacter, Adventure, Arena, Shop
+from Resolute.models.db_objects import PlayerGuild, PlayerCharacter, Adventure, Arena
 from Resolute.models.embeds import ArenaStatusEmbed
-from Resolute.models.schemas import GuildSchema, CharacterSchema, AdventureSchema, ArenaSchema, \
-    ShopSchema
+from Resolute.models.schemas import GuildSchema, CharacterSchema, AdventureSchema, ArenaSchema
 from Resolute.queries import get_guild, insert_new_guild, get_adventure_by_category_channel_id, \
     get_arena_by_channel, get_multiple_characters, update_arena, get_adventure_by_role_id, get_characters, \
     get_logs_in_past

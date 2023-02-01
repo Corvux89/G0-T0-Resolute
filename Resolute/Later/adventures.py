@@ -17,8 +17,8 @@ from Resolute.queries import insert_new_adventure, update_adventure
 log = logging.getLogger(__name__)
 
 
-# def setup(bot: commands.Bot):
-#     bot.add_cog(Adventures(bot))
+def setup(bot: commands.Bot):
+    bot.add_cog(Adventures(bot))
 
 
  # TODO: Add @Spectator role option for view only into all IC channels; @Quester for sign-ups and spectator for viewing

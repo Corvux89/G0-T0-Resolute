@@ -21,8 +21,8 @@ from timeit import default_timer as timer
 log = logging.getLogger(__name__)
 
 
-# def setup(bot: commands.Bot):
-#     bot.add_cog(Dashboards(bot))
+def setup(bot: commands.Bot):
+    bot.add_cog(Dashboards(bot))
 
 
 class Dashboards(commands.Cog):

@@ -27,6 +27,7 @@ def insert_new_character(character: PlayerCharacter):
         div_cc=character.div_cc,
         level=character.level,
         enhanced_items=character.enhanced_items,
+        enhanced_consumables=character.enhanced_consumables,
         player_id=character.player_id,
         guild_id=character.guild_id,
         reroll=character.reroll,

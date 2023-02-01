@@ -84,7 +84,8 @@ c_level_caps_table = sa.Table(
     metadata,
     Column("id", Integer, primary_key=True),
     Column("max_cc", Integer, nullable=False),
-    Column("max_items", String, nullable=False)
+    Column("max_items", String, nullable=False),
+    Column("max_consumable", String, nullable=False)
 )
 
 

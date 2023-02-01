@@ -127,7 +127,7 @@ class Guilds(commands.Cog):
         stipend: RefWeeklyStipend = await get_weekly_stipend(ctx.bot.db, role)
 
         if stipend is None:
-            stipend = RefWeeklyStipend(role_id=role.id, ratio=amount, guild_id=ctx.guild_id, reason=reason,
+            stipend = RefWeeklyStipend(role_id=role.id, amount=amount, guild_id=ctx.guild_id, reason=reason,
                                        leadership=leadership)
             async with ctx.bot.db.acquire() as conn:
                 await conn.execute(insert_weekly_stipend(stipend))
@@ -140,7 +140,7 @@ class Guilds(commands.Cog):
             async with ctx.bot.db.acquire() as conn:
                 await conn.execute(update_weekly_stipend(stipend))
 
-        await ctx.respond(f"Stipend for @{role.name} at a ratio of {stipend.ratio} added/updated")
+        await ctx.respond(f"Stipend for @{role.name} at a ratio of {stipend.amount} added/updated")
 
     @guilds_commands.command(
         name="remove_stipend",
@@ -220,23 +220,6 @@ class Guilds(commands.Cog):
 
         await ctx.respond(embed=GuildEmbed(ctx, g))
 
-    @guilds_commands.command(
-        name="set_xp_adjust",
-        description="Set the xp adjustment used in target xp. {max_level} + 1 * active players * xp_adjust"
-    )
-    async def guild_xp_adjust(self, ctx: ApplicationContext,
-                              adjustment: Option(int, description="XP Adjustment", required=True)):
-        await ctx.defer()
-
-        g: PlayerGuild = await get_or_create_guild(ctx.bot.db, ctx.guild_id)
-
-        g.xp_adjust = adjustment
-
-        async with ctx.bot.db.acquire() as conn:
-            await conn.execute(update_guild(g))
-
-        return await ctx.respond(embed=GuildEmbed(ctx, g))
-
 
     @guilds_commands.command(
         name="weekly_reset",
@@ -263,14 +246,10 @@ class Guilds(commands.Cog):
         """
         # Setup
         start = timer()
-        guild_xp = g.week_xp
-        player_xp = 0
-        player_gold = 0
+        player_cc = 0
         stipend_list = []
 
         # Guild updates
-        g.server_xp += g.week_xp
-        g.week_xp = 0
         g.weeks += 1
         g.last_reset = datetime.datetime.utcnow()
 
@@ -280,16 +259,13 @@ class Guilds(commands.Cog):
             async for row in await conn.execute(get_characters(g.id)):
                 if row is not None:
                     character: PlayerCharacter = CharacterSchema(self.bot.compendium).load(row)
-                    player_xp += character.div_xp
-                    player_gold += character.div_gold
-                    character.div_xp = 0
-                    character.div_gold = 0
+                    player_cc += character.div_cc
+                    character.div_cc = 0
                     await conn.execute(update_character(character))
 
             log.info(
                 f"Weekly stats for {self.bot.get_guild(g.id).name} [ {g.id} ]: "
-                f"Weekly Server XP = {guild_xp} | Player XP = {player_xp} | "
-                f"Player gold = {player_gold}")
+                f"Player Chain Codes = {player_cc}")
 
             # Stipends
             async for row in await conn.execute(get_guild_weekly_stipends(g.id)):
@@ -313,23 +289,12 @@ class Guilds(commands.Cog):
                                 character: PlayerCharacter = CharacterSchema(self.bot.compendium).load(row)
                                 if s.leadership:
                                     s_players.append(character.player_id)
-                                cap: LevelCaps = get_level_cap(character, g, self.bot.compendium)
                                 await create_logs(self, character, act,
-                                                  f"Stipend Role: {stipend_role.name} - {s.reason}",
-                                                  cap.max_gold * s.ratio,
-                                                  cap.max_xp * s.ratio)
+                                                  f"Stipend Role: {stipend_role.name} - {s.reason}",s.amount,0)
                 else:
                     # Role doesn't exist....
                     async with self.bot.db.acquire() as conn:
                         await conn.execute(delete_weekly_stipend(s))
-
-        # Shops
-        async with self.bot.db.acquire() as conn:
-            async for row in await conn.execute(get_shops(g.id)):
-                if row is not None:
-                    shop: Shop = ShopSchema(self.bot.compendium).load(row)
-                    shop.seeks_remaining = 1 + shop.network
-                    await conn.execute(update_shop(shop))
 
         end = timer()
 

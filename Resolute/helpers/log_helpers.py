@@ -9,8 +9,8 @@ from Resolute.models.schemas import LogSchema
 from Resolute.queries import insert_new_log, update_character, update_guild, get_log_by_id
 
 
-def get_activity_amount(character: PlayerCharacter, activity: Activity, cap: LevelCaps, cc: int,
-                        credits: int):
+def get_activity_amount(character: PlayerCharacter, activity: Activity, cap: LevelCaps, cc: int = 0,
+                        credits: int = 0):
     """
     Primary calculator for log rewards. Takes into consideration the activity, diversion limits, and applies any excess
     to the server weekly xp
@@ -23,9 +23,9 @@ def get_activity_amount(character: PlayerCharacter, activity: Activity, cap: Lev
     :param xp: Manual override
     :return: Character gold, character xp, and server xp
     """
-    if activity.ratio is not None:
+    if activity.cc is not None:
         # Calculate the ratio unless we have a manual override
-        reward_cc = cap.max_cc * activity.ratio if cc == 0 else cc
+        reward_cc = activity.cc if cc == 0 else cc
     else:
         reward_cc = cc
 
@@ -81,7 +81,6 @@ async def create_logs(ctx: ApplicationContext | Any, character: PlayerCharacter,
         results = await conn.execute(insert_new_log(char_log))
         row = await results.first()
         await conn.execute(update_character(character))
-        await conn.execute(update_guild(g))
 
     log_entry: DBLog = LogSchema(ctx.bot.compendium).load(row)
 

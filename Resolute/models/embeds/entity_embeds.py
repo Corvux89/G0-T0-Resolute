@@ -42,19 +42,18 @@ class CharacterGetEmbed(Embed):
         self.set_thumbnail(url=character.get_member(ctx).display_avatar.url)
 
         self.add_field(name="Weekly Limits: ",
-                       value=f"\u200b \u200b \u200b Diversion Chain Codes: {character.div_gold}/{cap.max_gold}\n"
-                             f"\u200b \u200b \u200b Diversion XP: {character.div_xp}/{cap.max_xp}",
+                       value=f"\u200b \u200b \u200b Diversion Chain Codes: {character.div_cc}/{cap.max_cc}",
                        inline=False)
 
-        if character.get_level() < 3:
+        if character.level < 3:
             pretty_completed_rps = character.completed_rps \
                 if character.completed_rps <= character.needed_rps else character.needed_rps
             pretty_completed_arenas = character.completed_arenas \
                 if character.completed_arenas <= character.needed_arenas else character.needed_arenas
             self.add_field(name="First Steps Quests:",
-                           value=f"\u200b \u200b \u200b Level {character.get_level()} RPs: "
+                           value=f"\u200b \u200b \u200b Level {character.level} RPs: "
                                  f"{pretty_completed_rps}/{character.needed_rps}\n"
-                                 f"\u200b \u200b \u200b Level {character.get_level()} Arenas: "
+                                 f"\u200b \u200b \u200b Level {character.level} Arenas: "
                                  f"{pretty_completed_arenas}/{character.needed_arenas}")
 
 

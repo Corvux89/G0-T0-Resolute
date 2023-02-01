@@ -13,8 +13,8 @@ from Resolute.queries import insert_new_global_event, update_global_event, \
 log = logging.getLogger(__name__)
 
 
-# def setup(bot):
-#     bot.add_cog(GlobalEvents(bot))
+def setup(bot):
+    bot.add_cog(GlobalEvents(bot))
 
 
 # TODO: Add command to mass alter modifier based on # of messages

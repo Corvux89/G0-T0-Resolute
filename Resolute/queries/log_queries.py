@@ -11,10 +11,10 @@ def insert_new_log(log: DBLog):
     return log_table.insert().values(
         author=log.author,
         cc=log.cc,
+        credits=log.credits,
         character_id=log.character_id,
         activity=log.activity.id,
         notes=None if not hasattr(log, "notes") else log.notes,
-        shop_id=None if not hasattr(log, "shop_id") else log.shop_id,
         adventure_id=None if not hasattr(log, "adventure_id") else log.adventure_id,
         invalid=log.invalid
     ).returning(log_table)

@@ -1,10 +1,10 @@
 from typing import Dict, List
 
 import discord
-from discord import Embed, Color, ApplicationContext, Guild
+from discord import Embed, Color, ApplicationContext
 
-from ProphetBot.constants import THUMBNAIL
-from ProphetBot.models.db_objects import GlobalEvent, GlobalPlayer
+from Resolute.constants import THUMBNAIL
+from Resolute.models.db_objects import GlobalEvent, GlobalPlayer
 
 
 class RpDashboardEmbed(Embed):

@@ -33,6 +33,7 @@ class PlayerCharacter(object):
     cc: int
     div_cc: int
     enhanced_items: str
+    enhanced_consumables: str
     level: int
     active: bool
     reroll: bool
@@ -119,7 +120,6 @@ class DBLog(object):
     character_id: int
     activity: Activity
     notes: str
-    shop_id: int | None
     adventure_id: int | None
     invalid: bool
 

@@ -44,3 +44,6 @@ def get_c_level_caps() -> FromClause:
 
 def get_c_adventure_rewards() -> FromClause:
     return c_adventure_rewards_table.select()
+
+def get_c_code_conversion() -> FromClause:
+    return c_code_conversion_table.select()

@@ -273,7 +273,9 @@ class Log(commands.Cog):
                       player: Option(Member, description="Player who bought the item", required=True),
                       item: Option(str, description="The item being bought", required=True),
                       cost: Option(int, description="The cost of the item", min_value=0, max_value=999999,
-                                   required=True)):
+                                   required=True),
+                      currency: Option(str, description="Credits or Chain Codes. Default: Credits",
+                                       choices=['Credits', 'CC'], default="Credits", required=False)):
 
         await ctx.defer()
 
@@ -284,12 +286,22 @@ class Log(commands.Cog):
                 embed=ErrorEmbed(description=f"No character information found for {player.mention}"),
                 ephemeral=True)
 
-        if character.credits < cost:
-            return await ctx.respond(embed=ErrorEmbed(description=f"{player.mention} cannot afford the {cost} credit cost"))
-
         act = ctx.bot.compendium.get_object("c_activity", "BUY")
 
-        log_entry: DBLog = await create_logs(ctx, character, act, item, 0, -cost)
+        if currency == "Credits":
+            if character.credits < cost:
+                return await ctx.respond(embed=ErrorEmbed(description=f"{player.mention} cannot afford the {cost} credit cost"))
+
+            log_entry: DBLog = await create_logs(ctx, character, act, item, 0, -cost)
+
+        elif currency == "CC":
+            if character.cc < cost:
+                return await ctx.respond(embed=ErrorEmbed(description=f"{player.mention} cannot affort the {cost} CC cost"))
+
+            log_entry: DBLog = await create_logs(ctx, character, act, item, -cost)
+
+        else:
+            return await ctx.respond(embed=ErrorEmbed(description="Invalid currency selection"))
 
         await ctx.respond(embed=DBLogEmbed(ctx, log_entry, character))
 
@@ -301,7 +313,9 @@ class Log(commands.Cog):
                        player: Option(Member, description="Player who bought the item", required=True),
                        item: Option(str, description="The item being sold", required=True),
                        cost: Option(int, description="The cost of the item", min_value=0, max_value=999999,
-                                    required=True)):
+                                    required=True),
+                       currency: Option(str, description="Credits or Chain Codes. Default: Credits",
+                                        choices=['Credits', 'CC'], default="Credits", required=False)):
         await ctx.defer()
 
         character: PlayerCharacter = await get_character(ctx.bot, player.id, ctx.guild_id)
@@ -313,6 +327,54 @@ class Log(commands.Cog):
 
         act = ctx.bot.compendium.get_object("c_activity", "SELL")
 
-        log_entry: DBLog = await create_logs(ctx, character, act, item, 0, cost)
+        if currency == "Credits":
+            log_entry: DBLog = await create_logs(ctx, character, act, item, 0, cost)
+        elif currency == "CC":
+            log_entry: DBLog = await create_logs(ctx, character, act, item, cost)
+        else:
+            return await ctx.respond(embed=ErrorEmbed(description="Invalid currency selection"))
 
         await ctx.respond(embed=DBLogEmbed(ctx, log_entry, character))
+
+    @log_commands.command(
+        name="convert",
+        description="Convert CC to credits or visa versa"
+    )
+    async def log_convert(self, ctx: ApplicationContext,
+                          player: Option(Member, description="Player doing the conversion", required=True),
+                          cc: Option(int, description="Amount of Chain Codes to convert", required=True),
+                          to_credits: Option(bool, description="Converting CC to credits. Default = True",
+                                             default=True, required=False)):
+        await ctx.defer()
+
+        character: PlayerCharacter = await get_character(ctx.bot, player.id, ctx.guild_id)
+
+        if character is None:
+            return await ctx.respond(
+                embed=ErrorEmbed(description=f"No character information found for {player.mention}"),
+                ephemeral=True)
+
+        act = ctx.bot.compendium.get_object("c_activity", "CONVERSION")
+        conversion = ctx.bot.compendium.get_object("c_code_conversion", character.level)
+
+        credits = cc * conversion.value
+
+        if to_credits:
+            if character.cc < cc:
+                return await ctx.respond(embed=ErrorEmbed(
+                    description=f"{player.mention} doesn't have enough Chain Codes for this conversion. "
+                                f"Requires {str(cc)} cc"))
+            else:
+                log_entry: DBLog = await create_logs(ctx, character, act, "Converting CC to Credits", -cc, credits)
+        else:
+            if character.credits < credits:
+                return await ctx.respond(embed=ErrorEmbed(
+                    description=f"{player.mention} doesn't have enought credits for this conversion. "
+                                f"Requires {credits} credits"))
+            else:
+                log_entry: DBLog = await create_logs(ctx, character, act, "Converting Credits to CC", cc, -credits)
+
+        await ctx.respond(embed=DBLogEmbed(ctx, log_entry, character))
+
+
+

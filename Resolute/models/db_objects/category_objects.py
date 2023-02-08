@@ -142,3 +142,8 @@ class AdventureRewards(object):
         self.ep = ep
         self.tier = tier
         self.rarity = rarity
+
+class CodeConversion(object):
+    def __init__(self, id, value):
+        self.id = id
+        self.value = value

@@ -134,13 +134,13 @@ class Guilds(commands.Cog):
         elif stipend.guild_id != ctx.guild_id:
             return await ctx.respond(f"Error: Stipend is not for this server")
         else:
-            stipend.ratio = amount
+            stipend.amount = amount
             stipend.reason = stipend.reason if reason is None else reason
             stipend.leadership = leadership
             async with ctx.bot.db.acquire() as conn:
                 await conn.execute(update_weekly_stipend(stipend))
 
-        await ctx.respond(f"Stipend for @{role.name} at a ratio of {stipend.amount} added/updated")
+        await ctx.respond(f"Stipend for @{role.name} for {stipend.amount} chain codes added/updated")
 
     @guilds_commands.command(
         name="remove_stipend",
@@ -274,7 +274,7 @@ class Guilds(commands.Cog):
                     stipend_list.append(stipend)
 
         if len(stipend_list) > 0:
-            stipend_list.sort(key=lambda s: s.ratio, reverse=True)
+            stipend_list.sort(key=lambda s: s.amount, reverse=True)
             act: Activity = self.bot.compendium.get_object("c_activity", "STIPEND")
             s_players = []
             for s in stipend_list:

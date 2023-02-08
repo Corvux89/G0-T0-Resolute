@@ -165,6 +165,7 @@ class Character(commands.Cog):
         await ctx.defer()
 
         character: PlayerCharacter = await get_character(ctx.bot, player.id, ctx.guild_id)
+        g: PlayerGuild = await get_or_create_guild(ctx.bot.db, ctx.guild_id)
 
         if character is None:
             return await ctx.respond(
@@ -180,6 +181,8 @@ class Character(commands.Cog):
                                 f"Completed RPs: {character.completed_rps}/{character.needed_rps}\n"
                                 f"Completed Arenas: {character.completed_arenas}/{character.needed_arenas}"),
                     ephemeral=True)
+        elif character.level + 1 > g.max_level:
+            return await ctx.respond(embed=ErrorEmbed(description="Player level cannot exceed server max level."))
 
         log.info(f"Leveling up character [ {character.id} ] with player id [ {player.id} ]. "
                  f"New level: [ {character.level + 1} ]")

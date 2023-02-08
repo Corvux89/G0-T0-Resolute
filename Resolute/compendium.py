@@ -52,6 +52,7 @@ class Compendium:
         self.c_activity = []
         self.c_dashboard_type = []
         self.c_level_caps = []
+        self.c_code_conversion = []
 
 
     async def reload_categories(self, bot):
@@ -81,6 +82,8 @@ class Compendium:
             self.c_dashboard_type = await get_table_values(conn, get_c_dashboard_type(), DashboardType,
                                                            DashboardTypeSchema())
             self.c_level_caps = await get_table_values(conn, get_c_level_caps(), LevelCaps, LevelCapsSchema())
+            self.c_code_conversion = await get_table_values(conn, get_c_code_conversion(), CodeConversion,
+                                                            CodeConversionSchema())
 
         end = timer()
         log.info(f'COMPENDIUM: Categories reloaded in [ {end - start:.2f} ]s')

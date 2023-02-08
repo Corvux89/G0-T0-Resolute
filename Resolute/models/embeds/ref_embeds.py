@@ -15,10 +15,10 @@ class RpDashboardEmbed(Embed):
             title=f"Channel Statuses - {category_name}",
             timestamp=discord.utils.utcnow()
         )
-        if len(channel_statuses["Magewright"]) > 0:
+        if len(channel_statuses["Archivist"]) > 0:
             self.add_field(
-                name="<:pencil:989284061786808380> -- Awaiting Magewright",
-                value="\n".join(channel_statuses["Magewright"]),
+                name="<:pencil:989284061786808380> -- Awaiting Archivist",
+                value="\n".join(channel_statuses["Archivist"]),
                 inline=False
             )
         self.add_field(
@@ -32,38 +32,6 @@ class RpDashboardEmbed(Embed):
             inline=False
         )
         self.set_footer(text="Last Updated")
-
-
-class ShopDashboardEmbed(Embed):
-    def __init__(self, g: discord.Guild, shop_dict: Dict):
-        super(ShopDashboardEmbed, self).__init__(
-            color=Color.dark_grey(),
-            title=f"Open Establishments",
-            description="<channel> | <owner> (seeks remaining)/(total seeks)",
-            timestamp=discord.utils.utcnow()
-        )
-
-        for key in shop_dict:
-            if len(shop_dict[key]) > 0:
-                value=""
-                for shop in shop_dict[key]:
-                    channel = "Channel Not Found" if g.get_channel(shop.channel_id) is None else g.get_channel(shop.channel_id).mention
-                    owner = f"{shop.owner_id} Not Found" if g.get_member(shop.owner_id) is None else g.get_member(shop.owner_id).mention
-
-                    value +=f"\u200b {channel} | {owner} (**{shop.seeks_remaining}** / {shop.network + 1})\n"
-
-                self.add_field(
-                    name=f"**{key} Shops**",
-                    value=value,
-                    inline=False
-                )
-            else:
-                self.add_field(
-                    name=f"**{key} Shops**",
-                    value="None",
-                    inline=False
-                )
-
 
 
 class GlobalEmbed(Embed):
@@ -153,11 +121,4 @@ class GlobalEmbed(Embed):
                                value="\n".join(f"\u200b {p.get_name(ctx)} ({p.gold}, {p.xp}, {p.num_messages})" for p in
                                                player_list),
                                inline=False)
-
-
-class GuildProgress(Embed):
-    def __init__(self, name: str):
-        super().__init__(title=f"{name} Server Level Progress",
-                         color=Color.random(),
-                         timestamp=discord.utils.utcnow())
 

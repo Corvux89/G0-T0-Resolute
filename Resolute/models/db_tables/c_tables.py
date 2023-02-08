@@ -98,3 +98,10 @@ c_adventure_rewards_table = sa.Table(
     Column("rarity", Integer, nullable=True)  # ref: > c_rarity.id
 )
 
+c_code_conversion_table = sa.Table(
+    "c_code_conversion",
+    metadata,
+    Column("id", Integer, primary_key=True),
+    Column("value", Integer, nullable=False)
+)
+

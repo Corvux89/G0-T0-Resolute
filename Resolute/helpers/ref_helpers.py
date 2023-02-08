@@ -12,8 +12,7 @@ from Resolute.queries import get_dashboard_by_category_channel, get_weekly_stipe
     get_active_global, get_global_player, delete_global_event, delete_global_players
 
 
-async def get_dashboard_from_category_channel_id(ctx: ApplicationContext) -> RefCategoryDashboard | None:
-    category_channel_id = ctx.channel.category_id
+async def get_dashboard_from_category_channel_id(ctx: ApplicationContext, category_channel_id: int) -> RefCategoryDashboard | None:
 
     if category_channel_id is None:
         return None

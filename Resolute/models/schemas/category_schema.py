@@ -117,3 +117,11 @@ class AdventureRewardsSchema(Schema):
     @post_load
     def make_adventure_reward(self, data, **kwargs):
         return AdventureRewards(**data)
+
+class CodeConversionSchema(Schema):
+    id = fields.Integer(data_key="id", require=True)
+    value = fields.Integer(data_key="value", required=True)
+
+    @post_load
+    def make_code_conversion(self, data, **kwargs):
+        return CodeConversion(**data)

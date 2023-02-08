@@ -125,8 +125,7 @@ async def on_member_remove(member):
 
         else:
             embed.description=f"**Character:** {character.name}\n" \
-                              f"**Level:** {character.get_level()}\n" \
-                              f"**Faction:** {character.faction.value}"
+                              f"**Level:** {character.level}\n"
 
         if len(adventures['player']) > 0 or len(adventures['dm']) > 0:
             value = "\n".join([f'\u200b - {a.name}*' for a in adventures['dm']])

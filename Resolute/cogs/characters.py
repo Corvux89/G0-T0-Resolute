@@ -1,4 +1,6 @@
 import logging
+import random
+import string
 from timeit import default_timer as timer
 from typing import List
 
@@ -8,10 +10,12 @@ from Resolute.bot import G0T0Bot
 from Resolute.helpers import remove_fledgling_role, get_character_quests, get_character, get_player_character_class, \
     create_logs, get_level_cap, get_or_create_guild, confirm, is_admin
 from Resolute.helpers.autocomplete_helpers import *
-from Resolute.models.db_objects import PlayerCharacter, PlayerCharacterClass, DBLog, LevelCaps, PlayerGuild
+from Resolute.models.db_objects import PlayerCharacter, PlayerCharacterClass, DBLog, LevelCaps, PlayerGuild, \
+    CharacterStarship
 from Resolute.models.embeds import ErrorEmbed, NewCharacterEmbed, CharacterGetEmbed
-from Resolute.models.schemas import CharacterSchema
-from Resolute.queries import insert_new_character, insert_new_class, update_character, update_class
+from Resolute.models.schemas import CharacterSchema, CharacterStarshipSchema
+from Resolute.queries import insert_new_character, insert_new_class, update_character, update_class, \
+    insert_new_starship, update_starship
 
 log = logging.getLogger(__name__)
 
@@ -442,6 +446,75 @@ class Character(commands.Cog):
             await conn.execute(update_character(character))
 
         await ctx.respond(f"Character inactivated")
+
+
+    @character_admin_commands.command(
+        name="add_starship",
+        description="Associates a starship with a player"
+    )
+    async def character_add_starship(self, ctx:ApplicationContext,
+                                     player: Option(Member, description="Starship Owner", required=True),
+                                     model: Option(str, autocomplete=starship_autocomplete, required=True,
+                                                   description="Starship model"),
+                                     name: Option(str, description="Starship Name", required=True),
+                                     tier_override: Option(bool, description="Overrides ship base tier", required=False,
+                                                           default=None)):
+        await ctx.defer()
+
+        character: PlayerCharacter = await get_character(ctx.bot, player.id, ctx.guild_id)
+
+        if character is None:
+            return await ctx.respond(
+                embed=ErrorEmbed(description=f"No character information found for {player.mention}"),
+                ephemeral=True)
+
+        s_model = ctx.bot.compendium.get_object("c_starship", model)
+
+        if s_model is None:
+            return await ctx.respond(embed=ErrorEmbed(description="Invalid starship model"), ephemeral=True)
+
+        base_str = name[:4]
+
+        if len(base_str) < 4:
+            base_str += "".join(random.choices(string.ascii_letters, k=(4-len(base_str))))
+
+
+
+
+        c_starship: CharacterStarship = CharacterStarship(character_id=character.id, name=name, starship=s_model,
+                                                          tier_override=tier_override)
+
+        async with ctx.bot.db.acquire() as conn:
+            results = await conn.execute(insert_new_starship(c_starship))
+            row = await results.first()
+
+
+        if row is None:
+            log.error(f"CHARACTERS: Error writing Starship to DB for {ctx.guild.name} [ {ctx.guild_id} ]")
+            return await ctx.respond(embed=ErrorEmbed(
+                description=f"Something went wrong creating the starship."),
+                ephemeral=True)
+
+        c_starship: CharacterStarship = CharacterStarshipSchema(ctx.bot.compendium).load(row)
+
+        base_str = name[:4]
+
+        if len(base_str) < 4:
+            base_str += "".join(random.choices(string.ascii_letters, k=(4 - len(base_str))))
+
+        base_str = hex(int(base_str, base=16))
+
+        c_starship.transponder = f"{c_starship.starship.abbreviation}_{base_str}_BD:{c_starship.id}"
+
+        async with ctx.bot.db.acquire() as conn:
+            await conn.execute(update_starship(c_starship))
+
+        return await ctx.respond("Done")
+
+
+
+
+
 
     # @character_admin_commands.command(
     #     name="reroll",

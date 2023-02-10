@@ -1,6 +1,7 @@
 from discord import ApplicationContext
 from marshmallow import Schema, fields, post_load
-from Resolute.models.db_objects import PlayerCharacter, PlayerCharacterClass, PlayerGuild, DBLog, Adventure, Arena
+from Resolute.models.db_objects import PlayerCharacter, PlayerCharacterClass, PlayerGuild, DBLog, Adventure, Arena, \
+    CharacterStarship
 
 
 class PlayerCharacterClassSchema(Schema):
@@ -147,3 +148,22 @@ class ArenaSchema(Schema):
 
     def load_timestamp(self, value):  # Marshmallow doesn't like loading DateTime for some reason. This is a workaround
         return value
+
+class CharacterStarshipSchema(Schema):
+    id = fields.Integer(data_key="id", required=True)
+    name = fields.String(data_key="name", required=True)
+    transponder = fields.String(data_key="transponder", allow_none=True, required=False)
+    starship = fields.Method(None, "load_starship")
+    tier_override = fields.Integer(data_key="tier_override", required=False, default=None, allow_none=True)
+    active = fields.Boolean(data_key="active", required=True)
+
+    def __init__(self, compendium, **kwargs):
+        super().__init__(**kwargs)
+        self.compendium = compendium
+
+    @post_load
+    def make_character_starship(self, data, **kwargs):
+        return CharacterStarship(**data)
+
+    def load_starship(self, value):
+        return self.compendium.get_object("c_starship", value)

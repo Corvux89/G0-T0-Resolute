@@ -147,3 +147,26 @@ class Arena(object):
 
     def get_host(self, ctx: ApplicationContext | discord.Interaction) -> discord.Member:
         return discord.utils.get(ctx.guild.members, id=self.host_id)
+
+
+class CharacterStarship(object):
+    character_id: int
+    name: str
+    transponder: str
+    starship: Starship
+    tier_override: int | None = None
+    active: bool = True
+
+    def __init__(self, **kwargs):
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
+    def get_formatted_starship(self):
+        if self.tier_override and self.tier_override > self.starship.tier:
+            tier = self.tier_override
+        else:
+            tier = self.starship.tier
+
+        return f"**{self.name}** *(Tier {tier} {self.starship.value})*: {self.transponder}"
+
+

@@ -147,3 +147,11 @@ class CodeConversion(object):
     def __init__(self, id, value):
         self.id = id
         self.value = value
+
+class Starship(object):
+    def __init__(self, id, value, tier, size, abbreviation):
+        self.id = id
+        self.value = value
+        self.tier = tier
+        self.size = size
+        self.abbreviation = abbreviation

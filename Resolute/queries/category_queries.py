@@ -47,3 +47,6 @@ def get_c_adventure_rewards() -> FromClause:
 
 def get_c_code_conversion() -> FromClause:
     return c_code_conversion_table.select()
+
+def get_c_starship() -> FromClause:
+    return c_starship_table.select()

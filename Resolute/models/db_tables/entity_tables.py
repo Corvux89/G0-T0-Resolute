@@ -87,3 +87,14 @@ adventures_table = sa.Table(
     Column("created_ts", DateTime(timezone=False), nullable=False, default=datetime.utcnow),
     Column("end_ts", DateTime(timezone=False), nullable=True),
 )
+
+character_starship_table = sa.Table(
+    "character_starship",
+    metadata,
+    Column("id", Integer, primary_key=True, autoincrement='auto'),
+    Column("name", String, nullable=False),
+    Column("transponder", String, nullable=True),
+    Column("starship", Integer, nullable=False),
+    Column("tier_override", Integer, nullable=True),
+    Column("active", BOOLEAN, nullable=False, default=True)
+)

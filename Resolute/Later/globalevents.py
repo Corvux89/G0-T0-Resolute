@@ -33,8 +33,7 @@ class GlobalEvents(commands.Cog):
     )
     async def gb_new(self, ctx: ApplicationContext,
                      gname: Option(str, description="Global event name", required=True),
-                     gold: Option(int, description="Base gold for the event", required=True),
-                     xp: Option(int, description="Base experience for the event", required=True),
+                     cc: Option(int, description="Base cc for the event", required=True),
                      combat: Option(bool, description="Indicated if this is a global event or not. If true then "
                                                       "ignores mod", required=False, default=False),
                      mod: Option(str, description="Base modifier for the event",
@@ -61,7 +60,7 @@ class GlobalEvents(commands.Cog):
 
         mod = ctx.bot.compendium.get_object("c_global_modifier", mod)
 
-        g_event = GlobalEvent(guild_id=ctx.guild_id, name=gname, base_gold=gold, base_xp=xp, base_mod=mod,
+        g_event = GlobalEvent(guild_id=ctx.guild_id, name=gname, base_cc=cc, base_mod=mod,
                               combat=combat, channels=[])
 
         async with self.bot.db.acquire() as conn:
@@ -75,8 +74,7 @@ class GlobalEvents(commands.Cog):
     )
     async def gb_update(self, ctx: ApplicationContext,
                         gname: Option(str, description="Global event name", required=False),
-                        gold: Option(int, description="Base gold for the event", required=False),
-                        xp: Option(int, description="Base experience for the event", required=False),
+                        cc: Option(int, description="Base cc for the event", required=False),
                         mod: Option(str, description="Base modifier for the event",
                                     autocomplete=global_mod_autocomplete, required=False),
                         combat: Option(bool, description="Indicated if this is a global event or not. If true then "
@@ -98,7 +96,7 @@ class GlobalEvents(commands.Cog):
         if g_event is None:
             return await ctx.respond(f'Error: No active global event on this server', ephemeral=True)
 
-        elif gname is None and gold is None and xp is None and mod is None and combat is None:
+        elif gname is None and cc is None and mod is None and combat is None:
             return await ctx.respond(f'Error: Nothing given to update', ephemeral=True)
 
         oldMod = g_event.base_mod
@@ -106,11 +104,8 @@ class GlobalEvents(commands.Cog):
         if gname is not None:
             g_event.name = gname
 
-        if gold is not None:
-            g_event.base_gold = gold
-
-        if xp is not None:
-            g_event.base_xp = xp
+        if cc is not None:
+            g_event.base_cc = cc
 
         if mod is not None:
             g_event.base_mod = ctx.bot.compendium.get_object("c_global_modifier", mod)
@@ -121,13 +116,12 @@ class GlobalEvents(commands.Cog):
         async with self.bot.db.acquire() as conn:
             await conn.execute(update_global_event(g_event))
 
-        if gold or xp or mod or combat is not None:
+        if cc or mod or combat is not None:
             players = await get_all_players(ctx.bot, ctx.guild_id)
             if players is not None:
                 for p in players:
                     if p.active and p.update:
-                        bGold = g_event.base_gold if gold is None else gold
-                        bExp = g_event.base_xp if xp is None else xp
+                        bCC = g_event.base_cc if cc is None else cc
 
                         if p.modifier == oldMod:
                             bMod = g_event.base_mod if mod is None else mod

@@ -1,3 +1,4 @@
+import binascii
 import logging
 import random
 import string
@@ -502,14 +503,20 @@ class Character(commands.Cog):
         if len(base_str) < 4:
             base_str += "".join(random.choices(string.ascii_letters, k=(4 - len(base_str))))
 
-        base_str = hex(int(base_str, base=16))
+        base_str = binascii.hexlify(bytes(base_str, encoding='utf-8'))
+        base_str = base_str.decode("utf-8")
 
         c_starship.transponder = f"{c_starship.starship.abbreviation}_{base_str}_BD:{c_starship.id}"
 
         async with ctx.bot.db.acquire() as conn:
             await conn.execute(update_starship(c_starship))
 
-        return await ctx.respond("Done")
+        embed = Embed(title="Update successful!",
+                      description=f"{character.name} new starship:\n{c_starship.get_formatted_starship()}",
+                      color=Color.random())
+        embed.set_thumbnail(url=player.display_avatar.url)
+
+        return await ctx.respond(embed=embed)
 
 
 

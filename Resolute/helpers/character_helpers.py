@@ -4,7 +4,7 @@ import discord
 from discord import ApplicationContext, Member, Bot, Role
 
 from Resolute.compendium import Compendium
-from Resolute.models.db_objects import PlayerCharacter, PlayerCharacterClass, PlayerGuild, LevelCaps
+from Resolute.models.db_objects import PlayerCharacter, PlayerCharacterClass, PlayerGuild, LevelCaps, CharacterStarship
 from Resolute.models.schemas import CharacterSchema, PlayerCharacterClassSchema
 from Resolute.queries import get_log_by_player_and_activity, get_active_character, get_character_class, \
     get_character_from_id
@@ -129,3 +129,4 @@ def get_level_cap(character: PlayerCharacter, guild: PlayerGuild, compendium: Co
             return_cap.max_cc= cap.max_cc * 2
 
     return return_cap
+

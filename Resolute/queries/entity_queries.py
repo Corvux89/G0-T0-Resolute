@@ -129,13 +129,13 @@ def insert_new_starship(starship: CharacterStarship):
         starship=starship.starship.id,
         active=starship.active,
         tier_override = starship.tier_override
-    )
+    ).returning(character_starship_table)
 
 def update_starship(starship: CharacterStarship):
     return character_starship_table.update()\
         .where(character_starship_table.c.id == starship.id)\
         .values(
-        namee=starship.name,
+        name=starship.name,
         transponder=starship.transponder,
         active=starship.active,
         tier_override=starship.tier_override

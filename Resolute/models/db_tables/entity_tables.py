@@ -92,6 +92,7 @@ character_starship_table = sa.Table(
     "character_starship",
     metadata,
     Column("id", Integer, primary_key=True, autoincrement='auto'),
+    Column("character_id", BigInteger, nullable=False),
     Column("name", String, nullable=False),
     Column("transponder", String, nullable=True),
     Column("starship", Integer, nullable=False),

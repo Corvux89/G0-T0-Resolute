@@ -32,4 +32,5 @@ async def rarity_autocomplete(ctx: discord.AutocompleteContext):
     return list(ctx.bot.compendium.c_rarity[1].keys())
 
 async def starship_autocomplete(ctx: discord.AutocompleteContext):
-    return list(ctx.bot.compendium.c_starship[1].keys())
+    return [s for s in list(ctx.bot.compendium.c_starship[1].keys())
+            if s.lower().startswith(ctx.value.lower())]

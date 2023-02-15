@@ -151,6 +151,7 @@ class ArenaSchema(Schema):
 
 class CharacterStarshipSchema(Schema):
     id = fields.Integer(data_key="id", required=True)
+    character_id = fields.Integer(data_key="character_id", required=True)
     name = fields.String(data_key="name", required=True)
     transponder = fields.String(data_key="transponder", allow_none=True, required=False)
     starship = fields.Method(None, "load_starship")

@@ -1,8 +1,8 @@
 from discord import *
 from discord.ext import commands
 from Resolute.bot import G0T0Bot
-from Resolute.helpers import calc_amt, confirm, get_all_players, global_mod_autocomplete, get_global, get_player, \
-    get_character, create_logs, close_global, global_host_autocomplete
+from Resolute.helpers import confirm, get_all_players, get_global, get_player, \
+    get_character, create_logs, close_global
 from Resolute.models.db_objects import GlobalEvent, GlobalPlayer, PlayerCharacter
 from Resolute.models.embeds import GlobalEmbed
 from discord.commands import SlashCommandGroup
@@ -33,11 +33,7 @@ class GlobalEvents(commands.Cog):
     )
     async def gb_new(self, ctx: ApplicationContext,
                      gname: Option(str, description="Global event name", required=True),
-                     cc: Option(int, description="Base cc for the event", required=True),
-                     combat: Option(bool, description="Indicated if this is a global event or not. If true then "
-                                                      "ignores mod", required=False, default=False),
-                     mod: Option(str, description="Base modifier for the event",
-                                 autocomplete=global_mod_autocomplete, required=False)):
+                     cc: Option(int, description="Base cc for the event", required=True)):
         """
         Create a new global event
 
@@ -55,13 +51,7 @@ class GlobalEvents(commands.Cog):
         if g_event is not None:
             return await ctx.respond(f'Error: Already an active global event', ephemeral=True)
 
-        if mod is None:
-            mod = "Medium"
-
-        mod = ctx.bot.compendium.get_object("c_global_modifier", mod)
-
-        g_event = GlobalEvent(guild_id=ctx.guild_id, name=gname, base_cc=cc, base_mod=mod,
-                              combat=combat, channels=[])
+        g_event = GlobalEvent(guild_id=ctx.guild_id, name=gname, base_cc=cc, channels=[])
 
         async with self.bot.db.acquire() as conn:
             await conn.execute(insert_new_global_event(g_event))
@@ -74,11 +64,7 @@ class GlobalEvents(commands.Cog):
     )
     async def gb_update(self, ctx: ApplicationContext,
                         gname: Option(str, description="Global event name", required=False),
-                        cc: Option(int, description="Base cc for the event", required=False),
-                        mod: Option(str, description="Base modifier for the event",
-                                    autocomplete=global_mod_autocomplete, required=False),
-                        combat: Option(bool, description="Indicated if this is a global event or not. If true then "
-                                                         "ignores mod", required=False, default=False)):
+                        cc: Option(int, description="Base cc for the event", required=False)):
         """
         Updates a GlobalEvent's information
 
@@ -96,10 +82,8 @@ class GlobalEvents(commands.Cog):
         if g_event is None:
             return await ctx.respond(f'Error: No active global event on this server', ephemeral=True)
 
-        elif gname is None and cc is None and mod is None and combat is None:
+        elif gname is None and cc is None:
             return await ctx.respond(f'Error: Nothing given to update', ephemeral=True)
-
-        oldMod = g_event.base_mod
 
         if gname is not None:
             g_event.name = gname
@@ -107,29 +91,15 @@ class GlobalEvents(commands.Cog):
         if cc is not None:
             g_event.base_cc = cc
 
-        if mod is not None:
-            g_event.base_mod = ctx.bot.compendium.get_object("c_global_modifier", mod)
-
-        if combat is not None:
-            g_event.combat = combat
-
         async with self.bot.db.acquire() as conn:
             await conn.execute(update_global_event(g_event))
 
-        if cc or mod or combat is not None:
+        if cc is not None:
             players = await get_all_players(ctx.bot, ctx.guild_id)
             if players is not None:
                 for p in players:
                     if p.active and p.update:
-                        bCC = g_event.base_cc if cc is None else cc
-
-                        if p.modifier == oldMod:
-                            bMod = g_event.base_mod if mod is None else mod
-                        else:
-                            bMod = p.modifier
-
-                        p.gold = bGold if g_event.combat else calc_amt(ctx.bot.compendium, bGold, bMod, p.host)
-                        p.xp = bExp if g_event.combat else calc_amt(ctx.bot.compendium, bExp, bMod, p.host)
+                        p.cc = g_event.base_cc
 
                         async with self.bot.db.acquire() as conn:
                             await conn.execute(update_global_player(p))
@@ -153,6 +123,13 @@ class GlobalEvents(commands.Cog):
 
         if g_event is None:
             return await ctx.respond(f'Error: No active global event on this server', ephemeral=True)
+
+        to_end = await confirm(ctx, "Are you sure you want to close this global without logging? (Reply with yes/no)", True)
+
+        if to_end is None:
+            return await ctx.respond(f'Timed out waiting for a response or invalid response.', delete_after=10)
+        elif not to_end:
+            return await ctx.respond(f'Ok, cancelling.', delete_after=10)
 
         await close_global(ctx.bot.db, g_event.guild_id)
 
@@ -194,12 +171,7 @@ class GlobalEvents(commands.Cog):
                         player.channels.append(msg.channel.id)
 
                 else:
-                    player = GlobalPlayer(player_id=msg.author.id, guild_id=g_event.guild_id,
-                                          modifier=g_event.base_mod, host=None,
-                                          gold=g_event.base_gold if not g_event.combat else calc_amt(
-                                              ctx.bot.compendium, g_event.base_gold, g_event.base_mod),
-                                          xp=g_event.base_xp if not g_event.combat else calc_amt(
-                                              ctx.bot.compendium, g_event.base_xp, g_event.base_mod),
+                    player = GlobalPlayer(player_id=msg.author.id, guild_id=g_event.guild_id, cc=g_event.base_cc,
                                           update=True, active=True, num_messages=1, channels=[msg.channel.id]
                                           )
                     async with self.bot.db.acquire() as conn:
@@ -226,18 +198,7 @@ class GlobalEvents(commands.Cog):
     )
     async def gb_user_update(self, ctx: ApplicationContext,
                              player: Option(Member, description="Player to add/modify", required=True),
-                             mod: Option(str, description="Players effort modifier",
-                                         autocomplete=global_mod_autocomplete, required=False),
-                             host: Option(str, description="Players host status",
-                                          autocomplete=global_host_autocomplete, required=False),
-                             gold: Option(int,
-                                          description="Players gold reward. NOTE: This will disable auto-calculation "
-                                                      "for a user",
-                                          required=False),
-                             xp: Option(int,
-                                        description="Players xp reward. NOTE: This will disable auto-calculation "
-                                                    "for a user",
-                                        required=False)):
+                             cc: Option(int, description="Players gold Chain Codes.", required=True)):
         """
         Updates or adds a GlobalPlayer to the GlobalEvent
 
@@ -257,35 +218,16 @@ class GlobalEvents(commands.Cog):
 
         g_player: GlobalPlayer = await get_player(ctx.bot, ctx.guild_id, player.id)
 
-        if gold or xp is not None:
-            update = False
-        else:
-            update = True
-
         if g_player is None:
-            bGold = g_event.base_gold if gold is None else gold
-            bExp = g_event.base_xp if xp is None else xp
-            bMod = g_event.base_mod if mod is None else ctx.bot.compendium.get_object("c_global_modifier", mod)
-            bHost = None if host is None else ctx.bot.compendium.get_object("c_host_status", host)
-
-            g_player = GlobalPlayer(player_id=player.id, guild_id=g_event.guild_id, modifier=bMod, host=bHost,
-                                    gold=calc_amt(ctx.bot.compendium, bGold, bMod, bHost) if update else bGold,
-                                    xp=calc_amt(ctx.bot.compendium, bExp, bMod, bHost) if update else bGold,
-                                    update=update, active=True, num_messages=0, channels=[])
+            g_player = GlobalPlayer(player_id=player.id, guild_id=g_event.guild_id, cc=cc,
+                                    update=True if cc == g_event.base_cc else False,
+                                    active=True, num_messages=0, channels=[])
 
             async with self.bot.db.acquire() as conn:
                 await conn.execute(add_global_player(g_player))
         else:
-            bGold = g_event.base_gold if gold is None else gold
-            bExp = g_event.base_xp if xp is None else xp
-            bMod = g_event.base_mod if mod is None else ctx.bot.compendium.get_object("c_global_modifier", mod)
-            bHost = None if host is None else ctx.bot.compendium.get_object("c_host_status", host)
-
-            g_player.gold = calc_amt(ctx.bot.compendium, bGold, bMod, bHost) if update and not g_event.combat else bGold
-            g_player.xp = calc_amt(ctx.bot.compendium, bExp, bMod, bHost) if update and not g_event.combat else bExp
-            g_player.modifier = bMod
-            g_player.host = bHost
-            g_player.update = update
+            g_player.cc = cc
+            g_player.update = True if cc == g_event.base_cc else False
             g_player.active = True
 
             async with self.bot.db.acquire() as conn:
@@ -388,7 +330,7 @@ class GlobalEvents(commands.Cog):
                 if not character:
                     fail_players.append(player)
                 else:
-                    log_list.append(await create_logs(ctx, character, act, g_event.name, player.gold, player.xp))
+                    log_list.append(await create_logs(ctx, character, act, g_event.name, player.cc))
 
         await close_global(ctx.bot.db, g_event.guild_id)
 
@@ -412,8 +354,7 @@ class GlobalEvents(commands.Cog):
                         operator: Option(str,
                                          description="Above or below the threshold (Threshold is always included <= or >=",
                                          required=True, choices=["Above", "Below"]),
-                        mod: Option(str, description="Modifier to adjust players to",
-                                    autocomplete=global_mod_autocomplete)):
+                        cc: Option(int, description="Chain codes to adjust players to", required=True)):
         await ctx.defer()
 
         g_event: GlobalEvent = await get_global(ctx.bot, ctx.guild_id)
@@ -422,68 +363,18 @@ class GlobalEvents(commands.Cog):
             return await ctx.respond(f'Error: No active global event on this server', ephemeral=True)
 
         players = await get_all_players(ctx.bot, ctx.guild_id)
-        adj_mod = ctx.bot.compendium.get_object("c_global_modifier", mod)
 
         for p in players.values():
-            if p.update and ((p.host is not None and p.host.value.upper() != "HOSTING ONLY") or p.host is None):
+            if p.update:
                 if operator == "Above":
                     if p.num_messages >= threshold:
-                        p.modifier = adj_mod
+                        p.cc = cc
                 elif operator == "Below":
                     if p.num_messages <= threshold:
-                        p.modifier = adj_mod
+                        p.cc = cc
 
-                p.gold = calc_amt(ctx.bot.compendium, g_event.base_gold, p.modifier, p.host)
-                p.xp = calc_amt(ctx.bot.compendium, g_event.base_xp, p.modifier, p.host)
-
+                p.update = True if cc == g_event.cc else False
                 async with self.bot.db.acquire() as conn:
                     await conn.execute(update_global_player(p))
 
         await ctx.respond(embed=GlobalEmbed(ctx, g_event, list(players.values())))
-
-    @global_event_commands.command(
-        name="help",
-        description="Summary of the global event command group"
-    )
-    async def gb_help(self, ctx: ApplicationContext):
-        embed = Embed(title=f"**Global Events Command Group Overview**")
-        embed.add_field(name="**Overview of the group**",
-                        value=f"This group is used to help manage and stage a global event. This will allow for the "
-                              f"creation, administration, and changes to an event without actually committing. "
-                              f"The primary intent is to be able to log event rewards for multiple players without "
-                              f"having to do individual commands for each player\n\n"
-                              f"**Only one (1) global event can be running at a time**",
-                        inline=False)
-
-        embed.add_field(name=f"**How Rewards are calculated**",
-                        value=f"*Combat global* - All players and hosts receive the base gold/xp unless otherwise "
-                              f"modified\n\n"
-                              f"*Non-combat global* - Players will receive base gold/xp * effort modifier capped at"
-                              f"a defined maximum per modifier\n"
-                              f"__Modifier multipliers:__ High (1.25), Medium (1.00), Low (0.75)\n"
-                              f"__Defined maximum:__ High (250), Medium (200), Low (150)\n\n"
-                              f"*Hosts* - Players flagged as hosts will have different rewards\n"
-                              f"__Participating__ - Player will get their participation rewards from above + 100\n"
-                              f"__Hosting Only__ - Player will not participation rewards, rather the equivalent of 100 "
-                              f"+ a Low effort modified reward",
-                        inline=False)
-
-        embed.add_field(name=f"Commands",
-                        value=f"**new_event** - Creates a new global event\n"
-                              f"**update_event** - Updates information for an event\n"
-                              f"**purge_event** - Clears out the currently staged event. "
-                              f"Used if there are a bunch of mistakes\n"
-                              f"**scrape** - Scrapes a given channel, and adds all the non-bot users to the event"
-                              f"with the default settings\n"
-                              f"**player_update** - Updates a given players details, or manually add a player "
-                              f"to the event\n"
-                              f"**remove** - Manually removes a player from the global event\n"
-                              f"**mass_adjust** - Given a threshold and operator, will adjust all players participating"
-                              f"in the global to the designated modifier\n"
-                              f"**review** - Shows the standard global embed with the option to list all the "
-                              f"active players\n"
-                              f"**commit** - Will log the event and clear it out (no need to purge after this\n"
-                              f"**help** - Bruh.....",
-                        inline=False)
-
-        await ctx.respond(embed=embed)

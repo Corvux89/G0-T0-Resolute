@@ -42,51 +42,18 @@ class GlobalEmbed(Embed):
 
         names = g_event.get_channel_names(ctx.bot)
 
-        active_players = []
-        override_players = []
-        modified_players = dict()
-        host_players = []
+        active_players = [p for p in players if p.active]
+        override_players = [p for p in players if not p.update]
 
         self.set_thumbnail(
             url=THUMBNAIL
         )
 
-        if g_event.combat:
-            for p in players:
-                if p.active:
-                    active_players.append(p)
-                    if not p.update:
-                        override_players.append(p)
-                    if p.host:
-                        host_players.append(p)
 
-            self.add_field(name=f"**Information for combat global {g_event.name}**",
-                           value=f"\n *Base gold:* {g_event.base_gold} \n *Base xp:* {g_event.base_xp} \n *# "
-                                 f"Players:* {len(active_players)}",
-                           inline=False)
-        else:
-            for p in players:
-                if p.active:
-                    active_players.append(p)
-                    for mod in ctx.bot.compendium.c_global_modifier[0].values():
-                        if mod.id != g_event.base_mod.id and (p.host is None or p.host.value != "Hosting Only"):
-                            if mod.id == p.modifier.id:
-                                if mod.value in modified_players:
-                                    modified_players[mod.value].append(p)
-                                    break
-                                else:
-                                    modified_players[mod.value] = [p]
-                                    break
 
-                    if not p.update:
-                        override_players.append(p)
-                    if p.host:
-                        host_players.append(p)
-
-            self.add_field(name=f"**Information for {g_event.name}**",
-                           value=f"\n *Base gold:* {g_event.base_gold} \n *Base xp:* {g_event.base_xp} \n *Base "
-                                 f"mod:* {g_event.base_mod.value} \n *# Players:* {len(active_players)}",
-                           inline=False)
+        self.add_field(name=f"**Information for {g_event.name}**",
+                       value=f"\n *Base Chain Codes:* {g_event.base_cc} \n*# Players:* {len(active_players)}",
+                       inline=False)
 
         if names:
             self.add_field(name="**Scraped Channels**",
@@ -97,18 +64,9 @@ class GlobalEmbed(Embed):
                            value="None",
                            inline=False)
 
-        for m in modified_players.keys():
-            self.add_field(name=f"**{m} Effort Overrides**",
-                           value="\n".join([f"\u200b {p.get_name(ctx)}" for p in modified_players[m]]),
-                           inline=False)
-
         if override_players:
-            self.add_field(name="**Manual Overrides (gold, xp)**",
-                           value="\n".join([f"\u200b {p.get_name(ctx)} ({p.gold}, {p.xp})" for p in override_players]),
-                           inline=False)
-        if host_players:
-            self.add_field(name="**Hosts**",
-                           value="\n".join([f"\u200b {p.get_name(ctx)} - {p.host.value}" for p in host_players]),
+            self.add_field(name="**Manual Overrides (cc)**",
+                           value="\n".join([f"\u200b {p.get_name(ctx)} ({p.cc})" for p in override_players]),
                            inline=False)
 
         if gblist:
@@ -118,7 +76,7 @@ class GlobalEmbed(Embed):
 
             for player_list in chunk_players:
                 self.add_field(name="**All active players (gold, xp, # posts)**",
-                               value="\n".join(f"\u200b {p.get_name(ctx)} ({p.gold}, {p.xp}, {p.num_messages})" for p in
+                               value="\n".join(f"\u200b {p.get_name(ctx)} ({p.cc}, {p.num_messages})" for p in
                                                player_list),
                                inline=False)
 

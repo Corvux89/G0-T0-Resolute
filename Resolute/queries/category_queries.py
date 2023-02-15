@@ -15,15 +15,6 @@ def get_c_character_archetype() -> FromClause:
 def get_c_character_species() -> FromClause:
     return c_character_species_table.select()
 
-
-def get_c_global_modifier() -> FromClause:
-    return c_global_modifier_table.select()
-
-
-def get_c_host_status() -> FromClause:
-    return c_host_status_table.select()
-
-
 def get_c_arena_tier() -> FromClause:
     return c_arena_tier_table.select()
 

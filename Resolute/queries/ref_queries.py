@@ -88,9 +88,7 @@ def insert_new_global_event(g_event: GlobalEvent) -> TableClause:
     return ref_gb_staging_table.insert().values(
         guild_id=g_event.guild_id,
         name=g_event.name,
-        base_cc=g_event.base_cc,
-        base_mod=g_event.base_mod.id,
-        combat=g_event.combat
+        base_cc=g_event.base_cc
     )
 
 
@@ -106,8 +104,6 @@ def update_global_event(g_event: GlobalEvent):
         .values(
         name=g_event.name,
         base_cc=g_event.base_cc,
-        base_mod=g_event.base_mod.id,
-        combat=g_event.combat,
         channels=g_event.channels
     )
 
@@ -128,8 +124,6 @@ def update_global_player(g_player: GlobalPlayer):
     return ref_gb_staging_player_table.update() \
         .where(ref_gb_staging_player_table.c.id == g_player.id) \
         .values(
-        modifier=g_player.modifier.id,
-        host=None if g_player.host is None else g_player.host.id,
         cc=g_player.cc,
         update=g_player.update,
         active=g_player.active,
@@ -152,8 +146,6 @@ def add_global_player(g_player: GlobalPlayer):
     return ref_gb_staging_player_table.insert().values(
         guild_id=g_player.guild_id,
         player_id=g_player.player_id,
-        modifier=g_player.modifier.id,
-        host=None if g_player.host is None else g_player.host.id,
         cc=g_player.cc,
         update=g_player.update,
         active=g_player.active,

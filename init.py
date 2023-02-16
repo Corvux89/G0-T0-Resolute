@@ -132,7 +132,7 @@ async def on_member_remove(member):
             value +="\n".join([f'\u200b - {a.name}' for a in adventures['player']])
             count = len(adventures['player']) + len(adventures['dm'])
         else:
-            value = "*None"
+            value = "*None*"
             count = 0
         embed.add_field(name=f"Adventures ({count})", value=value, inline=False)
 

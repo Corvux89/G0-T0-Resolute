@@ -369,11 +369,13 @@ class GlobalEvents(commands.Cog):
                 if operator == "Above":
                     if p.num_messages >= threshold:
                         p.cc = cc
+                        p.update = True if cc == g_event.base_cc else False
                 elif operator == "Below":
                     if p.num_messages <= threshold:
                         p.cc = cc
+                        p.update = True if cc == g_event.base_cc else False
 
-                p.update = True if cc == g_event.base_cc else False
+
                 async with self.bot.db.acquire() as conn:
                     await conn.execute(update_global_player(p))
 

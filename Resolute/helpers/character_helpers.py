@@ -7,7 +7,7 @@ from Resolute.compendium import Compendium
 from Resolute.models.db_objects import PlayerCharacter, PlayerCharacterClass, PlayerGuild, LevelCaps, CharacterStarship
 from Resolute.models.schemas import CharacterSchema, PlayerCharacterClassSchema, CharacterStarshipSchema
 from Resolute.queries import get_log_by_player_and_activity, get_active_character, get_character_class, \
-    get_character_from_id, get_character_starships
+    get_character_from_id, get_character_starships, get_starship_by_transponder
 
 
 async def remove_fledgling_role(ctx: ApplicationContext, member: Member, reason: Optional[str]):
@@ -23,7 +23,7 @@ async def remove_fledgling_role(ctx: ApplicationContext, member: Member, reason:
     if fledgling_role and (fledgling_role in member.roles):
         await member.remove_roles(fledgling_role, reason=reason)
 
-        if initiate_role and not(initiate_role in member.roles):
+        if initiate_role and not (initiate_role in member.roles):
             await member.add_roles(initiate_role, reason=reason)
 
 
@@ -43,7 +43,8 @@ async def get_character_quests(bot: Bot, character: PlayerCharacter) -> PlayerCh
             get_log_by_player_and_activity(character.id,
                                            bot.compendium.get_object("c_activity", "ARENA").id))
         arena_host_list = await conn.execute(get_log_by_player_and_activity(character.id,
-                                                                            bot.compendium.get_object("c_activity", "ARENA_HOST").id))
+                                                                            bot.compendium.get_object("c_activity",
+                                                                                                      "ARENA_HOST").id))
 
     rp_count = rp_list.rowcount
     arena_count = arena_list.rowcount + arena_host_list.rowcount
@@ -95,8 +96,6 @@ async def get_character_from_char_id(bot: Bot, char_id: int) -> PlayerCharacter 
     return character
 
 
-
-
 async def get_player_character_class(bot: Bot, char_id: int) -> List[PlayerCharacterClass] | None:
     """
     Gets all of a given Playercharacter's PlayerCharacterClasses
@@ -134,15 +133,27 @@ async def get_player_starships(bot: Bot, char_id: int) -> List[CharacterStarship
         return ship_ary
 
 
+async def get_player_starship_from_transponder(bot: Bot, transponder: str) -> CharacterStarship | None:
+    async with bot.db.acquire() as conn:
+        results = await conn.execute(get_starship_by_transponder(transponder))
+        row = await results.first()
+
+    if row is None:
+        return None
+    else:
+        c_ship: CharacterStarship = CharacterStarshipSchema(bot.compendium).load(row)
+        return c_ship
+
+
 # TODO: Fix this to figure out caps
-def get_level_cap(character: PlayerCharacter, guild: PlayerGuild, compendium: Compendium, adjust: bool=True) -> LevelCaps:
+def get_level_cap(character: PlayerCharacter, guild: PlayerGuild, compendium: Compendium,
+                  adjust: bool = True) -> LevelCaps:
     cap: LevelCaps = compendium.get_object("c_level_caps", character.level)
     return_cap = LevelCaps(cap.id, cap.max_cc, cap.max_items, cap.max_consumable)
 
     # Adjustment
     if adjust:
         if character.level < guild.max_level - 100:
-            return_cap.max_cc= cap.max_cc * 2
+            return_cap.max_cc = cap.max_cc * 2
 
     return return_cap
-

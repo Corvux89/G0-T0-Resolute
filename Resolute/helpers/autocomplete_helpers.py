@@ -36,6 +36,6 @@ async def starship_size_autocomplete(ctx: discord.AutocompleteContext):
             if s.lower().startswith(ctx.value.lower())]
 
 async def starship_role_autocomplete(ctx: discord.AutocompleteContext):
-    size = ctx.bot.compendium.get_object("c_starship_size", ctx.options["size"])
-    return [s for s in list(ctx.bot.compendium.c_starship_role[1].keys()) if s.size == size.id
-            and (s.value.lower().starswith(ctx.value.lower()) or ctx.value.lower() in s.value.lower())]
+    size = ctx.bot.compendium.get_object("c_starship_size", ctx.options["ship_size"])
+    return [s.value for s in list(ctx.bot.compendium.c_starship_role[0].values()) if s.size == size.id
+            and (s.value.lower().startswith(ctx.value.lower()) or ctx.value.lower() in s.value.lower())]

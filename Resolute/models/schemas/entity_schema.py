@@ -155,7 +155,7 @@ class CharacterStarshipSchema(Schema):
     name = fields.String(data_key="name", required=True)
     transponder = fields.String(data_key="transponder", allow_none=True, required=False)
     starship = fields.Method(None, "load_starship")
-    tier_override = fields.Integer(data_key="tier_override", required=False, default=None, allow_none=True)
+    tier = fields.Integer(data_key="tier", required=False, default=None, allow_none=True)
     active = fields.Boolean(data_key="active", required=True)
 
     def __init__(self, compendium, **kwargs):

@@ -97,7 +97,7 @@ def insert_new_starship(starship: CharacterStarship):
         name=starship.name,
         starship=starship.starship.id,
         active=starship.active,
-        tier_override = starship.tier_override
+        tier=starship.tier
     ).returning(character_starship_table)
 
 
@@ -108,7 +108,7 @@ def update_starship(starship: CharacterStarship):
         name=starship.name,
         transponder=starship.transponder,
         active=starship.active,
-        tier_override=starship.tier_override
+        tier=starship.tier
     )
 
 def get_character_starships(char_id: int) -> FromClause:
@@ -117,6 +117,6 @@ def get_character_starships(char_id: int) -> FromClause:
     ).order_by(character_starship_table.c.id.asc())
 
 def get_starship_by_transponder(tran_code: str) -> FromClause:
-    return character_starship_table.select.where(
+    return character_starship_table.select().where(
         and_(character_starship_table.c.transponder == tran_code, character_starship_table.c.active == True)
     )

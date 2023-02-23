@@ -154,7 +154,7 @@ class CharacterStarship(object):
     name: str
     transponder: str
     starship: StarshipRole
-    tier_override: int | None = None
+    tier: int | None = None
     active: bool = True
 
     def __init__(self, **kwargs):
@@ -162,11 +162,6 @@ class CharacterStarship(object):
             setattr(self, key, value)
 
     def get_formatted_starship(self):
-        if self.tier_override and self.tier_override > self.starship.tier:
-            tier = self.tier_override
-        else:
-            tier = self.starship.tier
-
-        return f"**{self.name}** *(Tier {tier} {self.starship.value})*: {self.transponder}"
+        return f"**{self.name}** *(Tier {self.tier} {self.starship.value})*: {self.transponder}"
 
 

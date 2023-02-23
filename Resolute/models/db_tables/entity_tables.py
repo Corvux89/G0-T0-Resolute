@@ -96,6 +96,6 @@ character_starship_table = sa.Table(
     Column("name", String, nullable=False),
     Column("transponder", String, nullable=True),
     Column("starship", Integer, nullable=False),
-    Column("tier_override", Integer, nullable=True),
+    Column("tier", Integer, nullable=True),
     Column("active", BOOLEAN, nullable=False, default=True)
 )

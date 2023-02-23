@@ -4,8 +4,7 @@ from discord import ApplicationContext, TextChannel, Role
 from discord.ext.commands import Bot
 
 from Resolute.compendium import Compendium
-from Resolute.models.db_objects import RefCategoryDashboard, RefWeeklyStipend, GlobalPlayer, GlobalEvent, \
-    GlobalModifier, HostStatus
+from Resolute.models.db_objects import RefCategoryDashboard, RefWeeklyStipend, GlobalPlayer, GlobalEvent
 from Resolute.models.schemas import RefCategoryDashboardSchema, RefWeeklyStipendSchema, GlobalPlayerSchema, \
     GlobalEventSchema
 from Resolute.queries import get_dashboard_by_category_channel, get_weekly_stipend_query, get_all_global_players, \
@@ -50,30 +49,6 @@ async def get_weekly_stipend(db: aiopg.sa.Engine, role: Role) -> RefWeeklyStipen
     else:
         stipend: RefWeeklyStipend = RefWeeklyStipendSchema().load(row)
         return stipend
-
-
-def calc_amt(compendium: Compendium, base: int, pmod: GlobalModifier = None, hostmod: HostStatus = None) -> int:
-    if pmod is None or (hostmod is not None and hostmod.value.upper() == "HOSTING ONLY"):
-        pmod = compendium.get_object("c_global_modifier", "Low")
-
-    ratio_adj = 1
-    if hostmod is None:
-        host_addition = 0
-    elif hostmod.value.upper() == "PARTICIPATING":
-        host_addition = 100
-    elif hostmod.value.upper() == "HOSTING ONLY":
-        host_addition = (base * .75) + 100
-        ratio_adj = 0
-    else:
-        host_addition = 0
-
-    amt = round(base * (pmod.adjustment * ratio_adj))
-
-    if amt > pmod.max:
-        amt = pmod.max
-    amt += host_addition
-    return amt
-
 
 async def get_all_players(bot: Bot, guild_id: int) -> dict:
     players = dict()

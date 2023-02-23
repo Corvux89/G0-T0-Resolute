@@ -44,8 +44,6 @@ class Compendium:
         self.c_character_species = []
         self.c_character_class = []
         self.c_character_archetype = []
-        self.c_global_modifier = []
-        self.c_host_status = []
         self.c_arena_tier = []
         self.c_adventure_tier = []
         self.c_adventure_rewards = []
@@ -71,10 +69,6 @@ class Compendium:
                                                             CharacterClassSchema())
             self.c_character_archetype = await get_table_values(conn, get_c_character_archetype(), CharacterArchetype,
                                                                 CharacterArchetypeSchema())
-            self.c_global_modifier = await get_table_values(conn, get_c_global_modifier(), GlobalModifier,
-                                                            GlobalModifierSchema())
-            self.c_host_status = await get_table_values(conn, get_c_host_status(), HostStatus,
-                                                        HostStatusSchema())
             self.c_arena_tier = await get_table_values(conn, get_c_arena_tier(), ArenaTier, ArenaTierSchema())
             self.c_adventure_tier = await get_table_values(conn, get_c_adventure_tier(), AdventureTier,
                                                            AdventureTierSchema())

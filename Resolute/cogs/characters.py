@@ -454,6 +454,7 @@ class Character(commands.Cog):
 
         await ctx.respond(f"Character inactivated")
 
+
     @character_admin_commands.command(
         name="add_ship",
         description="Adds a starship to a player"
@@ -596,7 +597,6 @@ class Character(commands.Cog):
         embed.set_thumbnail(url=character.get_member(ctx).display_avatar.url)
 
         return await ctx.respond(embed=embed)
-
 
 
     # @character_admin_commands.command(

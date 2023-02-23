@@ -3,8 +3,6 @@ from typing import List
 import discord.utils
 from discord import ApplicationContext, TextChannel, CategoryChannel, Message, Bot
 
-from Resolute.models.db_objects import DashboardType, GlobalModifier, HostStatus
-
 
 class RefCategoryDashboard(object):
     category_channel_id: int
@@ -53,8 +51,6 @@ class RefWeeklyStipend(object):
 class GlobalPlayer(object):
     guild_id: int
     player_id: int
-    modifier: GlobalModifier
-    host: HostStatus
     cc: int
     update: bool
     active: bool
@@ -80,8 +76,6 @@ class GlobalEvent(object):
     guild_id: int
     name: str
     base_cc: int
-    base_mod: GlobalModifier
-    combat: bool
     channels: List[int]
 
     def __init__(self, **kwargs):

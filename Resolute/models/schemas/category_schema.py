@@ -38,26 +38,6 @@ class CharacterSpeciesSchema(Schema):
     def make_c_character_race(self, data, **kwargs):
         return CharacterSpecies(**data)
 
-class GlobalModifierSchema(Schema):
-    id = fields.Integer(data_key="id", required=True)
-    value = fields.String(data_key="value", required=True)
-    adjustment = fields.Float(data_key="adjustment", required=True)
-    max = fields.Integer(data_key="max", required=True)
-
-    @post_load
-    def make_c_global_modifier(self, data, **kwargs):
-        return GlobalModifier(**data)
-
-
-class HostStatusSchema(Schema):
-    id = fields.Integer(data_key="id", required=True)
-    value = fields.String(data_key="value", required=True)
-
-    @post_load
-    def make_c_host_status(self, data, **kwargs):
-        return HostStatus(**data)
-
-
 class ArenaTierSchema(Schema):
     id = fields.Integer(data_key="id", required=True)
     avg_level = fields.Integer(data_key="avg_level", required=True)

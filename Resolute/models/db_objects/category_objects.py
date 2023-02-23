@@ -40,31 +40,6 @@ class CharacterSpecies(object):
         self.id = id
         self.value = value
 
-class GlobalModifier(object):
-    def __init__(self, id, value, adjustment, max):
-        """
-        :param id: int
-        :param value: str
-        :param adjustment: float
-        :param max: int
-        """
-
-        self.id = id
-        self.value = value
-        self.adjustment = adjustment
-        self.max = max
-
-
-class HostStatus(object):
-    def __init__(self, id, value):
-        """
-        :param id: int
-        :param value: str
-        """
-
-        self.id = id
-        self.value = value
-
 
 class ArenaTier(object):
     def __init__(self, id, avg_level, max_phases):

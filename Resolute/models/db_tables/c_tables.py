@@ -32,22 +32,6 @@ c_character_species_table = sa.Table(
     Column("value", String, nullable=False)
 )
 
-c_global_modifier_table = sa.Table(
-    "c_global_modifier",
-    metadata,
-    Column("id", Integer, primary_key=True, autoincrement='auto'),
-    Column("value", String, nullable=False),
-    Column("adjustment", Numeric(precision=5, scale=2), nullable=False),
-    Column("max", Integer, nullable=False)
-)
-
-c_host_status_table = sa.Table(
-    "c_host_status",
-    metadata,
-    Column("id", Integer, primary_key=True, autoincrement='auto'),
-    Column("value", String, nullable=False)
-)
-
 c_arena_tier_table = sa.Table(
     "c_arena_tier",
     metadata,

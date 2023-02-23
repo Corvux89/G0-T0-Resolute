@@ -34,8 +34,6 @@ class CharacterSchema(Schema):
     div_cc = fields.Integer(data_key="div_cc", required=True)
     credits = fields.Integer(data_key="credits", required=True)
     level = fields.Integer(data_key="level", required=True)
-    enhanced_items = fields.String(data_key="enhanced_items", required=True)
-    enhanced_consumables = fields.String(data_key="enhanced_consumables", required=True)
     player_id = fields.Integer(data_key="player_id", required=True)
     guild_id = fields.Integer(data_key="guild_id", required=True)
     reroll = fields.Boolean(data_key="reroll", required=False, default=False)

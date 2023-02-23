@@ -58,7 +58,7 @@ class CharacterGetEmbed(Embed):
 
         if char_ships and len(char_ships) > 0:
             self.add_field(name="Starships: ",
-                           value=f"\n".join([f"\u200b \u200b \u200b {s.get_formatted_starship()}" for s in char_ships]))
+                           value=f"\n".join([f"\u200b \u200b \u200b {s.get_formatted_starship(ctx.bot.compendium)}" for s in char_ships]))
 
 
 class HxLogEmbed(Embed):

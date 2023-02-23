@@ -40,8 +40,6 @@ characters_table = sa.Table(
     Column("cc", Integer, nullable=False, default=0),
     Column("div_cc", Integer, nullable=False, default=0),
     Column("level", Integer, nullable=False, default=1),
-    Column("enhanced_items", String, nullable=False),
-    Column("enhanced_consumables", String, nullable=False),
     Column("player_id", BigInteger, nullable=False),
     Column("guild_id", BigInteger, nullable=False),  # ref: > guilds.id
     Column("reroll", BOOLEAN, nullable=True),

@@ -149,7 +149,7 @@ async def get_player_starship_from_transponder(bot: Bot, transponder: str) -> Ch
 def get_level_cap(character: PlayerCharacter, guild: PlayerGuild, compendium: Compendium,
                   adjust: bool = True) -> LevelCaps:
     cap: LevelCaps = compendium.get_object("c_level_caps", character.level)
-    return_cap = LevelCaps(cap.id, cap.max_cc, cap.max_items, cap.max_consumable)
+    return_cap = LevelCaps(cap.id, cap.max_cc)
 
     # Adjustment
     if adjust:

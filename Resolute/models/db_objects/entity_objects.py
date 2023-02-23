@@ -32,8 +32,6 @@ class PlayerCharacter(object):
     credits: int
     cc: int
     div_cc: int
-    enhanced_items: str
-    enhanced_consumables: str
     level: int
     active: bool
     reroll: bool
@@ -161,7 +159,7 @@ class CharacterStarship(object):
         for key, value in kwargs.items():
             setattr(self, key, value)
 
-    def get_formatted_starship(self):
-        return f"**{self.name}** *(Tier {self.tier} {self.starship.value})*: {self.transponder}"
+    def get_formatted_starship(self, compendium):
+        return f"**{self.name}** *({self.starship.get_size(compendium).value} {self.starship.value} {self.tier})*: {self.transponder}"
 
 

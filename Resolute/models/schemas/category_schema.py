@@ -100,8 +100,6 @@ class DashboardTypeSchema(Schema):
 class LevelCapsSchema(Schema):
     id = fields.Integer(data_key="id", required=True)
     max_cc = fields.Integer(data_key="max_cc", required=True)
-    max_items = fields.String(data_key="max_items", required=True)
-    max_consumable = fields.String(data_key="max_consumable", required=True)
 
     @post_load
     def make_level_caps(self, data, **kwargs):

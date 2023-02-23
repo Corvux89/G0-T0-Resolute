@@ -1,7 +1,9 @@
 import binascii
+import datetime
 import logging
 import random
 import string
+import time
 from timeit import default_timer as timer
 from typing import List
 
@@ -505,13 +507,13 @@ class Character(commands.Cog):
         base_str = binascii.hexlify(bytes(base_str, encoding='utf-8'))
         base_str = base_str.decode("utf-8")
 
-        c_starship.transponder = f"{c_starship.starship.get_size(ctx.bot.compendium).value[:1]}{c_starship.starship.value[:6]}_{base_str}_BD:{c_starship.id}"
+        c_starship.transponder = f"{c_starship.starship.get_size(ctx.bot.compendium).value[:1]}{c_starship.starship.value[:1]}{str(time.time())[:5]}_{base_str}_BD:{c_starship.id}"
 
         async with ctx.bot.db.acquire() as conn:
             await conn.execute(update_starship(c_starship))
 
         embed = Embed(title="Update successful!",
-                      description=f"{character.name} new starship:\n{c_starship.get_formatted_starship()}",
+                      description=f"{character.name} new starship:\n{c_starship.get_formatted_starship(ctx.bot.compendium)}",
                       color=Color.random())
         embed.set_thumbnail(url=player.display_avatar.url)
 
@@ -547,7 +549,49 @@ class Character(commands.Cog):
             await conn.execute(update_starship(c_ship))
 
         embed = Embed(title="Update successful!",
-                      description=f"{character.name} updated starship:\n{c_ship.get_formatted_starship()}",
+                      description=f"{character.name} updated starship:\n{c_ship.get_formatted_starship(ctx.bot.compendium)}",
+                      color=Color.random())
+        embed.set_thumbnail(url=character.get_member(ctx).display_avatar.url)
+
+        return await ctx.respond(embed=embed)
+
+    @character_admin_commands.command(
+        name="remove_ship",
+        description="Inactivates a ship"
+    )
+    async def character_upgrade_ship(self, ctx: ApplicationContext,
+                                     transponder_code: Option(str, description="Ship transponder", required=True)):
+        await ctx.defer()
+
+        c_ship: CharacterStarship = await get_player_starship_from_transponder(ctx.bot, transponder_code)
+
+        if c_ship is None:
+            return await ctx.respond(embed=ErrorEmbed(description="Ship not found"), ephemeral=True)
+
+        character: PlayerCharacter = await get_character_from_char_id(ctx.bot, c_ship.character_id)
+
+        if character is None:
+            return await ctx.respond(
+                embed=ErrorEmbed(description=f"No character information found for character id {c_ship.character_id}"),
+                ephemeral=True)
+        elif character.guild_id != ctx.guild_id:
+            return await ctx.respond(embed=ErrorEmbed(description=f"Character not from your server."), ephemeral=True)
+
+        conf = await confirm(ctx, f"Are you sure you want to inactivate `{c_ship.name} (Tier {c_ship.tier})` for {character.get_member(ctx).mention}? "
+                                  f"(Reply with yes/no)", True)
+
+        if conf is None:
+            return await ctx.respond(f'Timed out waiting for a response or invalid response.', delete_after=10)
+        elif not conf:
+            return await ctx.respond(f'Ok, cancelling.', delete_after=10)
+
+        c_ship.active = False
+
+        async with ctx.bot.db.acquire() as conn:
+            await conn.execute(update_starship(c_ship))
+
+        embed = Embed(title="Removal successful!",
+                      description=f"{character.name} removed starship:\n{c_ship.get_formatted_starship(ctx.bot.compendium)}",
                       color=Color.random())
         embed.set_thumbnail(url=character.get_member(ctx).display_avatar.url)
 

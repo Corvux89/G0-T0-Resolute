@@ -116,7 +116,7 @@ class DashboardType(object):
 
 
 class LevelCaps(object):
-    def __init__(self, id, max_cc, max_items, max_consumable):
+    def __init__(self, id, max_cc):
         """
         :param id: int
         :param max_gold: int
@@ -125,8 +125,6 @@ class LevelCaps(object):
 
         self.id = id
         self.max_cc = max_cc
-        self.max_items = max_items
-        self.max_consumable = max_consumable
 
 
 class AdventureRewards(object):

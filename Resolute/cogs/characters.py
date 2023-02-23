@@ -1,6 +1,9 @@
+import binascii
+import datetime
 import logging
 import random
 import string
+import time
 from timeit import default_timer as timer
 from typing import List
 
@@ -8,7 +11,8 @@ from discord import SlashCommandGroup, Option, ApplicationContext, Member, Embed
 from discord.ext import commands
 from Resolute.bot import G0T0Bot
 from Resolute.helpers import remove_fledgling_role, get_character_quests, get_character, get_player_character_class, \
-    create_logs, get_level_cap, get_or_create_guild, confirm, is_admin
+    create_logs, get_level_cap, get_or_create_guild, confirm, is_admin, get_player_starships, \
+    get_player_starship_from_transponder, get_character_from_char_id
 from Resolute.helpers.autocomplete_helpers import *
 from Resolute.models.db_objects import PlayerCharacter, PlayerCharacterClass, DBLog, LevelCaps, PlayerGuild, \
     CharacterStarship
@@ -43,12 +47,13 @@ class Character(commands.Cog):
                                                        autocomplete=character_class_autocomplete,
                                                        required=True),
                                character_species: Option(str, description="Character's species",
-                                                      autocomplete=character_species_autocomplete,
-                                                      required=True),
-                               credits: Option(int, description="Unspent starting credits", min=0, max=99999, required=True),
+                                                         autocomplete=character_species_autocomplete,
+                                                         required=True),
+                               credits: Option(int, description="Unspent starting credits", min=0, max=99999,
+                                               required=True),
                                character_archetype: Option(str, description="Character's archetype",
-                                                          autocomplete=character_archetype_autocomplete,
-                                                          required=False),
+                                                           autocomplete=character_archetype_autocomplete,
+                                                           required=False),
                                cc: Option(int, description="Any starting Chain Codes", min=0, max=99999, required=False,
                                           default=0),
                                level: Option(int, description="Starting level for higher-level character", min_value=1,
@@ -89,7 +94,8 @@ class Character(commands.Cog):
         # Create new object
         character = PlayerCharacter(player_id=player.id, guild_id=ctx.guild.id, name=name, species=c_species,
                                     cc=cc, credits=credits, div_cc=0, level=level,
-                                    active=True, reroll=False, enhanced_items=str(item_d), enhanced_consumables=str(item_d))
+                                    active=True, reroll=False, enhanced_items=str(item_d),
+                                    enhanced_consumables=str(item_d))
 
         async with self.bot.db.acquire() as conn:
             results = await conn.execute(insert_new_character(character))
@@ -145,13 +151,14 @@ class Character(commands.Cog):
                 ephemeral=True)
 
         class_ary: List[PlayerCharacterClass] = await get_player_character_class(ctx.bot, character.id)
+        ship_ary: List[CharacterStarship] = await get_player_starships(ctx.bot, character.id)
 
         caps: LevelCaps = get_level_cap(character, g, ctx.bot.compendium)
 
         if character.level < 3:
             character = await get_character_quests(ctx.bot, character)
 
-        await ctx.respond(embed=CharacterGetEmbed(character, class_ary, caps, ctx))
+        await ctx.respond(embed=CharacterGetEmbed(character, class_ary, caps, ctx, ship_ary))
 
     @character_admin_commands.command(
         name="level",
@@ -214,8 +221,8 @@ class Character(commands.Cog):
     async def character_race(self, ctx: ApplicationContext,
                              player: Option(Member, description="Player to set the species for", required=True),
                              character_species: Option(str, description="Character's race",
-                                                    autocomplete=character_species_autocomplete,
-                                                    required=True)):
+                                                       autocomplete=character_species_autocomplete,
+                                                       required=True)):
         """
         Sets a characters race/subrace
 
@@ -446,6 +453,150 @@ class Character(commands.Cog):
             await conn.execute(update_character(character))
 
         await ctx.respond(f"Character inactivated")
+
+
+    @character_admin_commands.command(
+        name="add_ship",
+        description="Adds a starship to a player"
+    )
+    async def character_add_ship(self, ctx: ApplicationContext,
+                                 player: Option(Member, description="Starship Owner", required=True),
+                                 ship_size: Option(str, description="Ship Size", required=True,
+                                                   autocomplete=starship_size_autocomplete),
+                                 ship_role: Option(str, description="Ship Role", required=True,
+                                                   autocomplete=starship_role_autocomplete),
+                                 ship_name: Option(str, description="Ship Name", required=True),
+                                 tier: Option(int, description="Ship Tier", required=False, default=0,
+                                              min_value=0, max_value=5)):
+        await ctx.defer()
+
+        character: PlayerCharacter = await get_character(ctx.bot, player.id, ctx.guild_id)
+
+        if character is None:
+            return await ctx.respond(
+                embed=ErrorEmbed(description=f"No character information found for {player.mention}"),
+                ephemeral=True)
+
+        s_role = ctx.bot.compendium.get_object("c_starship_role", ship_role)
+        s_size = ctx.bot.compendium.get_object("c_starship_size", ship_size)
+
+        if s_role is None:
+            return await ctx.respond(embed=ErrorEmbed(description="Invalid starship model"), ephemeral=True)
+        elif s_role.size != s_size.id:
+            return await ctx.respond(embed=ErrorEmbed(description="Invalid role for starship size"), ephemeral=True)
+
+        c_starship: CharacterStarship = CharacterStarship(character_id=character.id, name=ship_name, starship=s_role,
+                                                          tier=tier)
+
+        async with ctx.bot.db.acquire() as conn:
+            results = await conn.execute(insert_new_starship(c_starship))
+            row = await results.first()
+
+        if row is None:
+            log.error(f"CHARACTERS: Error writing Starship to DB for {ctx.guild.name} [ {ctx.guild_id} ]")
+            return await ctx.respond(embed=ErrorEmbed(
+                description=f"Something went wrong creating the starship."),
+                ephemeral=True)
+
+        c_starship: CharacterStarship = CharacterStarshipSchema(ctx.bot.compendium).load(row)
+
+        base_str = ship_name[:4]
+
+        if len(base_str) < 4:
+            base_str += "".join(random.choices(string.ascii_letters, k=(4 - len(base_str))))
+
+        base_str = binascii.hexlify(bytes(base_str, encoding='utf-8'))
+        base_str = base_str.decode("utf-8")
+
+        c_starship.transponder = f"{c_starship.starship.get_size(ctx.bot.compendium).value[:1]}{c_starship.starship.value[:1]}{str(time.time())[:5]}_{base_str}_BD:{c_starship.id}"
+
+        async with ctx.bot.db.acquire() as conn:
+            await conn.execute(update_starship(c_starship))
+
+        embed = Embed(title="Update successful!",
+                      description=f"{character.name} new starship:\n{c_starship.get_formatted_starship(ctx.bot.compendium)}",
+                      color=Color.random())
+        embed.set_thumbnail(url=player.display_avatar.url)
+
+        return await ctx.respond(embed=embed)
+
+    @character_admin_commands.command(
+        name="upgrade_ship",
+        description="Upgrades a ship tier"
+    )
+    async def character_upgrade_ship(self, ctx: ApplicationContext,
+                                     transponder_code: Option(str, description="Ship transponder", required=True),
+                                     tier: Option(int, description="New tier for the ship", required=True,
+                                                  min_value=0, max_value=5)):
+        await ctx.defer()
+
+        c_ship: CharacterStarship = await get_player_starship_from_transponder(ctx.bot, transponder_code)
+
+        if c_ship is None:
+            return await ctx.respond(embed=ErrorEmbed(description="Ship not found"), ephemeral=True)
+
+        character: PlayerCharacter = await get_character_from_char_id(ctx.bot, c_ship.character_id)
+
+        if character is None:
+            return await ctx.respond(
+                embed=ErrorEmbed(description=f"No character information found for character id {c_ship.character_id}"),
+                ephemeral=True)
+        elif character.guild_id != ctx.guild_id:
+            return await ctx.respond(embed=ErrorEmbed(description=f"Character not from your server."), ephemeral=True)
+
+        c_ship.tier = tier
+
+        async with ctx.bot.db.acquire() as conn:
+            await conn.execute(update_starship(c_ship))
+
+        embed = Embed(title="Update successful!",
+                      description=f"{character.name} updated starship:\n{c_ship.get_formatted_starship(ctx.bot.compendium)}",
+                      color=Color.random())
+        embed.set_thumbnail(url=character.get_member(ctx).display_avatar.url)
+
+        return await ctx.respond(embed=embed)
+
+    @character_admin_commands.command(
+        name="remove_ship",
+        description="Inactivates a ship"
+    )
+    async def character_upgrade_ship(self, ctx: ApplicationContext,
+                                     transponder_code: Option(str, description="Ship transponder", required=True)):
+        await ctx.defer()
+
+        c_ship: CharacterStarship = await get_player_starship_from_transponder(ctx.bot, transponder_code)
+
+        if c_ship is None:
+            return await ctx.respond(embed=ErrorEmbed(description="Ship not found"), ephemeral=True)
+
+        character: PlayerCharacter = await get_character_from_char_id(ctx.bot, c_ship.character_id)
+
+        if character is None:
+            return await ctx.respond(
+                embed=ErrorEmbed(description=f"No character information found for character id {c_ship.character_id}"),
+                ephemeral=True)
+        elif character.guild_id != ctx.guild_id:
+            return await ctx.respond(embed=ErrorEmbed(description=f"Character not from your server."), ephemeral=True)
+
+        conf = await confirm(ctx, f"Are you sure you want to inactivate `{c_ship.name} (Tier {c_ship.tier})` for {character.get_member(ctx).mention}? "
+                                  f"(Reply with yes/no)", True)
+
+        if conf is None:
+            return await ctx.respond(f'Timed out waiting for a response or invalid response.', delete_after=10)
+        elif not conf:
+            return await ctx.respond(f'Ok, cancelling.', delete_after=10)
+
+        c_ship.active = False
+
+        async with ctx.bot.db.acquire() as conn:
+            await conn.execute(update_starship(c_ship))
+
+        embed = Embed(title="Removal successful!",
+                      description=f"{character.name} removed starship:\n{c_ship.get_formatted_starship(ctx.bot.compendium)}",
+                      color=Color.random())
+        embed.set_thumbnail(url=character.get_member(ctx).display_avatar.url)
+
+        return await ctx.respond(embed=embed)
 
 
     # @character_admin_commands.command(

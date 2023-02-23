@@ -51,7 +51,8 @@ class Compendium:
         self.c_dashboard_type = []
         self.c_level_caps = []
         self.c_code_conversion = []
-        self.c_starship = []
+        self.c_starship_role = []
+        self.c_starship_size = []
 
 
     async def reload_categories(self, bot):
@@ -79,7 +80,8 @@ class Compendium:
             self.c_level_caps = await get_table_values(conn, get_c_level_caps(), LevelCaps, LevelCapsSchema())
             self.c_code_conversion = await get_table_values(conn, get_c_code_conversion(), CodeConversion,
                                                             CodeConversionSchema())
-            self.c_starship = await get_table_values(conn, get_c_starship(), Starship, StarshipSchema())
+            self.c_starship_role = await get_table_values(conn, get_c_starship_role(), StarshipRole, StarshipRoleSchema())
+            self.c_starship_size = await get_table_values(conn, get_c_starship_size(), StarshipSize, StarshipSizeSchema())
 
         end = timer()
         log.info(f'COMPENDIUM: Categories reloaded in [ {end - start:.2f} ]s')

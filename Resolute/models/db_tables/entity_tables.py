@@ -40,8 +40,6 @@ characters_table = sa.Table(
     Column("cc", Integer, nullable=False, default=0),
     Column("div_cc", Integer, nullable=False, default=0),
     Column("level", Integer, nullable=False, default=1),
-    Column("enhanced_items", String, nullable=False),
-    Column("enhanced_consumables", String, nullable=False),
     Column("player_id", BigInteger, nullable=False),
     Column("guild_id", BigInteger, nullable=False),  # ref: > guilds.id
     Column("reroll", BOOLEAN, nullable=True),
@@ -92,9 +90,10 @@ character_starship_table = sa.Table(
     "character_starship",
     metadata,
     Column("id", Integer, primary_key=True, autoincrement='auto'),
+    Column("character_id", BigInteger, nullable=False),
     Column("name", String, nullable=False),
     Column("transponder", String, nullable=True),
     Column("starship", Integer, nullable=False),
-    Column("tier_override", Integer, nullable=True),
+    Column("tier", Integer, nullable=True),
     Column("active", BOOLEAN, nullable=False, default=True)
 )

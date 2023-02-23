@@ -2,8 +2,8 @@ from datetime import datetime, timedelta
 
 from sqlalchemy.sql.selectable import FromClause
 from sqlalchemy import and_, null
-from Resolute.models.db_tables import guilds_table, adventures_table, arenas_table, character_starship_table
-from Resolute.models.db_objects import PlayerGuild, Adventure, Arena, CharacterStarship
+from Resolute.models.db_tables import guilds_table, adventures_table, arenas_table
+from Resolute.models.db_objects import PlayerGuild, Adventure, Arena
 
 
 def get_guild(guild_id: int) -> FromClause:
@@ -122,21 +122,3 @@ def select_active_arena_by_channel(channel_id: int) -> FromClause:
         and_(arenas_table.c.channel_id == channel_id, arenas_table.c.end_ts == null())
     )
 
-def insert_new_starship(starship: CharacterStarship):
-    return character_starship_table.insert().values(
-        character_id=starship.character_id,
-        name=starship.name,
-        starship=starship.starship.id,
-        active=starship.active,
-        tier_override = starship.tier_override
-    )
-
-def update_starship(starship: CharacterStarship):
-    return character_starship_table.update()\
-        .where(character_starship_table.c.id == starship.id)\
-        .values(
-        namee=starship.name,
-        transponder=starship.transponder,
-        active=starship.active,
-        tier_override=starship.tier_override
-    )

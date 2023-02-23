@@ -34,8 +34,6 @@ class CharacterSchema(Schema):
     div_cc = fields.Integer(data_key="div_cc", required=True)
     credits = fields.Integer(data_key="credits", required=True)
     level = fields.Integer(data_key="level", required=True)
-    enhanced_items = fields.String(data_key="enhanced_items", required=True)
-    enhanced_consumables = fields.String(data_key="enhanced_consumables", required=True)
     player_id = fields.Integer(data_key="player_id", required=True)
     guild_id = fields.Integer(data_key="guild_id", required=True)
     reroll = fields.Boolean(data_key="reroll", required=False, default=False)
@@ -151,10 +149,11 @@ class ArenaSchema(Schema):
 
 class CharacterStarshipSchema(Schema):
     id = fields.Integer(data_key="id", required=True)
+    character_id = fields.Integer(data_key="character_id", required=True)
     name = fields.String(data_key="name", required=True)
     transponder = fields.String(data_key="transponder", allow_none=True, required=False)
     starship = fields.Method(None, "load_starship")
-    tier_override = fields.Integer(data_key="tier_override", required=False, default=None, allow_none=True)
+    tier = fields.Integer(data_key="tier", required=False, default=None, allow_none=True)
     active = fields.Boolean(data_key="active", required=True)
 
     def __init__(self, compendium, **kwargs):
@@ -166,4 +165,4 @@ class CharacterStarshipSchema(Schema):
         return CharacterStarship(**data)
 
     def load_starship(self, value):
-        return self.compendium.get_object("c_starship", value)
+        return self.compendium.get_object("c_starship_role", value)

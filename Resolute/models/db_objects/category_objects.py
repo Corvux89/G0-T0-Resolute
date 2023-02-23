@@ -91,7 +91,7 @@ class DashboardType(object):
 
 
 class LevelCaps(object):
-    def __init__(self, id, max_cc, max_items, max_consumable):
+    def __init__(self, id, max_cc):
         """
         :param id: int
         :param max_gold: int
@@ -100,8 +100,6 @@ class LevelCaps(object):
 
         self.id = id
         self.max_cc = max_cc
-        self.max_items = max_items
-        self.max_consumable = max_consumable
 
 
 class AdventureRewards(object):
@@ -123,10 +121,16 @@ class CodeConversion(object):
         self.id = id
         self.value = value
 
-class Starship(object):
-    def __init__(self, id, value, tier, size, abbreviation):
+class StarshipRole(object):
+    def __init__(self, id, value, size):
         self.id = id
         self.value = value
-        self.tier = tier
         self.size = size
-        self.abbreviation = abbreviation
+
+    def get_size(self, compendium):
+        return compendium.get_object("c_starship_size", self.size)
+
+class StarshipSize(object):
+    def __init__(self, id, value):
+        self.id = id
+        self.value = value

@@ -32,8 +32,6 @@ class PlayerCharacter(object):
     credits: int
     cc: int
     div_cc: int
-    enhanced_items: str
-    enhanced_consumables: str
     level: int
     active: bool
     reroll: bool
@@ -153,20 +151,15 @@ class CharacterStarship(object):
     character_id: int
     name: str
     transponder: str
-    starship: Starship
-    tier_override: int | None = None
+    starship: StarshipRole
+    tier: int | None = None
     active: bool = True
 
     def __init__(self, **kwargs):
         for key, value in kwargs.items():
             setattr(self, key, value)
 
-    def get_formatted_starship(self):
-        if self.tier_override and self.tier_override > self.starship.tier:
-            tier = self.tier_override
-        else:
-            tier = self.starship.tier
-
-        return f"**{self.name}** *(Tier {tier} {self.starship.value})*: {self.transponder}"
+    def get_formatted_starship(self, compendium):
+        return f"**{self.name}** *({self.starship.get_size(compendium).value} {self.starship.value} {self.tier})*: {self.transponder}"
 
 

@@ -9,7 +9,7 @@ from discord import SlashCommandGroup, Option, ApplicationContext, Member, Embed
 from discord.ext import commands
 from Resolute.bot import G0T0Bot
 from Resolute.helpers import remove_fledgling_role, get_character_quests, get_character, get_player_character_class, \
-    create_logs, get_level_cap, get_or_create_guild, confirm, is_admin
+    create_logs, get_level_cap, get_or_create_guild, confirm, is_admin, get_player_starships
 from Resolute.helpers.autocomplete_helpers import *
 from Resolute.models.db_objects import PlayerCharacter, PlayerCharacterClass, DBLog, LevelCaps, PlayerGuild, \
     CharacterStarship
@@ -146,13 +146,14 @@ class Character(commands.Cog):
                 ephemeral=True)
 
         class_ary: List[PlayerCharacterClass] = await get_player_character_class(ctx.bot, character.id)
+        ship_ary: List[CharacterStarship] = await get_player_starships(ctx.bot, character.id)
 
         caps: LevelCaps = get_level_cap(character, g, ctx.bot.compendium)
 
         if character.level < 3:
             character = await get_character_quests(ctx.bot, character)
 
-        await ctx.respond(embed=CharacterGetEmbed(character, class_ary, caps, ctx))
+        await ctx.respond(embed=CharacterGetEmbed(character, class_ary, caps, ctx, ship_ary))
 
     @character_admin_commands.command(
         name="level",
@@ -450,16 +451,18 @@ class Character(commands.Cog):
 
 
     @character_admin_commands.command(
-        name="add_starship",
-        description="Associates a starship with a player"
+        name="ship_add",
+        description="Adds a starship to a player"
     )
     async def character_add_starship(self, ctx:ApplicationContext,
                                      player: Option(Member, description="Starship Owner", required=True),
-                                     model: Option(str, autocomplete=starship_autocomplete, required=True,
+                                     size: Option(str, autocomplete=starship_size_autocomplete, required=True,
                                                    description="Starship model"),
-                                     name: Option(str, description="Starship Name", required=True),
-                                     tier_override: Option(bool, description="Overrides ship base tier", required=False,
-                                                           default=None)):
+                                     role: Option(str, autocomplete=starship_role_autocomplete, required=True,
+                                                  description="Starship Role"),
+                                     tier: Option(int, description="Overrides ship base tier", required=True,
+                                                           default=0, min_value=0, max_value=5),
+                                     name: Option(str, description="Starship Name", required=True)):
         await ctx.defer()
 
         character: PlayerCharacter = await get_character(ctx.bot, player.id, ctx.guild_id)
@@ -469,21 +472,16 @@ class Character(commands.Cog):
                 embed=ErrorEmbed(description=f"No character information found for {player.mention}"),
                 ephemeral=True)
 
-        s_model = ctx.bot.compendium.get_object("c_starship", model)
+        s_role = ctx.bot.compendium.get_object("c_starship_role", role)
+        s_size = ctx.bot.compendium.get_object("c_starship_size", size)
 
-        if s_model is None:
+        if s_role is None:
             return await ctx.respond(embed=ErrorEmbed(description="Invalid starship model"), ephemeral=True)
+        elif s_role.size != s_size.id:
+            return await ctx.respond(embed=ErrorEmbed(description="Invalid role for starship size"), ephemeral=True)
 
-        base_str = name[:4]
-
-        if len(base_str) < 4:
-            base_str += "".join(random.choices(string.ascii_letters, k=(4-len(base_str))))
-
-
-
-
-        c_starship: CharacterStarship = CharacterStarship(character_id=character.id, name=name, starship=s_model,
-                                                          tier_override=tier_override)
+        c_starship: CharacterStarship = CharacterStarship(character_id=character.id, name=name, starship=s_role,
+                                                          tier_override=tier)
 
         async with ctx.bot.db.acquire() as conn:
             results = await conn.execute(insert_new_starship(c_starship))
@@ -506,7 +504,7 @@ class Character(commands.Cog):
         base_str = binascii.hexlify(bytes(base_str, encoding='utf-8'))
         base_str = base_str.decode("utf-8")
 
-        c_starship.transponder = f"{c_starship.starship.abbreviation}_{base_str}_BD:{c_starship.id}"
+        c_starship.transponder = f"{c_starship.starship.get_size(ctx.bot.compendium).value[:2]}{c_starship.starship.value[:3]}_{base_str}_BD:{c_starship.id}"
 
         async with ctx.bot.db.acquire() as conn:
             await conn.execute(update_starship(c_starship))
@@ -517,7 +515,6 @@ class Character(commands.Cog):
         embed.set_thumbnail(url=player.display_avatar.url)
 
         return await ctx.respond(embed=embed)
-
 
 
 

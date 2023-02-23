@@ -5,9 +5,9 @@ from discord import ApplicationContext, Member, Bot, Role
 
 from Resolute.compendium import Compendium
 from Resolute.models.db_objects import PlayerCharacter, PlayerCharacterClass, PlayerGuild, LevelCaps, CharacterStarship
-from Resolute.models.schemas import CharacterSchema, PlayerCharacterClassSchema
+from Resolute.models.schemas import CharacterSchema, PlayerCharacterClassSchema, CharacterStarshipSchema
 from Resolute.queries import get_log_by_player_and_activity, get_active_character, get_character_class, \
-    get_character_from_id
+    get_character_from_id, get_character_starships
 
 
 async def remove_fledgling_role(ctx: ApplicationContext, member: Member, reason: Optional[str]):
@@ -117,6 +117,22 @@ async def get_player_character_class(bot: Bot, char_id: int) -> List[PlayerChara
         return None
     else:
         return class_ary
+
+
+async def get_player_starships(bot: Bot, char_id: int) -> List[CharacterStarship] | None:
+    ship_ary = []
+
+    async with bot.db.acquire() as conn:
+        async for row in conn.execute(get_character_starships(char_id)):
+            if row is not None:
+                ship: CharacterStarship = CharacterStarshipSchema(bot.compendium).load(row)
+                ship_ary.append(ship)
+
+    if len(ship_ary) == 0:
+        return None
+    else:
+        return ship_ary
+
 
 # TODO: Fix this to figure out caps
 def get_level_cap(character: PlayerCharacter, guild: PlayerGuild, compendium: Compendium, adjust: bool=True) -> LevelCaps:

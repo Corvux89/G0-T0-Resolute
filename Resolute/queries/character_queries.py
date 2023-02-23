@@ -1,8 +1,8 @@
 from sqlalchemy import and_
 from sqlalchemy.sql import FromClause
 
-from Resolute.models.db_objects import PlayerCharacter, PlayerCharacterClass
-from Resolute.models.db_tables import characters_table, character_class_table
+from Resolute.models.db_objects import PlayerCharacter, PlayerCharacterClass, CharacterStarship
+from Resolute.models.db_tables import characters_table, character_class_table, character_starship_table
 
 
 def get_active_character(player_id: int, guild_id: int) -> FromClause:
@@ -89,3 +89,34 @@ def get_characters(guild_id: int) -> FromClause:
     return characters_table.select().where(
         and_(characters_table.c.active == True, characters_table.c.guild_id == guild_id)
     ).order_by(characters_table.c.id.desc())
+
+
+def insert_new_starship(starship: CharacterStarship):
+    return character_starship_table.insert().values(
+        character_id=starship.character_id,
+        name=starship.name,
+        starship=starship.starship.id,
+        active=starship.active,
+        tier_override = starship.tier_override
+    ).returning(character_starship_table)
+
+
+def update_starship(starship: CharacterStarship):
+    return character_starship_table.update()\
+        .where(character_starship_table.c.id == starship.id)\
+        .values(
+        name=starship.name,
+        transponder=starship.transponder,
+        active=starship.active,
+        tier_override=starship.tier_override
+    )
+
+def get_character_starships(char_id: int) -> FromClause:
+    return character_starship_table.select().where(
+        and_(character_starship_table.c.character_id == char_id, character_starship_table.c.active == True)
+    ).order_by(character_starship_table.c.id.asc())
+
+def get_starship_by_transponder(tran_code: str) -> FromClause:
+    return character_starship_table.select.where(
+        and_(character_starship_table.c.transponder == tran_code, character_starship_table.c.active == True)
+    )

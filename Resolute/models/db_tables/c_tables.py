@@ -105,13 +105,18 @@ c_code_conversion_table = sa.Table(
     Column("value", Integer, nullable=False)
 )
 
-c_starship_table = sa.Table(
-    "c_starship",
+
+c_starship_role_table = sa.Table(
+    "c_starship_role",
     metadata,
     Column("id", Integer, primary_key=True),
     Column("value", String, nullable=False),
-    Column("tier", Integer, nullable=False),
-    Column("size", String, nullable=False),
-    Column("abbreviation", String, nullable=False)
+    Column("size", Integer, )
 )
 
+c_starship_size_table = sa.Table(
+    "c_starship_size",
+    metadata,
+    Column("id", Integer, primary_key=True),
+    Column("value", String, nullable=False)
+)

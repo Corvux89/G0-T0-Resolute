@@ -167,4 +167,4 @@ class CharacterStarshipSchema(Schema):
         return CharacterStarship(**data)
 
     def load_starship(self, value):
-        return self.compendium.get_object("c_starship", value)
+        return self.compendium.get_object("c_starship_role", value)

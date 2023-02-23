@@ -153,7 +153,7 @@ class CharacterStarship(object):
     character_id: int
     name: str
     transponder: str
-    starship: Starship
+    starship: StarshipRole
     tier_override: int | None = None
     active: bool = True
 

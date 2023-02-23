@@ -126,13 +126,19 @@ class CodeConversionSchema(Schema):
     def make_code_conversion(self, data, **kwargs):
         return CodeConversion(**data)
 
-class StarshipSchema(Schema):
+class StarshipRoleSchema(Schema):
     id = fields.Integer(data_key="id", required=True)
     value = fields.String(data_key="value", required=True)
-    tier = fields.Integer(data_key="tier", required=True)
-    size = fields.String(data_key="size", required=True)
-    abbreviation = fields.String(data_key="abbreviation", required=True)
+    size = fields.Integer(data_key="size", required=True)
 
     @post_load
-    def make_starship(self, data, **kwargs):
-        return Starship(**data)
+    def make_starship_role(self, data, **kwargs):
+        return StarshipRole(**data)
+
+class StarshipSizeSchema(Schema):
+    id = fields.Integer(data_key="id", required=True)
+    value = fields.String(data_key="value", required=True)
+
+    @post_load
+    def make_starship_size(self, data, **kwargs):
+        return StarshipSize(**data)

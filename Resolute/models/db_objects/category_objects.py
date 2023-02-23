@@ -148,10 +148,16 @@ class CodeConversion(object):
         self.id = id
         self.value = value
 
-class Starship(object):
-    def __init__(self, id, value, tier, size, abbreviation):
+class StarshipRole(object):
+    def __init__(self, id, value, size):
         self.id = id
         self.value = value
-        self.tier = tier
         self.size = size
-        self.abbreviation = abbreviation
+
+    def get_size(self, compendium):
+        return compendium.get_object("c_starship_size", self.size)
+
+class StarshipSize(object):
+    def __init__(self, id, value):
+        self.id = id
+        self.value = value

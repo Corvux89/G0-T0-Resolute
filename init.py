@@ -8,7 +8,7 @@ from discord import Intents, ApplicationContext, Embed
 from discord.ext import commands
 from Resolute.bot import G0T0Bot
 from Resolute.constants import BOT_TOKEN, DEFAULT_PREFIX, DEBUG_GUILDS
-from Resolute.helpers import get_character, get_player_adventures
+from Resolute.helpers import get_character, get_player_adventures, is_admin
 from Resolute.models.db_objects import PlayerCharacter
 
 intents = Intents.default()
@@ -55,6 +55,17 @@ for filename in listdir('Resolute/cogs'):
 async def ping(ctx):
     print("Pong")
     await ctx.send(f'Pong! Latency is {round(bot.latency * 1000)}ms.')
+
+@bot.command(name="asay")
+@commands.check(is_admin)
+async def admin_say(ctx: ApplicationContext, channel_id, msg):
+    channel = discord.utils.get(ctx.guild.channels, id=int(channel_id))
+    if channel is not None:
+        try:
+            await channel.send(msg)
+        except:
+            log.warning('Unable to send message')
+    return await ctx.respond("No channel found")
 
 
 @bot.event

@@ -158,15 +158,14 @@ class ArenaStatusEmbed(Embed):
                            inline=False)
 
 
-class AdventureEPEmbed(Embed):
-    def __init__(self, ctx: ApplicationContext, adventure: Adventure, ep: int):
+class AdventureRewardEmbed(Embed):
+    def __init__(self, ctx: ApplicationContext, adventure: Adventure, cc: int):
         super().__init__(
             title="Adventure Rewards",
             description=f"**Adventure:** {adventure.name}\n"
                         f"**Adventure Tier:** {adventure.tier.id}\n"
-                        f"**EP Earned:** {ep}\n"
-                        f"**EP Earned to date:** {adventure.ep}\n"
-                        f"*Note: Rewards are 1/2 of your diversion caps for each EP*\n",
+                        f"**CC Earned:** {cc}\n"
+                        f"**CC Earned to date:** {adventure.cc}\n",
             color=Color.random()
         )
 
@@ -197,7 +196,7 @@ class AdventureStatusEmbed(Embed):
             title=f"Adventure Status - {adventure.name}",
             description=f"**Adventure Role:** {adventure.get_adventure_role(ctx).mention}\n"
                         f"**Adventure Tier:** {adventure.tier.id}\n"
-                        f"**EP Earned to date:** {adventure.ep}\n",
+                        f"**CC Earned to date:** {adventure.cc}\n",
             color=Color.random()
         )
 
@@ -226,7 +225,7 @@ class AdventureCloseEmbed(Embed):
             title="Adventure Complete!",
             description=f"**Adventure:** {adventure.name}\n"
                         f"**Tier:** {adventure.tier.id}\n"
-                        f"**Total EP:** {adventure.ep}\n"
+                        f"**Total CC:** {adventure.cc}\n"
         )
         self.add_field(
             name="DM(s)",

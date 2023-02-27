@@ -103,7 +103,7 @@ class AdventureSchema(Schema):
     dms = fields.List(fields.Integer, data_key="dms", required=True)
     tier = fields.Method(None, "load_tier")
     category_channel_id = fields.Integer(data_key="category_channel_id", required=True)
-    ep = fields.Integer(data_key="ep", required=True)
+    cc = fields.Integer(data_key="cc", required=True)
     created_ts = fields.Method(None, "load_timestamp")
     end_ts = fields.Method(None, "load_timestamp", allow_none=True)
 

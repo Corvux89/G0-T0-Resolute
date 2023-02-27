@@ -9,21 +9,18 @@ from discord import ApplicationContext, Option, SlashCommandGroup, Role, Member
 from discord.ext import commands
 from Resolute.bot import G0T0Bot
 from Resolute.helpers import update_dm, get_adventure, get_character, get_adventure_from_role, is_admin, \
-    get_player_adventures, get_player_character_class, confirm
-from Resolute.models.db_objects import Adventure, PlayerCharacter, PlayerCharacterClass
-from Resolute.models.embeds import AdventureCloseEmbed, ErrorEmbed, AdventureStatusEmbed, AdventuresEmbed
-from Resolute.queries import insert_new_adventure, update_adventure
+    get_player_adventures, get_player_character_class, confirm, create_logs
+from Resolute.models.db_objects import Adventure, PlayerCharacter, PlayerCharacterClass, Activity
+from Resolute.models.embeds import AdventureCloseEmbed, ErrorEmbed, AdventureStatusEmbed, AdventuresEmbed, \
+    AdventureRewardEmbed
+from Resolute.models.schemas import CharacterSchema
+from Resolute.queries import insert_new_adventure, update_adventure, get_multiple_characters
 
 log = logging.getLogger(__name__)
 
 
 def setup(bot: commands.Bot):
     bot.add_cog(Adventures(bot))
-
-
- # TODO: Add @Spectator role option for view only into all IC channels; @Quester for sign-ups and spectator for viewing
- # TODO: Script for modifing/integrating @Spectator role
- # TODO: Set tier command
 
 class Adventures(commands.Cog):
     bot: G0T0Bot  # Typing annotation for my IDE's sake
@@ -151,7 +148,7 @@ class Adventures(commands.Cog):
             tier = ctx.bot.compendium.get_object("c_adventure_tier", 1)
 
             adventure = Adventure(guild_id=ctx.guild.id,name=adventure_name, role_id=adventure_role.id, dms=[dm.id], tier=tier,
-                                  category_channel_id=new_adventure_category.id, ep=0)
+                                  category_channel_id=new_adventure_category.id, cc=0)
 
             async with ctx.bot.db.acquire() as conn:
                 await conn.execute(insert_new_adventure(adventure))
@@ -470,6 +467,42 @@ class Adventures(commands.Cog):
             await conn.execute(update_adventure(adventure))
 
         return await ctx.respond(embed=AdventureStatusEmbed(ctx, adventure))
+
+    @adventure_commands.command(
+        name="reward",
+        description="Grants adventure rewards to the players of a given adventure role"
+    )
+    async def ep_log(self, ctx: ApplicationContext,
+                     cc: Option(int, description="The number of cc to give rewards for")):
+        await ctx.defer()
+
+        adventure: Adventure = await get_adventure(ctx.bot, ctx.channel.category_id)
+
+        if adventure is None:
+            return await ctx.respond(embed=ErrorEmbed(description="No adventure associated with this channel"))
+        elif ctx.author.id not in adventure.dms and not is_admin(ctx):
+            return await ctx.respond(embed=ErrorEmbed(description="Error: You either need to be the DM for this "
+                                                                  "adventure or Senate to do this."))
+
+        role = adventure.get_adventure_role(ctx)
+
+
+        players = [p.id for p in role.members]
+        adventure.cc += cc
+
+        char_act: Activity = ctx.bot.compendium.get_object("c_activity", "ADVENTURE")
+        dm_act: Activity = ctx.bot.compendium.get_object("c_activity", "ADVENTURE_DM")
+
+        async with ctx.bot.db.acquire() as conn:
+            await conn.execute(update_adventure(adventure))
+            async for row in await conn.execute(get_multiple_characters(players, ctx.guild.id)):
+                if row is not None:
+                    character: PlayerCharacter = CharacterSchema(ctx.bot.compendium).load(row)
+
+                    activity = char_act if character.player_id not in adventure.dms else dm_act
+                    await create_logs(ctx, character, activity, adventure.name, cc, 0, adventure)
+
+        await ctx.respond(embed=AdventureRewardEmbed(ctx, adventure, cc))
 
 
 

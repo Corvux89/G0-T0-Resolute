@@ -101,7 +101,7 @@ class Adventure(object):
     dms: List[int]
     tier: AdventureTier
     category_channel_id: int
-    ep: int
+    cc: int
 
     def __init__(self, **kwargs):
         for key, value in kwargs.items():

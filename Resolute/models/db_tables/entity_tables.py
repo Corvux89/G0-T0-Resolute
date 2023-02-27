@@ -81,7 +81,7 @@ adventures_table = sa.Table(
     Column("dms", sa.ARRAY(BigInteger), nullable=False),  # ref: <> characters.player_id
     Column("tier", Integer, nullable=False),  # ref: > c_adventure_tier.id
     Column("category_channel_id", BigInteger, nullable=False),
-    Column("ep", Integer, nullable=False, default=0),
+    Column("cc", Integer, nullable=False, default=0),
     Column("created_ts", DateTime(timezone=False), nullable=False, default=datetime.utcnow),
     Column("end_ts", DateTime(timezone=False), nullable=True),
 )

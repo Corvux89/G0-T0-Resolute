@@ -53,18 +53,6 @@ class ArenaTier(object):
         self.avg_level = avg_level
         self.max_phases = max_phases
 
-
-class AdventureTier(object):
-    def __init__(self, id, avg_level):
-        """
-        :param id: int
-        :param avg_level: int
-        """
-
-        self.id = id
-        self.avg_level = avg_level
-
-
 class Activity(object):
     def __init__(self, id, value, cc, diversion):
         """
@@ -100,21 +88,6 @@ class LevelCaps(object):
 
         self.id = id
         self.max_cc = max_cc
-
-
-class AdventureRewards(object):
-    def __init__(self, id, ep, tier, rarity = None):
-        """
-        :param id: int
-        :param ep: int
-        :param tier: int
-        :param rarity: int
-        """
-
-        self.id = id
-        self.ep = ep
-        self.tier = tier
-        self.rarity = rarity
 
 class CodeConversion(object):
     def __init__(self, id, value):

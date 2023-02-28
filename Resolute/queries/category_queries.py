@@ -18,10 +18,6 @@ def get_c_character_species() -> FromClause:
 def get_c_arena_tier() -> FromClause:
     return c_arena_tier_table.select()
 
-
-def get_c_adventure_tier() -> FromClause:
-    return c_adventure_tier_table.select()
-
 def get_c_activity() -> FromClause:
     return c_activity_table.select()
 
@@ -31,10 +27,6 @@ def get_c_dashboard_type() -> FromClause:
 
 def get_c_level_caps() -> FromClause:
     return c_level_caps_table.select()
-
-
-def get_c_adventure_rewards() -> FromClause:
-    return c_adventure_rewards_table.select()
 
 def get_c_code_conversion() -> FromClause:
     return c_code_conversion_table.select()

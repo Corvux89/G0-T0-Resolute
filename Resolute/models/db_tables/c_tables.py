@@ -40,13 +40,6 @@ c_arena_tier_table = sa.Table(
     Column("max_phases", Integer, nullable=False)
 )
 
-c_adventure_tier_table = sa.Table(
-    "c_adventure_tier",
-    metadata,
-    Column("id", Integer, primary_key=True, autoincrement='auto'),
-    Column("avg_level", Integer, nullable=False),
-)
-
 c_activity_table = sa.Table(
     "c_activity",
     metadata,
@@ -68,16 +61,6 @@ c_level_caps_table = sa.Table(
     metadata,
     Column("id", Integer, primary_key=True),
     Column("max_cc", Integer, nullable=False)
-)
-
-
-c_adventure_rewards_table = sa.Table(
-    "c_adventure_rewards",
-    metadata,
-    Column("id", Integer, primary_key=True),
-    Column("ep", Integer, nullable=False),
-    Column("tier", Integer, nullable=False),
-    Column("rarity", Integer, nullable=True)  # ref: > c_rarity.id
 )
 
 c_code_conversion_table = sa.Table(

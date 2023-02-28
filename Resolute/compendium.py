@@ -44,8 +44,6 @@ class Compendium:
         self.c_character_species = []
         self.c_character_class = []
         self.c_character_archetype = []
-        self.c_arena_tier = []
-        self.c_adventure_tier = []
         self.c_adventure_rewards = []
         self.c_activity = []
         self.c_dashboard_type = []
@@ -70,10 +68,6 @@ class Compendium:
             self.c_character_archetype = await get_table_values(conn, get_c_character_archetype(), CharacterArchetype,
                                                                 CharacterArchetypeSchema())
             self.c_arena_tier = await get_table_values(conn, get_c_arena_tier(), ArenaTier, ArenaTierSchema())
-            self.c_adventure_tier = await get_table_values(conn, get_c_adventure_tier(), AdventureTier,
-                                                           AdventureTierSchema())
-            self.c_adventure_rewards = await get_table_values(conn, get_c_adventure_rewards(), AdventureRewards,
-                                                              AdventureRewardsSchema())
             self.c_activity = await get_table_values(conn, get_c_activity(), Activity, ActivitySchema())
             self.c_dashboard_type = await get_table_values(conn, get_c_dashboard_type(), DashboardType,
                                                            DashboardTypeSchema())

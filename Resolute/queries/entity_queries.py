@@ -47,9 +47,8 @@ def insert_new_adventure(adventure: Adventure):
         name=adventure.name,
         role_id=adventure.role_id,
         dms=adventure.dms,
-        tier=adventure.tier.id,
         category_channel_id=adventure.category_channel_id,
-        ep=adventure.ep,
+        cc=adventure.cc,
         end_ts=None if not hasattr(adventure, "end_ts") else adventure.end_ts,
     )
 
@@ -61,9 +60,8 @@ def update_adventure(adventure: Adventure):
         name=adventure.name,
         role_id=adventure.role_id,
         dms=adventure.dms,
-        tier=adventure.tier.id,
         category_channel_id=adventure.category_channel_id,
-        ep=adventure.ep,
+        cc=adventure.cc,
         end_ts=None if not hasattr(adventure, "end_ts") else adventure.end_ts
     )
 

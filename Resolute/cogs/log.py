@@ -7,7 +7,7 @@ from Resolute.helpers import get_character, create_logs, get_adventure_from_role
     get_log, get_character_from_char_id, confirm, is_admin
 from Resolute.bot import G0T0Bot
 from Resolute.models.db_objects import PlayerCharacter, Activity, DBLog, Adventure, LevelCaps, PlayerGuild
-from Resolute.models.embeds import ErrorEmbed, HxLogEmbed, DBLogEmbed, AdventureEPEmbed
+from Resolute.models.embeds import ErrorEmbed, HxLogEmbed, DBLogEmbed, AdventureRewardEmbed
 from Resolute.models.schemas import LogSchema, CharacterSchema
 from Resolute.queries import get_n_player_logs, get_multiple_characters, update_adventure, update_log, update_guild, \
     update_character, insert_new_log
@@ -96,7 +96,8 @@ class Log(commands.Cog):
                         player: Option(Member, description="Player receiving the bonus", required=True),
                         reason: Option(str, description="The reason for the bonus", required=True),
                         cc: Option(int, description="The amount of Chain Codes", default=0, min_value=0, max_value=5),
-                        credits: Option(int, description="The amount of Credits", default=0, min_value=0, max_value=250)):
+                        credits: Option(int, description="The amount of Credits", default=0, min_value=0, max_value=250),
+                        level_token: Option(int, description="Leveling token", default=0, min_value=0, max_value=1)):
         """
         Log a bonus for a player
         :param ctx: Context
@@ -117,50 +118,10 @@ class Log(commands.Cog):
 
         act: Activity = ctx.bot.compendium.get_object("c_activity", "BONUS")
 
-        log_entry = await create_logs(ctx, character, act, reason, cc, credits)
+        log_entry = await create_logs(ctx, character, act, reason, cc, credits, level_token)
 
         await ctx.respond(embed=DBLogEmbed(ctx, log_entry, character))
 
-
-    # # TODO: Figure out how EP will work
-    # @log_commands.command(
-    #     name="ep",
-    #     description="Grants adventure rewards to the players of a given adventure role"
-    # )
-    # @commands.check(is_admin)
-    # async def ep_log(self, ctx: ApplicationContext,
-    #                  role: Option(Role, description="The adventure role to get rewards", required=True),
-    #                  ep: Option(int, description="The number of EP to give rewards for")):
-    #     await ctx.defer()
-    #
-    #     adventure: Adventure = await get_adventure_from_role(ctx.bot, role.id)
-    #
-    #     if adventure is None:
-    #         return await ctx.respond(embed=ErrorEmbed(description=f"No adventure found for {role.mention}"),
-    #                                  ephemeral=True)
-    #     elif len(role.members) == 0:
-    #         return await ctx.respond(embed=ErrorEmbed(description=f"Role {role.mention} has no members. Aborting."),
-    #                                  ephemeral=True)
-    #
-    #     players = [p.id for p in role.members]
-    #     adventure.ep += ep
-    #
-    #     char_act: Activity = ctx.bot.compendium.get_object("c_activity", "ADVENTURE")
-    #     dm_act: Activity = ctx.bot.compendium.get_object("c_activity", "ADVENTURE_DM")
-    #     g: PlayerGuild = await get_or_create_guild(ctx.bot.db, ctx.guild_id)
-    #
-    #     async with ctx.bot.db.acquire() as conn:
-    #         await conn.execute(update_adventure(adventure))
-    #         async for row in await conn.execute(get_multiple_characters(players, ctx.guild.id)):
-    #             if row is not None:
-    #                 character: PlayerCharacter = CharacterSchema(ctx.bot.compendium).load(row)
-    #                 cap: LevelCaps = get_level_cap(character, g, ctx.bot.compendium)
-    #
-    #                 activity = char_act if character.player_id not in adventure.dms else dm_act
-    #                 await create_logs(ctx, character, activity, adventure.name, (cap.max_gold * activity.ratio) * ep,
-    #                                   (cap.max_xp * activity.ratio) * ep, adventure)
-    #
-    #     await ctx.respond(embed=AdventureEPEmbed(ctx, adventure, ep))
 
     @log_commands.command(
         name="null",
@@ -191,7 +152,8 @@ class Log(commands.Cog):
             else:
                 conf = await confirm(ctx,
                                      f"Are you sure you want to inactivate nullify the `{log_entry.activity.value}` log"
-                                     f" for {character.name} for ( {log_entry.cc} Chain Codes and {log_entry.credits} credits?)?"
+                                     f" for {character.name} for ( {log_entry.cc} Chain Codes, {log_entry.credits} credits"
+                                     f"and {log_entry.token} leveling tokens?"
                                      f" (Reply with yes/no)", True)
 
                 if conf is None:
@@ -203,6 +165,7 @@ class Log(commands.Cog):
 
                 character.cc -= log_entry.cc
                 character.credits -= log_entry.credits
+                character.token -= log_entry.token
 
                 if log_entry.created_ts > g.last_reset:
                     if log_entry.activity.diversion:
@@ -213,7 +176,7 @@ class Log(commands.Cog):
 
                 act = ctx.bot.compendium.get_object("c_activity", "MOD")
 
-                mod_log = DBLog(author=ctx.bot.user.id, cc=-log_entry.cc, credits=-log_entry.credits,
+                mod_log = DBLog(author=ctx.bot.user.id, cc=-log_entry.cc, credits=-log_entry.credits, token=-log_entry.token,
                                 character_id=character.id, activity=act, notes=note, invalid=False)
                 log_entry.invalid = True
 
@@ -227,43 +190,6 @@ class Log(commands.Cog):
                 result_log = LogSchema(ctx.bot.compendium).load(row)
 
                 await ctx.respond(embed=DBLogEmbed(ctx, result_log, character))
-
-
-    # TODO: I'll worry about this later
-    # @log_commands.command(
-    #     name="global",
-    #     description="Manually log a global event for a character"
-    # )
-    # async def global_log(self, ctx: ApplicationContext,
-    #                      player: Option(Member, description="Player receiving the bonus", required=True),
-    #                      global_name: Option(str, description="The reason for the bonus", required=True),
-    #                      gold: Option(int, description="The amount of gold", default=0, min_value=0, max_value=2000,
-    #                                   required=True),
-    #                      xp: Option(int, description="The amount of xp", default=0, min_value=0, max_value=150,
-    #                                 required=True)):
-    #     """
-    #     Log a global event for a player
-    #     :param ctx: Context
-    #     :param player: Member
-    #     :param global_name: Reason for the bonus
-    #     :param gold: Amount of gold
-    #     :param xp: Amount of xp
-    #     """
-    #     await ctx.defer()
-    #
-    #     character: PlayerCharacter = await get_character(ctx.bot, player.id, ctx.guild_id)
-    #
-    #     if character is None:
-    #         print(f"No character information found for player [ {player.id} ], aborting")
-    #         return await ctx.respond(
-    #             embed=ErrorEmbed(description=f"No character information found for {player.mention}"),
-    #             ephemeral=True)
-    #
-    #     act: Activity = ctx.bot.compendium.get_object("c_activity", "GLOBAL")
-    #
-    #     log_entry = await create_logs(ctx, character, act, global_name, gold, xp)
-    #
-    #     await ctx.respond(embed=DBLogEmbed(ctx, log_entry, character, False))
 
     @log_commands.command(
         name="buy",

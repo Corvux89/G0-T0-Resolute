@@ -48,15 +48,6 @@ class ArenaTierSchema(Schema):
         return ArenaTier(**data)
 
 
-class AdventureTierSchema(Schema):
-    id = fields.Integer(data_key="id", required=True)
-    avg_level = fields.Integer(data_key="avg_level", required=True)
-
-    @post_load
-    def make_c_adventure_tier(self, data, **kwargs):
-        return AdventureTier(**data)
-
-
 class ActivitySchema(Schema):
     id = fields.Integer(data_key="id", required=True)
     value = fields.String(data_key="value", required=True)
@@ -84,17 +75,6 @@ class LevelCapsSchema(Schema):
     @post_load
     def make_level_caps(self, data, **kwargs):
         return LevelCaps(**data)
-
-
-class AdventureRewardsSchema(Schema):
-    id = fields.Integer(data_key="id", required=True)
-    ep = fields.Integer(data_key="ep", required=True)
-    tier = fields.Integer(data_key="tier", required=True)
-    rarity = fields.Integer(data_key="rarity", required=False, allow_none=True)
-
-    @post_load
-    def make_adventure_reward(self, data, **kwargs):
-        return AdventureRewards(**data)
 
 class CodeConversionSchema(Schema):
     id = fields.Integer(data_key="id", require=True)

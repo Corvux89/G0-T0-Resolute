@@ -39,7 +39,7 @@ def get_activity_amount(character: PlayerCharacter, activity: Activity, cap: Lev
 
 
 async def create_logs(ctx: ApplicationContext | Any, character: PlayerCharacter, activity: Activity, notes: str = None,
-                      cc: int = 0, credits: int = 0, adventure: Adventure = None) -> DBLog:
+                      cc: int = 0, credits: int = 0, token: int=0,  adventure: Adventure = None) -> DBLog:
     """
     Primary function to create any Activity log
 
@@ -68,11 +68,12 @@ async def create_logs(ctx: ApplicationContext | Any, character: PlayerCharacter,
 
     char_cc, char_credits = get_activity_amount(character, activity, cap, cc, credits)
 
-    char_log = DBLog(author=author_id, cc=char_cc, credits=char_credits, character_id=character.id, activity=activity,
-                     notes=notes, adventure_id=adventure_id, invalid=False)
+    char_log = DBLog(author=author_id, cc=char_cc, credits=char_credits, token=token, character_id=character.id,
+                     activity=activity, notes=notes, adventure_id=adventure_id, invalid=False)
 
     character.cc += char_cc
     character.credits += char_credits
+    character.token += token
 
     if activity.diversion:
         character.div_cc += char_cc

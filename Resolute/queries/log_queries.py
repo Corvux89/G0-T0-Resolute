@@ -12,6 +12,7 @@ def insert_new_log(log: DBLog):
         author=log.author,
         cc=log.cc,
         credits=log.credits,
+        token=log.token,
         character_id=log.character_id,
         activity=log.activity.id,
         notes=None if not hasattr(log, "notes") else log.notes,
@@ -48,6 +49,8 @@ def update_log(log: DBLog):
     return log_table.update().where(log_table.c.id == log.id).values(
         activity=log.activity.id,
         notes=None if not hasattr(log, "notes") else log.notes,
+        credits=log.credits,
         cc=log.cc,
+        token=log.token,
         invalid=log.invalid
     )

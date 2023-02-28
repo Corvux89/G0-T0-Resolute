@@ -34,6 +34,7 @@ class CharacterSchema(Schema):
     div_cc = fields.Integer(data_key="div_cc", required=True)
     credits = fields.Integer(data_key="credits", required=True)
     level = fields.Integer(data_key="level", required=True)
+    token = fields.Integer(data_key="token", required=True)
     player_id = fields.Integer(data_key="player_id", required=True)
     guild_id = fields.Integer(data_key="guild_id", required=True)
     reroll = fields.Boolean(data_key="reroll", required=False, default=False)
@@ -73,6 +74,7 @@ class LogSchema(Schema):
     author = fields.Integer(data_key="author", required=True)
     cc = fields.Integer(data_key="cc", required=True)
     credits = fields.Integer(data_key="credits", required=True)
+    token = fields.Integer(data_key="token", required=True)
     created_ts = fields.Method(None, "load_timestamp")
     character_id = fields.Integer(data_key="character_id", required=True)
     activity = fields.Method(None, "load_activity")
@@ -101,7 +103,6 @@ class AdventureSchema(Schema):
     name = fields.String(data_key="name", required=True)
     role_id = fields.Integer(data_key="role_id", required=True)
     dms = fields.List(fields.Integer, data_key="dms", required=True)
-    tier = fields.Method(None, "load_tier")
     category_channel_id = fields.Integer(data_key="category_channel_id", required=True)
     cc = fields.Integer(data_key="cc", required=True)
     created_ts = fields.Method(None, "load_timestamp")
@@ -114,9 +115,6 @@ class AdventureSchema(Schema):
     @post_load
     def make_adventure(self, data, **kwargs):
         return Adventure(**data)
-
-    def load_tier(self, value):
-        return self.compendium.get_object("c_adventure_tier", value)
 
     def load_timestamp(self, value):  # Marshmallow doesn't like loading DateTime for some reason. This is a workaround
         return value

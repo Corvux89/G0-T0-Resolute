@@ -96,7 +96,8 @@ class Log(commands.Cog):
                         player: Option(Member, description="Player receiving the bonus", required=True),
                         reason: Option(str, description="The reason for the bonus", required=True),
                         cc: Option(int, description="The amount of Chain Codes", default=0, min_value=0, max_value=5),
-                        credits: Option(int, description="The amount of Credits", default=0, min_value=0, max_value=250)):
+                        credits: Option(int, description="The amount of Credits", default=0, min_value=0, max_value=250),
+                        level_token: Option(int, description="Leveling token", default=0, min_value=0, max_value=1)):
         """
         Log a bonus for a player
         :param ctx: Context
@@ -117,7 +118,7 @@ class Log(commands.Cog):
 
         act: Activity = ctx.bot.compendium.get_object("c_activity", "BONUS")
 
-        log_entry = await create_logs(ctx, character, act, reason, cc, credits)
+        log_entry = await create_logs(ctx, character, act, reason, cc, credits, level_token)
 
         await ctx.respond(embed=DBLogEmbed(ctx, log_entry, character))
 
@@ -151,7 +152,8 @@ class Log(commands.Cog):
             else:
                 conf = await confirm(ctx,
                                      f"Are you sure you want to inactivate nullify the `{log_entry.activity.value}` log"
-                                     f" for {character.name} for ( {log_entry.cc} Chain Codes and {log_entry.credits} credits?)?"
+                                     f" for {character.name} for ( {log_entry.cc} Chain Codes, {log_entry.credits} credits"
+                                     f"and {log_entry.token} leveling tokens?"
                                      f" (Reply with yes/no)", True)
 
                 if conf is None:
@@ -163,6 +165,7 @@ class Log(commands.Cog):
 
                 character.cc -= log_entry.cc
                 character.credits -= log_entry.credits
+                character.token -= log_entry.token
 
                 if log_entry.created_ts > g.last_reset:
                     if log_entry.activity.diversion:
@@ -173,7 +176,7 @@ class Log(commands.Cog):
 
                 act = ctx.bot.compendium.get_object("c_activity", "MOD")
 
-                mod_log = DBLog(author=ctx.bot.user.id, cc=-log_entry.cc, credits=-log_entry.credits,
+                mod_log = DBLog(author=ctx.bot.user.id, cc=-log_entry.cc, credits=-log_entry.credits, token=-log_entry.token,
                                 character_id=character.id, activity=act, notes=note, invalid=False)
                 log_entry.invalid = True
 

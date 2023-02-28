@@ -32,6 +32,7 @@ class PlayerCharacter(object):
     credits: int
     cc: int
     div_cc: int
+    token: int
     level: int
     active: bool
     reroll: bool
@@ -99,7 +100,6 @@ class Adventure(object):
     name: str
     role_id: int
     dms: List[int]
-    tier: AdventureTier
     category_channel_id: int
     cc: int
 
@@ -115,6 +115,7 @@ class DBLog(object):
     author: int
     cc: int
     credits: int
+    token: int
     character_id: int
     activity: Activity
     notes: str

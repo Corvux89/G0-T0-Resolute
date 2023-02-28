@@ -28,7 +28,7 @@ class NewCharacterEmbed(Embed):
 
 class CharacterGetEmbed(Embed):
     def __init__(self, character: PlayerCharacter, char_class: List[PlayerCharacterClass],
-                 cap: LevelCaps, ctx: ApplicationContext, char_ships: List[CharacterStarship] | None):
+                 cap: LevelCaps, ctx: ApplicationContext, g: PlayerGuild, char_ships: List[CharacterStarship] | None):
         super().__init__(title=f"Character Info - {character.name}")
 
         self.description = f"**Class:**" if len(char_class) == 1 else f"**Classes:**"
@@ -37,6 +37,9 @@ class CharacterGetEmbed(Embed):
                             f"**Level:** {character.level}\n" \
                             f"**Credits:** {character.credits}\n" \
                             f"**Chain Codes:** {character.cc} \n"
+
+        if g.max_level >= 10:
+            self.description += f"**Leveling Tokens:** {character.token}\n"
 
         self.color = character.get_member(ctx).color
         self.set_thumbnail(url=character.get_member(ctx).display_avatar.url)
@@ -80,6 +83,7 @@ class HxLogEmbed(Embed):
                     f"**Activity:** {log.activity.value}\n" \
                     f"**Chain Codes:** {log.cc}\n" \
                     f"**Credits:** {log.credits}\n" \
+                    f"**Level Tokens:** {log.token}" \
                     f"**Invalidated?:** {log.invalid}\n"
 
             if log.notes is not None:
@@ -101,6 +105,8 @@ class DBLogEmbed(Embed):
                 description += f"**Chain Codes:** {log_entry.cc}\n"
             if log_entry.credits is not None and log_entry.credits != 0:
                 description += f"**Credits:** {log_entry.credits}\n"
+            if log_entry.token is not None and log_entry.token != 0:
+                description += f"**Level Tokens:** {log_entry.token}\n"
         if hasattr(log_entry, "notes") and log_entry.notes is not None:
             description += f"**Notes:** {log_entry.notes}\n"
 
@@ -163,7 +169,6 @@ class AdventureRewardEmbed(Embed):
         super().__init__(
             title="Adventure Rewards",
             description=f"**Adventure:** {adventure.name}\n"
-                        f"**Adventure Tier:** {adventure.tier.id}\n"
                         f"**CC Earned:** {cc}\n"
                         f"**CC Earned to date:** {adventure.cc}\n",
             color=Color.random()
@@ -195,7 +200,6 @@ class AdventureStatusEmbed(Embed):
         super().__init__(
             title=f"Adventure Status - {adventure.name}",
             description=f"**Adventure Role:** {adventure.get_adventure_role(ctx).mention}\n"
-                        f"**Adventure Tier:** {adventure.tier.id}\n"
                         f"**CC Earned to date:** {adventure.cc}\n",
             color=Color.random()
         )
@@ -224,7 +228,6 @@ class AdventureCloseEmbed(Embed):
         super().__init__(
             title="Adventure Complete!",
             description=f"**Adventure:** {adventure.name}\n"
-                        f"**Tier:** {adventure.tier.id}\n"
                         f"**Total CC:** {adventure.cc}\n"
         )
         self.add_field(

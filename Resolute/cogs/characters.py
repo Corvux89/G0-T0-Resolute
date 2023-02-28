@@ -93,7 +93,7 @@ class Character(commands.Cog):
 
         # Create new object
         character = PlayerCharacter(player_id=player.id, guild_id=ctx.guild.id, name=name, species=c_species,
-                                    cc=cc, credits=credits, div_cc=0, level=level,
+                                    cc=cc, credits=credits, div_cc=0, level=level, token=0,
                                     active=True, reroll=False, enhanced_items=str(item_d),
                                     enhanced_consumables=str(item_d))
 
@@ -158,7 +158,7 @@ class Character(commands.Cog):
         if character.level < 3:
             character = await get_character_quests(ctx.bot, character)
 
-        await ctx.respond(embed=CharacterGetEmbed(character, class_ary, caps, ctx, ship_ary))
+        await ctx.respond(embed=CharacterGetEmbed(character, class_ary, caps, ctx, g, ship_ary, ))
 
     @character_admin_commands.command(
         name="level",
@@ -192,6 +192,8 @@ class Character(commands.Cog):
                                 f"Completed RPs: {character.completed_rps}/{character.needed_rps}\n"
                                 f"Completed Arenas: {character.completed_arenas}/{character.needed_arenas}"),
                     ephemeral=True)
+        elif character.level >= 9 and character.token < 1:
+            return await ctx.respond(embed=ErrorEmbed(description="Player doesn't have the necessary leveling token"))
         elif character.level + 1 > g.max_level:
             return await ctx.respond(embed=ErrorEmbed(description="Player level cannot exceed server max level."))
 
@@ -201,8 +203,10 @@ class Character(commands.Cog):
         character.level += 1
 
         act = ctx.bot.compendium.get_object("c_activity", "LEVEL")
-
-        await create_logs(ctx, character, act, "Player level up", 0, 0)
+        if character.level >= 10:
+            await create_logs(ctx, character, act, "Player level up", 0, 0, -1)
+        else:
+            await create_logs(ctx, character, act, "Player level up", 0, 0)
 
         async with ctx.bot.db.acquire() as conn:
             await conn.execute(update_character(character))

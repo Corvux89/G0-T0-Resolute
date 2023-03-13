@@ -29,6 +29,15 @@ async def get_dashboard_from_category_channel_id(ctx: ApplicationContext, catego
 
 async def get_last_message(channel: TextChannel) -> discord.Message | None:
     last_message = channel.last_message
+
+    if last_message is None:
+        try:
+            hx = [msg async  for msg in channel.history(limit=1)]
+        except discord.errors.HTTPException as e:
+            pass
+
+        if len(hx) > 0:
+            last_message = hx[0]
     if last_message is None:
         try:
             lm_id = channel.last_message_id

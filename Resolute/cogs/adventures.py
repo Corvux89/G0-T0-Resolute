@@ -1,5 +1,6 @@
 import logging
 from datetime import datetime
+from math import ceil
 from typing import List
 
 import discord
@@ -453,8 +454,14 @@ class Adventures(commands.Cog):
                 if row is not None:
                     character: PlayerCharacter = CharacterSchema(ctx.bot.compendium).load(row)
 
-                    activity = char_act if character.player_id not in adventure.dms else dm_act
-                    await create_logs(ctx, character, activity, adventure.name, cc, 0, 0, adventure)
+                    if character.player_id in adventure.dms:
+                        activity = dm_act
+                        log_cc = cc + ceil(cc * .25)
+                    else:
+                        activity = char_act
+                        log_cc = cc
+
+                    await create_logs(ctx, character, activity, adventure.name, log_cc, 0, 0, adventure)
 
         await ctx.respond(embed=AdventureRewardEmbed(ctx, adventure, cc))
 

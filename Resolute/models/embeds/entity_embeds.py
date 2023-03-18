@@ -83,7 +83,7 @@ class HxLogEmbed(Embed):
                     f"**Activity:** {log.activity.value}\n" \
                     f"**Chain Codes:** {log.cc}\n" \
                     f"**Credits:** {log.credits}\n" \
-                    f"**Level Tokens:** {log.token}" \
+                    f"**Level Tokens:** {log.token}\n" \
                     f"**Invalidated?:** {log.invalid}\n"
 
             if log.notes is not None:

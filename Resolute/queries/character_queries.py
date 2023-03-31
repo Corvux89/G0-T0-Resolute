@@ -1,4 +1,3 @@
-from numpy import long
 from sqlalchemy import and_
 from sqlalchemy.sql import FromClause
 

@@ -10,6 +10,7 @@ from typing import List
 from discord import SlashCommandGroup, Option, ApplicationContext, Member, Embed, Color
 from discord.ext import commands
 from Resolute.bot import G0T0Bot
+from Resolute.constants import THUMBNAIL
 from Resolute.helpers import remove_fledgling_role, get_character_quests, get_character, get_player_character_class, \
     create_logs, get_level_cap, get_or_create_guild, confirm, is_admin, get_player_starships, \
     get_player_starship_from_transponder, get_character_from_char_id
@@ -489,7 +490,7 @@ class Character(commands.Cog):
         elif s_role.size != s_size.id:
             return await ctx.respond(embed=ErrorEmbed(description="Invalid role for starship size"), ephemeral=True)
 
-        c_starship: CharacterStarship = CharacterStarship(character_id=character.id, name=ship_name, starship=s_role,
+        c_starship: CharacterStarship = CharacterStarship(character_id=[character.id], name=ship_name, starship=s_role,
                                                           tier=tier)
 
         async with ctx.bot.db.acquire() as conn:
@@ -539,14 +540,21 @@ class Character(commands.Cog):
         if c_ship is None:
             return await ctx.respond(embed=ErrorEmbed(description="Ship not found"), ephemeral=True)
 
-        character: PlayerCharacter = await get_character_from_char_id(ctx.bot, c_ship.character_id)
+        players = []
+        for c in c_ship.character_id:
+            character: PlayerCharacter = await get_character_from_char_id(ctx.bot, c)
+            if character is None:
+                log.error(f"STARSHIP: Error with {c_ship.transponder} owner ID {c} not found on server")
+            elif character.guild_id != ctx.guild_id:
+                return ctx.respond(embed=ErrorEmbed(description=f"Invalid ship/players"))
+            else:
+                players.append(character)
 
-        if character is None:
-            return await ctx.respond(
-                embed=ErrorEmbed(description=f"No character information found for character id {c_ship.character_id}"),
-                ephemeral=True)
-        elif character.guild_id != ctx.guild_id:
-            return await ctx.respond(embed=ErrorEmbed(description=f"Character not from your server."), ephemeral=True)
+
+        if len(players) == 0:
+            return await ctx.respond(embed=ErrorEmbed(
+                description=f"No active owners found for this ship."),
+            ephemeral=True)
 
         c_ship.tier = tier
 
@@ -554,9 +562,11 @@ class Character(commands.Cog):
             await conn.execute(update_starship(c_ship))
 
         embed = Embed(title="Update successful!",
-                      description=f"{character.name} updated starship:\n{c_ship.get_formatted_starship(ctx.bot.compendium)}",
+                      description=f"Updated starship:\n{c_ship.get_formatted_starship(ctx.bot.compendium)}",
                       color=Color.random())
-        embed.set_thumbnail(url=character.get_member(ctx).display_avatar.url)
+        embed.set_thumbnail(url=THUMBNAIL)
+        embed.add_field(name="Owners",
+                        value=f"\n".join([f"\u200b \u200b \u200b {c.get_member_mention(ctx)}" for c in players]))
 
         return await ctx.respond(embed=embed)
 
@@ -573,16 +583,27 @@ class Character(commands.Cog):
         if c_ship is None:
             return await ctx.respond(embed=ErrorEmbed(description="Ship not found"), ephemeral=True)
 
-        character: PlayerCharacter = await get_character_from_char_id(ctx.bot, c_ship.character_id)
+        players = []
+        for c in c_ship.character_id:
+            character: PlayerCharacter = await get_character_from_char_id(ctx.bot, c)
+            if character is None:
+                log.error(f"STARSHIP: Error with {c_ship.transponder} owner ID {c} not found on server")
+            elif character.guild_id != ctx.guild_id:
+                return await ctx.respond(embed=ErrorEmbed(description=f"Invalid ship/players"))
+            else:
+                players.append(character)
 
-        if character is None:
-            return await ctx.respond(
-                embed=ErrorEmbed(description=f"No character information found for character id {c_ship.character_id}"),
+        if len(players) == 0:
+            return await ctx.respond(embed=ErrorEmbed(
+                description=f"No active owners found for this ship."),
                 ephemeral=True)
-        elif character.guild_id != ctx.guild_id:
-            return await ctx.respond(embed=ErrorEmbed(description=f"Character not from your server."), ephemeral=True)
+        elif len(players) == 1:
+            p_str = players[0].get_member_mention(ctx)
+        else:
+            p_str = '{}, and {}'.format(', '.join([f'{p.get_member_mention(ctx)}' for p in players[:-1]]),players[-1].get_member_mention(ctx))
 
-        conf = await confirm(ctx, f"Are you sure you want to inactivate `{c_ship.name} (Tier {c_ship.tier})` for {character.get_member(ctx).mention}? "
+        conf = await confirm(ctx, f"Are you sure you want to inactivate `{c_ship.name} (Tier {c_ship.tier})` for "
+                                  f"{p_str}? "
                                   f"(Reply with yes/no)", True)
 
         if conf is None:
@@ -601,6 +622,74 @@ class Character(commands.Cog):
         embed.set_thumbnail(url=character.get_member(ctx).display_avatar.url)
 
         return await ctx.respond(embed=embed)
+
+    @character_admin_commands.command(
+        name="modify_ship_captain",
+        description="Adds/removes a captain to a ship"
+    )
+    async def character_add_ship_captain(self, ctx: ApplicationContext,
+                                         transponder_code: Option(str, description="Ship transponder", required=True),
+                                         player: Option(Member,description="Player to add/remove", required=True),
+                                         mod_type: Option(str, description="Modification type",
+                                                          choices=["Add", "Remove"], default="Add", required=False)):
+
+        await ctx.defer()
+
+        c_ship: CharacterStarship = await get_player_starship_from_transponder(ctx.bot, transponder_code)
+
+        if c_ship is None:
+            return await ctx.respond(embed=ErrorEmbed(description="Ship not found"), ephemeral=True)
+
+        character: PlayerCharacter = await get_character(ctx.bot, player.id, ctx.guild_id)
+
+        if character is None:
+            return await ctx.respond(
+                embed=ErrorEmbed(description=f"No character information found for {player.mention}"),
+                ephemeral=True)
+
+        if mod_type.lower() == 'add':
+            if character.id in c_ship.character_id:
+                return await ctx.respond(embed=ErrorEmbed(description=f"Player already listed as a ship owner"),
+                                   ephemeral=True)
+            else:
+                c_ship.character_id.append(character.id)
+        elif mod_type.lower() == 'remove':
+            if character.id not in c_ship.character_id:
+                return await ctx.respond(embed=ErrorEmbed(description=f"Player not listed as a ship owner"),
+                                   ephemeral=True)
+            else:
+                c_ship.character_id.remove(character.id)
+        else:
+            return await ctx.respond(embed=ErrorEmbed(description=f"I don't know what you want. Either add or remove them..."),
+                               ephemeral=True)
+
+        async with ctx.bot.db.acquire() as conn:
+            await conn.execute(update_starship(c_ship))
+
+        players = []
+        for c in c_ship.character_id:
+            character: PlayerCharacter = await get_character_from_char_id(ctx.bot, c)
+            if character is None:
+                log.error(f"STARSHIP: Error with {c_ship.transponder} owner ID {c} not found on server")
+            elif character.guild_id != ctx.guild_id:
+                return await ctx.respond(embed=ErrorEmbed(description=f"Invalid ship/players"))
+            else:
+                players.append(character)
+
+        if len(players) == 0:
+            return await ctx.respond(embed=ErrorEmbed(
+                description=f"No active owners found for this ship."),
+                ephemeral=True)
+
+        embed = Embed(title="Update successful!",
+                      description=f"Updated starship:\n{c_ship.get_formatted_starship(ctx.bot.compendium)}",
+                      color=Color.random())
+        embed.set_thumbnail(url=THUMBNAIL)
+        embed.add_field(name="Owners",
+                        value=f"\n".join([f"\u200b \u200b \u200b {c.get_member_mention(ctx)}" for c in players]))
+
+        return await ctx.respond(embed=embed)
+        
 
 
     # @character_admin_commands.command(

@@ -57,11 +57,12 @@ class CharacterGetEmbed(Embed):
                            value=f"\u200b \u200b \u200b Level {character.level} RPs: "
                                  f"{pretty_completed_rps}/{character.needed_rps}\n"
                                  f"\u200b \u200b \u200b Level {character.level} Arenas: "
-                                 f"{pretty_completed_arenas}/{character.needed_arenas}")
+                                 f"{pretty_completed_arenas}/{character.needed_arenas}", inline=False)
 
         if char_ships and len(char_ships) > 0:
             self.add_field(name="Starships: ",
-                           value=f"\n".join([f"\u200b \u200b \u200b {s.get_formatted_starship(ctx.bot.compendium)}" for s in char_ships]))
+                           value=f"\n".join([f"\u200b \u200b \u200b {s.get_formatted_starship(ctx.bot.compendium)}" for s in char_ships]),
+                           inline=False)
 
 
 class HxLogEmbed(Embed):

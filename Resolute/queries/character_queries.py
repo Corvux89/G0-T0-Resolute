@@ -1,3 +1,4 @@
+from numpy import long
 from sqlalchemy import and_
 from sqlalchemy.sql import FromClause
 
@@ -104,6 +105,7 @@ def update_starship(starship: CharacterStarship):
     return character_starship_table.update()\
         .where(character_starship_table.c.id == starship.id)\
         .values(
+        character_id=starship.character_id,
         name=starship.name,
         transponder=starship.transponder,
         active=starship.active,
@@ -112,7 +114,7 @@ def update_starship(starship: CharacterStarship):
 
 def get_character_starships(char_id: int) -> FromClause:
     return character_starship_table.select().where(
-        and_(character_starship_table.c.character_id == char_id, character_starship_table.c.active == True)
+        and_(character_starship_table.c.character_id.contains([char_id]), character_starship_table.c.active == True)
     ).order_by(character_starship_table.c.id.asc())
 
 def get_starship_by_transponder(tran_code: str) -> FromClause:

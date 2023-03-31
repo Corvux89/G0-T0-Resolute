@@ -1,9 +1,11 @@
-import math
+import logging
 import datetime
 import calendar
 from typing import List
 import discord
 from Resolute.models.db_objects.category_objects import *
+
+log = logging.getLogger(__name__)
 
 
 class PlayerCharacterClass(object):
@@ -149,7 +151,7 @@ class Arena(object):
 
 
 class CharacterStarship(object):
-    character_id: int
+    character_id: List[int]
     name: str
     transponder: str
     starship: StarshipRole

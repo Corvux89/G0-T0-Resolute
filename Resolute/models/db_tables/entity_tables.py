@@ -2,6 +2,7 @@ from datetime import datetime
 
 import sqlalchemy as sa
 from sqlalchemy import Column, Integer, BigInteger, String, BOOLEAN, DateTime, null, func
+from sqlalchemy.dialects.postgresql import ARRAY
 from Resolute.models.db_tables.base import metadata
 
 arenas_table = sa.Table(
@@ -91,7 +92,7 @@ character_starship_table = sa.Table(
     "character_starship",
     metadata,
     Column("id", Integer, primary_key=True, autoincrement='auto'),
-    Column("character_id", BigInteger, nullable=False),
+    Column("character_id", ARRAY(BigInteger), nullable=False),
     Column("name", String, nullable=False),
     Column("transponder", String, nullable=True),
     Column("starship", Integer, nullable=False),

@@ -66,7 +66,7 @@ class Character(commands.Cog):
         :param player: Member
         :param name: Name of the PlayerCharacter
         :param character_class: CharacterClass
-        :param character_race: CharacterSpecies
+        :param character_species: CharacterSpecies
         :param gold: Starting gold
         :param character_subrace: CharacterSubrace
         :param character_subclass: CharacterArchetype
@@ -86,17 +86,11 @@ class Character(commands.Cog):
         c_class = ctx.bot.compendium.get_object("c_character_class", character_class)
         c_species = ctx.bot.compendium.get_object("c_character_species", character_species)
         c_archetype = ctx.bot.compendium.get_object("c_character_archetype", character_archetype)
-        c_rarity = ctx.bot.compendium.c_rarity[0]
-
-        item_d = {}
-        for r in c_rarity:
-            item_d[r] = 0
 
         # Create new object
         character = PlayerCharacter(player_id=player.id, guild_id=ctx.guild.id, name=name, species=c_species,
                                     cc=cc, credits=credits, div_cc=0, level=level, token=0,
-                                    active=True, reroll=False, enhanced_items=str(item_d),
-                                    enhanced_consumables=str(item_d))
+                                    active=True, reroll=False)
 
         async with self.bot.db.acquire() as conn:
             results = await conn.execute(insert_new_character(character))
@@ -233,7 +227,7 @@ class Character(commands.Cog):
 
         :param ctx: Context
         :param player: Member
-        :param character_race: CharacterSpecies
+        :param character_species: CharacterSpecies
         :param character_subrace: CharacterSubrace
         """
 
@@ -692,129 +686,98 @@ class Character(commands.Cog):
         
 
 
-    # @character_admin_commands.command(
-    #     name="reroll",
-    #     description="Reroll's a character"
-    # )
-    # async def character_reroll(self, ctx: ApplicationContext,
-    #                            player: Option(Member, description="Player rerolling.", required=True),
-    #                            name: Option(str, description="Character's name", required=True),
-    #                            death_reroll: Option(bool,
-    #                                                 description="Indicate if this is a death reroll, or full reroll",
-    #                                                 required=True),
-    #                            character_class: Option(str, description="Character's initial class",
-    #                                                    autocomplete=character_class_autocomplete,
-    #                                                    required=True),
-    #                            character_race: Option(str, description="Character's race",
-    #                                                   autocomplete=character_race_autocomplete,
-    #                                                   required=True),
-    #                            gold: Option(int, description="New gold amount. If unspecified will copy old gold",
-    #                                         min=0, max=99999, required=False),
-    #                            character_subrace: Option(str, description="Character's subrace",
-    #                                                      autocomplete=character_subrace_autocomplete,
-    #                                                      required=False),
-    #                            character_subclass: Option(str, description="Character's subclass",
-    #                                                       autocomplete=character_subclass_autocomplete,
-    #                                                       required=False),
-    #                            level: Option(int, description="Level for the new character. Default is their old level",
-    #                                          min_value=1, max_value=20, required=False)):
-    #     start = timer()
-    #     await ctx.defer()
-    #
-    #     character: PlayerCharacter = await get_character(ctx.bot, player.id, ctx.guild_id)
-    #     g: PlayerGuild = await get_or_create_guild(ctx.bot.db, ctx.guild_id)
-    #
-    #     if character is None:
-    #         return await ctx.respond(
-    #             embed=ErrorEmbed(description=f"No character information found for {player.mention}"),
-    #             ephemeral=True)
-    #
-    #     # Resolve inputs
-    #     c_class = ctx.bot.compendium.get_object("c_character_class", character_class)
-    #     c_race = ctx.bot.compendium.get_object("c_character_race", character_race)
-    #     c_subclass = ctx.bot.compendium.get_object("c_character_subclass", character_subclass)
-    #     c_subrace = ctx.bot.compendium.get_object("c_character_subrace", character_subrace)
-    #
-    #     class_ary: List[PlayerCharacterClass] = await get_player_character_class(ctx.bot, character.id)
-    #
-    #     # Setup the new character
-    #     if death_reroll:
-    #         if character.xp - 1000 < 2000:
-    #             new_xp = 2000
-    #         else:
-    #             new_xp = character.xp - 1000
-    #
-    #         new_character = PlayerCharacter(player_id=player.id, guild_id=ctx.guild_id, name=name, race=c_race,
-    #                                         subrace=c_subrace, xp=new_xp, div_xp = 0,
-    #                                         gold=0, div_gold=0, active=True, reroll=True)
-    #
-    #         caps: LevelCaps = get_level_cap(new_character, g, ctx.bot.compendium, False)
-    #
-    #         if new_character.get_level() > 4:
-    #             new_character.gold = caps.max_gold * 10
-    #
-    #     else:
-    #         if level is None:
-    #             new_xp = character.xp
-    #         else:
-    #             new_xp = (level - 1) * 1000
-    #         new_character = PlayerCharacter(player_id=player.id, guild_id=ctx.guild_id, name=name, race=c_race,
-    #                                         subrace=c_subrace, xp=new_xp, div_xp=character.div_xp,
-    #                                         gold=gold if gold is not None else character.gold,
-    #                                         div_gold=character.div_gold, reroll=True, active=True)
-    #
-    #
-    #     init_faction = ctx.bot.compendium.get_object("c_faction", "Guild Initiate") if new_character.get_level() < 3 \
-    #             else ctx.bot.compendium.get_object("c_faction", "Guild Member")
-    #     new_character.faction = init_faction
-    #
-    #     # Update old character:
-    #     character.active = False
-    #
-    #     async with self.bot.db.acquire() as conn:
-    #         await conn.execute(update_character(character))
-    #         results = await conn.execute(insert_new_character(new_character))
-    #         row = await results.first()
-    #
-    #     if row is None:
-    #         log.error(f"CHARACTERS: Error writing character to DB for {ctx.guild.name} [ {ctx.guild_id} ]")
-    #         return await ctx.respond(embed=ErrorEmbed(
-    #             description=f"Something went wrong creating the character."),
-    #             ephemeral=True)
-    #
-    #     new_character: PlayerCharacter = CharacterSchema(ctx.bot.compendium).load(row)
-    #
-    #     # Character Class
-    #     new_class = PlayerCharacterClass(character_id=new_character.id, primary_class=c_class,
-    #                                         subclass=c_subclass, active=True)
-    #     for c in class_ary:
-    #         c.active = False
-    #
-    #     async  with self.bot.db.acquire() as conn:
-    #         for c in class_ary:
-    #             await conn.execute(update_class(c))
-    #
-    #         await conn.execute(insert_new_class(new_class))
-    #
-    #     # Role cleanup
-    #     current_faction_roles = get_faction_roles(ctx.bot.compendium, player)
-    #     if current_faction_roles is not None:
-    #         await player.remove_roles(*current_faction_roles, reason=f"Player Reroll")
-    #
-    #     # Inital Log
-    #     act = ctx.bot.compendium.get_object("c_activity", "BONUS")
-    #
-    #     if death_reroll:
-    #         desc = "Initial log for death reroll"
-    #     else:
-    #         desc = "Initial log for reroll character"
-    #
-    #     log_entry: DBLog = await create_logs(ctx, new_character, act, desc)
-    #
-    #     end = timer()
-    #     log.info(f'Time to reroll character": [ {end - start:.2f} ]s')
-    #
-    #     return await ctx.respond(embed=NewCharacterEmbed(new_character, player, new_class, log_entry, ctx))
+    @character_admin_commands.command(
+        name="reroll",
+        description="Reroll's a character"
+    )
+    async def character_reroll(self, ctx: ApplicationContext,
+                               player: Option(Member, description="Player rerolling.", required=True),
+                               name: Option(str, description="Character's name", required=True),
+                               character_class: Option(str, description="Character's initial class",
+                                                       autocomplete=character_class_autocomplete,
+                                                       required=True),
+                               character_species: Option(str, description="Character's race",
+                                                         autocomplete=character_species_autocomplete,
+                                                         required=True),
+                               credits: Option(int, description="New credit amount. If unspecified will copy old gold",
+                                            min=0, max=99999, required=False),
+                               cc: Option(int, description="New chain code amount. If unspecified will copy old CC",
+                                          min=0, max=999999, required=False),
+                               character_archetype: Option(str, description="Character's archetype",
+                                                          autocomplete=character_archetype_autocomplete,
+                                                          required=False),
+                               level: Option(int, description="Level for the new character. Default is their old level",
+                                             min_value=1, max_value=20, required=False)):
+        start = timer()
+        await ctx.defer()
+
+        character: PlayerCharacter = await get_character(ctx.bot, player.id, ctx.guild_id)
+        g: PlayerGuild = await get_or_create_guild(ctx.bot.db, ctx.guild_id)
+
+        if character is None:
+            return await ctx.respond(
+                embed=ErrorEmbed(description=f"No character information found for {player.mention}"),
+                ephemeral=True)
+
+        # Resolve inputs
+        c_class = ctx.bot.compendium.get_object("c_character_class", character_class)
+        c_species = ctx.bot.compendium.get_object("c_character_species", character_species)
+        c_archetype = ctx.bot.compendium.get_object("c_character_archetype", character_archetype)
+
+        class_ary: List[PlayerCharacterClass] = await get_player_character_class(ctx.bot, character.id)
+        ship_ary: List[CharacterStarship] = await get_player_starships(ctx.bot, character.id)
+
+        new_character = PlayerCharacter(player_id=player.id, guild_id=ctx.guild_id, name=name, species=c_species,
+                                        cc=character.cc if not cc else cc,
+                                        credits=character.credits if not credits else credits,
+                                        div_cc=character.div_cc, level=character.level if not level else level,
+                                        token=0, reroll=True, active=True)
+
+        # Update old character:
+        character.active = False
+
+        async with self.bot.db.acquire() as conn:
+            await conn.execute(update_character(character))
+            results = await conn.execute(insert_new_character(new_character))
+            row = await results.first()
+
+        if row is None:
+            log.error(f"CHARACTERS: Error writing character to DB for {ctx.guild.name} [ {ctx.guild_id} ]")
+            return await ctx.respond(embed=ErrorEmbed(
+                description=f"Something went wrong creating the character."),
+                ephemeral=True)
+
+        new_character: PlayerCharacter = CharacterSchema(ctx.bot.compendium).load(row)
+
+        # Character Class
+        new_class = PlayerCharacterClass(character_id=new_character.id, primary_class=c_class,
+                                         archetype=c_archetype, active=True)
+        for c in class_ary:
+            c.active = False
+
+        async  with self.bot.db.acquire() as conn:
+            for c in class_ary:
+                await conn.execute(update_class(c))
+
+            await conn.execute(insert_new_class(new_class))
+
+        # Starships
+        for s in ship_ary:
+            s.active = False
+
+        async with self.bot.db.acquire() as conn:
+            for s in ship_ary:
+                await conn.execute(update_starship(s))
+
+        # Inital Log
+        act = ctx.bot.compendium.get_object("c_activity", "BONUS")
+
+        log_entry: DBLog = await create_logs(ctx, new_character, act, "Inital log for character reroll")
+
+        end = timer()
+        log.info(f'Time to reroll character": [ {end - start:.2f} ]s')
+
+        return await ctx.respond(embed=NewCharacterEmbed(new_character, player, new_class, log_entry, ctx))
     #
     #
     #

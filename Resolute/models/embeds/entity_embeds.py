@@ -299,8 +299,7 @@ class AdventuresEmbed(Embed):
                  adventures: List, phrase: str | None = None):
         super().__init__(title=f"Adventure Info - {character.name}")
 
-        faction_role = character.faction.get_faction_role(ctx)
-        self.color = faction_role.color if faction_role else Color.dark_grey()
+        self.color = Color.dark_grey()
         self.set_thumbnail(url=character.get_member(ctx).display_avatar.url)
 
         self.description = f'**Class:**' if len(class_ary) == 1 else f'**Classes:**'

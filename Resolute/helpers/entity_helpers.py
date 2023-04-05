@@ -2,7 +2,7 @@ import bisect
 import re
 import random
 from datetime import datetime
-from statistics import mean
+from statistics import mode
 
 import aiopg
 import discord
@@ -183,7 +183,7 @@ async def update_arena_tier(ctx: discord.Interaction, db: aiopg.sa.Engine, arena
                     character: PlayerCharacter = CharacterSchema(compendium).load(row)
                     chars.append(character)
         if len(chars) > 0:
-            avg_level = mean(c.level for c in chars)
+            avg_level = mode(c.level for c in chars)
             tier = bisect.bisect([t.avg_level for t in list(compendium.c_arena_tier[0].values())], avg_level)
             arena.tier = compendium.get_object("c_arena_tier", tier)
 

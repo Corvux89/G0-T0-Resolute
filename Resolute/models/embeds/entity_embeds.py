@@ -296,7 +296,7 @@ class GuildStatus(Embed):
 
 class AdventuresEmbed(Embed):
     def __init__(self, ctx: ApplicationContext, character: PlayerCharacter, class_ary: List[PlayerCharacterClass],
-                 adventures: List, phrase: str | None = None):
+                 adventures: List, phrases: list[str] | None = None):
         super().__init__(title=f"Adventure Info - {character.name}")
 
         self.color = Color.dark_grey()
@@ -304,7 +304,7 @@ class AdventuresEmbed(Embed):
 
         self.description = f'**Class:**' if len(class_ary) == 1 else f'**Classes:**'
         self.description+= f"\n".join([f" {c.get_formatted_class()}" for c in class_ary])
-        self.description+=f'\n**Level:** {character.get_level()}'
+        self.description+=f'\n**Level:** {character.level}'
 
 
 
@@ -320,12 +320,13 @@ class AdventuresEmbed(Embed):
                            value="\n".join([f'\u200b - {a.get_adventure_role(ctx).mention}' for a in adventures['dm']]),
                            inline=False)
 
-        if phrase is not None:
-            outString = phrase.split("|")
-            if len(outString)>1:
-                self.add_field(name=outString[0], value=outString[1], inline=False)
-            else:
-                self.add_field(name=outString[0], value="", inline=False)
+        if len(phrases) >0:
+            for p in phrases:
+                outString = p.split("|")
+                if len(outString)>1:
+                    self.add_field(name=outString[0], value=outString[1], inline=False)
+                else:
+                    self.add_field(name=outString[0], value="", inline=False)
 
 
 

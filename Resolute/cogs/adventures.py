@@ -37,7 +37,8 @@ class Adventures(commands.Cog):
     )
     async def adventure_get(self, ctx: ApplicationContext,
                             player: Option(Member, description="Player to get the information of", required=False),
-                            phrase: Option(str, description="Additional question/phrase to add", required=False)):
+                            phrase: Option(str, description="Additional question/phrase to add", required=False),
+                            phrase2: Option(str, description="Additional question/phrase to add", required=False)):
         await ctx.defer()
 
         if player is None:
@@ -53,7 +54,14 @@ class Adventures(commands.Cog):
         class_ary: List[PlayerCharacterClass] = await get_player_character_class(ctx.bot, character.id)
         adventures = await get_player_adventures(ctx.bot, player)
 
-        return await ctx.respond(embed=AdventuresEmbed(ctx, character, class_ary, adventures, phrase))
+        phrases = []
+        if phrase:
+            phrases.append(phrase)
+
+        if phrase2:
+            phrases.append(phrase2)
+
+        return await ctx.respond(embed=AdventuresEmbed(ctx, character, class_ary, adventures, phrases))
 
 
     @adventure_commands.command(

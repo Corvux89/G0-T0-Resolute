@@ -102,6 +102,13 @@ class Adventures(commands.Cog):
             if bots_role := discord.utils.get(ctx.guild.roles, name="Bots"):
                 category_permissions[bots_role] = discord.PermissionOverwrite(view_channel=True,
                                                                               send_messages=True)
+
+            if goto_role := discord.utils.get(ctx.guild.roles, name="G0-T0 Resolute"):
+                category_permissions[goto_role] = discord.PermissionOverwrite(view_channel=True,
+                                                                              send_messages=True,
+                                                                              manage_messages=True,
+                                                                              manage_channels=True)
+
             category_permissions[ctx.guild.default_role] = discord.PermissionOverwrite(
                 view_channel=False,
                 send_messages=False

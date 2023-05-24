@@ -113,7 +113,7 @@ async def on_member_remove(member):
         character: PlayerCharacter = await get_character(bot, member.id, member.guild.id)
         adventures = await get_player_adventures(bot, member)
 
-        embed = Embed(title=f'{member.name}#{member.discriminator}')
+        embed = Embed(title=f'{str(member)}')
 
         if member.nick is not None:
             embed.title += f" ( `{member.nick}` )"

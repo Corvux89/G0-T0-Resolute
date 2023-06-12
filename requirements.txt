@@ -60,7 +60,7 @@ psycopg2-binary==2.9.5
     # via
     #   aiopg
     #   sqlalchemy
-py-cord==2.2.2
+py-cord==2.4.1
     # via -r requirements.in
 pyproject-hooks==1.0.0
     # via build

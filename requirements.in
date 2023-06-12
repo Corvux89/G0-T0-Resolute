@@ -1,5 +1,5 @@
 aiopg
-py-cord==2.2.2
+py-cord==2.4.1
 aiopg[sa]
 pip-tools
 texttable

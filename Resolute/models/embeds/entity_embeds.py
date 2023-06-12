@@ -22,7 +22,7 @@ class NewCharacterEmbed(Embed):
                                      f"**Starting Level:** {character.level}\n",
                          color=discord.Color.random())
         self.set_thumbnail(url=player.display_avatar.url)
-        self.set_footer(text=f"Created by: {ctx.author} - Log #: {log.id}",
+        self.set_footer(text=f"Created by: {ctx.author.name} - Log #: {log.id}",
                         icon_url=ctx.author.display_avatar.url)
 
 
@@ -113,7 +113,7 @@ class DBLogEmbed(Embed):
 
         self.description = description
         self.set_thumbnail(url=player.display_avatar.url)
-        self.set_footer(text=f"Logged by {ctx.author} - ID: {log_entry.id}",
+        self.set_footer(text=f"Logged by {ctx.author.name} - ID: {log_entry.id}",
                         icon_url=ctx.author.display_avatar.url)
 
 
@@ -192,7 +192,7 @@ class AdventureRewardEmbed(Embed):
             )
 
         self.set_thumbnail(url=THUMBNAIL)
-        self.set_footer(text=f"Logged by {ctx.author}",
+        self.set_footer(text=f"Logged by {ctx.author.name}",
                         icon_url=ctx.author.display_avatar.url)
 
 
@@ -248,7 +248,7 @@ class AdventureCloseEmbed(Embed):
         )
 
         self.set_thumbnail(url=THUMBNAIL)
-        self.set_footer(text=f"Logged by {ctx.author}",
+        self.set_footer(text=f"Logged by {ctx.author.name}",
                         icon_url=ctx.author.display_avatar.url)
 
 

@@ -133,6 +133,17 @@ class Admin(commands.Cog):
                 files.append(file_name[:-3])
         await ctx.respond("\n".join(files))
 
+    @commands.command("overwrites")
+    @commands.check(is_owner)
+    async def overwrites(self, ctx: ApplicationContext):
+        str = f"**Channel Overwrites**\n" \
+              f"{ctx.channel.overwrites}\n\n" \
+              f"**Category Overwrites\n" \
+              f"{ctx.channel.category.overwrites}"
+
+        await ctx.send(str)
+
+
 
     # --------------------------- #
     # Private Methods

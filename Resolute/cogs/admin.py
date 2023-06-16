@@ -136,10 +136,20 @@ class Admin(commands.Cog):
     @commands.command("overwrites")
     @commands.check(is_owner)
     async def overwrites(self, ctx: ApplicationContext):
-        str = f"**Channel Overwrites**\n" \
-              f"{ctx.channel.overwrites}\n\n" \
-              f"**Category Overwrites\n" \
-              f"{ctx.channel.category.overwrites}"
+        str = f"**Channel Overwrites**\n"
+
+        for key in ctx.channel.overwrites:
+            str += f"{key.name.replace('@', '')}"
+            str += f" - {ctx.channel.overwrites[key]._values}\n"
+
+
+        str += f"\n\n**Category Overwrites**\n"
+
+        for key in ctx.channel.category.overwrites:
+            str += f"{key.name.replace('@','')}"
+            str += f"{ctx.channel.category.overwrites[key]._values}\n"
+
+
 
         await ctx.send(str)
 

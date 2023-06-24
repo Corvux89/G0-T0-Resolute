@@ -164,8 +164,7 @@ class Adventures(commands.Cog):
                                    f"IC Room: {ic_channel.mention}\n"
                                    f"OOC Room: {ooc_channel.mention}\n\n"
                                    f"{dm.mention} - Please ensure your permissions are correct in these rooms! "
-                                   f"If so, you can start adding players with /adventure add\n"
-                                   f"See /adventure help for more details.")
+                                   f"If so, you can start adding players with /adventure add")
 
             await ctx.delete()
 

@@ -12,6 +12,7 @@ from Resolute.bot import G0T0Bot
 
 log = logging.getLogger(__name__)
 
+
 def setup(bot: commands.Bot):
     bot.add_cog(Admin(bot))
 
@@ -142,18 +143,13 @@ class Admin(commands.Cog):
             str += f"{key.name.replace('@', '')}"
             str += f" - {ctx.channel.overwrites[key]._values}\n"
 
-
         str += f"\n\n**Category Overwrites**\n"
 
         for key in ctx.channel.category.overwrites:
-            str += f"{key.name.replace('@','')}"
+            str += f"{key.name.replace('@', '')}"
             str += f"{ctx.channel.category.overwrites[key]._values}\n"
 
-
-
         await ctx.send(str)
-
-
 
     # --------------------------- #
     # Private Methods

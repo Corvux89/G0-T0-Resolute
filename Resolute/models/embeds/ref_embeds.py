@@ -52,7 +52,7 @@ class GlobalEmbed(Embed):
 
 
         self.add_field(name=f"**Information for {g_event.name}**",
-                       value=f"\n *Base Chain Codes:* {g_event.base_cc} \n*# Players:* {len(active_players)}",
+                       value=f"\n *Base Chain Codes:* {g_event.base_cc:,} \n*# Players:* {len(active_players)}",
                        inline=False)
 
         if names:
@@ -66,7 +66,7 @@ class GlobalEmbed(Embed):
 
         if override_players:
             self.add_field(name="**Manual Overrides (cc)**",
-                           value="\n".join([f"\u200b {p.get_name(ctx)} ({p.cc})" for p in override_players]),
+                           value="\n".join([f"\u200b {p.get_name(ctx)} ({p.cc:,})" for p in override_players]),
                            inline=False)
 
         if gblist:
@@ -76,7 +76,7 @@ class GlobalEmbed(Embed):
 
             for player_list in chunk_players:
                 self.add_field(name="**All active players (gold, xp, # posts)**",
-                               value="\n".join(f"\u200b {p.get_name(ctx)} ({p.cc}, {p.num_messages})" for p in
+                               value="\n".join(f"\u200b {p.get_name(ctx)} ({p.cc:,}, {p.num_messages})" for p in
                                                player_list),
                                inline=False)
 

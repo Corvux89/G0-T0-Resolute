@@ -17,8 +17,8 @@ class NewCharacterEmbed(Embed):
                          description=f"**Player:** {player.mention}\n"
                                      f"**Species:** {character.species.value}\n"
                                      f"**Class:** {char_class.get_formatted_class()}\n"
-                                     f"**Starting Credits:** {character.credits}\n"
-                                     f"**Starting Chain Code:** {character.cc}\n"
+                                     f"**Starting Credits:** {character.credits:,}\n"
+                                     f"**Starting Chain Code:** {character.cc:,}\n"
                                      f"**Starting Level:** {character.level}\n",
                          color=discord.Color.random())
         self.set_thumbnail(url=player.display_avatar.url)
@@ -35,8 +35,8 @@ class CharacterGetEmbed(Embed):
         self.description += f"\n".join([f" {c.get_formatted_class()}" for c in char_class])
         self.description += f"\n**Species: ** {character.species.value}\n" \
                             f"**Level:** {character.level}\n" \
-                            f"**Credits:** {character.credits}\n" \
-                            f"**Chain Codes:** {character.cc} \n"
+                            f"**Credits:** {character.credits:,}\n" \
+                            f"**Chain Codes:** {character.cc:,} \n"
 
         if g.max_level >= 10:
             self.description += f"**Leveling Tokens:** {character.token}\n"
@@ -45,7 +45,7 @@ class CharacterGetEmbed(Embed):
         self.set_thumbnail(url=character.get_member(ctx).display_avatar.url)
 
         self.add_field(name="Weekly Limits: ",
-                       value=f"\u200b \u200b \u200b Diversion Chain Codes: {character.div_cc}/{cap.max_cc}",
+                       value=f"\u200b \u200b \u200b Diversion Chain Codes: {character.div_cc:,}/{cap.max_cc:,}",
                        inline=False)
 
         if character.level < 3:
@@ -82,8 +82,8 @@ class HxLogEmbed(Embed):
 
             value = f"**Author:** {author}\n" \
                     f"**Activity:** {log.activity.value}\n" \
-                    f"**Chain Codes:** {log.cc}\n" \
-                    f"**Credits:** {log.credits}\n" \
+                    f"**Chain Codes:** {log.cc:,}\n" \
+                    f"**Credits:** {log.credits:,}\n" \
                     f"**Level Tokens:** {log.token}\n" \
                     f"**Invalidated?:** {log.invalid}\n"
 
@@ -103,9 +103,9 @@ class DBLogEmbed(Embed):
         description = f"**Player:** {player.mention}\n"
         if show_amounts:
             if log_entry.cc is not None and log_entry.cc != 0:
-                description += f"**Chain Codes:** {log_entry.cc}\n"
+                description += f"**Chain Codes:** {log_entry.cc:,}\n"
             if log_entry.credits is not None and log_entry.credits != 0:
-                description += f"**Credits:** {log_entry.credits}\n"
+                description += f"**Credits:** {log_entry.credits:,}\n"
             if log_entry.token is not None and log_entry.token != 0:
                 description += f"**Level Tokens:** {log_entry.token}\n"
         if hasattr(log_entry, "notes") and log_entry.notes is not None:
@@ -170,8 +170,8 @@ class AdventureRewardEmbed(Embed):
         super().__init__(
             title="Adventure Rewards",
             description=f"**Adventure:** {adventure.name}\n"
-                        f"**CC Earned:** {cc}\n"
-                        f"**CC Earned to date:** {adventure.cc}\n",
+                        f"**CC Earned:** {cc:,}\n"
+                        f"**CC Earned to date:** {adventure.cc:,}\n",
             color=Color.random()
         )
 
@@ -229,7 +229,7 @@ class AdventureCloseEmbed(Embed):
         super().__init__(
             title="Adventure Complete!",
             description=f"**Adventure:** {adventure.name}\n"
-                        f"**Total CC:** {adventure.cc}\n"
+                        f"**Total CC:** {adventure.cc:,}\n"
         )
         self.add_field(
             name="DM(s)",

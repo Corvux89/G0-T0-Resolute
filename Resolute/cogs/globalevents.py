@@ -159,7 +159,7 @@ class GlobalEvents(commands.Cog):
             return await ctx.respond(f'Error: No active global event on this server', ephemeral=True)
 
         players = await get_all_players(ctx.bot, ctx.guild_id)
-        messages = await channel.history(oldest_first=True).flatten()
+        messages = await channel.history(oldest_first=True, limit=600).flatten()
 
         for msg in messages:
             if not msg.author.bot:

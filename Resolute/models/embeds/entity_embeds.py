@@ -146,7 +146,7 @@ class StarshipArenaPhaseEmbed(Embed):
         players = list(set(filter(lambda p: p.id != arena.host_id, arena_role.members)))
 
         for player in players:
-            rewards += f"{player.mention}: '{result}'"
+            rewards += f"{player.mention}: '{result}'\n"
             # rewards += ', `BONUS`\n' if bonus else '\n'
 
         super().__init__(

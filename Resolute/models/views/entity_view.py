@@ -6,7 +6,7 @@ from discord import ButtonStyle
 from discord.ui import Button
 
 from Resolute.helpers import get_arena
-from Resolute.helpers.entity_helpers import add_player_to_arena
+from Resolute.helpers.entity_helpers import add_player_to_arena, add_player_to_starship_arena
 from Resolute.models.db_objects import Arena, ArenaTier
 
 
@@ -58,7 +58,7 @@ class StarshipArenaView(discord.ui.View):
             return await interaction.response.send_message(f"Error: You are already a participant in this arena.",
                                                            ephemeral=True)
 
-        await add_player_to_arena(interaction, interaction.user, arena, self.db, interaction.client.compendium)
+        await add_player_to_starship_arena(interaction, interaction.user, arena, self.db, interaction.client.compendium)
 
 
 

@@ -141,6 +141,27 @@ async def remove_post_from_arena_board(ctx: ApplicationContext | discord.Interac
             else:
                 print(error)
 
+async def remove_post_from_starship_arena_board(ctx: ApplicationContext | discord.Interaction, member: Member):
+    """
+    Removes a Member's post from the arena-board channel
+
+    :param ctx: Context
+    :param member: Member
+    """
+
+    def predicate(message):
+        return message.author == member
+
+    if arena_board := discord.utils.get(ctx.guild.channels, name='flight-sim-board'):
+        try:
+            deleted_message = await arena_board.purge(check=predicate)
+            print(f'{len(deleted_message)} messages by {member.name} deleted from #{arena_board.name}')
+        except Exception as error:
+            if isinstance(error, discord.errors.HTTPException):
+                await ctx.send(f'Warning: deleting users\'s post(s) from {arena_board.mention} failed')
+            else:
+                print(error)
+
 
 async def add_player_to_arena(ctx: discord.Interaction, player: Member, arena: Arena,
                               db: aiopg.sa.Engine, compendium: Compendium):
@@ -174,11 +195,11 @@ async def add_player_to_starship_arena(ctx: discord.Interaction, player: Member,
     :param compendium: Compendium for category reference
     """
     await player.add_roles(arena.get_role(ctx))
-    await remove_post_from_arena_board(ctx, player)
+    await remove_post_from_starship_arena_board(ctx, player)
 
     await ctx.response.send_message(f"{player.mention} has joined the starship arena!", ephemeral=False)
 
-    await update_arena_status(ctx, arena)
+    await update_starship_arena_status(ctx, arena)
 
 
 async def update_arena_tier(ctx: discord.Interaction, db: aiopg.sa.Engine, arena: Arena, compendium: Compendium):

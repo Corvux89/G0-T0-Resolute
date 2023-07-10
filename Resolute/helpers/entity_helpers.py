@@ -10,7 +10,7 @@ from discord import ApplicationContext, Member, Role, Bot, Client
 
 from Resolute.compendium import Compendium
 from Resolute.models.db_objects import PlayerGuild, PlayerCharacter, Adventure, Arena
-from Resolute.models.embeds import ArenaStatusEmbed
+from Resolute.models.embeds import ArenaStatusEmbed, StarshipArenaStatusEmbed
 from Resolute.models.schemas import GuildSchema, CharacterSchema, AdventureSchema, ArenaSchema
 from Resolute.queries import get_guild, insert_new_guild, get_adventure_by_category_channel_id, \
     get_arena_by_channel, get_multiple_characters, update_arena, get_adventure_by_role_id, get_characters, \
@@ -162,6 +162,24 @@ async def add_player_to_arena(ctx: discord.Interaction, player: Member, arena: A
 
     await update_arena_status(ctx, arena)
 
+async def add_player_to_starship_arena(ctx: discord.Interaction, player: Member, arena: Arena,
+                              db: aiopg.sa.Engine, compendium: Compendium):
+    """
+    Adds a player to the Arena
+
+    :param ctx: Context
+    :param player: Member to add
+    :param arena: Arena to add the player to
+    :param db: Engine
+    :param compendium: Compendium for category reference
+    """
+    await player.add_roles(arena.get_role(ctx))
+    await remove_post_from_arena_board(ctx, player)
+
+    await ctx.response.send_message(f"{player.mention} has joined the starship arena!", ephemeral=False)
+
+    await update_arena_status(ctx, arena)
+
 
 async def update_arena_tier(ctx: discord.Interaction, db: aiopg.sa.Engine, arena: Arena, compendium: Compendium):
     """
@@ -205,6 +223,19 @@ async def update_arena_status(ctx: ApplicationContext | discord.Interaction, are
     if msg:
         await msg.edit(embed=embed)
 
+async def update_starship_arena_status(ctx: ApplicationContext | discord.Interaction, arena: Arena):
+    """
+    Updates the ArenaStatusEmbed
+
+    :param ctx: Context
+    :param arena: Arena
+    """
+    embed = StarshipArenaStatusEmbed(ctx, arena)
+
+    msg: discord.Message = await ctx.channel.fetch_message(arena.pin_message_id)
+
+    if msg:
+        await msg.edit(embed=embed)
 
 async def end_arena(ctx: ApplicationContext, arena: Arena):
     """

@@ -14,6 +14,7 @@ arenas_table = sa.Table(
     Column("role_id", BigInteger, nullable=False),
     Column("host_id", BigInteger, nullable=False),  # ref: > characters.player_id
     Column("tier", Integer, nullable=False, default=1),  # ref: > c_arena_tier.id
+    Column("type", Integer, nullable=False, default=1),  # ref: > c_arena_type.id
     Column("completed_phases", Integer, nullable=False, default=0),
     Column("created_ts", DateTime(timezone=False), nullable=False, default=datetime.utcnow),
     Column("end_ts", DateTime(timezone=False), nullable=True, default=null())

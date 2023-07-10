@@ -51,6 +51,8 @@ class Compendium:
         self.c_code_conversion = []
         self.c_starship_role = []
         self.c_starship_size = []
+        self.c_arena_tier = []
+        self.c_arena_type = []
 
 
     async def reload_categories(self, bot):
@@ -68,6 +70,7 @@ class Compendium:
             self.c_character_archetype = await get_table_values(conn, get_c_character_archetype(), CharacterArchetype,
                                                                 CharacterArchetypeSchema())
             self.c_arena_tier = await get_table_values(conn, get_c_arena_tier(), ArenaTier, ArenaTierSchema())
+            self.c_arena_type = await get_table_values(conn, get_c_arena_type(), ArenaType, ArenaTypeSchema())
             self.c_activity = await get_table_values(conn, get_c_activity(), Activity, ActivitySchema())
             self.c_dashboard_type = await get_table_values(conn, get_c_dashboard_type(), DashboardType,
                                                            DashboardTypeSchema())

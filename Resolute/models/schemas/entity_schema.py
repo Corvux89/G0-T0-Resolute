@@ -127,6 +127,7 @@ class ArenaSchema(Schema):
     role_id = fields.Integer(data_key="role_id", required=True)
     host_id = fields.Integer(data_key="host_id", required=True)
     tier = fields.Method(None, "load_tier")
+    type = fields.Method(None, "load_type")
     completed_phases = fields.Integer(data_key="completed_phases", required=True, default=0)
     created_ts = fields.Method(None, "load_timestamp")
     end_ts = fields.Method(None, "load_timestamp", allow_none=True)
@@ -141,6 +142,9 @@ class ArenaSchema(Schema):
 
     def load_tier(self, value):
         return self.compendium.get_object("c_arena_tier", value)
+
+    def load_type(self, value):
+        return self.compendium.get_object("c_arena_type", value)
 
     def load_timestamp(self, value):  # Marshmallow doesn't like loading DateTime for some reason. This is a workaround
         return value

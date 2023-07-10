@@ -107,3 +107,8 @@ class StarshipSize(object):
     def __init__(self, id, value):
         self.id = id
         self.value = value
+
+class ArenaType(object):
+    def __init__(self, id, value):
+        self.id = id
+        self.value = value

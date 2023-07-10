@@ -137,6 +137,7 @@ class Arena(object):
     role_id: int
     host_id: int
     tier: ArenaTier
+    type: ArenaType
     completed_phases: int
 
     def __init__(self, **kwargs):

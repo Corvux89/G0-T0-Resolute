@@ -8,15 +8,16 @@ from discord.commands.context import ApplicationContext
 from discord.ext import commands
 
 from Resolute.bot import G0T0Bot
-from Resolute.helpers import get_arena, get_character, add_player_to_arena, update_arena_tier, create_logs, \
-    update_arena_status, end_arena, confirm
+from Resolute.helpers import get_arena, get_character, create_logs, \
+    end_arena, confirm, update_starship_arena_status, add_player_to_starship_arena
 from Resolute.models.db_objects import Arena, PlayerCharacter, Activity
-from Resolute.models.embeds import ArenaStatusEmbed, ArenaPhaseEmbed
+from Resolute.models.embeds import StarshipArenaStatusEmbed, StarshipArenaPhaseEmbed
 from Resolute.models.schemas import CharacterSchema
-from Resolute.models.views.entity_view import ArenaView
+from Resolute.models.views.entity_view import StarshipArenaView
 from Resolute.queries import insert_new_arena, get_multiple_characters, update_arena
 
 log = logging.getLogger(__name__)
+
 
 def setup(bot):
     bot.add_cog(StarshipArena(bot))
@@ -33,11 +34,11 @@ class StarshipArena(commands.Cog):
     @commands.Cog.listener()
     async def on_ready(self):
         await asyncio.sleep(3.0)
-        self.bot.add_view(ArenaView(self.bot.db))
+        self.bot.add_view(StarshipArenaView(self.bot.db))
 
     @arena_commands.command(
         name="claim",
-        description="Opens an arena in this channel and sets you as host"
+        description="Opens a starship arena in this channel and sets you as host"
     )
     async def arena_claim(self, ctx: ApplicationContext):
         """
@@ -52,7 +53,7 @@ class StarshipArena(commands.Cog):
 
         if arena is not None:
             return await ctx.respond(f"Error: {ctx.channel.mention} already in use.\n"
-                                     f"User `/arena status` to check the current status of this room.")
+                                     f"Use `/star_arena status` to check the current status of this room.")
         elif character is None:
             return await ctx.respond(f"Error: Hosts needs to have a character too")
         else:
@@ -63,14 +64,15 @@ class StarshipArena(commands.Cog):
                 await ctx.author.add_roles(channel_role, reason=f"Claiming {ctx.channel.name}")
 
                 tier = ctx.bot.compendium.get_object("c_arena_tier", 1)
+                type = ctx.bot.compendium.get_object("c_arena_type", "STARSHIP")
 
                 arena = Arena(channel_id=ctx.channel_id, role_id=channel_role.id, host_id=ctx.author.id,
-                              tier=tier, completed_phases=0)
+                              tier=tier, completed_phases=0, type=type)
 
-                embed = ArenaStatusEmbed(ctx, arena)
+                embed = StarshipArenaStatusEmbed(ctx, arena)
 
                 msg: discord.WebhookMessage = await ctx.respond(embed=embed,
-                                                                view=ArenaView(db=ctx.bot.db))
+                                                                view=StarshipArenaView(db=ctx.bot.db))
 
                 arena.pin_message_id = msg.id
 
@@ -102,7 +104,10 @@ class StarshipArena(commands.Cog):
         elif not (channel_role := discord.utils.get(ctx.guild.roles, name=ctx.channel.name)):
             return await ctx.respond(f"Error: Role @{ctx.channel.name} doesn't exist."
                                      f"A Senate member may need to create it", ephemeral=False)
-        embed = ArenaStatusEmbed(ctx, arena)
+        elif arena.type.value != "STARSHIP":
+            return await ctx.respond(
+                f"Error: This is not a starship arena. Please check you're running the correct command", ephemeral=True)
+        embed = StarshipArenaStatusEmbed(ctx, arena)
 
         await ctx.respond(embed=embed, ephemeral=False)
 
@@ -129,8 +134,10 @@ class StarshipArena(commands.Cog):
             return await ctx.respond(f"Error: {player.mention} is the host of the arena.")
         elif player in channel_role.members:
             return await ctx.respond(f"Error: {player.mention} is already a participant in this arena.")
+        elif arena.type.value != "STARSHIP":
+            return await ctx.respond(f"Error: This is not a Starship arena.")
         else:
-            await add_player_to_arena(ctx.interaction, player, arena, ctx.bot.db, ctx.bot.compendium)
+            await add_player_to_starship_arena(ctx.interaction, player, arena, ctx.bot.db, ctx.bot.compendium)
 
     @arena_commands.command(
         name="remove",
@@ -153,16 +160,14 @@ class StarshipArena(commands.Cog):
         elif not (channel_role := discord.utils.get(ctx.guild.roles, id=arena.role_id)):
             return await ctx.respond(f"Error: Role @{ctx.channel.name} doesn't exist. "
                                      f"A Senate member may need to create it", ephemeral=True)
+        elif arena.type.value != "STARSHIP":
+            return await ctx.respond(f"Error: This is not a starship arena.")
         elif player not in channel_role.members:
             return await ctx.respond(f"Error: {player.mention} is not a participant in this arena.", ephemeral=True)
         else:
             await player.remove_roles(channel_role)
 
-            # Recalculate tier if arena hasn't started
-            if arena.completed_phases == 0:
-                await update_arena_tier(ctx.interaction, ctx.bot.db, arena, ctx.bot.compendium)
-
-            await update_arena_status(ctx, arena)
+            await update_starship_arena_status(ctx, arena)
 
             await ctx.respond(f"{player.mention} has been removed from the arena.")
 
@@ -188,15 +193,18 @@ class StarshipArena(commands.Cog):
         elif not (channel_role := discord.utils.get(ctx.guild.roles, id=arena.role_id)):
             return await ctx.respond(f"Error: Role @{ctx.channel.name} doesn't exist. "
                                      f"A Council member may need to create it", ephemeral=True)
+        elif arena.type.value != "STARSHIP":
+            return await ctx.respond(f"Error: This is not a starship arena. Use the appropriate command.",
+                                     ephemeral=True)
         else:
             arena.completed_phases += 1
 
             players = [p.id for p in list(set(filter(lambda p: p.id != arena.host_id,
                                                      channel_role.members)))]
             chars = []
-            arena_act: Activity = ctx.bot.compendium.get_object("c_activity", "ARENA")
-            host_act: Activity = ctx.bot.compendium.get_object("c_activity", "ARENA_HOST")
-            bonus_act: Activity = ctx.bot.compendium.get_object("c_activity", "ARENA_BONUS")
+            arena_act: Activity = ctx.bot.compendium.get_object("c_activity", "STARSHIP_ARENA")
+            host_act: Activity = ctx.bot.compendium.get_object("c_activity", "STARSHIP_ARENA_HOST")
+            bonus_act: Activity = ctx.bot.compendium.get_object("c_activity", "STARSHIP_ARENA_BONUS")
             host_char: PlayerCharacter = await get_character(ctx.bot, arena.host_id, ctx.guild_id)
 
             # Get player characters
@@ -212,16 +220,16 @@ class StarshipArena(commands.Cog):
             for c in chars:
                 await create_logs(ctx, c, arena_act, result)
 
-                if arena.completed_phases - 1 >= (arena.tier.max_phases / 2) and result == "WIN":
-                    await create_logs(ctx, c, bonus_act, bonus_act.value)
+                # if arena.completed_phases - 1 >= (arena.tier.max_phases / 2) and result == "WIN":
+                #     await create_logs(ctx, c, bonus_act, bonus_act.value)
 
-            embed = ArenaPhaseEmbed(ctx, arena, result)
+            embed = StarshipArenaPhaseEmbed(ctx, arena, result)
 
             await ctx.respond(embed=embed)
 
-            await update_arena_status(ctx, arena)
+            await update_starship_arena_status(ctx, arena)
 
-            if arena.completed_phases >= arena.tier.max_phases or result == "LOSS":
+            if arena.completed_phases == 1 or result == "LOSS":
                 await end_arena(ctx, arena)
 
     @arena_commands.command(
@@ -238,6 +246,14 @@ class StarshipArena(commands.Cog):
 
         arena: Arena = await get_arena(ctx.bot, ctx.channel_id)
 
+        if arena is None:
+            return await ctx.respond(f"Error: No active arena present in this channel", ephemeral=True)
+        elif not (channel_role := discord.utils.get(ctx.guild.roles, id=arena.role_id)):
+            return await ctx.respond(f"Error: Role @{ctx.channel.name} doesn't exist. "
+                                     f"A Senate member may need to create it", ephemeral=True)
+        elif arena.type.value != "STARSHIP":
+            return await ctx.respond(f"Error: This is not a starship arena", ephemeral=True)
+
         to_end = await confirm(ctx, "Are you sure you want to close this arena? (Reply with yes/no)", True)
 
         if to_end is None:
@@ -245,10 +261,4 @@ class StarshipArena(commands.Cog):
         elif not to_end:
             return await ctx.respond(f'Ok, cancelling.', delete_after=10)
 
-
-        if arena is None:
-            return await ctx.respond(f"Error: No active arena present in this channel", ephemeral=True)
-        elif not (channel_role := discord.utils.get(ctx.guild.roles, id=arena.role_id)):
-            return await ctx.respond(f"Error: Role @{ctx.channel.name} doesn't exist. "
-                                     f"A Senate member may need to create it", ephemeral=True)
         await end_arena(ctx, arena)

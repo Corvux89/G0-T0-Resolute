@@ -85,3 +85,10 @@ c_starship_size_table = sa.Table(
     Column("id", Integer, primary_key=True),
     Column("value", String, nullable=False)
 )
+
+c_arena_type_table = sa.Table(
+    "c_arena_type",
+    metadata,
+    Column("id", Integer, primary_key=True),
+    Column("value", String, nullable=False)
+)

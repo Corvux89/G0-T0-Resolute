@@ -100,3 +100,11 @@ class StarshipSizeSchema(Schema):
     @post_load
     def make_starship_size(self, data, **kwargs):
         return StarshipSize(**data)
+
+class ArenaTypeSchema(Schema):
+    id = fields.Integer(data_key="id", required=True)
+    value = fields.String(data_key="value", required=True)
+
+    @post_load
+    def make_arena_type(self, data, **kwargs):
+        return ArenaType(**data)

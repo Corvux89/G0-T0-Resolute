@@ -63,9 +63,10 @@ class Arenas(commands.Cog):
                 await ctx.author.add_roles(channel_role, reason=f"Claiming {ctx.channel.name}")
 
                 tier = ctx.bot.compendium.get_object("c_arena_tier", 1)
+                type = ctx.bot.compendium.get_object("c_arena_type", "CHARACTER")
 
                 arena = Arena(channel_id=ctx.channel_id, role_id=channel_role.id, host_id=ctx.author.id,
-                              tier=tier, completed_phases=0)
+                              tier=tier, completed_phases=0, type=type)
 
                 embed = ArenaStatusEmbed(ctx, arena)
 
@@ -102,6 +103,8 @@ class Arenas(commands.Cog):
         elif not (channel_role := discord.utils.get(ctx.guild.roles, name=ctx.channel.name)):
             return await ctx.respond(f"Error: Role @{ctx.channel.name} doesn't exist."
                                      f"A Senate member may need to create it", ephemeral=False)
+        elif arena.type.value != "CHARACTER":
+            return await ctx.respond(F"Error: This is not a character arena", ephemeral=True)
         embed = ArenaStatusEmbed(ctx, arena)
 
         await ctx.respond(embed=embed, ephemeral=False)
@@ -129,6 +132,8 @@ class Arenas(commands.Cog):
             return await ctx.respond(f"Error: {player.mention} is the host of the arena.")
         elif player in channel_role.members:
             return await ctx.respond(f"Error: {player.mention} is already a participant in this arena.")
+        elif arena.type.value != "CHARACTER":
+            return await ctx.respond(f"Error: This is not a character arena.")
         else:
             await add_player_to_arena(ctx.interaction, player, arena, ctx.bot.db, ctx.bot.compendium)
 
@@ -155,6 +160,8 @@ class Arenas(commands.Cog):
                                      f"A Senate member may need to create it", ephemeral=True)
         elif player not in channel_role.members:
             return await ctx.respond(f"Error: {player.mention} is not a participant in this arena.", ephemeral=True)
+        elif arena.type.value != "CHARACTER":
+            return await ctx.respond(f"Error: This is not a character arena.")
         else:
             await player.remove_roles(channel_role)
 
@@ -188,6 +195,8 @@ class Arenas(commands.Cog):
         elif not (channel_role := discord.utils.get(ctx.guild.roles, id=arena.role_id)):
             return await ctx.respond(f"Error: Role @{ctx.channel.name} doesn't exist. "
                                      f"A Council member may need to create it", ephemeral=True)
+        elif arena.type.value != "CHARACTER":
+            return await ctx.respond(f"Error: This is not a character arena.")
         else:
             arena.completed_phases += 1
 
@@ -238,6 +247,14 @@ class Arenas(commands.Cog):
 
         arena: Arena = await get_arena(ctx.bot, ctx.channel_id)
 
+        if arena is None:
+            return await ctx.respond(f"Error: No active arena present in this channel", ephemeral=True)
+        elif not (channel_role := discord.utils.get(ctx.guild.roles, id=arena.role_id)):
+            return await ctx.respond(f"Error: Role @{ctx.channel.name} doesn't exist. "
+                                     f"A Senate member may need to create it", ephemeral=True)
+        elif arena.type.value != "CHARACTER":
+            return await ctx.respond(f"Error: This is not a character arena.")
+
         to_end = await confirm(ctx, "Are you sure you want to close this arena? (Reply with yes/no)", True)
 
         if to_end is None:
@@ -245,10 +262,4 @@ class Arenas(commands.Cog):
         elif not to_end:
             return await ctx.respond(f'Ok, cancelling.', delete_after=10)
 
-
-        if arena is None:
-            return await ctx.respond(f"Error: No active arena present in this channel", ephemeral=True)
-        elif not (channel_role := discord.utils.get(ctx.guild.roles, id=arena.role_id)):
-            return await ctx.respond(f"Error: Role @{ctx.channel.name} doesn't exist. "
-                                     f"A Senate member may need to create it", ephemeral=True)
         await end_arena(ctx, arena)

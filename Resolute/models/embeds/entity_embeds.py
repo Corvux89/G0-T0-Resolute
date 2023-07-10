@@ -138,6 +138,27 @@ class ArenaPhaseEmbed(Embed):
 
         self.add_field(name="The following rewards have been applied:", value=rewards, inline=False)
 
+class StarshipArenaPhaseEmbed(Embed):
+    def __init__(self, ctx: ApplicationContext, arena: Arena, result: str):
+        rewards = f"{arena.get_host(ctx).mention}: 'HOST'\n"
+        # bonus = (arena.completed_phases > arena.tier.max_phases / 2) and result == 'WIN'
+        arena_role = arena.get_role(ctx)
+        players = list(set(filter(lambda p: p.id != arena.host_id, arena_role.members)))
+
+        for player in players:
+            rewards += f"{player.mention}: '{result}'"
+            # rewards += ', `BONUS`\n' if bonus else '\n'
+
+        super().__init__(
+            title=f"Phase {arena.completed_phases} Complete!",
+            description=f"Complete phases: **{arena.completed_phases} / 1**",
+            color=discord.Color.random()
+        )
+
+        self.set_thumbnail(url=THUMBNAIL)
+
+        self.add_field(name="The following rewards have been applied:", value=rewards, inline=False)
+
 
 class ArenaStatusEmbed(Embed):
     def __init__(self, ctx: ApplicationContext | discord.Interaction, arena: Arena):
@@ -152,6 +173,28 @@ class ArenaStatusEmbed(Embed):
             self.description += "\n\nUse the button below to join!"
         elif arena.completed_phases >= arena.tier.max_phases / 2:
             self.description += "\nBonus active!"
+
+        self.add_field(name="**Host:**", value=f"\u200b - {arena.get_host(ctx).mention}",
+                       inline=False)
+
+        players = list(set(filter(lambda p: p.id != arena.host_id,
+                                  arena.get_role(ctx).members)))
+
+        if len(players) > 0:
+            self.add_field(name="**Players:**",
+                           value="\n".join([f"\u200b -{p.mention}" for p in players]),
+                           inline=False)
+
+class StarshipArenaStatusEmbed(Embed):
+    def __init__(self, ctx: ApplicationContext | discord.Interaction, arena: Arena):
+        super().__init__(title=f"Starship Arena Status",
+                         description=f"**Completed Phases:** {arena.completed_phases} / 1",
+                         color=Color.random())
+
+        self.set_thumbnail(url=THUMBNAIL)
+
+        if arena.completed_phases == 0:
+            self.description += "\n\nUse the button below to join!"
 
         self.add_field(name="**Host:**", value=f"\u200b - {arena.get_host(ctx).mention}",
                        inline=False)

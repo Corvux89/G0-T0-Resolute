@@ -91,6 +91,7 @@ def insert_new_arena(arena: Arena):
         role_id=arena.role_id,
         host_id=arena.host_id,
         tier=arena.tier.id,
+        type=arena.type.id,
         completed_phases=arena.completed_phases
     )
 
@@ -104,6 +105,7 @@ def update_arena(arena: Arena):
         role_id=arena.role_id,
         host_id=arena.host_id,
         tier=arena.tier.id,
+        type=arena.type.id,
         completed_phases=arena.completed_phases,
         end_ts=None if not hasattr(arena, "end_ts") else arena.end_ts
     )
@@ -119,4 +121,3 @@ def select_active_arena_by_channel(channel_id: int) -> FromClause:
     return arenas_table.select().where(
         and_(arenas_table.c.channel_id == channel_id, arenas_table.c.end_ts == null())
     )
-

@@ -36,3 +36,6 @@ def get_c_starship_role() -> FromClause:
 
 def get_c_starship_size() -> FromClause:
     return c_starship_size_table.select()
+
+def get_c_arena_type() -> FromClause:
+    return c_arena_type_table.select()

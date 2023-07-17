@@ -762,12 +762,13 @@ class Character(commands.Cog):
             await conn.execute(insert_new_class(new_class))
 
         # Starships
-        for s in ship_ary:
-            s.active = False
-
-        async with self.bot.db.acquire() as conn:
+        if ship_ary:
             for s in ship_ary:
-                await conn.execute(update_starship(s))
+                s.active = False
+
+            async with self.bot.db.acquire() as conn:
+                for s in ship_ary:
+                    await conn.execute(update_starship(s))
 
         # Inital Log
         act = ctx.bot.compendium.get_object("c_activity", "BONUS")

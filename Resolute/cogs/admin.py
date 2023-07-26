@@ -1,12 +1,13 @@
 import asyncio
 import logging
 
+import discord
 from discord import SlashCommandGroup, Option, ExtensionAlreadyLoaded, ExtensionNotFound, ExtensionNotLoaded, \
     ApplicationContext
 from discord.ext import commands, tasks
 from os import listdir
 
-from Resolute.constants import ADMIN_GUILDS
+from Resolute.constants import ADMIN_GUILDS, BOT_OWNERS
 from Resolute.helpers import is_owner
 from Resolute.bot import G0T0Bot
 
@@ -29,6 +30,25 @@ class Admin(commands.Cog):
     async def on_ready(self):
         await asyncio.sleep(3.0)
         asyncio.ensure_future(self.reload_category_task.start())
+
+    @commands.Cog.listener()
+    async def on_message(self, message: discord.Message):
+        if channel := discord.utils.get(message.guild.channels, name="aliasing-and-snippet-help"):
+            if "**type**" in message.content.lower() and "**notes**" in message.content.lower():
+                thread = await channel.create_thread(message=message, name=message.content.split("\n")[0])
+                await thread.send(":pencil:")
+
+    @commands.Cog.listener()
+    async def on_raw_reaction_add(self, payload: discord.RawReactionActionEvent):
+
+        channel: discord.abc.GuildChannel | discord.abc.PrivateChannel | discord.Thread = await self.bot.fetch_channel(payload.channel_id)
+        member: discord.Member = discord.utils.get(self.bot.get_all_members(), id=payload.user_id)
+        message: discord.message = await channel.fetch_message(payload.message_id)
+
+        if hasattr(channel, "parent") and channel.parent.name.lower() == "aliasing-and-snippet-help" and message.author.id == self.bot.application_id:
+            if member.id in BOT_OWNERS or "The Senate" in [r.name for r in member.roles]:
+                await message.edit(content=payload.emoji)
+                await message.remove_reaction(member=member, emoji=payload.emoji)
 
     @admin_commands.command(
         name="load",

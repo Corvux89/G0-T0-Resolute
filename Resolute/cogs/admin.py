@@ -44,8 +44,9 @@ class Admin(commands.Cog):
         channel: discord.abc.GuildChannel | discord.abc.PrivateChannel | discord.Thread = await self.bot.fetch_channel(payload.channel_id)
         member: discord.Member = discord.utils.get(self.bot.get_all_members(), id=payload.user_id)
         message: discord.message = await channel.fetch_message(payload.message_id)
+        emoji = payload.emoji if not payload.emoji.id else discord.utils.get(self.bot.emojis, id=payload.emoji.id)
 
-        if hasattr(channel, "parent") and channel.parent.name.lower() == "aliasing-and-snippet-help" and message.author.id == self.bot.application_id:
+        if emoji and hasattr(channel, "parent") and channel.parent.name.lower() == "aliasing-and-snippet-help" and message.author.id == self.bot.application_id:
             if member.id in BOT_OWNERS or "The Senate" in [r.name for r in member.roles]:
                 await message.edit(content=payload.emoji)
                 await message.remove_reaction(member=member, emoji=payload.emoji)

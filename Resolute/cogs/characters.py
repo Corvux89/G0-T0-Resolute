@@ -11,7 +11,7 @@ from discord import SlashCommandGroup, Option, ApplicationContext, Member, Embed
 from discord.ext import commands
 from Resolute.bot import G0T0Bot
 from Resolute.constants import THUMBNAIL
-from Resolute.helpers import remove_fledgling_role, get_character_quests, get_character, get_player_character_class, \
+from Resolute.helpers import manage_player_roles, get_character_quests, get_character, get_player_character_class, \
     create_logs, get_level_cap, get_or_create_guild, confirm, is_admin, get_player_starships, \
     get_player_starship_from_transponder, get_character_from_char_id
 from Resolute.helpers.autocomplete_helpers import *
@@ -114,7 +114,7 @@ class Character(commands.Cog):
 
         log_entry: DBLog = await create_logs(ctx, character, act, "Initial Log")
 
-        await remove_fledgling_role(ctx, player, "Character created")
+        await manage_player_roles(ctx, player, character, "Character created")
         end = timer()
         log.info(f"Time to create character: [ {end - start:.2f} ]s")
         return await ctx.respond(embed=NewCharacterEmbed(character, player, player_class, log_entry, ctx))
@@ -205,6 +205,8 @@ class Character(commands.Cog):
 
         async with ctx.bot.db.acquire() as conn:
             await conn.execute(update_character(character))
+
+        await manage_player_roles(ctx, player, character, "Level up")
 
         embed = Embed(title="Level up successful!",
                       description=f"{player.mention} is now level {character.level}",

@@ -10,21 +10,19 @@ from Resolute.queries import get_log_by_player_and_activity, get_active_characte
     get_character_from_id, get_character_starships, get_starship_by_transponder
 
 
-async def remove_fledgling_role(ctx: ApplicationContext, member: Member, reason: Optional[str]):
-    """
-    Removes the Fledgling role from the given member
+async def manage_player_roles(ctx: ApplicationContext, member: Member, character: PlayerCharacter, reason: Optional[str]):
+    acolyte_role = discord.utils.get(ctx.guild.roles, name="Acolyte")
+    citizen_role = discord.utils.get(ctx.guild.roles, name="Citizen")
+    if not acolyte_role or not citizen_role:
+        return
+    elif character.level < 3 and (acolyte_role not in member.roles) and (citizen_role not in member.roles):
+        await member.add_roles(acolyte_role, reason=reason)
+    elif character.level > 3:
+        if acolyte_role in member.roles:
+            await member.remove_roles(acolyte_role, reason=reason)
 
-    :param ctx: Context
-    :param member: Member to remove the role from
-    :param reason: Reason in the audit to remove the role
-    """
-    fledgling_role = discord.utils.get(ctx.guild.roles, name="Fledgling")  # TODO: What is this?
-    initiate_role = discord.utils.get(ctx.guild.roles, name="Acolyte")
-    if fledgling_role and (fledgling_role in member.roles):
-        await member.remove_roles(fledgling_role, reason=reason)
-
-        if initiate_role and not (initiate_role in member.roles):
-            await member.add_roles(initiate_role, reason=reason)
+        if citizen_role not in member.roles:
+            await member.add_roles(citizen_role, reason=reason)
 
 
 async def get_character_quests(bot: Bot, character: PlayerCharacter) -> PlayerCharacter:

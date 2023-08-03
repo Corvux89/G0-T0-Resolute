@@ -60,6 +60,7 @@ class GuildSchema(Schema):
     reset_day = fields.Integer(data_key="reset_day", required=False, allow_none=True)
     reset_hour = fields.Integer(data_key="reset_hour", required=False, allow_none=True)
     last_reset = fields.Method(None, "load_timestamp")
+    greeting = fields.String(data_key="greeting", required=False, allow_none=True)
 
     @post_load
     def make_guild(self, data, **kwargs):

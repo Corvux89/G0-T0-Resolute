@@ -64,6 +64,7 @@ class PlayerGuild(object):
     max_level: int
     weeks: int
     max_reroll: int
+    greeting: str
 
     def __init__(self, **kwargs):
         for key, value in kwargs.items():

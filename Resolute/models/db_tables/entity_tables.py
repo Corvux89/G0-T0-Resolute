@@ -29,7 +29,8 @@ guilds_table = sa.Table(
     Column("max_reroll", Integer, nullable=False, default=1),
     Column("reset_day", Integer, nullable=True),
     Column("reset_hour", Integer, nullable=True),
-    Column("last_reset", DateTime(timezone=False), nullable=False, default=datetime.utcnow())
+    Column("last_reset", DateTime(timezone=False), nullable=False, default=datetime.utcnow()),
+    Column("greeting", String, nullable=True)
 )
 
 characters_table = sa.Table(

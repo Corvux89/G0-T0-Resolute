@@ -34,8 +34,8 @@ class Admin(commands.Cog):
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
         if channel := discord.utils.get(message.guild.channels, name="aliasing-and-snippet-help"):
-            if "**type**" in message.content.lower() and "**notes**" in message.content.lower():
-                thread = await channel.create_thread(message=message, name=message.content.split("\n")[0])
+            if "**type" in message.content.lower() and "**notes" in message.content.lower():
+                thread = await channel.create_thread(message=message, name=message.content.split("\n")[0], auto_archive_duration=10080)
                 await thread.send(":pencil:")
 
     @commands.Cog.listener()

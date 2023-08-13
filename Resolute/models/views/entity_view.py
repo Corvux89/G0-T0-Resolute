@@ -21,7 +21,7 @@ class ArenaView(discord.ui.View):
     async def view_callback(self, button: Button, interaction: discord.Interaction):
         arena: Arena = await get_arena(interaction.client, interaction.channel_id)
 
-        if arena is None:
+        if arena is None or arena.type.value != "CHARACTER":
             return await interaction.response.send_message(f"Error: No active arena present in this channel.",
                                                            ephemeral=True)
         elif not (channel_role := discord.utils.get(interaction.guild.roles, id=arena.role_id)):
@@ -42,11 +42,11 @@ class StarshipArenaView(discord.ui.View):
         super().__init__(timeout=None)
         self.db = db
 
-    @discord.ui.button(label="Join Arena", custom_id="join_arena", style=ButtonStyle.primary)
+    @discord.ui.button(label="Join Ship Arena", custom_id="join_ship_arena", style=ButtonStyle.primary)
     async def view_callback(self, button: Button, interaction: discord.Interaction):
         arena: Arena = await get_arena(interaction.client, interaction.channel_id)
 
-        if arena is None:
+        if arena is None or arena.type.value != "STARSHIP":
             return await interaction.response.send_message(f"Error: No active Starship arena present in this channel.",
                                                            ephemeral=True)
         elif not (channel_role := discord.utils.get(interaction.guild.roles, id=arena.role_id)):

@@ -17,7 +17,7 @@ async def manage_player_roles(ctx: ApplicationContext, member: Member, character
         return
     elif character.level < 3 and (acolyte_role not in member.roles) and (citizen_role not in member.roles):
         await member.add_roles(acolyte_role, reason=reason)
-    elif character.level > 3:
+    elif character.level >= 3:
         if acolyte_role in member.roles:
             await member.remove_roles(acolyte_role, reason=reason)
 

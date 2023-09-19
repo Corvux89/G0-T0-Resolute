@@ -56,7 +56,7 @@ class CharacterGetEmbed(Embed):
             self.add_field(name="First Steps Quests:",
                            value=f"\u200b \u200b \u200b Level {character.level} RPs: "
                                  f"{pretty_completed_rps}/{character.needed_rps}\n"
-                                 f"\u200b \u200b \u200b Level {character.level} Arenas: "
+                                 f"\u200b \u200b \u200b Level {character.level} Arena Phases: "
                                  f"{pretty_completed_arenas}/{character.needed_arenas}", inline=False)
 
         if char_ships and len(char_ships) > 0:

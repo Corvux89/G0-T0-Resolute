@@ -185,7 +185,7 @@ class Character(commands.Cog):
                 return await ctx.respond(embed=ErrorEmbed(
                     description=f"{player.mention} has not completed their requirements to level up.\n"
                                 f"Completed RPs: {character.completed_rps}/{character.needed_rps}\n"
-                                f"Completed Arenas: {character.completed_arenas}/{character.needed_arenas}"),
+                                f"Completed Arena Phases: {character.completed_arenas}/{character.needed_arenas}"),
                     ephemeral=True)
         elif character.level >= 9 and character.token < 1:
             return await ctx.respond(embed=ErrorEmbed(description="Player doesn't have the necessary leveling token"))

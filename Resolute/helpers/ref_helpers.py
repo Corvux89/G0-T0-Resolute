@@ -60,13 +60,13 @@ async def get_weekly_stipend(db: aiopg.sa.Engine, role: Role) -> RefWeeklyStipen
         return stipend
 
 async def get_all_players(bot: Bot, guild_id: int) -> dict:
-    players = []
+    players = dict()
 
     async with bot.db.acquire() as conn:
         async for row in conn.execute(get_all_global_players(guild_id)):
             if row is not None:
                 player: GlobalPlayer = GlobalPlayerSchema(bot.compendium).load(row)
-                players.append(player)
+                players[player.player_id] = player
 
     return players
 

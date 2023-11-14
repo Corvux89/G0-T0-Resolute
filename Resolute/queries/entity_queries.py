@@ -2,8 +2,8 @@ from datetime import datetime, timedelta
 
 from sqlalchemy.sql.selectable import FromClause
 from sqlalchemy import and_, null
-from Resolute.models.db_tables import guilds_table, adventures_table, arenas_table
-from Resolute.models.db_objects import PlayerGuild, Adventure, Arena
+from Resolute.models.db_tables import guilds_table, adventures_table, arenas_table, discord_player_table
+from Resolute.models.db_objects import PlayerGuild, Adventure, Arena, DiscordPlayer
 
 
 def get_guild(guild_id: int) -> FromClause:
@@ -37,7 +37,8 @@ def update_guild(guild: PlayerGuild):
         weeks=guild.weeks,
         reset_day=None if not hasattr(guild, "reset_day") else guild.reset_day,
         reset_hour=None if not hasattr(guild, "reset_hour") else guild.reset_hour,
-        last_reset=guild.last_reset
+        last_reset=guild.last_reset,
+        handicap_cc=guild.handicap_cc
     )
 
 
@@ -120,4 +121,25 @@ def get_arena_by_channel(channel_id: int) -> FromClause:
 def select_active_arena_by_channel(channel_id: int) -> FromClause:
     return arenas_table.select().where(
         and_(arenas_table.c.channel_id == channel_id, arenas_table.c.end_ts == null())
+    )
+
+def get_discord_player_query(player_id: int, guild_id: int) -> FromClause:
+    return discord_player_table.select().where(
+        and_(discord_player_table.c.id == player_id, discord_player_table.c.guild_id == guild_id)
+    )
+
+def insert_new_discord_player(player: DiscordPlayer):
+    return discord_player_table.insert().values(
+        id=player.id,
+        guild_id=player.guild_id,
+        handicap_amount=player.handicap_amount
+    ).returning(discord_player_table)
+
+def update_discord_player(player: DiscordPlayer):
+    return discord_player_table.update()\
+        .where(discord_player_table.c.id == player.id, discord_player_table.c.guild_id == player.guild_id)\
+        .values(
+        id=player.id,
+        guild_id=player.guild_id,
+        handicap_amount=player.handicap_amount
     )

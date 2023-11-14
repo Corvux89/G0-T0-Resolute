@@ -256,7 +256,7 @@ class Log(commands.Cog):
         if currency == "Credits":
             log_entry: DBLog = await create_logs(ctx, character, act, item, 0, cost)
         elif currency == "CC":
-            log_entry: DBLog = await create_logs(ctx, character, act, item, cost)
+            log_entry: DBLog = await create_logs(ctx, character, act, item, cost,0,0,None,True)
         else:
             return await ctx.respond(embed=ErrorEmbed(description="Invalid currency selection"))
 

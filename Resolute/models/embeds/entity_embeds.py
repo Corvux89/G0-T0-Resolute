@@ -28,7 +28,8 @@ class NewCharacterEmbed(Embed):
 
 class CharacterGetEmbed(Embed):
     def __init__(self, character: PlayerCharacter, char_class: List[PlayerCharacterClass],
-                 cap: LevelCaps, ctx: ApplicationContext, g: PlayerGuild, char_ships: List[CharacterStarship] | None):
+                 cap: LevelCaps, ctx: ApplicationContext, g: PlayerGuild, char_ships: List[CharacterStarship] | None,
+                 handicap_active: bool):
         super().__init__(title=f"Character Info - {character.name}")
 
         self.description = f"**Class:**" if len(char_class) == 1 else f"**Classes:**"
@@ -36,10 +37,13 @@ class CharacterGetEmbed(Embed):
         self.description += f"\n**Species: ** {character.species.value}\n" \
                             f"**Level:** {character.level}\n" \
                             f"**Credits:** {character.credits:,}\n" \
-                            f"**Chain Codes:** {character.cc:,} \n"
+                            f"**Chain Codes:** {character.cc:,} \n" \
 
         if g.max_level >= 10:
             self.description += f"**Leveling Tokens:** {character.token}\n"
+
+        if handicap_active:
+            self.description += f"\n**Booster enabled. All CC Rewards doubled!**"
 
         self.color = character.get_member(ctx).color
         self.set_thumbnail(url=character.get_member(ctx).display_avatar.url)
@@ -303,7 +307,8 @@ class GuildEmbed(Embed):
 
         self.add_field(name="**Settings**",
                        value=f"**Max Level:** {g.max_level}\n"
-                             f"**Max Rerolls:** {g.max_reroll}",
+                             f"**Max Rerolls:** {g.max_reroll}\n"
+                             f"**Handicap Amount:** {g.handicap_cc}",
                        inline=False)
 
         if g.reset_hour is not None:
@@ -318,7 +323,8 @@ class GuildStatus(Embed):
         super().__init__(title=f"Server Info - {ctx.guild.name}",
                          color=Color.random(),
                          description=f"**Max Level:** {g.max_level}\n"
-                                     f"**# Weeks:** {g.weeks}\n")
+                                     f"**\# Weeks:** {g.weeks}\n"
+                                     f"**Handicap CC Amount:** {g.handicap_cc}")
 
         self.set_thumbnail(url=THUMBNAIL)
 

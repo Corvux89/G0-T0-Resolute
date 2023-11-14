@@ -1,7 +1,7 @@
 from discord import ApplicationContext
 from marshmallow import Schema, fields, post_load
 from Resolute.models.db_objects import PlayerCharacter, PlayerCharacterClass, PlayerGuild, DBLog, Adventure, Arena, \
-    CharacterStarship
+    CharacterStarship, DiscordPlayer
 
 
 class PlayerCharacterClassSchema(Schema):
@@ -61,6 +61,7 @@ class GuildSchema(Schema):
     reset_hour = fields.Integer(data_key="reset_hour", required=False, allow_none=True)
     last_reset = fields.Method(None, "load_timestamp")
     greeting = fields.String(data_key="greeting", required=False, allow_none=True)
+    handicap_cc = fields.Integer(data_key="handicap_cc", required=False, allow_none=True, default=0)
 
     @post_load
     def make_guild(self, data, **kwargs):
@@ -169,3 +170,12 @@ class CharacterStarshipSchema(Schema):
 
     def load_starship(self, value):
         return self.compendium.get_object("c_starship_role", value)
+
+class DiscordPlayerSchema(Schema):
+    id = fields.Integer(data_key="id", required=True)
+    guild_id = fields.Integer(data_key="guild_id", required=True)
+    handicap_amount = fields.Integer(data_key="handicap_amount", default=0)
+
+    @post_load
+    def make_discord_player(self, data, **kwargs):
+        return DiscordPlayer(**data)

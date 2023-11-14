@@ -65,6 +65,7 @@ class PlayerGuild(object):
     weeks: int
     max_reroll: int
     greeting: str
+    handicap_cc: int
 
     def __init__(self, **kwargs):
         for key, value in kwargs.items():
@@ -166,5 +167,14 @@ class CharacterStarship(object):
 
     def get_formatted_starship(self, compendium):
         return f"**{self.name}** *({self.starship.get_size(compendium).value} {self.starship.value} {self.tier})*: {self.transponder}"
+
+class DiscordPlayer(object):
+    id: int
+    guild_id: int
+    handicap_amount: int
+
+    def __init__(self, **kwargs):
+        for key,value in kwargs.items():
+            setattr(self, key, value)
 
 

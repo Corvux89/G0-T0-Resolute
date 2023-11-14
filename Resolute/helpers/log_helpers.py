@@ -2,11 +2,12 @@ from typing import Any
 
 from discord import ApplicationContext, Bot
 
-from Resolute.helpers.entity_helpers import get_or_create_guild
+from Resolute.helpers.entity_helpers import get_or_create_guild, get_discord_player
 from Resolute.helpers.character_helpers import get_level_cap
-from Resolute.models.db_objects import PlayerCharacter, Activity, LevelCaps, PlayerGuild, DBLog, Adventure
+from Resolute.models.db_objects import PlayerCharacter, Activity, LevelCaps, PlayerGuild, DBLog, Adventure, \
+    DiscordPlayer
 from Resolute.models.schemas import LogSchema
-from Resolute.queries import insert_new_log, update_character, update_guild, get_log_by_id
+from Resolute.queries import insert_new_log, update_character, update_guild, get_log_by_id, update_discord_player
 
 
 def get_activity_amount(character: PlayerCharacter, activity: Activity, cap: LevelCaps, cc: int = 0,
@@ -39,7 +40,7 @@ def get_activity_amount(character: PlayerCharacter, activity: Activity, cap: Lev
 
 
 async def create_logs(ctx: ApplicationContext | Any, character: PlayerCharacter, activity: Activity, notes: str = None,
-                      cc: int = 0, credits: int = 0, token: int=0,  adventure: Adventure = None) -> DBLog:
+                      cc: int = 0, credits: int = 0, token: int=0, adventure: Adventure = None, ignore_handicap: bool = False) -> DBLog:
     """
     Primary function to create any Activity log
 
@@ -64,6 +65,7 @@ async def create_logs(ctx: ApplicationContext | Any, character: PlayerCharacter,
 
     g: PlayerGuild = await get_or_create_guild(ctx.bot.db, guild_id)
     cap: LevelCaps = get_level_cap(character, g, ctx.bot.compendium)
+    discord_player: DiscordPlayer = await get_discord_player(ctx.bot, character.player_id, guild_id)
     adventure_id = None if adventure is None else adventure.id
 
     char_cc, char_credits = get_activity_amount(character, activity, cap, cc, credits)
@@ -71,17 +73,28 @@ async def create_logs(ctx: ApplicationContext | Any, character: PlayerCharacter,
     char_log = DBLog(author=author_id, cc=char_cc, credits=char_credits, token=token, character_id=character.id,
                      activity=activity, notes=notes, adventure_id=adventure_id, invalid=False)
 
-    character.cc += char_cc
-    character.credits += char_credits
-    character.token += token
-
     if activity.diversion:
         character.div_cc += char_cc
+
+    # Handicap
+    if not ignore_handicap and g.handicap_cc and discord_player.handicap_amount < g.handicap_cc:
+        print("Doubling!")
+        if char_log.cc * 2 + discord_player.handicap_amount > g.handicap_cc:
+            char_log.cc = g.handicap_cc - discord_player.handicap_amount
+        else:
+            char_log.cc = char_log.cc * 2
+
+        discord_player.handicap_amount += char_log.cc
+
+    character.cc += char_log.cc
+    character.credits += char_credits
+    character.token += token
 
     async with ctx.bot.db.acquire() as conn:
         results = await conn.execute(insert_new_log(char_log))
         row = await results.first()
         await conn.execute(update_character(character))
+        await conn.execute(update_discord_player(discord_player))
 
     log_entry: DBLog = LogSchema(ctx.bot.compendium).load(row)
 

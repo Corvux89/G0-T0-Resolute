@@ -13,10 +13,10 @@ from Resolute.bot import G0T0Bot
 from Resolute.constants import THUMBNAIL
 from Resolute.helpers import manage_player_roles, get_character_quests, get_character, get_player_character_class, \
     create_logs, get_level_cap, get_or_create_guild, confirm, is_admin, get_player_starships, \
-    get_player_starship_from_transponder, get_character_from_char_id
+    get_player_starship_from_transponder, get_character_from_char_id, get_discord_player
 from Resolute.helpers.autocomplete_helpers import *
 from Resolute.models.db_objects import PlayerCharacter, PlayerCharacterClass, DBLog, LevelCaps, PlayerGuild, \
-    CharacterStarship
+    CharacterStarship, DiscordPlayer
 from Resolute.models.embeds import ErrorEmbed, NewCharacterEmbed, CharacterGetEmbed
 from Resolute.models.schemas import CharacterSchema, CharacterStarshipSchema
 from Resolute.queries import insert_new_character, insert_new_class, update_character, update_class, \
@@ -138,7 +138,9 @@ class Character(commands.Cog):
             player = ctx.author
 
         character: PlayerCharacter = await get_character(ctx.bot, player.id, ctx.guild_id)
+        p: DiscordPlayer = await  get_discord_player(ctx.bot, player.id, ctx.guild_id)
         g: PlayerGuild = await get_or_create_guild(ctx.bot.db, ctx.guild_id)
+        handicap_active = True if g.handicap_cc and  p.handicap_amount < g.handicap_cc else False
 
         if character is None:
             return await ctx.respond(embed=ErrorEmbed(
@@ -153,7 +155,7 @@ class Character(commands.Cog):
         if character.level < 3:
             character = await get_character_quests(ctx.bot, character)
 
-        await ctx.respond(embed=CharacterGetEmbed(character, class_ary, caps, ctx, g, ship_ary, ))
+        await ctx.respond(embed=CharacterGetEmbed(character, class_ary, caps, ctx, g, ship_ary, handicap_active ))
 
     @character_admin_commands.command(
         name="level",

@@ -30,7 +30,8 @@ guilds_table = sa.Table(
     Column("reset_day", Integer, nullable=True),
     Column("reset_hour", Integer, nullable=True),
     Column("last_reset", DateTime(timezone=False), nullable=False, default=datetime.utcnow()),
-    Column("greeting", String, nullable=True)
+    Column("greeting", String, nullable=True),
+    Column("handicap_cc", Integer, nullable=True)
 )
 
 characters_table = sa.Table(
@@ -100,4 +101,12 @@ character_starship_table = sa.Table(
     Column("starship", Integer, nullable=False),
     Column("tier", Integer, nullable=True),
     Column("active", BOOLEAN, nullable=False, default=True)
+)
+
+discord_player_table = sa.Table(
+    "players",
+    metadata,
+    Column("id", BigInteger, primary_key=True),
+    Column("guild_id", BigInteger, primary_key=True),
+    Column("handicap_amount", Integer)
 )

@@ -169,6 +169,24 @@ class Guilds(commands.Cog):
         return await ctx.respond(f"Stipend for {role.mention} removed", ephemeral=True)
 
     @guilds_commands.command(
+        name="set_handicap",
+        description="Set the handicap of CC's a player should get to help catchup"
+    )
+    async def set_handicap(self, ctx: ApplicationContext,
+                           handicap: Option(int, description="Servicer handicap", required=True)):
+
+        await ctx.defer()
+
+        g: PlayerGuild = await get_or_create_guild(ctx.bot.db, ctx.guild_id)
+
+        g.handicap_cc = handicap
+
+        async with ctx.bot.db.acquire() as conn:
+            await conn.execute(update_guild(g))
+
+        return await ctx.respond(embed=GuildEmbed(ctx, g))
+
+    @guilds_commands.command(
         name="schedule_reset",
         description="Schedules the weekly reset"
     )

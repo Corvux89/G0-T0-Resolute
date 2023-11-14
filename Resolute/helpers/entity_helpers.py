@@ -9,12 +9,12 @@ import discord
 from discord import ApplicationContext, Member, Role, Bot, Client
 
 from Resolute.compendium import Compendium
-from Resolute.models.db_objects import PlayerGuild, PlayerCharacter, Adventure, Arena
+from Resolute.models.db_objects import PlayerGuild, PlayerCharacter, Adventure, Arena, DiscordPlayer
 from Resolute.models.embeds import ArenaStatusEmbed, StarshipArenaStatusEmbed
-from Resolute.models.schemas import GuildSchema, CharacterSchema, AdventureSchema, ArenaSchema
+from Resolute.models.schemas import GuildSchema, CharacterSchema, AdventureSchema, ArenaSchema, DiscordPlayerSchema
 from Resolute.queries import get_guild, insert_new_guild, get_adventure_by_category_channel_id, \
     get_arena_by_channel, get_multiple_characters, update_arena, get_adventure_by_role_id, get_characters, \
-    get_logs_in_past
+    get_logs_in_past, get_discord_player_query, insert_new_discord_player
 
 
 async def get_or_create_guild(db: aiopg.sa.Engine, guild_id: int) -> PlayerGuild:
@@ -321,3 +321,19 @@ async def get_player_adventures(bot: Bot | Client, player: Member):
                 adventures['player'].append(adventure)
 
     return adventures
+
+async def get_discord_player(bot: Bot | Client, player_id: int, guild_id: int):
+    async with bot.db.acquire() as conn:
+        results = await conn.execute(get_discord_player_query(player_id, guild_id))
+        p_row = await results.first()
+
+    if p_row is None:
+        p = DiscordPlayer(id=player_id, guild_id=guild_id, handicap_amount=0)
+
+        async with bot.db.acquire() as conn:
+            results = await conn.execute(insert_new_discord_player(p))
+            p_row = await results.first()
+
+    p: DiscordPlayer = DiscordPlayerSchema().load(p_row)
+
+    return p

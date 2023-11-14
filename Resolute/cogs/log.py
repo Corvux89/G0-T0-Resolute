@@ -198,7 +198,7 @@ class Log(commands.Cog):
     async def buy_log(self, ctx: ApplicationContext,
                       player: Option(Member, description="Player who bought the item", required=True),
                       item: Option(str, description="The item being bought", required=True),
-                      cost: Option(int, description="The cost of the item", min_value=0, max_value=999999,
+                      cost: Option(int, description="The cost of the item", min_value=0, max_value=9999999,
                                    required=True),
                       currency: Option(str, description="Credits or Chain Codes. Default: Credits",
                                        choices=['Credits', 'CC'], default="Credits", required=False)):
@@ -238,7 +238,7 @@ class Log(commands.Cog):
     async def sell_log(self, ctx: ApplicationContext,
                        player: Option(Member, description="Player who bought the item", required=True),
                        item: Option(str, description="The item being sold", required=True),
-                       cost: Option(int, description="The cost of the item", min_value=0, max_value=999999,
+                       cost: Option(int, description="The cost of the item", min_value=0, max_value=9999999,
                                     required=True),
                        currency: Option(str, description="Credits or Chain Codes. Default: Credits",
                                         choices=['Credits', 'CC'], default="Credits", required=False)):

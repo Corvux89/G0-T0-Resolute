@@ -118,7 +118,7 @@ class Log(commands.Cog):
 
         act: Activity = ctx.bot.compendium.get_object("c_activity", "BONUS")
 
-        log_entry = await create_logs(ctx, character, act, reason, cc, credits, level_token)
+        log_entry = await create_logs(ctx, character, act, reason, cc, credits, level_token, None, True)
 
         await ctx.respond(embed=DBLogEmbed(ctx, log_entry, character))
 
@@ -224,7 +224,7 @@ class Log(commands.Cog):
             if character.cc < cost:
                 return await ctx.respond(embed=ErrorEmbed(description=f"{player.mention} cannot affort the {cost} CC cost"))
 
-            log_entry: DBLog = await create_logs(ctx, character, act, item, -cost)
+            log_entry: DBLog = await create_logs(ctx, character, act, item, -cost, 0, 0, None, True)
 
         else:
             return await ctx.respond(embed=ErrorEmbed(description="Invalid currency selection"))
@@ -291,7 +291,7 @@ class Log(commands.Cog):
                     description=f"{player.mention} doesn't have enough Chain Codes for this conversion. "
                                 f"Requires {str(cc)} cc"))
             else:
-                log_entry: DBLog = await create_logs(ctx, character, act, "Converting CC to Credits", -cc, credits)
+                log_entry: DBLog = await create_logs(ctx, character, act, "Converting CC to Credits", -cc, credits, 0, None, True)
         else:
             if character.credits < credits:
                 return await ctx.respond(embed=ErrorEmbed(

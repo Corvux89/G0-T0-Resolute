@@ -728,6 +728,15 @@ class Character(commands.Cog):
         c_species = ctx.bot.compendium.get_object("c_character_species", character_species)
         c_archetype = ctx.bot.compendium.get_object("c_character_archetype", character_archetype)
 
+        if not c_class:
+            return await ctx.respond(
+                embed=ErrorEmbed(description=f"No information found for class {character_class}"),
+                ephemeral=True)
+        elif not c_species:
+            return await ctx.respond(
+                embed=ErrorEmbed(description=f"No information found for species {character_species}"),
+                ephemeral=True)
+
         class_ary: List[PlayerCharacterClass] = await get_player_character_class(ctx.bot, character.id)
         ship_ary: List[CharacterStarship] = await get_player_starships(ctx.bot, character.id)
 

@@ -31,7 +31,7 @@ class Arenas(commands.Cog):
         log.info(f'Cog \'Arenas\' loaded')
 
     @commands.Cog.listener()
-    async def on_ready(self):
+    async def on_compendium_loaded(self):
         await asyncio.sleep(3.0)
         self.bot.add_view(ArenaView(self.bot.db))
 

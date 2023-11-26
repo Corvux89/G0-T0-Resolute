@@ -32,7 +32,7 @@ class StarshipArena(commands.Cog):
         log.info(f'Cog \'Starship Arena\' loaded')
 
     @commands.Cog.listener()
-    async def on_ready(self):
+    async def on_compendium_loaded(self):
         await asyncio.sleep(3.0)
         self.bot.add_view(StarshipArenaView(self.bot.db))
 

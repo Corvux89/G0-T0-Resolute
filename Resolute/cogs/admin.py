@@ -27,8 +27,7 @@ class Admin(commands.Cog):
         log.info(f'Cog \'Admin\' loaded')
 
     @commands.Cog.listener()
-    async def on_ready(self):
-        await asyncio.sleep(3.0)
+    async def on_db_connected(self):
         asyncio.ensure_future(self.reload_category_task.start())
 
     @commands.Cog.listener()

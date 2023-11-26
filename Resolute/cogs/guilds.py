@@ -30,8 +30,7 @@ class Guilds(commands.Cog):
         log.info(f'Cog \'Guilds\' loaded')
 
     @commands.Cog.listener()
-    async def on_ready(self):
-        await asyncio.sleep(3.0)
+    async def on_compendium_loaded(self):
         asyncio.ensure_future(self.schedule_weekly_reset.start())
 
     @guilds_commands.command(

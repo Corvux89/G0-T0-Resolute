@@ -82,6 +82,7 @@ class Compendium:
 
         end = timer()
         log.info(f'COMPENDIUM: Categories reloaded in [ {end - start:.2f} ]s')
+        bot.dispatch("compendium_loaded")
 
     def get_object(self, node: str, value: str | int = None):
         try:

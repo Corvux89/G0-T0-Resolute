@@ -31,8 +31,7 @@ class Dashboards(commands.Cog):
         print(f'Cog \'Dashboards\' loaded')
 
     @commands.Cog.listener()
-    async def on_ready(self):
-        await asyncio.sleep(6.0)
+    async def on_compendium_loaded(self):
         log.info(f"Reloading dashboards every {DASHBOARD_REFRESH_INTERVAL} minutes.")
         await self.update_dashboards.start()
 

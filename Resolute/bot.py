@@ -28,6 +28,7 @@ class G0T0Bot(commands.Bot):
     async def on_ready(self):
         start = timer()
         self.db = await create_engine(DB_URL)
+        self.dispatch("db_connected")
         end = timer()
 
         log.info(f"Time to create db engine: {end - start}")

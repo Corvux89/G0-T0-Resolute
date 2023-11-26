@@ -31,7 +31,8 @@ class Guilds(commands.Cog):
 
     @commands.Cog.listener()
     async def on_compendium_loaded(self):
-        asyncio.ensure_future(self.schedule_weekly_reset.start())
+        if not self.schedule_weekly_reset.is_running():
+            asyncio.ensure_future(self.schedule_weekly_reset.start())
 
     @guilds_commands.command(
         name="max_reroll",

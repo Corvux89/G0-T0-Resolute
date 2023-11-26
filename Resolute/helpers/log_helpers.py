@@ -78,9 +78,8 @@ async def create_logs(ctx: ApplicationContext | Any, character: PlayerCharacter,
 
     # Handicap
     if not ignore_handicap and g.handicap_cc and discord_player.handicap_amount < g.handicap_cc:
-        print("Doubling!")
         if char_log.cc * 2 + discord_player.handicap_amount > g.handicap_cc:
-            char_log.cc = g.handicap_cc - discord_player.handicap_amount
+            char_log.cc += g.handicap_cc - discord_player.handicap_amount
         else:
             char_log.cc = char_log.cc * 2
 

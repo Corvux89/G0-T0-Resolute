@@ -11,12 +11,12 @@ from Resolute.queries import get_dashboard_by_category_channel, get_weekly_stipe
     get_active_global, get_global_player, delete_global_event, delete_global_players
 
 
-async def get_dashboard_from_category_channel_id(ctx: ApplicationContext, category_channel_id: int) -> RefCategoryDashboard | None:
+async def get_dashboard_from_category_channel_id(category_channel_id: int, db: aiopg.sa.Engine) -> RefCategoryDashboard | None:
 
     if category_channel_id is None:
         return None
 
-    async with ctx.bot.db.acquire() as conn:
+    async with db.acquire() as conn:
         results = await conn.execute(get_dashboard_by_category_channel(category_channel_id))
         row = await results.first()
 

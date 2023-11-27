@@ -36,6 +36,71 @@ class Dashboards(commands.Cog):
         if not self.update_dashboards.is_running():
             await self.update_dashboards.start()
 
+
+    @commands.Cog.listener()
+    async def on_message(self, message):
+        if cat_channel := message.channel.category_id:
+            async with self.bot.db.acquire() as conn:
+                dashboard: RefCategoryDashboard = await get_dashboard_from_category_channel_id(cat_channel, self.bot.db)
+
+            if not dashboard or message.channel.id in dashboard.excluded_channel_ids:
+                return
+
+            dashboard_message = await dashboard.get_pinned_post(self.bot)
+
+            if dashboard_message is None or not dashboard_message.pinned:
+                async with self.bot.db.acquire() as conn:
+                    return await conn.execute(delete_dashboard(dashboard))
+
+            dType: DashboardType = self.bot.compendium.get_object("c_dashboard_type", dashboard.dashboard_type)
+            g: discord.Guild = dashboard.get_category_channel(self.bot).guild
+
+            if dType is None:
+                return
+            elif dType.value.upper() == "RP":
+                channels_dict = {
+                    "Archivist": [x.value if "Archivist" in x.name else "" for x in dashboard_message.embeds[0].fields][0].split('\n'),
+                    "Available": [x.value for x in dashboard_message.embeds[0].fields if "Available" in x.name][0].split('\n'),
+                    "In Use": [x.value for x in dashboard_message.embeds[0].fields if "Unavailable" in x.name][0].split('\n')
+                }
+
+                channel_mention = message.channel.mention
+                node = None
+
+                if not message.content or message.content in ["```\n​\n```", "```\n \n```"]:
+                    node = "Available"
+
+                elif (archivist_role := discord.utils.get(g.roles, name="Archivist")) and archivist_role.mention in message.content:
+                    node = "Archivist"
+
+                elif channel_mention not in channels_dict["In Use"]:
+                    node = "In Use"
+
+
+                if node and channel_mention not in channels_dict[node]:
+                    self.remove_channel(channels_dict, channel_mention)
+                    self.remove_channel(channels_dict,"")
+                    channels_dict[node].append(channel_mention)
+                    self.sort_channels(channels_dict, g)
+                    return await dashboard_message.edit(content='', embed=RpDashboardEmbed(channels_dict, message.channel.category.name))
+                else:
+                    return
+
+    def strip_field(self, str):
+        return str.replace('\u200b', '').replace('<#','').replace('>','')
+
+    def remove_channel(self, dict, str):
+        for k, v in dict.items():
+            dict[k] = [x for x in v if x != str]
+
+    def sort_channels(self, dict, guild: discord.Guild):
+        for k, v in dict.items():
+            ids = [int(self.strip_field(c)) for c in dict[k]]
+            channels =  [guild.get_channel(c) for c in ids]
+            dict[k] = [x.mention for x in sorted(channels, key=lambda c: c.position)]
+
+
+
     @dashboard_commands.command(
         name="rp_create",
         description="Creates a dashboard which shows the status of RP channels in this category"
@@ -65,7 +130,7 @@ class Dashboards(commands.Cog):
 
         await ctx.defer()
 
-        dashboard: RefCategoryDashboard = await get_dashboard_from_category_channel_id(ctx, category_channel.id)
+        dashboard: RefCategoryDashboard = await get_dashboard_from_category_channel_id(category_channel.id, ctx.bot.db)
 
         if dashboard is not None:
             return await ctx.respond(embed=ErrorEmbed(description="There is already a dashboard for this category. "

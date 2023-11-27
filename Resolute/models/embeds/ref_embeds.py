@@ -15,6 +15,7 @@ class RpDashboardEmbed(Embed):
             title=f"Channel Statuses - {category_name}",
             timestamp=discord.utils.utcnow()
         )
+
         if len(channel_statuses["Archivist"]) > 0:
             self.add_field(
                 name="<:pencil:989284061786808380> -- Awaiting Archivist",

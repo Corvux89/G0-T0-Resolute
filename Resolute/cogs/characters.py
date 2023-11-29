@@ -711,7 +711,9 @@ class Character(commands.Cog):
                                                           autocomplete=character_archetype_autocomplete,
                                                           required=False),
                                level: Option(int, description="Level for the new character. Default is their old level",
-                                             min_value=1, max_value=20, required=False)):
+                                             min_value=1, max_value=20, required=False),
+                               transfer_ship: Option(bool, description="Transfer any starships to the new character?",
+                                                     default=True, required=False)):
         start = timer()
         await ctx.defer()
 
@@ -777,7 +779,11 @@ class Character(commands.Cog):
         # Starships
         if ship_ary:
             for s in ship_ary:
-                s.active = False
+                if transfer_ship:
+                    s.character_id.remove(character.id)
+                    s.character_id.append(new_character.id)
+                else:
+                    s.active = False
 
             async with self.bot.db.acquire() as conn:
                 for s in ship_ary:

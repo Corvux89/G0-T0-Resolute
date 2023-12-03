@@ -10,6 +10,7 @@ from os import listdir
 from Resolute.constants import ADMIN_GUILDS, BOT_OWNERS
 from Resolute.helpers import is_owner
 from Resolute.bot import G0T0Bot
+from Resolute.models.views.ref_view import AutomationRequestView
 
 log = logging.getLogger(__name__)
 
@@ -49,6 +50,13 @@ class Admin(commands.Cog):
             if member.id in BOT_OWNERS or "The Senate" in [r.name for r in member.roles]:
                 await message.edit(content=payload.emoji)
                 await message.remove_reaction(member=member, emoji=payload.emoji)
+    @commands.slash_command(
+        name="automation_request",
+        description="Log an automation request"
+    )
+    async def automation_request(self, ctx:ApplicationContext):
+        modal = AutomationRequestView()
+        return await ctx.send_modal(modal)
 
     @admin_commands.command(
         name="load",

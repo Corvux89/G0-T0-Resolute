@@ -3,7 +3,7 @@ import logging
 
 import discord
 from discord import SlashCommandGroup, Option, ExtensionAlreadyLoaded, ExtensionNotFound, ExtensionNotLoaded, \
-    ApplicationContext
+    ApplicationContext, ChannelType
 from discord.ext import commands, tasks
 from os import listdir
 
@@ -30,13 +30,6 @@ class Admin(commands.Cog):
     @commands.Cog.listener()
     async def on_db_connected(self):
         asyncio.ensure_future(self.reload_category_task.start())
-
-    @commands.Cog.listener() # Going to leave this for now...until people get used to the new command
-    async def on_message(self, message: discord.Message):
-        if channel := discord.utils.get(message.guild.channels, name="aliasing-and-snippet-help"):
-            if "type" in message.content.lower() and "notes" in message.content.lower():
-                thread = await channel.create_thread(message=message, name=message.content.split("\n")[0], auto_archive_duration=10080)
-                await thread.send(":pencil:")
 
     @commands.slash_command(
         name="automation_request",

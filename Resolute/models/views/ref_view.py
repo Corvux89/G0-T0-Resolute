@@ -1,4 +1,5 @@
 import discord
+from discord import ChannelType
 from discord.ui import InputText, Modal
 
 
@@ -17,7 +18,7 @@ class AutomationRequestView(Modal):
     async def callback(self, interaction: discord.Interaction):
         if alias_channel := discord.utils.get(interaction.guild.channels, name="aliasing-and-snippet-help"):
             thread = await alias_channel.create_thread(auto_archive_duration=10080,
-                                                               name=self.children[0].value)
+                                                               name=self.children[0].value, type=ChannelType.public_thread)
             message = f'''**Requestor**: {interaction.user.mention}\n**Notes**: {self.children[1].value}\n**Reference  URL**: {self.children[2].value} '''
             await thread.send(content=message)
             return await interaction.response.send_message("Request submitted!", ephemeral=True)

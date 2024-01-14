@@ -103,9 +103,16 @@ class AppBaseScores(object):
         for key, value in kwargs.items():
             setattr(self, key, value)
 
+    def status(self):
+        if self.str == '' and self.dex == '' and self.con == '' and self.int == '' and self.wis == '' and self.cha == '':
+            return "<:x:983576786447245312> -- Incomplete"
+        elif self.str !='' and self.dex != '' and self.con !='' and self.int !='' and self.wis != '' and self.cha != '':
+            return "<:white_check_mark:983576747381518396> -- Complete"
+        else:
+            return "<:pencil:989284061786808380> -- In-Progress"
 
 class AppSpecies(object):
-    species: CharacterSpecies
+    species: CharacterSpecies|None = None
     asi: str = ""
     feats: str = ""
 
@@ -119,6 +126,13 @@ class AppSpecies(object):
         else:
             return f"**{self.species.value}**\nASIs: {self.asi}\nFeatures: {self.feats}"
 
+    def status(self):
+        if self.species == None and self.asi == '' and self.feats == '':
+            return "<:x:983576786447245312> -- Incomplete"
+        elif self.species != None and self.asi != '' and self.feats != '':
+            return "<:white_check_mark:983576747381518396> -- Complete"
+        else:
+            return "<:pencil:989284061786808380> -- In-Progress"
 
 class AppClass(object):
     char_class: CharacterClass

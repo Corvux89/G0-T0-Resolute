@@ -67,7 +67,7 @@ class LevelUpRequestView(Modal):
             return await interaction.response.send_message("Request submitted!", ephemeral=True)
         return await interaction.response.send_message("Issue submitting request", ephemeral=True)
 
-class BaseScoreView(Modal):
+class BaseScoreView1(Modal):
     application: NewCharacterApplication()
     def __init__(self, application:NewCharacterApplication):
         super().__init__(title="Base Scores")
@@ -79,9 +79,35 @@ class BaseScoreView(Modal):
         self.add_item(InputText(label="Dexterity", style=discord.InputTextStyle.short, required=True, custom_id="dex",
                                 placeholder="Dexterity", value=self.application.base_scores.str))
 
+        self.add_item(InputText(label="Constitution", style=discord.InputTextStyle.short, required=True, custom_id="con",
+                                placeholder="Constitution", value=self.application.base_scores.con))
+
     async def callback(self, interaction: discord.Interaction):
         self.application.base_scores.str = self.children[0].value
         self.application.base_scores.dex = self.children[1].value
+        self.application.base_scores.con = self.children[2].value
+        await interaction.response.defer()
+        self.stop()
+
+class BaseScoreView2(Modal):
+    application: NewCharacterApplication()
+    def __init__(self, application:NewCharacterApplication):
+        super().__init__(title="Base Scores")
+        self.application = application
+
+        self.add_item(InputText(label="Intelligence", style=discord.InputTextStyle.short, required=True, custom_id="int",
+                                placeholder="Intelligence", value=self.application.base_scores.int))
+
+        self.add_item(InputText(label="Wisdom", style=discord.InputTextStyle.short, required=True, custom_id="wis",
+                                placeholder="Wisdom", value=self.application.base_scores.wis))
+
+        self.add_item(InputText(label="Charisma", style=discord.InputTextStyle.short, required=True, custom_id="con",
+                                placeholder="Charisma", value=self.application.base_scores.cha))
+
+    async def callback(self, interaction: discord.Interaction):
+        self.application.base_scores.int = self.children[0].value
+        self.application.base_scores.wis = self.children[1].value
+        self.application.base_scores.cha = self.children[2].value
         await interaction.response.defer()
         self.stop()
 
@@ -90,13 +116,14 @@ class BaseScoreView(Modal):
 class NewCharacterRequestView(discord.ui.View):
     __menu_copy_attrs__ = ()
     bot: G0T0Bot
-    character = None
-    application = NewCharacterApplication()
+    character: PlayerCharacter = None
+    application: NewCharacterApplication = NewCharacterApplication()
 
     def __init__(self, owner: User, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.owner = owner
         self.message = None  # type: Optional[discord.Message]
+
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if interaction.user.id == self.owner.id:
             return True
@@ -116,6 +143,9 @@ class NewCharacterRequestView(discord.ui.View):
             setattr(inst, attr, value)
         return inst
 
+    async def before_send(self):
+        pass
+
     async def on_timeout(self) -> None:
         if self.message is None:
             return
@@ -134,6 +164,7 @@ class NewCharacterRequestView(discord.ui.View):
         view = view_type.from_menu(self)
         if stop:
             self.stop()
+        await view.before_send()
         await view.refresh_content(interaction)
 
     async def get_content(self) -> Mapping:
@@ -152,6 +183,7 @@ class NewCharacterRequestView(discord.ui.View):
         await modal.wait()
         return modal.application
 
+# Base Scores, Class/Species/Background, Misc., Review, Exit
 class NewCharacterRequestUI(NewCharacterRequestView):
     @classmethod
     def new(cls, bot, owner, name, character, freeroll):
@@ -164,14 +196,7 @@ class NewCharacterRequestUI(NewCharacterRequestView):
 
     @discord.ui.button(label="Edit Base Scores", style=discord.ButtonStyle.primary, row=1)
     async def edit_base_scores(self, _: discord.ui.Button, interaction: discord.Interaction):
-        modal = BaseScoreView(self.application)
-
-        self.application = await self.prompt_modal(interaction, modal)
-        await self.refresh_content(interaction)
-
-    @discord.ui.button(label="Species", style=discord.ButtonStyle.green, row=1)
-    async def edit_species(self, _: discord.ui.Button, interaction: discord.Interaction):
-        await self.defer_to(_SpeciesRequestUI(self.bot), interaction)
+        await self.defer_to(_BaseScoresUI, interaction)
 
     @discord.ui.button(label="Exit", style=discord.ButtonStyle.danger, row=1)
     async def exit(self, *_):
@@ -179,6 +204,36 @@ class NewCharacterRequestUI(NewCharacterRequestView):
 
     async def get_content(self):
         embed = Embed(title=f"{'Free Reroll' if self.application.freeroll else 'Reroll' if self.character else 'New Character'} Application for {self.application.name}")
+        embed.add_field(name="__Base Scores__",
+                        value=f"{self.application.base_scores.status()}",
+                        inline=False)
+
+        embed.add_field(name="__Species__",
+                        value=f"{self.application.species.status()}",
+                        inline=False)
+
+        return {"embed": embed}
+
+class _BaseScoresUI(NewCharacterRequestView):
+    @discord.ui.button(label="STR/DEX/CON", style=discord.ButtonStyle.primary, row=1)
+    async def edit_base_scores_1(self, _: discord.ui.Button, interaction: discord.Interaction):
+        modal = BaseScoreView1(self.application)
+        self.application = await  self.prompt_modal(interaction, modal)
+        await self.refresh_content(interaction)
+
+    @discord.ui.button(label="INT/WIS/CHA", style=discord.ButtonStyle.primary, row=1)
+    async def edit_base_scores_2(self, _: discord.ui.Button, interaction: discord.Interaction):
+        modal = BaseScoreView2(self.application)
+        self.application = await  self.prompt_modal(interaction, modal)
+        await self.refresh_content(interaction)
+
+    @discord.ui.button(label="Back", style=discord.ButtonStyle.grey, row=2)
+    async def back(self, _: discord.ui.Button, interaction: discord.Interaction):
+        await self.defer_to(NewCharacterRequestUI, interaction)
+
+    async def get_content(self):
+        embed = Embed(
+            title=f"{'Free Reroll' if self.application.freeroll else 'Reroll' if self.character else 'New Character'} Application for {self.application.name}")
         embed.add_field(name="__Base Scores__",
                         value=(
                             f"STR: {self.application.base_scores.str}\n"
@@ -190,22 +245,15 @@ class NewCharacterRequestUI(NewCharacterRequestView):
                         ),
                         inline=False)
 
-        embed.add_field(name="__Species__",
-                        value=self.application.species.get_field(),
-                        inline=False)
-
         return {"embed": embed}
 
-
-class _SpeciesRequestUI(NewCharacterRequestView):
-    @discord.ui.select(placeholder="Select species", options=[discord.SelectOption(label="Here", value="Here")])
-    async def species_select(self, select: discord.ui.Select, interaction: discord.Interaction):
-        self.application.species.species = select.values[0]
-        await self.refresh_content()
+class _SpeciesUI(NewCharacterRequestView):
 
     async def get_content(self):
-        embed = Embed(title="Here")
-        embed.description = "Testing stuff out"
+        embed = Embed(
+            title=f"{'Free Reroll' if self.application.freeroll else 'Reroll' if self.character else 'New Character'} Application for {self.application.name}"))
+
+        embed.add_field(name="__Species__", value =(
+            f"{self.application.species if self.application.species else 'Not yet set'}"))
 
         return {"embed": embed}
-

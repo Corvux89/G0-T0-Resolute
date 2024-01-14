@@ -7,6 +7,7 @@ from discord.ui import InputText, Modal
 from Resolute.helpers import get_character
 from Resolute.models.db_objects import PlayerCharacter, CharacterSpecies, CharacterArchetype, CharacterClass, \
     NewCharacterApplication
+from Resolute.bot import G0T0Bot
 
 
 class AutomationRequestView(Modal):
@@ -75,16 +76,20 @@ class BaseScoreView(Modal):
         self.add_item(InputText(label="Strength", style=discord.InputTextStyle.short, required=True, custom_id="str",
                                 placeholder="Strength", value=self.application.base_scores.str))
 
+        self.add_item(InputText(label="Dexterity", style=discord.InputTextStyle.short, required=True, custom_id="dex",
+                                placeholder="Dexterity", value=self.application.base_scores.str))
+
     async def callback(self, interaction: discord.Interaction):
         self.application.base_scores.str = self.children[0].value
+        self.application.base_scores.dex = self.children[1].value
         await interaction.response.defer()
         self.stop()
-
 
 # https://github.com/avrae/avrae/blob/master/ui/menu.py#L8
 # https://github.com/avrae/avrae/blob/master/ui/charsettings.py#L23
 class NewCharacterRequestView(discord.ui.View):
-    bot = None
+    __menu_copy_attrs__ = ()
+    bot: G0T0Bot
     character = None
     application = NewCharacterApplication()
 
@@ -97,6 +102,19 @@ class NewCharacterRequestView(discord.ui.View):
             return True
         await interaction.response.send_message("You are not the owner of this application", ephemeral=True)
         return False
+
+    @classmethod
+    def from_menu(cls, other: "MenuBase"):
+        inst = cls(owner=other.owner)
+        inst.message = other.message
+        for attr in cls.__menu_copy_attrs__:
+            # copy the instance attr to the new instance if available, or fall back to the class default
+            sentinel = object()
+            value = getattr(other, attr, sentinel)
+            if value is sentinel:
+                value = getattr(cls, attr, None)
+            setattr(inst, attr, value)
+        return inst
 
     async def on_timeout(self) -> None:
         if self.message is None:
@@ -126,7 +144,7 @@ class NewCharacterRequestView(discord.ui.View):
         if interaction.response.is_done():
             await interaction.edit_original_response(view=self, **content_kwargs, **kwargs)
         else:
-            await interaction.response.edit_message(veiw=self, **content_kwargs, **kwargs)
+            await interaction.response.edit_message(view=self, **content_kwargs, **kwargs)
 
     @staticmethod
     async def prompt_modal(interaction: discord.Interaction, modal):
@@ -136,16 +154,13 @@ class NewCharacterRequestView(discord.ui.View):
 
 class NewCharacterRequestUI(NewCharacterRequestView):
     @classmethod
-    def new(cls, bot, owner, name, character):
+    def new(cls, bot, owner, name, character, freeroll):
         inst = cls(owner=owner)
         inst.bot = bot
         inst.character = character
         inst.application.name = name
+        inst.application.freeroll = freeroll
         return inst
-
-    @discord.ui.button(label="Exit", style=discord.ButtonStyle.danger, row=1)
-    async def exit(self, *_):
-        await self.on_timeout()
 
     @discord.ui.button(label="Edit Base Scores", style=discord.ButtonStyle.primary, row=1)
     async def edit_base_scores(self, _: discord.ui.Button, interaction: discord.Interaction):
@@ -154,9 +169,16 @@ class NewCharacterRequestUI(NewCharacterRequestView):
         self.application = await self.prompt_modal(interaction, modal)
         await self.refresh_content(interaction)
 
+    @discord.ui.button(label="Species", style=discord.ButtonStyle.green, row=1)
+    async def edit_species(self, _: discord.ui.Button, interaction: discord.Interaction):
+        await self.defer_to(_SpeciesRequestUI(self.bot), interaction)
+
+    @discord.ui.button(label="Exit", style=discord.ButtonStyle.danger, row=1)
+    async def exit(self, *_):
+        await self.on_timeout()
 
     async def get_content(self):
-        embed = Embed(title=f"New Character Application for {self.application.name}")
+        embed = Embed(title=f"{'Free Reroll' if self.application.freeroll else 'Reroll' if self.character else 'New Character'} Application for {self.application.name}")
         embed.add_field(name="__Base Scores__",
                         value=(
                             f"STR: {self.application.base_scores.str}\n"
@@ -167,6 +189,23 @@ class NewCharacterRequestUI(NewCharacterRequestView):
                             f"CHA: {self.application.base_scores.cha}\n"
                         ),
                         inline=False)
+
+        embed.add_field(name="__Species__",
+                        value=self.application.species.get_field(),
+                        inline=False)
+
+        return {"embed": embed}
+
+
+class _SpeciesRequestUI(NewCharacterRequestView):
+    @discord.ui.select(placeholder="Select species", options=[discord.SelectOption(label="Here", value="Here")])
+    async def species_select(self, select: discord.ui.Select, interaction: discord.Interaction):
+        self.application.species.species = select.values[0]
+        await self.refresh_content()
+
+    async def get_content(self):
+        embed = Embed(title="Here")
+        embed.description = "Testing stuff out"
 
         return {"embed": embed}
 

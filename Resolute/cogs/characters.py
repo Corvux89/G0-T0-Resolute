@@ -816,10 +816,12 @@ class Character(commands.Cog):
         description="New Character Request"
     )
     async def new_character_request(self, ctx:ApplicationContext,
-                                    name: Option(str, description="Character's name", required=True)):
+                                    name: Option(str, description="Character's name", required=True),
+                                    free_reroll: Option(bool, description="Free reroll application", required=False,
+                                                        default=False)):
         character: PlayerCharacter = await get_character(ctx.bot, ctx.author.id, ctx.guild_id)
 
-        ui = NewCharacterRequestUI.new(ctx.bot, ctx.author,name, character)
+        ui = NewCharacterRequestUI.new(ctx.bot, ctx.author, name, character, free_reroll)
 
         await ui.send_to(ctx)
-        return await ctx.delete()
+        await ctx.delete()

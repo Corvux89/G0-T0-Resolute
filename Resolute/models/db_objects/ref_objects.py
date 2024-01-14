@@ -113,6 +113,12 @@ class AppSpecies(object):
         for key, value in kwargs.items():
             setattr(self, key, value)
 
+    def get_field(self):
+        if not hasattr(self, "species"):
+            return "Not set"
+        else:
+            return f"**{self.species.value}**\nASIs: {self.asi}\nFeatures: {self.feats}"
+
 
 class AppClass(object):
     char_class: CharacterClass
@@ -137,6 +143,7 @@ class AppBackground(object):
 
 class NewCharacterApplication(object):
     name: str = ""
+    freeroll: bool = False
     base_scores: AppBaseScores = AppBaseScores()
     species: AppSpecies = AppSpecies()
     char_class: AppClass = AppClass()

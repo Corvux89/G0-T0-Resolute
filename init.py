@@ -39,7 +39,7 @@ if sys.version_info >= (3, 8) and sys.platform.lower().startswith("win"):
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 bot = G0T0Bot(command_prefix=DEFAULT_PREFIX,
-              description='Resolute - Created and maintained by Nick!#8675 and Alesha#0362',
+              description='Resolute - Created and maintained by Corvux',
               case_insensitive=True,
               help_command=MyHelpCommand(),
               intents=intents,

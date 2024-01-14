@@ -3,6 +3,8 @@ from typing import List
 import discord.utils
 from discord import ApplicationContext, TextChannel, CategoryChannel, Message, Bot
 
+from Resolute.models.db_objects import CharacterSpecies, CharacterClass
+
 
 class RefCategoryDashboard(object):
     category_channel_id: int
@@ -87,3 +89,64 @@ class GlobalEvent(object):
         for c in self.channels:
             names.append(bot.get_channel(int(c)).name)
         return names
+
+
+class AppBaseScores(object):
+    str: str = ''
+    dex: str = ''
+    con: str = ''
+    int: str = ''
+    wis: str = ''
+    cha: str = ''
+
+    def __init__(self, **kwargs):
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
+
+class AppSpecies(object):
+    species: CharacterSpecies
+    asi: str = ""
+    feats: str = ""
+
+    def __init__(self, **kwargs):
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
+
+class AppClass(object):
+    char_class: CharacterClass
+    skills: str = ""
+    feats: str = ""
+    equipment: str = ""
+
+    def __init__(self, **kwargs):
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
+
+class AppBackground(object):
+    background: str = ""
+    equip: str = ""
+    feat: str = ""
+    equipment: str = ""
+
+    def __init__(self, **kwargs):
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
+class NewCharacterApplication(object):
+    name: str = ""
+    base_scores: AppBaseScores = AppBaseScores()
+    species: AppSpecies = AppSpecies()
+    char_class: AppClass = AppClass()
+    background: AppBackground = AppBackground()
+    credits: int = 0
+    homeworld: str = ""
+    motivation: str = ""
+    link: str = ""
+
+    def __init__(self, **kwargs):
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+

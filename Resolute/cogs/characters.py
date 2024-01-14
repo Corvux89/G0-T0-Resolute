@@ -19,6 +19,7 @@ from Resolute.models.db_objects import PlayerCharacter, PlayerCharacterClass, DB
     CharacterStarship, DiscordPlayer
 from Resolute.models.embeds import ErrorEmbed, NewCharacterEmbed, CharacterGetEmbed
 from Resolute.models.schemas import CharacterSchema, CharacterStarshipSchema
+from Resolute.models.views.ref_view import LevelUpRequestView, NewCharacterRequestView, NewCharacterRequestUI
 from Resolute.queries import insert_new_character, insert_new_class, update_character, update_class, \
     insert_new_starship, update_starship
 
@@ -798,43 +799,27 @@ class Character(commands.Cog):
         log.info(f'Time to reroll character": [ {end - start:.2f} ]s')
 
         return await ctx.respond(embed=NewCharacterEmbed(new_character, player, new_class, log_entry, ctx))
-    #
-    #
-    #
-    #
-    #
-    #
-    # # @character_admin_commands.command(
-    # #     name="resurrect",
-    # #     description="Logs a resurrection for a character"
-    # # )
-    # async def character_resurrect(self, ctx: ApplicationContext,
-    #                               player: Option(Member, description="Player being resurrected", required=True),
-    #                               cost: Option(int, description="Any cost associated to be deducted", required=False,
-    #                               min_value=0, default=0)):
-    #
-    #     await ctx.defer()
-    #
-    #     character: PlayerCharacter = await get_character(ctx.bot, player.id, ctx.guild_id)
-    #
-    #     if character is None:
-    #         return await ctx.respond(
-    #             embed=ErrorEmbed(description=f"No character information found for {player.mention}"),
-    #             ephemeral=True)
-    #
-    #     if character.gold < cost:
-    #         return await ctx.respond(embed=ErrorEmbed(description=f"{player.mention} cannot afford the {cost}gp cost"))
-    #
-    #     xp = -1000 if character.xp - 1000 >= 0 else 0
-    #
-    #     act = ctx.bot.compendium.get_object("c_activity", "BONUS")
-    #
-    #     log_entry = await create_logs(ctx, character, act, "Character Resurrection", cost, xp)
-    #
-    #     embed = Embed(title=f"Resurrection of {character.name} successful!",
-    #                   color=Color.random())
-    #     embed.set_thumbnail(url=player.display_avatar.url)
-    #     embed.set_footer(text=f"Logged by {ctx.author} - ID: {log_entry.id}",
-    #                     icon_url=ctx.author.display_avatar.url)
-    #
-    #     await ctx.respond(embed=embed)
+
+    @commands.slash_command(
+        name="level_request",
+        description="Level Request"
+    )
+    async def character_level_request(self, ctx:ApplicationContext):
+        if character := await get_character(ctx.bot, ctx.author.id, ctx.guild_id):
+            modal = LevelUpRequestView(character)
+            return await ctx.send_modal(modal)
+        else:
+            return await ctx.respond(f"You do not have a character to level up", ephemeral=True)
+
+    @commands.slash_command(
+        name="new_character_request",
+        description="New Character Request"
+    )
+    async def new_character_request(self, ctx:ApplicationContext,
+                                    name: Option(str, description="Character's name", required=True)):
+        character: PlayerCharacter = await get_character(ctx.bot, ctx.author.id, ctx.guild_id)
+
+        ui = NewCharacterRequestUI.new(ctx.bot, ctx.author,name, character)
+
+        await ui.send_to(ctx)
+        return await ctx.delete()

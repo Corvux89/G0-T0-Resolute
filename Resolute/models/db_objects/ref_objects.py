@@ -106,13 +106,22 @@ class AppBaseScores(object):
     def status(self):
         if self.str == '' and self.dex == '' and self.con == '' and self.int == '' and self.wis == '' and self.cha == '':
             return "<:x:983576786447245312> -- Incomplete"
-        elif self.str !='' and self.dex != '' and self.con !='' and self.int !='' and self.wis != '' and self.cha != '':
+        elif self.str != '' and self.dex != '' and self.con != '' and self.int != '' and self.wis != '' and self.cha != '':
             return "<:white_check_mark:983576747381518396> -- Complete"
         else:
             return "<:pencil:989284061786808380> -- In-Progress"
 
+    def output(self):
+        return (f"**STR:** {self.str}\n" 
+               f"**DEX:** {self.dex}\n" 
+               f"**CON:** {self.con}\n"
+               f"**INT:** {self.int}\n"
+               f"**WIS:** {self.wis}\n"
+               f"**CHA:** {self.cha}\n")
+
+
 class AppSpecies(object):
-    species: CharacterSpecies|None = None
+    species: str = ""
     asi: str = ""
     feats: str = ""
 
@@ -124,18 +133,24 @@ class AppSpecies(object):
         if not hasattr(self, "species"):
             return "Not set"
         else:
-            return f"**{self.species.value}**\nASIs: {self.asi}\nFeatures: {self.feats}"
+            return f"**{self.species}**\nASIs: {self.asi}\nFeatures: {self.feats}"
 
     def status(self):
-        if self.species == None and self.asi == '' and self.feats == '':
+        if self.species == '' and self.asi == '' and self.feats == '':
             return "<:x:983576786447245312> -- Incomplete"
-        elif self.species != None and self.asi != '' and self.feats != '':
+        elif self.species != '' and self.asi != '' and self.feats != '':
             return "<:white_check_mark:983576747381518396> -- Complete"
         else:
             return "<:pencil:989284061786808380> -- In-Progress"
 
+    def output(self):
+        return (f"**Species:** {self.species}\n"
+                f"**ASI:** {self.asi}\n"
+                f"**Features:** {self.feats[:500]}\n")
+
+
 class AppClass(object):
-    char_class: CharacterClass
+    char_class: str = ""
     skills: str = ""
     feats: str = ""
     equipment: str = ""
@@ -144,16 +159,47 @@ class AppClass(object):
         for key, value in kwargs.items():
             setattr(self, key, value)
 
+    def status(self):
+        if self.char_class == '' and self.skills == '' and self.feats == '' and self.equipment == '':
+            return "<:x:983576786447245312> -- Incomplete"
+        elif self.char_class != '' and self.skills != '' and self.feats != '' and self.equipment != '':
+            return "<:white_check_mark:983576747381518396> -- Complete"
+        else:
+            return "<:pencil:989284061786808380> -- In-Progress"
+
+    def output(self):
+        return (f"**Class:** {self.char_class}\n"
+                f"**Skills:** {self.skills[:250]}\n"
+                f"**Features:** {self.feats[:250]}\n"
+                f"**Equipment:** {self.equipment[:400]}")
+
 
 class AppBackground(object):
     background: str = ""
-    equip: str = ""
+    skills: str = ""
+    tools: str = ""
     feat: str = ""
     equipment: str = ""
 
     def __init__(self, **kwargs):
         for key, value in kwargs.items():
             setattr(self, key, value)
+
+    def status(self):
+        if self.background == '' and self.skills == '' and self.tools == '' and self.feat == '' and self.equipment == '':
+            return "<:x:983576786447245312> -- Incomplete"
+        elif self.background != '' and self.skills != '' and self.tools != '' and self.feat != '' and self.equipment != '':
+            return "<:white_check_mark:983576747381518396> -- Complete"
+        else:
+            return "<:pencil:989284061786808380> -- In-Progress"
+
+    def output(self):
+        return (f"**Background:** {self.background}\n"
+                f"**Skills:** {self.skills}\n"
+                f"**Tools/Languages:** {self.tools}\n"
+                f"**Feat:** {self.feat}\n"
+                f"**Equipment:** {self.equipment}")
+
 
 class NewCharacterApplication(object):
     name: str = ""
@@ -170,4 +216,3 @@ class NewCharacterApplication(object):
     def __init__(self, **kwargs):
         for key, value in kwargs.items():
             setattr(self, key, value)
-

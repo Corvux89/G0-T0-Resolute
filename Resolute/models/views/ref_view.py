@@ -68,7 +68,7 @@ class LevelUpRequestView(Modal):
         return await interaction.response.send_message("Issue submitting request", ephemeral=True)
 
 class BaseScoreView1(Modal):
-    application: NewCharacterApplication()
+    application: NewCharacterApplication
     def __init__(self, application:NewCharacterApplication):
         super().__init__(title="Base Scores")
         self.application = application
@@ -90,7 +90,7 @@ class BaseScoreView1(Modal):
         self.stop()
 
 class BaseScoreView2(Modal):
-    application: NewCharacterApplication()
+    application: NewCharacterApplication
     def __init__(self, application:NewCharacterApplication):
         super().__init__(title="Base Scores")
         self.application = application
@@ -111,10 +111,92 @@ class BaseScoreView2(Modal):
         await interaction.response.defer()
         self.stop()
 
+class SpeciesView(Modal):
+    application: NewCharacterApplication
+
+    def __init__(self, application: NewCharacterApplication):
+        super().__init__(title="Species Information")
+        self.application = application
+
+        self.add_item(InputText(label="Species", style=discord.InputTextStyle.short, required=True, custom_id="species",
+                                placeholder="Species", value=self.application.species.species))
+
+        self.add_item(InputText(label="Ability Score Increases", style=discord.InputTextStyle.short, required=True, custom_id="asi",
+                                placeholder="ASIs", value=self.application.species.asi))
+
+        self.add_item(InputText(label="Features", style=discord.InputTextStyle.long, required=True, custom_id="feats",
+                                placeholder="Features", value=self.application.species.feats))
+
+    async def callback(self, interaction: discord.Interaction):
+        self.application.species.species = self.children[0].value
+        self.application.species.asi = self.children[1].value
+        self.application.species.feats = self.children[2].value
+        await interaction.response.defer()
+        self.stop()
+
+class BackgroundView(Modal):
+    application: NewCharacterApplication
+
+    def __init__(self, application: NewCharacterApplication):
+        super().__init__(title="Background Information")
+        self.application = application
+
+        self.add_item(InputText(label="Background", style=discord.InputTextStyle.short, required=True, custom_id="bkg",
+                                placeholder="Background", value=self.application.background.background))
+
+        self.add_item(InputText(label="Skills", style=discord.InputTextStyle.short, required=True, custom_id="skills",
+                                placeholder="Skills", value=self.application.background.skills))
+
+        self.add_item(InputText(label="Tools/Languages", style=discord.InputTextStyle.short, required=True, custom_id="tools",
+                                placeholder="Tools/Languages", value=self.application.background.tools))
+
+        self.add_item(InputText(label="Feat", style=discord.InputTextStyle.short, required=True, custom_id="feat",
+                                placeholder="Feat", value=self.application.background.feat))
+
+        self.add_item(InputText(label="Equipment", style=discord.InputTextStyle.short, required=True, custom_id="equip",
+                                placeholder="Equipment", value=self.application.background.equipment))
+
+    async def callback(self, interaction: discord.Interaction):
+        self.application.background.background = self.children[0].value
+        self.application.background.skills = self.children[1].value
+        self.application.background.tools = self.children[2].value
+        self.application.background.feat = self.children[3].value
+        self.application.background.equipment = self.children[4].value
+        await interaction.response.defer()
+        self.stop()
+
+class ClassView(Modal):
+    application: NewCharacterApplication
+
+    def __init__(self, application: NewCharacterApplication):
+        super().__init__(title="Class Information")
+        self.application = application
+
+        self.add_item(InputText(label="Class", style=discord.InputTextStyle.short, required=True, custom_id="class",
+                                placeholder="Class", value=self.application.char_class.char_class))
+
+        self.add_item(InputText(label="Skills", style=discord.InputTextStyle.long, required=True, custom_id="skills",
+                                placeholder="Skills", value=self.application.char_class.skills))
+
+        self.add_item(InputText(label="Features", style=discord.InputTextStyle.long, required=True, custom_id="feats",
+                                placeholder="Features", value=self.application.char_class.feats))
+
+        self.add_item(InputText(label="Equipment", style=discord.InputTextStyle.long, required=True, custom_id="equip",
+                                placeholder="Equipment", value=self.application.char_class.equipment))
+
+    async def callback(self, interaction: discord.Interaction):
+        self.application.char_class.char_class = self.children[0].value
+        self.application.char_class.skills = self.children[1].value
+        self.application.char_class.feats = self.children[2].value
+        self.application.char_class.equipment = self.children[3].value
+        await interaction.response.defer()
+        self.stop()
+
+
 # https://github.com/avrae/avrae/blob/master/ui/menu.py#L8
 # https://github.com/avrae/avrae/blob/master/ui/charsettings.py#L23
 class NewCharacterRequestView(discord.ui.View):
-    __menu_copy_attrs__ = ()
+    __menu_copy_attrs__ = ("character", "bot", "application")
     bot: G0T0Bot
     character: PlayerCharacter = None
     application: NewCharacterApplication = NewCharacterApplication()
@@ -151,6 +233,7 @@ class NewCharacterRequestView(discord.ui.View):
             return
         try:
             await self.message.edit(view=None)
+            await self.message.delete()
         except discord.HTTPException:
             pass
 
@@ -194,9 +277,13 @@ class NewCharacterRequestUI(NewCharacterRequestView):
         inst.application.freeroll = freeroll
         return inst
 
-    @discord.ui.button(label="Edit Base Scores", style=discord.ButtonStyle.primary, row=1)
-    async def edit_base_scores(self, _: discord.ui.Button, interaction: discord.Interaction):
+    @discord.ui.button(label="Base Scores", style=discord.ButtonStyle.primary, row=1)
+    async def base_scores(self, _: discord.ui.Button, interaction: discord.Interaction):
         await self.defer_to(_BaseScoresUI, interaction)
+
+    @discord.ui.button(label="Class/Species/Background", style=discord.ButtonStyle.primary, row=1)
+    async def character(self, _: discord.ui.Button, interaction: discord.Interaction):
+        await self.defer_to(_CharacterUI, interaction)
 
     @discord.ui.button(label="Exit", style=discord.ButtonStyle.danger, row=1)
     async def exit(self, *_):
@@ -224,7 +311,7 @@ class _BaseScoresUI(NewCharacterRequestView):
     @discord.ui.button(label="INT/WIS/CHA", style=discord.ButtonStyle.primary, row=1)
     async def edit_base_scores_2(self, _: discord.ui.Button, interaction: discord.Interaction):
         modal = BaseScoreView2(self.application)
-        self.application = await  self.prompt_modal(interaction, modal)
+        self.application = await self.prompt_modal(interaction, modal)
         await self.refresh_content(interaction)
 
     @discord.ui.button(label="Back", style=discord.ButtonStyle.grey, row=2)
@@ -235,25 +322,43 @@ class _BaseScoresUI(NewCharacterRequestView):
         embed = Embed(
             title=f"{'Free Reroll' if self.application.freeroll else 'Reroll' if self.character else 'New Character'} Application for {self.application.name}")
         embed.add_field(name="__Base Scores__",
-                        value=(
-                            f"STR: {self.application.base_scores.str}\n"
-                            f"DEX: {self.application.base_scores.dex}\n"
-                            f"CON: {self.application.base_scores.con}\n"
-                            f"INT: {self.application.base_scores.int}\n"
-                            f"WIS: {self.application.base_scores.wis}\n"
-                            f"CHA: {self.application.base_scores.cha}\n"
-                        ),
+                        value=self.application.base_scores.output(),
                         inline=False)
 
         return {"embed": embed}
 
-class _SpeciesUI(NewCharacterRequestView):
+class _CharacterUI(NewCharacterRequestView):
+    @discord.ui.button(label="Class", style=discord.ButtonStyle.primary, row=1)
+    async def char_class(self, _: discord.ui.Button, interaction: discord.Interaction):
+        modal = ClassView(application=self.application)
+        self.application = await self.prompt_modal(interaction, modal)
+        await self.refresh_content(interaction)
+
+    @discord.ui.button(label="Species", style=discord.ButtonStyle.primary, row=1)
+    async def species(self, _: discord.ui.Button, interaction: discord.Interaction):
+        modal = SpeciesView(application=self.application)
+        self.application = await self.prompt_modal(interaction, modal)
+        await self.refresh_content(interaction)
+
+    @discord.ui.button(label="Background", style=discord.ButtonStyle.primary, row=1)
+    async def background(self, _: discord.ui.Button, interaction: discord.Interaction):
+        modal = BackgroundView(application=self.application)
+        self.application = await self.prompt_modal(interaction, modal)
+        await self.refresh_content(interaction)
+    @discord.ui.button(label="Back", style=discord.ButtonStyle.grey, row=2)
+    async def back(self, _: discord.ui.Button, interaction: discord.Interaction):
+        await self.defer_to(NewCharacterRequestUI, interaction)
 
     async def get_content(self):
         embed = Embed(
-            title=f"{'Free Reroll' if self.application.freeroll else 'Reroll' if self.character else 'New Character'} Application for {self.application.name}"))
+            title=f"{'Free Reroll' if self.application.freeroll else 'Reroll' if self.character else 'New Character'} Application for {self.application.name}")
 
-        embed.add_field(name="__Species__", value =(
-            f"{self.application.species if self.application.species else 'Not yet set'}"))
+        embed.add_field(name="__Class__",
+                        value=f"{self.application.char_class.output()}",
+                        inline=False)
+
+        embed.add_field(name="__Species__",
+                        value=f"{self.application.species.output()}",
+                        inline=False)
 
         return {"embed": embed}

@@ -192,6 +192,39 @@ class ClassView(Modal):
         await interaction.response.defer()
         self.stop()
 
+class MiscView(Modal):
+    application: NewCharacterApplication
+
+    def __init__(self, application: NewCharacterApplication):
+        super().__init__(title="Misc. Information")
+        self.application = application
+
+        self.add_item(InputText(label="Character Name", style=discord.InputTextStyle.short, required=True,
+                                custom_id="name", placeholder="Character Name",
+                                value=f"{self.application.name}"))
+
+        self.add_item(InputText(label="Starting Credits", style=discord.InputTextStyle.short, required=True,
+                                custom_id="credits", placeholder="Starting Credits", value=f"{self.application.credits}"))
+
+        self.add_item(InputText(label="Homeworld", style=discord.InputTextStyle.short, required=True,
+                                custom_id="homeworld", placeholder="Homeworld", value=self.application.homeworld))
+
+        self.add_item(InputText(label="Motivation for working with the New Republic", style=discord.InputTextStyle.long,
+                                required=True, placeholder="Motivation", custom_id="motivation",
+                                value=self.application.motivation))
+
+        self.add_item(InputText(label="Character Sheet Link", style=discord.InputTextStyle.short, required=True,
+                                placeholder="Character Sheet Link", custom_id="link", value=self.application.link))
+
+    async def callback(self, interaction: discord.Interaction):
+        self.application.name = self.children[0].value
+        self.application.credits = self.children[1].value
+        self.application.homeworld = self.children[2].value
+        self.application.motivation = self.children[3].value
+        self.application.link = self.children[4].value
+        await interaction.response.defer()
+        self.stop()
+
 
 # https://github.com/avrae/avrae/blob/master/ui/menu.py#L8
 # https://github.com/avrae/avrae/blob/master/ui/charsettings.py#L23
@@ -225,7 +258,7 @@ class NewCharacterRequestView(discord.ui.View):
             setattr(inst, attr, value)
         return inst
 
-    async def before_send(self):
+    async def _before_send(self):
         pass
 
     async def on_timeout(self) -> None:
@@ -247,14 +280,20 @@ class NewCharacterRequestView(discord.ui.View):
         view = view_type.from_menu(self)
         if stop:
             self.stop()
-        await view.before_send()
+        await view._before_send()
         await view.refresh_content(interaction)
+
+    async def commit(self):
+        test = vars(self.application)
+        here = 1
+
 
     async def get_content(self) -> Mapping:
         return {}
 
     async def refresh_content(self, interaction: discord.Interaction, **kwargs):
         content_kwargs = await self.get_content()
+        await self.commit()
         if interaction.response.is_done():
             await interaction.edit_original_response(view=self, **content_kwargs, **kwargs)
         else:
@@ -266,14 +305,12 @@ class NewCharacterRequestView(discord.ui.View):
         await modal.wait()
         return modal.application
 
-# Base Scores, Class/Species/Background, Misc., Review, Exit
 class NewCharacterRequestUI(NewCharacterRequestView):
     @classmethod
-    def new(cls, bot, owner, name, character, freeroll):
+    def new(cls, bot, owner, character, freeroll):
         inst = cls(owner=owner)
         inst.bot = bot
         inst.character = character
-        inst.application.name = name
         inst.application.freeroll = freeroll
         return inst
 
@@ -285,21 +322,50 @@ class NewCharacterRequestUI(NewCharacterRequestView):
     async def character(self, _: discord.ui.Button, interaction: discord.Interaction):
         await self.defer_to(_CharacterUI, interaction)
 
-    @discord.ui.button(label="Exit", style=discord.ButtonStyle.danger, row=1)
+    @discord.ui.button(label="Misc.", style=discord.ButtonStyle.primary, row=1)
+    async def misc(self, _: discord.ui.Button, interaction: discord.Interaction):
+        await self.defer_to(_MiscUI, interaction)
+
+    @discord.ui.button(label="Review Application", style=discord.ButtonStyle.green, row=2)
+    async def review(self, _: discord.ui.Button, interaction: discord.Interaction):
+        await self.defer_to(_ReviewUI, interaction)
+
+    @discord.ui.button(label="Exit", style=discord.ButtonStyle.danger, row=2)
     async def exit(self, *_):
         await self.on_timeout()
 
     async def get_content(self):
-        embed = Embed(title=f"{'Free Reroll' if self.application.freeroll else 'Reroll' if self.character else 'New Character'} Application for {self.application.name}")
+        embed = Embed(title=f"{'Free Reroll' if self.application.freeroll else 'Reroll' if self.character else 'New Character'} Application")
+        embed.add_field(name="__Character Name__",
+                        value=f"{'<:white_check_mark:983576747381518396> -- Complete' if self.application.name else '<:x:983576786447245312> -- Incomplete'}")
+
         embed.add_field(name="__Base Scores__",
-                        value=f"{self.application.base_scores.status()}",
-                        inline=False)
+                        value=f"{self.application.base_scores.status()}")
 
         embed.add_field(name="__Species__",
-                        value=f"{self.application.species.status()}",
+                        value=f"{self.application.species.status()}")
+
+        embed.add_field(name="__Class__",
+                        value=f"{self.application.char_class.status()}")
+
+        embed.add_field(name="__Background__",
+                        value=f"{self.application.background.status()}")
+
+        embed.add_field(name="__Homeworld__",
+                        value=f"{'<:white_check_mark:983576747381518396> -- Complete' if self.application.homeworld else '<:x:983576786447245312> -- Incomplete'}")
+
+        embed.add_field(name="__Motivation__",
+                        value=f"{'<:white_check_mark:983576747381518396> -- Complete' if self.application.motivation else '<:x:983576786447245312> -- Incomplete'}")
+
+        embed.add_field(name="__Starting Credits__", value=f"{self.application.credits}")
+        embed.add_field(name="__Sheet Link__", value=self.application.link)
+
+        embed.add_field(name="__Instructions__", value=f"Fill out all the required fields, "
+                                                       f"or `NA` if the specific section is not applicable.\n"
+                                                       f"Review the application then submit when ready.",
                         inline=False)
 
-        return {"embed": embed}
+        return {"embed": embed, "content": None}
 
 class _BaseScoresUI(NewCharacterRequestView):
     @discord.ui.button(label="STR/DEX/CON", style=discord.ButtonStyle.primary, row=1)
@@ -320,12 +386,12 @@ class _BaseScoresUI(NewCharacterRequestView):
 
     async def get_content(self):
         embed = Embed(
-            title=f"{'Free Reroll' if self.application.freeroll else 'Reroll' if self.character else 'New Character'} Application for {self.application.name}")
+            title=f"{'Free Reroll' if self.application.freeroll else 'Reroll' if self.character else 'New Character'} Application")
         embed.add_field(name="__Base Scores__",
                         value=self.application.base_scores.output(),
                         inline=False)
 
-        return {"embed": embed}
+        return {"embed": embed, "content": None}
 
 class _CharacterUI(NewCharacterRequestView):
     @discord.ui.button(label="Class", style=discord.ButtonStyle.primary, row=1)
@@ -351,7 +417,7 @@ class _CharacterUI(NewCharacterRequestView):
 
     async def get_content(self):
         embed = Embed(
-            title=f"{'Free Reroll' if self.application.freeroll else 'Reroll' if self.character else 'New Character'} Application for {self.application.name}")
+            title=f"{'Free Reroll' if self.application.freeroll else 'Reroll' if self.character else 'New Character'} Application")
 
         embed.add_field(name="__Class__",
                         value=f"{self.application.char_class.output()}",
@@ -361,4 +427,76 @@ class _CharacterUI(NewCharacterRequestView):
                         value=f"{self.application.species.output()}",
                         inline=False)
 
-        return {"embed": embed}
+        embed.add_field(name="__Background__",
+                        value=f"{self.application.background.output()}",
+                        inline=False)
+
+        return {"embed": embed, "content": None}
+
+class _MiscUI(NewCharacterRequestView):
+    @discord.ui.button(label="Misc.", style=discord.ButtonStyle.primary, row=1)
+    async def misc(self, _: discord.ui.Button, interaction: discord.Interaction):
+        modal = MiscView(application=self.application)
+        self.application = await self.prompt_modal(interaction, modal)
+        await self.refresh_content(interaction)
+
+    @discord.ui.button(label="Back", style=discord.ButtonStyle.grey, row=2)
+    async def back(self, _: discord.ui.Button, interaction: discord.Interaction):
+        await self.defer_to(NewCharacterRequestUI, interaction)
+
+    async def get_content(self):
+        embed = Embed(
+            title=f"{'Free Reroll' if self.application.freeroll else 'Reroll' if self.character else 'New Character'} Application")
+
+        embed.add_field(name="__Character Name__",
+                        value=f"{self.application.name}",
+                        inline=False)
+
+        embed.add_field(name="__Starting Credits__",
+                        value=f"{self.application.credits}",
+                        inline=False)
+
+        embed.add_field(name="__Homeworld__",
+                        value=self.application.homeworld,
+                        inline=False)
+
+        embed.add_field(name="__Motivation__",
+                        value=self.application.motivation,
+                        inline=False)
+
+        embed.add_field(name="__Character Sheet Link__",
+                        value=self.application.link,
+                        inline=False)
+
+        return {"embed": embed, "content": None}
+
+class _ReviewUI(NewCharacterRequestView):
+
+    @discord.ui.button(label="Submit", style=discord.ButtonStyle.primary, row=1)
+    async def submit(self, _: discord.ui.Button, interaction: discord.Interaction):
+        if (arch_role := discord.utils.get(interaction.guild.roles, name="Archivist")) and (app_channel := discord.utils.get(interaction.guild.channels, name="character-apps")):
+            if self.application.message:
+                await self.application.message.edit(content=self.application.format_app(self.owner, self.character, arch_role))
+            else:
+                message = await app_channel.send(self.application.format_app(self.owner, self.character, arch_role))
+                self.application.message = message
+            await interaction.response.send_message("Request Submitted", ephemeral=True)
+        else:
+            await interaction.response.send_message("Error submitting request", ephemeral=True)
+        await self.on_timeout()
+    @discord.ui.button(label="Back", style=discord.ButtonStyle.grey, row=2)
+    async def back(self, _: discord.ui.Button, interaction: discord.Interaction):
+        await self.defer_to(NewCharacterRequestUI, interaction)
+
+    async def _before_send(self):
+        # if not self.application.can_submit():
+        #     self.remove_item(self.submit)
+        pass
+
+    async def get_content(self):
+        content = self.application.format_app(self.owner, self.character)
+
+        if not self.application.can_submit():
+            content += f"\n\n__This application is not yet complete and cannot be submitted. Please go back and review__"
+
+        return {"content": content, "embed": None}

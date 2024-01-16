@@ -3,7 +3,7 @@ from typing import List
 import discord.utils
 from discord import ApplicationContext, TextChannel, CategoryChannel, Message, Bot
 
-from Resolute.models.db_objects import CharacterSpecies, CharacterClass
+from Resolute.models.db_objects import CharacterSpecies, CharacterClass, PlayerCharacter
 
 
 class RefCategoryDashboard(object):
@@ -202,13 +202,14 @@ class AppBackground(object):
 
 
 class NewCharacterApplication(object):
+    message: discord.Message = None
     name: str = ""
     freeroll: bool = False
     base_scores: AppBaseScores = AppBaseScores()
     species: AppSpecies = AppSpecies()
     char_class: AppClass = AppClass()
     background: AppBackground = AppBackground()
-    credits: int = 0
+    credits: str = "0"
     homeworld: str = ""
     motivation: str = ""
     link: str = ""
@@ -216,3 +217,41 @@ class NewCharacterApplication(object):
     def __init__(self, **kwargs):
         for key, value in kwargs.items():
             setattr(self, key, value)
+
+    def can_submit(self):
+        if 'Complete' in self.base_scores.status() and 'Complete' in self.species.status() and 'Complete' in self.char_class.status() and 'Complete' in self.background.status() and self.motivation != '' and self.name != '' and self.link != '' and self.homeworld != '':
+            return True
+        else:
+            return False
+
+
+    def format_app(self, owner: discord.Member, character: PlayerCharacter, archivist: discord.Role | None = None):
+        return (
+            f"{'Free Reroll' if self.freeroll else 'Reroll' if character else 'New Character'} | {archivist.mention if archivist else 'Archivist'}\n"
+            f"**Player:** {owner.mention}\n"
+            f"**Name:** {self.name}\n\n"
+            f"**Base Scores:**\n"
+            f"STR: {self.base_scores.str}\n"
+            f"DEX: {self.base_scores.dex}\n"
+            f"CON: {self.base_scores.con}\n"
+            f"INT: {self.base_scores.int}\n"
+            f"WIS: {self.base_scores.wis}\n"
+            f"CHA: {self.base_scores.cha}\n\n"
+            f"**Species:** {self.species.species}\n"
+            f"ASIs: {self.species.asi}\n"
+            f"Features: {self.species.feats}\n\n"
+            f"**Class:** {self.char_class.char_class}\n"
+            f"Skills: {self.char_class.skills}\n"
+            f"Features: {self.char_class.feats}\n\n"
+            f"**Background:** {self.background.background}\n"
+            f"Skills: {self.background.skills}\n"
+            f"Tools/Languages: {self.background.tools}\n"
+            f"Feat: {self.background.feat}\n\n"
+            f"**Equipments:**\n"
+            f"Class: {self.char_class.equipment}\n"
+            f"Background: {self.background.equipment}\n"
+            f"Credits: {self.credits}\n\n"
+            f"**Homeworld:** {self.homeworld}\n"
+            f"**Motivation for working with the New Republic:** {self.motivation}\n\n"
+            f"**Link:** {self.link}"
+        )

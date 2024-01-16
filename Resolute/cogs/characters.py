@@ -2,6 +2,7 @@ import binascii
 import datetime
 import logging
 import random
+import re
 import string
 import time
 from timeit import default_timer as timer
@@ -14,13 +15,14 @@ from Resolute.bot import G0T0Bot
 from Resolute.constants import THUMBNAIL
 from Resolute.helpers import manage_player_roles, get_character_quests, get_character, get_player_character_class, \
     create_logs, get_level_cap, get_or_create_guild, confirm, is_admin, get_player_starships, \
-    get_player_starship_from_transponder, get_character_from_char_id, get_discord_player
+    get_player_starship_from_transponder, get_character_from_char_id, get_discord_player, get_new_character_application, \
+    get_level_up_application
 from Resolute.helpers.autocomplete_helpers import *
 from Resolute.models.db_objects import PlayerCharacter, PlayerCharacterClass, DBLog, LevelCaps, PlayerGuild, \
-    CharacterStarship, DiscordPlayer
+    CharacterStarship, DiscordPlayer, NewCharacterApplication, LevelUpApplication
 from Resolute.models.embeds import ErrorEmbed, NewCharacterEmbed, CharacterGetEmbed
 from Resolute.models.schemas import CharacterSchema, CharacterStarshipSchema
-from Resolute.models.views.ref_view import LevelUpRequestView, NewCharacterRequestView, NewCharacterRequestUI, EditRequestView
+from Resolute.models.views.ref_view import LevelUpRequestView, NewCharacterRequestUI
 from Resolute.queries import insert_new_character, insert_new_class, update_character, update_class, \
     insert_new_starship, update_starship
 
@@ -820,7 +822,6 @@ class Character(commands.Cog):
                                     free_reroll: Option(bool, description="Free reroll application", required=False,
                                                         default=False)):
         character: PlayerCharacter = await get_character(ctx.bot, ctx.author.id, ctx.guild_id)
-        archivist_role = discord
 
         ui = NewCharacterRequestUI.new(ctx.bot, ctx.author, character, free_reroll)
 
@@ -831,13 +832,41 @@ class Character(commands.Cog):
         name="edit_application",
         description="Edit an application"
     )
-    async def edit_message(self, ctx: ApplicationContext,
+    async def edit_application(self, ctx: ApplicationContext,
                            application_id: Option(str, description="Application ID", required=True)):
-        if (app_channel := discord.utils.get(ctx.guild.channels, name="character-apps")) and (message := await app_channel.fetch_message(int(application_id))):
-            modal = EditRequestView(message.content)
-            await ctx.send_modal(modal)
-            await message.edit(content=modal.content)
-            return await ctx.respond("Updated", ephemeral=True)
+        if app_channel := discord.utils.get(ctx.guild.channels, name="character-apps"):
+            try:
+                message = await app_channel.fetch_message(int(application_id))
+            except ValueError:
+                return await ctx.respond("Invalid application identifier", ephemeral=True)
+            except discord.errors.NotFound:
+                return await ctx.respond("Application not found", ephemeral=True)
+
+            emoji = [x.emoji.name if hasattr(x.emoji, 'name') else x.emoji for x in message.reactions]
+            if '✅' in emoji or 'greencheck' in emoji:
+                return await ctx.respond("Application is already approved. Cannot edit at this time", ephemeral=True)
+            elif '❌' in emoji:
+                return await ctx.respond("Application marked as invalid and cannot me modified", ephemeral=True)
+
+            app_text = message.content
+            type_match = re.search(r"^(.*?) \|", app_text, re.MULTILINE)
+            player_match = re.search(r"\*\*Player:\*\* (.+)", app_text)
+            character: PlayerCharacter = await get_character(ctx.bot, ctx.author.id, ctx.guild_id)
+
+            if player_match and ctx.author.mention in player_match.group(1):
+                if type_match and type_match.group(1).strip().replace('*','') in ['Reroll', 'Free Reroll', 'New Character']:
+                    application: NewCharacterApplication = get_new_character_application(message)
+                    ui = NewCharacterRequestUI.new(ctx.bot, ctx.author, character,application.freeroll, application)
+                    await ui.send_to(ctx)
+                    return await ctx.delete()
+                elif type_match and type_match.group(1).strip().replace('*','') == "Level Up":
+                    application: LevelUpApplication = get_level_up_application(message)
+                    modal = LevelUpRequestView(character, application)
+                    return await ctx.send_modal(modal)
+                else:
+                    return await ctx.respond("Unsure what type of application this is", ephemeral=True)
+            else:
+                return await ctx.respond("Not your application", ephemeral=True)
 
         return await ctx.respond("Something went wrong", ephemeral=True)
 

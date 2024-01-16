@@ -227,9 +227,9 @@ class NewCharacterApplication(object):
 
     def format_app(self, owner: discord.Member, character: PlayerCharacter, archivist: discord.Role | None = None):
         return (
-            f"{'Free Reroll' if self.freeroll else 'Reroll' if character else 'New Character'} | {archivist.mention if archivist else 'Archivist'}\n"
-            f"**Player:** {owner.mention}\n"
-            f"**Name:** {self.name}\n\n"
+            f"**{'Free Reroll' if self.freeroll else 'Reroll' if character else 'New Character'} | {archivist.mention if archivist else 'Archivist'}**\n"
+            f"**Name:** {self.name}\n"
+            f"**Player:** {owner.mention}\n\n"
             f"**Base Scores:**\n"
             f"STR: {self.base_scores.str}\n"
             f"DEX: {self.base_scores.dex}\n"
@@ -247,7 +247,7 @@ class NewCharacterApplication(object):
             f"Skills: {self.background.skills}\n"
             f"Tools/Languages: {self.background.tools}\n"
             f"Feat: {self.background.feat}\n\n"
-            f"**Equipments:**\n"
+            f"**Equipment:**\n"
             f"Class: {self.char_class.equipment}\n"
             f"Background: {self.background.equipment}\n"
             f"Credits: {self.credits}\n\n"
@@ -255,3 +255,15 @@ class NewCharacterApplication(object):
             f"**Motivation for working with the New Republic:** {self.motivation}\n\n"
             f"**Link:** {self.link}"
         )
+
+class LevelUpApplication(object):
+    message: discord.Message = None
+    level: str =  ""
+    hp: str = ""
+    feats: str = ""
+    changes: str = ""
+    link: str = ""
+
+    def __init__(self, **kwargs):
+        for key, value in kwargs.items():
+            setattr(self, key, value)

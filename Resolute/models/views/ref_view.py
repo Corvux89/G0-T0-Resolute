@@ -1,12 +1,12 @@
 from typing import Type, Mapping
 
 import discord
-from discord import ChannelType, Embed, User
+from discord import ChannelType, Embed, User, SelectOption
 from discord.ui import InputText, Modal
 
 from Resolute.helpers import get_character
 from Resolute.models.db_objects import PlayerCharacter, CharacterSpecies, CharacterArchetype, CharacterClass, \
-    NewCharacterApplication
+    NewCharacterApplication, LevelUpApplication
 from Resolute.bot import G0T0Bot
 
 
@@ -36,49 +36,47 @@ class AutomationRequestView(Modal):
 
 class LevelUpRequestView(Modal):
     character = None
+    application: LevelUpApplication = LevelUpApplication()
 
-    def __init__(self, character: PlayerCharacter = None):
+    def __init__(self, character: PlayerCharacter = None, application: LevelUpApplication = LevelUpApplication()):
         super().__init__(title=f"Level Up Request")
         self.character = character
+        self.application = application
 
         self.add_item(InputText(label="Level", style=discord.InputTextStyle.short, required=True, custom_id="level",
-                                placeholder=f"Level", value=f"{character.level + 1}"))
+                                placeholder=f"Level", value=f"{self.application.level if self.application.level != '' else character.level +1}"))
         self.add_item(InputText(label="HP", style=discord.InputTextStyle.short, required=True, custom_id="hp",
-                                placeholder="HP"))
+                                placeholder="HP", value=self.application.hp))
         self.add_item(InputText(label="New Features", style=discord.InputTextStyle.long, required=True,
-                                custom_id="feats", placeholder="New Features or NA"))
+                                custom_id="feats", placeholder="New Features or NA", value=self.application.feats))
         self.add_item(InputText(label="Changes", style=discord.InputTextStyle.long, required=True,
-                                custom_id="changes", placeholder="Changes or NA"))
+                                custom_id="changes", placeholder="Changes or NA", value=self.application.changes))
         self.add_item(InputText(label="Link", style=discord.InputTextStyle.short, required=True, custom_id="link",
-                                placeholder="Link to character sheet"))
+                                placeholder="Link to character sheet", value=self.application.link))
 
     async def callback(self, interaction: discord.Interaction):
         if (character_app_channel := discord.utils.get(interaction.guild.channels, name="character-apps")) and (
         arch_role := discord.utils.get(interaction.guild.roles, name="Archivist")):
             message = f'''**Level Up** | {arch_role.mention}\n'''
             message += f'''**Name:** {self.character.name}\n'''
+            message += f'''**Player:** {interaction.user.mention}\n\n'''
             message += f'''**New Level:** {self.children[0].value}\n'''
             message += f'''**HP:** {self.children[1].value}\n'''
             message += f'''**New Features:** {self.children[2].value}\n'''
             message += f'''**Changes:** {self.children[3].value}\n'''
-            message += f'''**Link:** {self.children[4].value}'''
+            message += f'''**Link:** {self.children[4].value}\n\n'''
 
-            await character_app_channel.send(content=message)
-            return await interaction.response.send_message("Request submitted!", ephemeral=True)
+
+            if self.application.message:
+                message += f'''Need to make an edit? Use `/edit_application application_id:{self.application.message.id}`'''
+                await self.application.message.edit(content=message)
+                return await interaction.response.send_message("Request updated!", ephemeral=True)
+            else:
+                msg = await character_app_channel.send(content=message)
+                message += f'''Need to make an edit? Use `/edit_application application_id:{msg.id}`'''
+                await msg.edit(content=message)
+                return await interaction.response.send_message("Request submitted!", ephemeral=True)
         return await interaction.response.send_message("Issue submitting request", ephemeral=True)
-
-class EditRequestView(Modal):
-    content: str = ""
-    def __init__(self, content):
-        super().__init__(title="Edit Application")
-
-        self.add_item(InputText(label="Application", style=discord.InputTextStyle.long, required=True,
-                                custom_id="content", value=content))
-
-    async def callback(self, interaction: discord.Interaction):
-        self.content = self.children[0].value
-        await interaction.response.defer()
-        self.stop()
 
 class BaseScoreView1(Modal):
     application: NewCharacterApplication
@@ -239,8 +237,6 @@ class MiscView(Modal):
         self.stop()
 
 
-# https://github.com/avrae/avrae/blob/master/ui/menu.py#L8
-# https://github.com/avrae/avrae/blob/master/ui/charsettings.py#L23
 class NewCharacterRequestView(discord.ui.View):
     __menu_copy_attrs__ = ("character", "bot", "application")
     bot: G0T0Bot
@@ -320,10 +316,11 @@ class NewCharacterRequestView(discord.ui.View):
 
 class NewCharacterRequestUI(NewCharacterRequestView):
     @classmethod
-    def new(cls, bot, owner, character, freeroll):
+    def new(cls, bot, owner, character, freeroll, application: NewCharacterApplication = NewCharacterApplication()):
         inst = cls(owner=owner)
         inst.bot = bot
         inst.character = character
+        inst.application=application
         inst.application.freeroll = freeroll
         return inst
 
@@ -453,9 +450,21 @@ class _MiscUI(NewCharacterRequestView):
         self.application = await self.prompt_modal(interaction, modal)
         await self.refresh_content(interaction)
 
+    @discord.ui.select(options=[SelectOption(label="Freeroll", description="Free reroll (no penalties)", value="freeroll"),
+                                SelectOption(label="Death Reroll", description="Death reroll", value="death")],
+                       placeholder="Select different reroll type")
+    async def reroll_type(self, reroll_type: discord.ui.Select, interaction: discord.Interaction):
+        self.application.freeroll=True if reroll_type.values[0] == "freeroll" else False
+        await self.refresh_content(interaction)
+
     @discord.ui.button(label="Back", style=discord.ButtonStyle.grey, row=2)
     async def back(self, _: discord.ui.Button, interaction: discord.Interaction):
         await self.defer_to(NewCharacterRequestUI, interaction)
+
+    async def _before_send(self):
+        if not self.character:
+            self.remove_item(self.reroll_type)
+        pass
 
     async def get_content(self):
         embed = Embed(
@@ -489,10 +498,15 @@ class _ReviewUI(NewCharacterRequestView):
     async def submit(self, _: discord.ui.Button, interaction: discord.Interaction):
         if (arch_role := discord.utils.get(interaction.guild.roles, name="Archivist")) and (app_channel := discord.utils.get(interaction.guild.channels, name="character-apps")):
             if self.application.message:
-                await self.application.message.edit(content=self.application.format_app(self.owner, self.character, arch_role))
+                content=self.application.format_app(self.owner, self.character, arch_role)
+                content += f'''\n\nNeed to make an edit? Use `/edit_application application_id:{self.application.message.id}`'''
+                await self.application.message.edit(content=content)
             else:
                 message = await app_channel.send(self.application.format_app(self.owner, self.character, arch_role))
+                content = message.content
                 self.application.message = message
+                content += f'''\n\nNeed to make an edit? Use `/edit_application application_id:{self.application.message.id}`'''
+                await message.edit(content=content)
             await interaction.response.send_message("Request Submitted", ephemeral=True)
         else:
             await interaction.response.send_message("Error submitting request", ephemeral=True)
@@ -502,8 +516,8 @@ class _ReviewUI(NewCharacterRequestView):
         await self.defer_to(NewCharacterRequestUI, interaction)
 
     async def _before_send(self):
-        # if not self.application.can_submit():
-        #     self.remove_item(self.submit)
+        if not self.application.can_submit():
+            self.remove_item(self.submit)
         pass
 
     async def get_content(self):

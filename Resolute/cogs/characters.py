@@ -7,6 +7,7 @@ import time
 from timeit import default_timer as timer
 from typing import List
 
+import discord.ui
 from discord import SlashCommandGroup, Option, ApplicationContext, Member, Embed, Color
 from discord.ext import commands
 from Resolute.bot import G0T0Bot
@@ -19,7 +20,7 @@ from Resolute.models.db_objects import PlayerCharacter, PlayerCharacterClass, DB
     CharacterStarship, DiscordPlayer
 from Resolute.models.embeds import ErrorEmbed, NewCharacterEmbed, CharacterGetEmbed
 from Resolute.models.schemas import CharacterSchema, CharacterStarshipSchema
-from Resolute.models.views.ref_view import LevelUpRequestView, NewCharacterRequestView, NewCharacterRequestUI
+from Resolute.models.views.ref_view import LevelUpRequestView, NewCharacterRequestView, NewCharacterRequestUI, EditRequestView
 from Resolute.queries import insert_new_character, insert_new_class, update_character, update_class, \
     insert_new_starship, update_starship
 
@@ -825,3 +826,18 @@ class Character(commands.Cog):
 
         await ui.send_to(ctx)
         await ctx.delete()
+
+    @commands.slash_command(
+        name="edit_application",
+        description="Edit an application"
+    )
+    async def edit_message(self, ctx: ApplicationContext,
+                           application_id: Option(str, description="Application ID", required=True)):
+        if (app_channel := discord.utils.get(ctx.guild.channels, name="character-apps")) and (message := await app_channel.fetch_message(int(application_id))):
+            modal = EditRequestView(message.content)
+            await ctx.send_modal(modal)
+            await message.edit(content=modal.content)
+            return await ctx.respond("Updated", ephemeral=True)
+
+        return await ctx.respond("Something went wrong", ephemeral=True)
+

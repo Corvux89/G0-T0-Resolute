@@ -67,6 +67,19 @@ class LevelUpRequestView(Modal):
             return await interaction.response.send_message("Request submitted!", ephemeral=True)
         return await interaction.response.send_message("Issue submitting request", ephemeral=True)
 
+class EditRequestView(Modal):
+    content: str = ""
+    def __init__(self, content):
+        super().__init__(title="Edit Application")
+
+        self.add_item(InputText(label="Application", style=discord.InputTextStyle.long, required=True,
+                                custom_id="content", value=content))
+
+    async def callback(self, interaction: discord.Interaction):
+        self.content = self.children[0].value
+        await interaction.response.defer()
+        self.stop()
+
 class BaseScoreView1(Modal):
     application: NewCharacterApplication
     def __init__(self, application:NewCharacterApplication):

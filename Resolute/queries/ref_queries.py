@@ -4,7 +4,8 @@ from Resolute.models.db_tables import *
 from sqlalchemy import null, and_, or_
 from sqlalchemy.sql.selectable import FromClause, TableClause
 
-from Resolute.models.db_objects import RefCategoryDashboard, RefWeeklyStipend, GlobalEvent, GlobalPlayer
+from Resolute.models.db_objects import RefCategoryDashboard, RefWeeklyStipend, GlobalEvent, GlobalPlayer, \
+    NewCharacterApplication
 
 
 def get_dashboard_by_category_channel(category_channel_id: int) -> FromClause:
@@ -138,7 +139,7 @@ def delete_global_event(guild_id: int) -> TableClause:
 
 
 def delete_global_players(guild_id: int) -> TableClause:
-    return ref_gb_staging_player_table.delete()\
+    return ref_gb_staging_player_table.delete() \
         .where(ref_gb_staging_player_table.c.guild_id == guild_id)
 
 
@@ -152,4 +153,7 @@ def add_global_player(g_player: GlobalPlayer):
         num_messages=g_player.num_messages,
         channels=g_player.channels
     ).returning(ref_gb_staging_player_table)
+
+
+
 

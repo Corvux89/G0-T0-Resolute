@@ -70,7 +70,7 @@ class LevelUpRequestView(Modal):
                 return await interaction.response.send_message("Request updated!", ephemeral=True)
             else:
                 msg = await character_app_channel.send(content=message)
-                thread = await msg.create_thread(name=f"{interaction.user.display_name}", auto_archive_duration=10080)
+                thread = await msg.create_thread(name=f"{self.character.name}", auto_archive_duration=10080)
                 await thread.send(f'''Need to make an edit? Use:\n''')
                 await thread.send(f'''`/edit_application application_id:{msg.id}`''')
                 await msg.edit(content=message)
@@ -537,7 +537,7 @@ class _ReviewUI(NewCharacterRequestView):
                 await interaction.response.send_message("Request Updated", ephemeral=True)
             else:
                 msg = await app_channel.send(content=message)
-                thread = await msg.create_thread(name=f"{interaction.user.display_name}", auto_archive_duration=10080)
+                thread = await msg.create_thread(name=f"{self.application.name}", auto_archive_duration=10080)
                 await thread.send(f'''Need to make an edit? Use:\n''')
                 await thread.send(f'''`/edit_application application_id:{msg.id}`''')
                 await interaction.response.send_message("Request Submitted", ephemeral=True)

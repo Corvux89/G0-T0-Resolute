@@ -853,7 +853,7 @@ class Character(commands.Cog):
             player_match = re.search(r"\*\*Player:\*\* (.+)", app_text)
             character: PlayerCharacter = await get_character(ctx.bot, ctx.author.id, ctx.guild_id)
 
-            if player_match and ctx.author.mention in player_match.group(1):
+            if player_match and str(ctx.author.id) in player_match.group(1):
                 if type_match and type_match.group(1).strip().replace('*','') in ['Reroll', 'Free Reroll', 'New Character']:
                     application: NewCharacterApplication = get_new_character_application(message)
                     ui = NewCharacterRequestUI.new(ctx.bot, ctx.author, character,application.freeroll, application)

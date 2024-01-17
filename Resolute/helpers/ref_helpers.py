@@ -2,10 +2,9 @@ import re
 
 import aiopg.sa
 import discord
-from discord import ApplicationContext, TextChannel, Role
-from discord.ext.commands import Bot
+from discord import TextChannel, Role
 
-from Resolute.compendium import Compendium
+from Resolute.bot import G0T0Bot
 from Resolute.models.db_objects import RefCategoryDashboard, RefWeeklyStipend, GlobalPlayer, GlobalEvent, \
     NewCharacterApplication, AppBaseScores, AppSpecies, AppClass, AppBackground, LevelUpApplication
 from Resolute.models.schemas import RefCategoryDashboardSchema, RefWeeklyStipendSchema, GlobalPlayerSchema, \
@@ -32,11 +31,12 @@ async def get_dashboard_from_category_channel_id(category_channel_id: int,
 
 async def get_last_message(channel: TextChannel) -> discord.Message | None:
     last_message = channel.last_message
+    hx=[]
 
     if last_message is None:
         try:
             hx = [msg async for msg in channel.history(limit=1)]
-        except discord.errors.HTTPException as e:
+        except discord.errors.HTTPException:
             pass
 
         if len(hx) > 0:
@@ -63,7 +63,7 @@ async def get_weekly_stipend(db: aiopg.sa.Engine, role: Role) -> RefWeeklyStipen
         return stipend
 
 
-async def get_all_players(bot: Bot, guild_id: int) -> dict:
+async def get_all_players(bot: G0T0Bot, guild_id: int) -> dict:
     players = dict()
 
     async with bot.db.acquire() as conn:
@@ -75,7 +75,7 @@ async def get_all_players(bot: Bot, guild_id: int) -> dict:
     return players
 
 
-async def get_player(bot: Bot, gulid_id: int, player_id: int) -> GlobalPlayer | None:
+async def get_player(bot: G0T0Bot, gulid_id: int, player_id: int) -> GlobalPlayer | None:
     async with bot.db.acquire() as conn:
         results = await conn.execute(get_global_player(gulid_id, player_id))
         row = await results.first()
@@ -88,7 +88,7 @@ async def get_player(bot: Bot, gulid_id: int, player_id: int) -> GlobalPlayer | 
     return player
 
 
-async def get_global(bot: Bot, guild_id: int) -> GlobalEvent | None:
+async def get_global(bot: G0T0Bot, guild_id: int) -> GlobalEvent | None:
     async with bot.db.acquire() as conn:
         results = await conn.execute(get_active_global(guild_id))
         row = await results.first()
@@ -127,10 +127,13 @@ def get_new_character_application(message: discord.Message) -> NewCharacterAppli
     equip_match = re.search(r"\*\*Equipment:\*\*\n"
                             r"Class: (.*?)(?=\nBackground:)\n"
                             r"Background: (.*?)(?=\nCredits:)", app_text, re.DOTALL)
+    hp_match = re.search(r"\*\*HP:\*\* (.+?)\n", app_text)
+    level_match = re.search(r"\*\*Level:\*\* (.+?)\n", app_text)
+
     application: NewCharacterApplication = NewCharacterApplication(
         message=message,
         name=re.search(r"\*\*Name:\*\* (.+)", app_text).group(1),
-        freeroll=True if re.search(r"^(.*?) \|", app_text, re.MULTILINE).group(1).split() == "Free Reroll" else False,
+        freeroll=True if re.search(r"^(.*?) \|", app_text, re.MULTILINE).group(1).replace('*','') == "Free Reroll" else False,
         base_scores=AppBaseScores(
             str=base_scores_match.group(1),
             dex=base_scores_match.group(2),
@@ -161,7 +164,9 @@ def get_new_character_application(message: discord.Message) -> NewCharacterAppli
         homeworld=re.search(r"\*\*Homeworld:\*\* (.+?)\n", app_text).group(1),
         motivation=re.search(r"\*\*Motivation for working with the New Republic:\*\* (.*?)(?=\n\n\*\*)", app_text,
                              re.DOTALL).group(1),
-        link=re.search(r"\*\*Link:\*\* (.+)", app_text).group(1)
+        link=re.search(r"\*\*Link:\*\* (.+)", app_text).group(1),
+        level=level_match.group(1) if level_match else '',
+        hp=hp_match.group(1) if hp_match else ''
     )
     return application
 

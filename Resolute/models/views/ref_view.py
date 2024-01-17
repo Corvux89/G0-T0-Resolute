@@ -57,23 +57,22 @@ class LevelUpRequestView(Modal):
     async def callback(self, interaction: discord.Interaction):
         if (character_app_channel := discord.utils.get(interaction.guild.channels, name="character-apps")) and (
         arch_role := discord.utils.get(interaction.guild.roles, name="Archivist")):
-            message = f'''**Level Up** | {arch_role.mention}\n'''
-            message += f'''**Name:** {self.character.name}\n'''
-            message += f'''**Player:** {interaction.user.mention}\n\n'''
-            message += f'''**New Level:** {self.children[0].value}\n'''
-            message += f'''**HP:** {self.children[1].value}\n'''
-            message += f'''**New Features:** {self.children[2].value}\n'''
-            message += f'''**Changes:** {self.children[3].value}\n'''
-            message += f'''**Link:** {self.children[4].value}\n\n'''
+            self.application.level = self.children[0].value
+            self.application.hp = self.children[1].value
+            self.application.feats = self.children[2].value
+            self.application.changes = self.children[3].value
+            self.application.link = self.children[4].value
 
+            message = self.application.format_app(interaction.user, self.character, arch_role)
 
             if self.application.message:
-                message += f'''Need to make an edit? Use `/edit_application application_id:{self.application.message.id}`'''
                 await self.application.message.edit(content=message)
                 return await interaction.response.send_message("Request updated!", ephemeral=True)
             else:
                 msg = await character_app_channel.send(content=message)
-                message += f'''Need to make an edit? Use `/edit_application application_id:{msg.id}`'''
+                thread = await msg.create_thread(name=f"{interaction.user.display_name}", auto_archive_duration=10080)
+                await thread.send(f'''Need to make an edit? Use:\n''')
+                await thread.send(f'''`/edit_application application_id:{msg.id}`''')
                 await msg.edit(content=message)
                 return await interaction.response.send_message("Request submitted!", ephemeral=True)
         return await interaction.response.send_message("Issue submitting request", ephemeral=True)
@@ -233,6 +232,24 @@ class MiscView(Modal):
         self.application.homeworld = self.children[2].value
         self.application.motivation = self.children[3].value
         self.application.link = self.children[4].value
+        await interaction.response.defer()
+        self.stop()
+
+class HPView(Modal):
+    application: NewCharacterApplication
+
+    def __init__(self, application: NewCharacterApplication):
+        super().__init__(title="HP Rolls")
+        self.application = application
+        self.add_item(InputText(label="Character Reroll Level)", style=discord.InputTextStyle.short, required=False,
+                                custom_id="level", placeholder="Character Reroll Level", value=self.application.level))
+
+        self.add_item(InputText(label="HP Rolls (Link or Rolls)", style=discord.InputTextStyle.short, required=False,
+                                custom_id="hp", placeholder="HP Rolls (Link or Rolls)", value=self.application.hp))
+
+    async def callback(self, interaction: discord.Interaction):
+        self.application.level = self.children[0].value
+        self.application.hp = self.children[1].value
         await interaction.response.defer()
         self.stop()
 
@@ -450,20 +467,27 @@ class _MiscUI(NewCharacterRequestView):
         self.application = await self.prompt_modal(interaction, modal)
         await self.refresh_content(interaction)
 
+    @discord.ui.button(label="HP/Level", style=discord.ButtonStyle.primary, row=1)
+    async def hp_level(self, _: discord.ui.Button, interaction: discord.Interaction):
+        modal = HPView(application=self.application)
+        self.application = await self.prompt_modal(interaction, modal)
+        await self.refresh_content(interaction)
+
     @discord.ui.select(options=[SelectOption(label="Freeroll", description="Free reroll (no penalties)", value="freeroll"),
                                 SelectOption(label="Death Reroll", description="Death reroll", value="death")],
-                       placeholder="Select different reroll type")
+                       placeholder="Select different reroll type", row=2)
     async def reroll_type(self, reroll_type: discord.ui.Select, interaction: discord.Interaction):
         self.application.freeroll=True if reroll_type.values[0] == "freeroll" else False
         await self.refresh_content(interaction)
 
-    @discord.ui.button(label="Back", style=discord.ButtonStyle.grey, row=2)
+    @discord.ui.button(label="Back", style=discord.ButtonStyle.grey, row=3)
     async def back(self, _: discord.ui.Button, interaction: discord.Interaction):
         await self.defer_to(NewCharacterRequestUI, interaction)
 
     async def _before_send(self):
         if not self.character:
             self.remove_item(self.reroll_type)
+            self.remove_item(self.hp_level)
         pass
 
     async def get_content(self):
@@ -473,6 +497,16 @@ class _MiscUI(NewCharacterRequestView):
         embed.add_field(name="__Character Name__",
                         value=f"{self.application.name}",
                         inline=False)
+
+        if self.application.freeroll or self.character:
+            embed.add_field(name="__Level__",
+                            value=f"{self.application.level}",
+                            inline=False)
+
+            embed.add_field(name="__HP__",
+                            value=f"{self.application.hp}",
+                            inline=False)
+
 
         embed.add_field(name="__Starting Credits__",
                         value=f"{self.application.credits}",
@@ -497,17 +531,16 @@ class _ReviewUI(NewCharacterRequestView):
     @discord.ui.button(label="Submit", style=discord.ButtonStyle.primary, row=1)
     async def submit(self, _: discord.ui.Button, interaction: discord.Interaction):
         if (arch_role := discord.utils.get(interaction.guild.roles, name="Archivist")) and (app_channel := discord.utils.get(interaction.guild.channels, name="character-apps")):
+            message = self.application.format_app(self.owner, self.character, arch_role)
             if self.application.message:
-                content=self.application.format_app(self.owner, self.character, arch_role)
-                content += f'''\n\nNeed to make an edit? Use `/edit_application application_id:{self.application.message.id}`'''
-                await self.application.message.edit(content=content)
+                await self.application.message.edit(content=message)
+                await interaction.response.send_message("Request Updated", ephemeral=True)
             else:
-                message = await app_channel.send(self.application.format_app(self.owner, self.character, arch_role))
-                content = message.content
-                self.application.message = message
-                content += f'''\n\nNeed to make an edit? Use `/edit_application application_id:{self.application.message.id}`'''
-                await message.edit(content=content)
-            await interaction.response.send_message("Request Submitted", ephemeral=True)
+                msg = await app_channel.send(content=message)
+                thread = await msg.create_thread(name=f"{interaction.user.display_name}", auto_archive_duration=10080)
+                await thread.send(f'''Need to make an edit? Use:\n''')
+                await thread.send(f'''`/edit_application application_id:{msg.id}`''')
+                await interaction.response.send_message("Request Submitted", ephemeral=True)
         else:
             await interaction.response.send_message("Error submitting request", ephemeral=True)
         await self.on_timeout()

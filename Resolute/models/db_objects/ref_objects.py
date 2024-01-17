@@ -213,6 +213,8 @@ class NewCharacterApplication(object):
     homeworld: str = ""
     motivation: str = ""
     link: str = ""
+    hp: str = ""
+    level: str = ""
 
     def __init__(self, **kwargs):
         for key, value in kwargs.items():
@@ -226,8 +228,10 @@ class NewCharacterApplication(object):
 
 
     def format_app(self, owner: discord.Member, character: PlayerCharacter, archivist: discord.Role | None = None):
+        hp_str = f"**HP:** {self.hp}\n\n" if self.hp != "" else ""
+        level_str=f"**Level:** {self.level}\n" if self.level != "" else ""
         return (
-            f"**{'Free Reroll' if self.freeroll else 'Reroll' if character else 'New Character'} | {archivist.mention if archivist else 'Archivist'}**\n"
+            f"**{'Free Reroll' if self.freeroll else 'Reroll' if character else 'New Character'}** | {archivist.mention if archivist else 'Archivist'}\n"
             f"**Name:** {self.name}\n"
             f"**Player:** {owner.mention}\n\n"
             f"**Base Scores:**\n"
@@ -237,6 +241,8 @@ class NewCharacterApplication(object):
             f"INT: {self.base_scores.int}\n"
             f"WIS: {self.base_scores.wis}\n"
             f"CHA: {self.base_scores.cha}\n\n"
+            f"{level_str}"
+            f"{hp_str}"
             f"**Species:** {self.species.species}\n"
             f"ASIs: {self.species.asi}\n"
             f"Features: {self.species.feats}\n\n"
@@ -267,3 +273,15 @@ class LevelUpApplication(object):
     def __init__(self, **kwargs):
         for key, value in kwargs.items():
             setattr(self, key, value)
+
+    def format_app(self, owner: discord.Member, character: PlayerCharacter, archivist: discord.Role):
+        return (
+            f"**Level Up** | {archivist.mention}\n"
+            f"**Name:** {character.name}\n"
+            f"**Player:** {owner.mention}\n\n"
+            f"**New Level:** {self.level}\n"
+            f"**HP:** {self.hp}\n"
+            f"**New Features:** {self.feats}\n"
+            f"**Changes:** {self.changes}\n"
+            f"**Link:** {self.link}\n\n"
+        )

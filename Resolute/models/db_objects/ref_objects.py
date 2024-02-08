@@ -215,7 +215,6 @@ class NewCharacterApplication(object):
     link: str = ""
     hp: str = ""
     level: str = ""
-    draft: bool = True
 
     def __init__(self, **kwargs):
         for key, value in kwargs.items():
@@ -228,12 +227,10 @@ class NewCharacterApplication(object):
             return False
 
 
-    def format_app(self, owner: discord.Member, character: PlayerCharacter, archivist: discord.Role | None = None, draft: bool = False):
+    def format_app(self, owner: discord.Member, character: PlayerCharacter, archivist: discord.Role | None = None):
         hp_str = f"**HP:** {self.hp}\n\n" if self.hp != "" else ""
         level_str=f"**Level:** {self.level}\n" if self.level != "" else ""
-        draft_str = f"**__DRAFT__**\n" if draft else ""
         return (
-            f"{draft_str}"
             f"**{'Free Reroll' if self.freeroll else 'Reroll' if character else 'New Character'}** | {archivist.mention if archivist else 'Archivist'}\n"
             f"**Name:** {self.name}\n"
             f"**Player:** {owner.mention}\n\n"
@@ -267,7 +264,7 @@ class NewCharacterApplication(object):
 
 class LevelUpApplication(object):
     message: discord.Message = None
-    level: str = ""
+    level: str =  ""
     hp: str = ""
     feats: str = ""
     changes: str = ""

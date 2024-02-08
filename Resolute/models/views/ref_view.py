@@ -38,14 +38,13 @@ class LevelUpRequestView(Modal):
     character = None
     application: LevelUpApplication = LevelUpApplication()
 
-    def __init__(self, owner, character: PlayerCharacter = None, application: LevelUpApplication = LevelUpApplication()):
+    def __init__(self, character: PlayerCharacter = None, application: LevelUpApplication = LevelUpApplication()):
         super().__init__(title=f"Level Up Request")
-        self.owner=owner
         self.character = character
         self.application = application
 
         self.add_item(InputText(label="Level", style=discord.InputTextStyle.short, required=True, custom_id="level",
-                                    placeholder=f"Level", value=f"{self.application.level if self.application.level != '' else character.level +1}"))
+                                placeholder=f"Level", value=f"{self.application.level if self.application.level != '' else character.level +1}"))
         self.add_item(InputText(label="HP", style=discord.InputTextStyle.short, required=True, custom_id="hp",
                                 placeholder="HP", value=self.application.hp))
         self.add_item(InputText(label="New Features", style=discord.InputTextStyle.long, required=True,
@@ -71,7 +70,7 @@ class LevelUpRequestView(Modal):
                 return await interaction.response.send_message("Request updated!", ephemeral=True)
             else:
                 msg = await character_app_channel.send(content=message)
-                thread = await msg.create_thread(name=f"{interaction.user.display_name}", auto_archive_duration=10080)
+                thread = await msg.create_thread(name=f"{self.character.name}", auto_archive_duration=10080)
                 await thread.send(f'''Need to make an edit? Use:\n''')
                 await thread.send(f'''`/edit_application application_id:{msg.id}`''')
                 await msg.edit(content=message)
@@ -260,7 +259,6 @@ class NewCharacterRequestView(discord.ui.View):
     bot: G0T0Bot
     character: PlayerCharacter = None
     application: NewCharacterApplication = NewCharacterApplication()
-    owner: discord.Member = None
 
     def __init__(self, owner: User, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -355,7 +353,7 @@ class NewCharacterRequestUI(NewCharacterRequestView):
     async def misc(self, _: discord.ui.Button, interaction: discord.Interaction):
         await self.defer_to(_MiscUI, interaction)
 
-    @discord.ui.button(label="Save/Submit Application", style=discord.ButtonStyle.green, row=2)
+    @discord.ui.button(label="Review Application", style=discord.ButtonStyle.green, row=2)
     async def review(self, _: discord.ui.Button, interaction: discord.Interaction):
         await self.defer_to(_ReviewUI, interaction)
 
@@ -536,36 +534,16 @@ class _ReviewUI(NewCharacterRequestView):
             message = self.application.format_app(self.owner, self.character, arch_role)
             if self.application.message:
                 await self.application.message.edit(content=message)
-                if self.application.draft:
-                    await self.application.message.thread.send(f'''{arch_role.mention} - Request finalized. Ready for review.''')
                 await interaction.response.send_message("Request Updated", ephemeral=True)
             else:
                 msg = await app_channel.send(content=message)
-                thread = await msg.create_thread(name=f"{interaction.user.display_name}", auto_archive_duration=10080)
+                thread = await msg.create_thread(name=f"{self.application.name}", auto_archive_duration=10080)
                 await thread.send(f'''Need to make an edit? Use:\n''')
-                await thread.send(f'''```/edit_application application_id:{msg.id}```''')
+                await thread.send(f'''`/edit_application application_id:{msg.id}`''')
                 await interaction.response.send_message("Request Submitted", ephemeral=True)
         else:
             await interaction.response.send_message("Error submitting request", ephemeral=True)
         await self.on_timeout()
-
-    @discord.ui.button(label="Save Daft", style=discord.ButtonStyle.secondary, row=1)
-    async def draft(self, _: discord.ui.Button, interaction: discord.Interaction):
-        if app_channel := discord.utils.get(interaction.guild.channels, name="character-apps"):
-            message = self.application.format_app(self.owner, self.character,None,True)
-            if self.application.message:
-                await self.application.message.edit(content=message)
-                await interaction.response.send_message("Draft Updated", ephemeral=True)
-            else:
-                msg = await app_channel.send(content=message)
-                thread = await msg.create_thread(name=f"{interaction.user.display_name}", auto_archive_duration=10080)
-                await thread.send(f'''Need to make an edit? Use:\n''')
-                await thread.send(f'''```/edit_application application_id:{msg.id}```''')
-                await interaction.response.send_message("Draft Saved", ephemeral=True)
-        else:
-            await interaction.response.send_message("Error submitting draft", ephemeral=True)
-        await self.on_timeout()
-
     @discord.ui.button(label="Back", style=discord.ButtonStyle.grey, row=2)
     async def back(self, _: discord.ui.Button, interaction: discord.Interaction):
         await self.defer_to(NewCharacterRequestUI, interaction)
@@ -573,9 +551,6 @@ class _ReviewUI(NewCharacterRequestView):
     async def _before_send(self):
         if not self.application.can_submit():
             self.remove_item(self.submit)
-
-        if not self.application.draft:
-            self.remove_item(self.draft)
         pass
 
     async def get_content(self):

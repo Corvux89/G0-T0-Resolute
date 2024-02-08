@@ -809,7 +809,7 @@ class Character(commands.Cog):
     )
     async def character_level_request(self, ctx:ApplicationContext):
         if character := await get_character(ctx.bot, ctx.author.id, ctx.guild_id):
-            modal = LevelUpRequestView(ctx.author, character, LevelUpApplication())
+            modal = LevelUpRequestView(character)
             return await ctx.send_modal(modal)
         else:
             return await ctx.respond(f"You do not have a character to level up", ephemeral=True)
@@ -823,7 +823,7 @@ class Character(commands.Cog):
                                                         default=False)):
         character: PlayerCharacter = await get_character(ctx.bot, ctx.author.id, ctx.guild_id)
 
-        ui = NewCharacterRequestUI.new(ctx.bot, ctx.author, character, free_reroll, NewCharacterApplication())
+        ui = NewCharacterRequestUI.new(ctx.bot, ctx.author, character, free_reroll)
 
         await ui.send_to(ctx)
         await ctx.delete()
@@ -861,7 +861,7 @@ class Character(commands.Cog):
                     return await ctx.delete()
                 elif type_match and type_match.group(1).strip().replace('*','') == "Level Up":
                     application: LevelUpApplication = get_level_up_application(message)
-                    modal = LevelUpRequestView(ctx.author, character, application)
+                    modal = LevelUpRequestView(character, application)
                     return await ctx.send_modal(modal)
                 else:
                     return await ctx.respond("Unsure what type of application this is", ephemeral=True)

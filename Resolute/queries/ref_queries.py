@@ -154,10 +154,6 @@ def add_global_player(g_player: GlobalPlayer):
         channels=g_player.channels
     ).returning(ref_gb_staging_player_table)
 
-def get_class_census() -> FromClause:
-    return class_census_table.select()
 
-def get_level_distribution() -> FromClause:
-    return level_distribution_table.select()
 
 

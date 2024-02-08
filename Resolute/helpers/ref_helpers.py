@@ -10,7 +10,7 @@ from Resolute.models.db_objects import RefCategoryDashboard, RefWeeklyStipend, G
 from Resolute.models.schemas import RefCategoryDashboardSchema, RefWeeklyStipendSchema, GlobalPlayerSchema, \
     GlobalEventSchema
 from Resolute.queries import get_dashboard_by_category_channel, get_weekly_stipend_query, get_all_global_players, \
-    get_active_global, get_global_player, delete_global_event, delete_global_players
+    get_active_global, get_global_player, delete_global_event, delete_global_players, get_class_census, get_level_distribution
 
 
 async def get_dashboard_from_category_channel_id(category_channel_id: int,
@@ -188,3 +188,21 @@ def get_level_up_application(message: discord.Message) -> LevelUpApplication | N
         link=re.search(r"\*\*Link:\*\* (.+)", app_text).group(1)
     )
     return application
+
+async def get_class_census_data(bot: G0T0Bot) -> []:
+    census = []
+
+    async with bot.db.acquire() as conn:
+        async for row in conn.execute(get_class_census()):
+            result = dict(row)
+            census.append([result['Class'], result['#']])
+
+    return census
+
+async def get_level_distribution_data(bot: G0T0Bot) -> []:
+    data = []
+    async with bot.db.acquire() as conn:
+        async for row in conn.execute(get_level_distribution()):
+            result = dict(row)
+            data.append([result['level'], result['#']])
+    return data

@@ -8,12 +8,14 @@ from discord.ext import commands, tasks
 
 from Resolute.bot import G0T0Bot
 from Resolute.constants import DASHBOARD_REFRESH_INTERVAL
-from Resolute.helpers import get_last_message, get_dashboard_from_category_channel_id
+from Resolute.helpers import get_last_message, get_dashboard_from_category_channel_id, get_class_census_data, \
+    get_level_distribution_data
 from Resolute.models.db_objects import RefCategoryDashboard, DashboardType
 from Resolute.models.embeds import RpDashboardEmbed, ErrorEmbed
 from Resolute.models.schemas import RefCategoryDashboardSchema
 from Resolute.queries import get_dashboards, delete_dashboard, insert_new_dashboard
 from timeit import default_timer as timer
+from texttable import Texttable
 
 log = logging.getLogger(__name__)
 
@@ -99,7 +101,49 @@ class Dashboards(commands.Cog):
             channels =  [guild.get_channel(c) for c in ids]
             dict[k] = [x.mention for x in sorted(channels, key=lambda c: c.position)]
 
+    @dashboard_commands.command(
+        name="census_create",
+        description="Creates a new census dashboard",
+    )
+    async def dashboard_census_create(self, ctx: ApplicationContext):
+        await ctx.defer()
 
+        interaction = await ctx.respond(f"Fetching dashboard data. This may take a moment.")
+        msg: Message = await ctx.channel.fetch_message(interaction.id)
+        await msg.pin(reason=f"Census Dashboard created by {ctx.author.name}")
+        dType = ctx.bot.compendium.get_object("c_dashboard_type", "CCENSUS")
+
+        dashboard: RefCategoryDashboard = RefCategoryDashboard(category_channel_id=ctx.channel.category_id,
+                                                               dashboard_post_channel_id=ctx.channel_id,
+                                                               dashboard_post_id=msg.id,
+                                                               excluded_channel_ids=[],
+                                                               dashboard_type=dType.id)
+        async with ctx.bot.db.acquire() as conn:
+            await conn.execute(insert_new_dashboard(dashboard))
+
+        await self.update_dashboard(dashboard)
+
+    @dashboard_commands.command(
+        name="level_dist_create",
+        description="Creates a new level distribution dashboard",
+    )
+    async def dashboard_census_create(self, ctx: ApplicationContext):
+        await ctx.defer()
+
+        interaction = await ctx.respond(f"Fetching dashboard data. This may take a moment.")
+        msg: Message = await ctx.channel.fetch_message(interaction.id)
+        await msg.pin(reason=f"Level Dashboard created by {ctx.author.name}")
+        dType = ctx.bot.compendium.get_object("c_dashboard_type", "LDIST")
+
+        dashboard: RefCategoryDashboard = RefCategoryDashboard(category_channel_id=ctx.channel.category_id,
+                                                               dashboard_post_channel_id=ctx.channel_id,
+                                                               dashboard_post_id=msg.id,
+                                                               excluded_channel_ids=[],
+                                                               dashboard_type=dType.id)
+        async with ctx.bot.db.acquire() as conn:
+            await conn.execute(insert_new_dashboard(dashboard))
+
+        await self.update_dashboard(dashboard)
 
     @dashboard_commands.command(
         name="rp_create",
@@ -198,6 +242,32 @@ class Dashboards(commands.Cog):
 
             category = dashboard.get_category_channel(self.bot)
             return await original_message.edit(content='', embed=RpDashboardEmbed(channels_dict, category.name))
+
+        elif dType is not None and dType.value.upper() == "CCENSUS":
+            class_table = Texttable()
+            class_table.set_cols_align(['l', 'r'])
+            class_table.set_cols_valign(['m', 'm'])
+            class_table.set_cols_width([15, 5])
+            class_table.header(['Class', '#'])
+
+            data = await get_class_census_data(self.bot)
+
+            class_table.add_rows(data, header=False)
+
+            return await original_message.edit(content=f"```{class_table.draw()}```")
+
+        elif dType is not None and dType.value.upper() == "LDIST":
+            dist_table = Texttable()
+            dist_table.set_cols_align(['l', 'r'])
+            dist_table.set_cols_valign(['m', 'm'])
+            dist_table.set_cols_width([10, 5])
+            dist_table.header(['Level', '#'])
+
+            data = await get_level_distribution_data(self.bot)
+
+            dist_table.add_rows(data, header=False)
+
+            return await original_message.edit(content=f"```{dist_table.draw()}```")
 
 
     # --------------------------- #

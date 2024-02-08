@@ -10,7 +10,7 @@ from Resolute.models.db_objects import RefCategoryDashboard, RefWeeklyStipend, G
 from Resolute.models.schemas import RefCategoryDashboardSchema, RefWeeklyStipendSchema, GlobalPlayerSchema, \
     GlobalEventSchema
 from Resolute.queries import get_dashboard_by_category_channel, get_weekly_stipend_query, get_all_global_players, \
-    get_active_global, get_global_player, delete_global_event, delete_global_players
+    get_active_global, get_global_player, delete_global_event, delete_global_players, get_class_census, get_level_distribution
 
 
 async def get_dashboard_from_category_channel_id(category_channel_id: int,
@@ -108,6 +108,7 @@ async def close_global(db: aiopg.sa.Engine, guild_id: int):
 
 def get_new_character_application(message: discord.Message) -> NewCharacterApplication | None:
     app_text = message.content
+    name_match = re.search(r"\*\*Name:\*\* (.+)", app_text)
     base_scores_match = re.search(r"STR: (.+?)\n"
                                   r"DEX: (.+?)\n"
                                   r"CON: (.+?)\n"
@@ -128,11 +129,16 @@ def get_new_character_application(message: discord.Message) -> NewCharacterAppli
                             r"Class: (.*?)(?=\nBackground:)\n"
                             r"Background: (.*?)(?=\nCredits:)", app_text, re.DOTALL)
     hp_match = re.search(r"\*\*HP:\*\* (.+?)\n", app_text)
+    credits_match = re.search(r"\*\*Link:\*\* (.+)", app_text)
     level_match = re.search(r"\*\*Level:\*\* (.+?)\n", app_text)
+    homeworld_match = re.search(r"\*\*Homeworld:\*\* (.+?)\n", app_text)
+    motivation_match = re.search(r"\*\*Motivation for working with the New Republic:\*\* (.*?)(?=\n\n\*\*)", app_text, re.DOTALL)
+    draft_match = re.search(r"\*\*__DRAFT__\*\*", app_text)
+    link_match = re.search(r"\*\*Link:\*\* (.+)", app_text)
 
     application: NewCharacterApplication = NewCharacterApplication(
         message=message,
-        name=re.search(r"\*\*Name:\*\* (.+)", app_text).group(1),
+        name=name_match.group(1) if name_match else "",
         freeroll=True if re.search(r"^(.*?) \|", app_text, re.MULTILINE).group(1).replace('*','') == "Free Reroll" else False,
         base_scores=AppBaseScores(
             str=base_scores_match.group(1),
@@ -141,32 +147,32 @@ def get_new_character_application(message: discord.Message) -> NewCharacterAppli
             int=base_scores_match.group(4),
             wis=base_scores_match.group(5),
             cha=base_scores_match.group(6)
-        ),
+        ) if base_scores_match else AppBaseScores(),
         species=AppSpecies(
             species=species_match.group(1),
             asi=species_match.group(2),
             feats=species_match.group(3)
-        ),
+        ) if species_match else AppSpecies(),
         char_class=AppClass(
             char_class=class_match.group(1),
             skills=class_match.group(2),
             feats=class_match.group(3),
             equipment=equip_match.group(1)
-        ),
+        ) if class_match and equip_match else AppClass(),
         background=AppBackground(
             background=background_match.group(1),
             skills=background_match.group(2),
             tools=background_match.group(3),
             feat=background_match.group(4),
             equipment=equip_match.group(2)
-        ),
-        credits=re.search(r"Credits: (.+?)\n", app_text).group(1),
-        homeworld=re.search(r"\*\*Homeworld:\*\* (.+?)\n", app_text).group(1),
-        motivation=re.search(r"\*\*Motivation for working with the New Republic:\*\* (.*?)(?=\n\n\*\*)", app_text,
-                             re.DOTALL).group(1),
-        link=re.search(r"\*\*Link:\*\* (.+)", app_text).group(1),
+        ) if background_match and equip_match else AppBackground(),
+        credits=credits_match.group(1) if credits_match else 0,
+        homeworld=homeworld_match.group(1) if homeworld_match else "",
+        motivation=motivation_match.group(1) if motivation_match else "",
+        link=link_match.group(1) if link_match else "",
         level=level_match.group(1) if level_match else '',
-        hp=hp_match.group(1) if hp_match else ''
+        hp=hp_match.group(1) if hp_match else '',
+        draft=True if draft_match else False
     )
     return application
 
@@ -182,7 +188,6 @@ def get_level_up_application(message: discord.Message) -> LevelUpApplication | N
         link=re.search(r"\*\*Link:\*\* (.+)", app_text).group(1)
     )
     return application
-
 
 async def get_class_census_data(bot: G0T0Bot) -> []:
     census = []

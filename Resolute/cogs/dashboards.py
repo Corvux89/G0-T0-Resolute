@@ -254,7 +254,7 @@ class Dashboards(commands.Cog):
 
             class_table.add_rows(data, header=False)
 
-            return await original_message.edit(content=f"```{class_table.draw()}```")
+            return await original_message.edit(content=f"`{class_table.draw()}`")
 
         elif dType is not None and dType.value.upper() == "LDIST":
             dist_table = Texttable()
@@ -267,7 +267,7 @@ class Dashboards(commands.Cog):
 
             dist_table.add_rows(data, header=False)
 
-            return await original_message.edit(content=f"```{dist_table.draw()}```")
+            return await original_message.edit(content=f"`{dist_table.draw()}`")
 
 
     # --------------------------- #

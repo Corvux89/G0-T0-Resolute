@@ -182,3 +182,22 @@ def get_level_up_application(message: discord.Message) -> LevelUpApplication | N
         link=re.search(r"\*\*Link:\*\* (.+)", app_text).group(1)
     )
     return application
+
+
+async def get_class_census_data(bot: G0T0Bot) -> []:
+    census = []
+
+    async with bot.db.acquire() as conn:
+        async for row in conn.execute(get_class_census()):
+            result = dict(row)
+            census.append([result['Class'], result['#']])
+
+    return census
+
+async def get_level_distribution_data(bot: G0T0Bot) -> []:
+    data = []
+    async with bot.db.acquire() as conn:
+        async for row in conn.execute(get_level_distribution()):
+            result = dict(row)
+            data.append([result['level'], result['#']])
+    return data

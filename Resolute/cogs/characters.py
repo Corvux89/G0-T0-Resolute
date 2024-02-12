@@ -717,12 +717,15 @@ class Character(commands.Cog):
                                level: Option(int, description="Level for the new character. Default is their old level",
                                              min_value=1, max_value=20, required=False),
                                transfer_ship: Option(bool, description="Transfer any starships to the new character?",
-                                                     default=True, required=False)):
+                                                     default=True, required=False),
+                               reset_handicap: Option(bool, description="Reset the CC booster for a player",
+                                                      default=False, required=False)):
         start = timer()
         await ctx.defer()
 
         character: PlayerCharacter = await get_character(ctx.bot, player.id, ctx.guild_id)
         g: PlayerGuild = await get_or_create_guild(ctx.bot.db, ctx.guild_id)
+        discord_player: DiscordPlayer = await get_discord_player(ctx.bot, character.player_id, ctx.guild_id)
 
         if character is None:
             return await ctx.respond(
@@ -752,10 +755,15 @@ class Character(commands.Cog):
                                         div_cc=character.div_cc, level=character.level if not level else level,
                                         token=0, reroll=True, active=True)
 
+        # Additional Reset
+        if reset_handicap:
+            discord_player.handicap_amount = 0
+
         # Update old character:
         character.active = False
 
         async with self.bot.db.acquire() as conn:
+            await conn.execute(update_discord_player(discord_player))
             await conn.execute(update_character(character))
             results = await conn.execute(insert_new_character(new_character))
             row = await results.first()

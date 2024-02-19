@@ -377,6 +377,7 @@ class Adventures(commands.Cog):
 
         if role is None:
             adventure: Adventure = await get_adventure(ctx.bot, ctx.channel.category_id)
+            role = adventure.get_adventure_role(ctx)
         else:
             adventure: Adventure = await get_adventure_from_role(ctx.bot, role.id)
 
@@ -384,6 +385,8 @@ class Adventures(commands.Cog):
             return await ctx.respond(f"Error: No adventure associated with this channel")
         elif adventure is None:
             return await ctx.respond(f"Error: No adventure found for {role.mention}.")
+        elif role is None:
+            return await ctx.respond(f"Error: No role found for {adventure.name}.")
         elif ctx.author.id not in adventure.dms and not is_admin(ctx):
             return await ctx.respond(f"Error: You are not a DM of this adventure")
         else:
@@ -396,7 +399,7 @@ class Adventures(commands.Cog):
 
             if g.max_level >= 10 and reward:
                 players = [p.id for p in role.members]
-                act: Activity = ctx.bot.compendium
+                act: Activity = ctx.bot.compendium.get_object("c_activity", "ADVENTURE_END")
                 async with ctx.bot.db.acquire() as conn:
                     async for row in await conn.execute(get_multiple_characters(players, ctx.guild.id)):
                         if row is not None:

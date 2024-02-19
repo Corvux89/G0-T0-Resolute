@@ -4,10 +4,10 @@ import discord
 from discord import ApplicationContext, Member, Bot, Role
 
 from Resolute.compendium import Compendium
+from Resolute.bot import G0T0Bot
 from Resolute.models.db_objects import PlayerCharacter, PlayerCharacterClass, PlayerGuild, LevelCaps, CharacterStarship
-from Resolute.models.schemas import CharacterSchema, PlayerCharacterClassSchema, CharacterStarshipSchema
-from Resolute.queries import get_log_by_player_and_activity, get_active_character, get_character_class, \
-    get_character_from_id, get_character_starships, get_starship_by_transponder
+from Resolute.models.schemas import CharacterSchema, PlayerCharacterClassSchema, CharacterStarshipSchema, LogSchema, AdventureSchema
+from Resolute.queries import *
 
 
 async def manage_player_roles(ctx: ApplicationContext, member: Member, character: PlayerCharacter, reason: Optional[str]):
@@ -143,7 +143,7 @@ async def get_player_starship_from_transponder(bot: Bot, transponder: str) -> Ch
         return c_ship
 
 
-# TODO: Fix this to figure out caps
+
 def get_level_cap(character: PlayerCharacter, guild: PlayerGuild, compendium: Compendium,
                   adjust: bool = True) -> LevelCaps:
     cap: LevelCaps = compendium.get_object("c_level_caps", character.level)
@@ -155,3 +155,29 @@ def get_level_cap(character: PlayerCharacter, guild: PlayerGuild, compendium: Co
             return_cap.max_cc = cap.max_cc * 2
 
     return return_cap
+
+async def get_character_stats(bot: G0T0Bot, character: PlayerCharacter):
+    stats = {"total": 0,
+             "adventures": [],
+             "cc_add": 0,
+             "cc_minus": 0
+             }
+
+    async with bot.db.acquire() as conn:
+        async for row in conn.execute(get_logs_in_past(character.id)):
+            if row is not None:
+                log: DBLog = LogSchema(bot.compendium).load(row)
+                stats["total"] += 1
+                if log.cc > 0:
+                    stats["cc_add"] += log.cc
+                else:
+                    stats["cc_minus"] += log.cc
+
+                if log.adventure_id:
+                    a = await conn.execute(get_adventure_by_id(log.adventure_id))
+                    a = await a.first()
+                    adventure: Adventure = AdventureSchema(bot.compendium).load(a)
+                    if adventure.id not in [x.id for x in stats["adventures"]]:
+                        stats["adventures"].append(adventure)
+
+        return stats

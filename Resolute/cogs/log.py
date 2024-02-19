@@ -3,8 +3,7 @@ import logging
 from discord import SlashCommandGroup, Option, ApplicationContext, Member, Role, Embed, Color
 from discord.ext import commands
 
-from Resolute.helpers import get_character, create_logs, get_adventure_from_role, get_or_create_guild, get_level_cap, \
-    get_log, get_character_from_char_id, confirm, is_admin
+from Resolute.helpers import *
 from Resolute.bot import G0T0Bot
 from Resolute.models.db_objects import PlayerCharacter, Activity, DBLog, Adventure, LevelCaps, PlayerGuild
 from Resolute.models.embeds import ErrorEmbed, HxLogEmbed, DBLogEmbed, AdventureRewardEmbed
@@ -301,6 +300,42 @@ class Log(commands.Cog):
                 log_entry: DBLog = await create_logs(ctx, character, act, "Converting Credits to CC", cc, -credits)
 
         await ctx.respond(embed=DBLogEmbed(ctx, log_entry, character))
+
+    @log_commands.command(
+        name="stats",
+        description="Log statistics for a character"
+    )
+    @commands.check(is_admin)
+    async def log_stats(self, ctx: ApplicationContext,
+                        player: Option(Member, description="Player to view stats for", required=True)):
+        await ctx.defer()
+
+        player: Member = player
+
+        character: PlayerCharacter = await get_character(ctx.bot, player.id, ctx.guild_id)
+
+        if character is None:
+            return await ctx.respond(
+                embed=ErrorEmbed(description=f"No character information found for {player.mention}"),
+                ephemeral=True)
+
+        stats = await get_character_stats(ctx.bot, character)
+
+        embed = Embed(title=f"Log Statistics for {character.name}",
+                      description=f"**Total Logs**: {stats['total']}")
+        embed.set_thumbnail(url=player.display_avatar.url)
+        embed.add_field(name="Chain Codes",
+                        value=f"**Earned**: {stats['cc_add']}\n"
+                              f"**Spent**: {stats['cc_minus']}\n"
+                              f"**Total**: {stats['cc_add']+stats['cc_minus']}",
+                        inline=False)
+
+        ad_str = '\n'.join(f"{x.name}{'*' if x.end_ts != None else ''}" for x in stats['adventures'])
+        embed.add_field(name="Adventure (* = Closed)",
+                        value=f"{ad_str}")
+
+
+        await ctx.respond(embed=embed)
 
 
 

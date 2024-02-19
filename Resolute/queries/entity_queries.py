@@ -84,6 +84,10 @@ def get_adventure_by_guild(guild_id: int) -> FromClause:
         and_(adventures_table.c.guild_id == guild_id, adventures_table.c.end_ts == null())
     ).order_by(adventures_table.c.name)
 
+def get_adventure_by_id(adventure_id: int) -> FromClause:
+    return adventures_table.select().where(
+        adventures_table.c.id == adventure_id
+    )
 
 def insert_new_arena(arena: Arena):
     return arenas_table.insert().values(

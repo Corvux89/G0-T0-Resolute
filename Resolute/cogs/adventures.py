@@ -362,7 +362,7 @@ class Adventures(commands.Cog):
     async def adventure_close(self, ctx: ApplicationContext,
                               role: Option(Role, description="Role of the adventure to close", required=False,
                                            default=None),
-                              reward: Option(bool, description="Whether to suppress any adventure close rewards",
+                              reward: Option(bool, description="Whether to give any adventure close rewards",
                                                 required=False, default=True)):
         """
         Marks an adventure as closed, and removes the Role from players

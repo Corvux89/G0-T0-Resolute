@@ -164,7 +164,7 @@ async def get_character_stats(bot: G0T0Bot, character: PlayerCharacter):
              }
 
     async with bot.db.acquire() as conn:
-        async for row in conn.execute(get_logs_in_past(character.id)):
+        async for row in conn.execute(get_player_logs(character.id)):
             if row is not None:
                 log: DBLog = LogSchema(bot.compendium).load(row)
                 stats["total"] += 1

@@ -34,6 +34,11 @@ def get_logs_in_past(char_id: int) -> FromClause:
              log_table.c.invalid == False)
     ).order_by(log_table.c.id.desc())
 
+def get_player_logs(char_id: int) -> FromClause:
+    return log_table.select().where(
+        and_(log_table.c.character_id == char_id, log_table.c.invalid == False)
+    ).order_by(log_table.c.id.desc())
+
 
 def get_log_by_player_and_activity(char_id: int, act_id: int) -> FromClause:
     return log_table.select().where(

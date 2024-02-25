@@ -74,6 +74,17 @@ async def get_character(bot: Bot, player_id: int, guild_id: int) -> PlayerCharac
         character: PlayerCharacter = CharacterSchema(bot.compendium).load(row)
         return character
 
+async def get_all_player_characters(bot: G0T0Bot, player_id: int, guild_id: int) -> []:
+    characters = []
+
+    async with bot.db.acquire() as conn:
+        async for row in conn.execute(get_all_characters(player_id, guild_id)):
+            if row is not None:
+                character: PlayerCharacter = CharacterSchema(bot.compendium).load(row)
+                characters.append(character)
+
+    return characters
+
 
 async def get_character_from_char_id(bot: Bot, char_id: int) -> PlayerCharacter | None:
     """

@@ -11,6 +11,11 @@ def get_active_character(player_id: int, guild_id: int) -> FromClause:
              characters_table.c.active == True)
     )
 
+def get_all_characters(player_id: int, guild_id: int) -> FromClause:
+    return characters_table.select().where(
+        and_(characters_table.c.player_id == player_id, characters_table.c.guild_id == guild_id)
+    ).order_by(characters_table.c.id.desc())
+
 
 def get_character_from_id(char_id: int) -> FromClause:
     return characters_table.select().where(

@@ -306,19 +306,33 @@ class Log(commands.Cog):
     )
     @commands.check(is_admin)
     async def log_stats(self, ctx: ApplicationContext,
-                        player: Option(Member, description="Player to view stats for", required=True)):
+                        player: Option(Member, description="Player to view stats for", required=True),
+                        all_chars: Option(bool, description="Stats for all player's characters", required=True,
+                                          default=False)):
         await ctx.defer()
 
-        player: Member = player
+        if all_chars:
+            characters = await get_all_player_characters(ctx.bot, player.id, ctx.guild_id)
+            if len(characters) == 0:
+                return await ctx.respond(
+                    embed=ErrorEmbed(description=f"Not character information found for {player.mention}"),
+                    ephemeral=True)
+            stats = []
+            character: PlayerCharacter = characters[0]
+            for char in characters:
+                data = []
+                await get_character_stats(ctx.bot, char, data)
+                stats+=data
 
-        character: PlayerCharacter = await get_character(ctx.bot, player.id, ctx.guild_id)
+        else:
+            character: PlayerCharacter = await get_character(ctx.bot, player.id, ctx.guild_id)
 
-        if character is None:
-            return await ctx.respond(
-                embed=ErrorEmbed(description=f"No character information found for {player.mention}"),
-                ephemeral=True)
-        stats = []
-        await get_character_stats(ctx.bot, character, stats)
+            if character is None:
+                return await ctx.respond(
+                    embed=ErrorEmbed(description=f"No character information found for {player.mention}"),
+                    ephemeral=True)
+            stats = []
+            await get_character_stats(ctx.bot, character, stats)
 
         embed = Embed(title=f"Log Statistics for {character.name}")
         embed.set_thumbnail(url=player.display_avatar.url)

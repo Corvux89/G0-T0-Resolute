@@ -39,9 +39,6 @@ class CharacterGetEmbed(Embed):
                             f"**Credits:** {character.credits:,}\n" \
                             f"**Chain Codes:** {character.cc:,} \n" \
 
-        if g.max_level >= 10:
-            self.description += f"**Leveling Tokens:** {character.token}\n"
-
         if handicap_active:
             self.description += f"\n**Booster enabled. All CC Rewards doubled!**"
 
@@ -88,7 +85,6 @@ class HxLogEmbed(Embed):
                     f"**Activity:** {log.activity.value}\n" \
                     f"**Chain Codes:** {log.cc:,}\n" \
                     f"**Credits:** {log.credits:,}\n" \
-                    f"**Level Tokens:** {log.token}\n" \
                     f"**Invalidated?:** {log.invalid}\n"
 
             if log.notes is not None:
@@ -110,8 +106,6 @@ class DBLogEmbed(Embed):
                 description += f"**Chain Codes:** {log_entry.cc:,}\n"
             if log_entry.credits is not None and log_entry.credits != 0:
                 description += f"**Credits:** {log_entry.credits:,}\n"
-            if log_entry.token is not None and log_entry.token != 0:
-                description += f"**Level Tokens:** {log_entry.token}\n"
         if hasattr(log_entry, "notes") and log_entry.notes is not None:
             description += f"**Notes:** {log_entry.notes}\n"
 

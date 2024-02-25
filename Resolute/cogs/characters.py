@@ -13,10 +13,7 @@ from discord import SlashCommandGroup, Option, ApplicationContext, Member, Embed
 from discord.ext import commands
 from Resolute.bot import G0T0Bot
 from Resolute.constants import THUMBNAIL
-from Resolute.helpers import manage_player_roles, get_character_quests, get_character, get_player_character_class, \
-    create_logs, get_level_cap, get_or_create_guild, confirm, is_admin, get_player_starships, \
-    get_player_starship_from_transponder, get_character_from_char_id, get_discord_player, get_new_character_application, \
-    get_level_up_application
+from Resolute.helpers import *
 from Resolute.helpers.autocomplete_helpers import *
 from Resolute.models.db_objects import PlayerCharacter, PlayerCharacterClass, DBLog, LevelCaps, PlayerGuild, \
     CharacterStarship, DiscordPlayer, NewCharacterApplication, LevelUpApplication
@@ -93,7 +90,7 @@ class Character(commands.Cog):
 
         # Create new object
         character = PlayerCharacter(player_id=player.id, guild_id=ctx.guild.id, name=name, species=c_species,
-                                    cc=cc, credits=credits, div_cc=0, level=level, token=0,
+                                    cc=0, credits=0, div_cc=0, level=level, token=0,
                                     active=True, reroll=False)
 
         async with self.bot.db.acquire() as conn:
@@ -114,9 +111,10 @@ class Character(commands.Cog):
         async with self.bot.db.acquire() as conn:
             await conn.execute(insert_new_class(player_class))
 
-        act = ctx.bot.compendium.get_object("c_activity", "BONUS")
+        act = ctx.bot.compendium.get_object("c_activity", "NEW_CHARACTER")
 
-        log_entry: DBLog = await create_logs(ctx, character, act, "Initial Log")
+        log_entry: DBLog = await create_logs(ctx, character, act, "Initial Log",
+                                             cc, credits,None,True)
 
         await manage_player_roles(ctx, player, character, "Character created")
         end = timer()
@@ -204,10 +202,7 @@ class Character(commands.Cog):
         character.level += 1
 
         act = ctx.bot.compendium.get_object("c_activity", "LEVEL")
-        if character.level >= 10:
-            await create_logs(ctx, character, act, "Player level up", 0, 0, -1)
-        else:
-            await create_logs(ctx, character, act, "Player level up", 0, 0)
+        await create_logs(ctx, character, act, "Player level up", 0, 0)
 
         async with ctx.bot.db.acquire() as conn:
             await conn.execute(update_character(character))
@@ -707,6 +702,9 @@ class Character(commands.Cog):
                                character_species: Option(str, description="Character's race",
                                                          autocomplete=character_species_autocomplete,
                                                          required=True),
+                               reroll_type: Option(str, description="Whether this is a death reroll or freeroll",
+                                                    choices=["Freeroll", "Death Reroll"], required=False,
+                                                   default="Freeroll"),
                                credits: Option(int, description="New credit amount. If unspecified will copy old gold",
                                             min=0, max=99999, required=False),
                                cc: Option(int, description="New chain code amount. If unspecified will copy old CC",
@@ -750,10 +748,17 @@ class Character(commands.Cog):
         ship_ary: List[CharacterStarship] = await get_player_starships(ctx.bot, character.id)
 
         new_character = PlayerCharacter(player_id=player.id, guild_id=ctx.guild_id, name=name, species=c_species,
-                                        cc=character.cc if not cc else cc,
-                                        credits=character.credits if not credits else credits,
-                                        div_cc=character.div_cc, level=character.level if not level else level,
-                                        token=0, reroll=True, active=True)
+                                        cc=0,
+                                        credits=0,
+                                        div_cc=character.div_cc if reroll_type == "Freeroll" else 0,
+                                        level=character.level if not level else level,
+                                        reroll=True,
+                                        active=True)
+        new_cc = character.cc if not cc and reroll_type == "Freeroll" else cc
+        new_credits = character.credits if not credits and reroll_type == "Freeroll" else credits
+
+        if reroll_type.lower() == 'freeroll':
+            new_character.freeroll_from=character.id
 
         # Additional Reset
         if reset_handicap:
@@ -761,6 +766,14 @@ class Character(commands.Cog):
 
         # Update old character:
         character.active = False
+
+        conf = await confirm(ctx, f"Are you sure you want to {reroll_type}"
+                                f" `{character.name}` to `{new_character.name}'?", True)
+
+        if conf is None:
+            return await ctx.respond(f"Timed out waiting for a response or invalid response.", delete_after=10)
+        elif not conf:
+            return await ctx.respond(f"Ok, cancelling.", delete_after=10)
 
         async with self.bot.db.acquire() as conn:
             await conn.execute(update_discord_player(discord_player))
@@ -802,9 +815,10 @@ class Character(commands.Cog):
                     await conn.execute(update_starship(s))
 
         # Inital Log
-        act = ctx.bot.compendium.get_object("c_activity", "BONUS")
+        act = ctx.bot.compendium.get_object("c_activity", "NEW_CHARACTER")
 
-        log_entry: DBLog = await create_logs(ctx, new_character, act, "Inital log for character reroll")
+        log_entry: DBLog = await create_logs(ctx, new_character, act, "Inital log for character reroll",
+                                             new_cc, new_credits,None,True)
 
         end = timer()
         log.info(f'Time to reroll character": [ {end - start:.2f} ]s')

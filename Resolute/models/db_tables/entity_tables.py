@@ -44,11 +44,11 @@ characters_table = sa.Table(
     Column("cc", Integer, nullable=False, default=0),
     Column("div_cc", Integer, nullable=False, default=0),
     Column("level", Integer, nullable=False, default=1),
-    Column("token", Integer, nullable=False, default=0),
     Column("player_id", BigInteger, nullable=False),
     Column("guild_id", BigInteger, nullable=False),  # ref: > guilds.id
     Column("reroll", BOOLEAN, nullable=True),
-    Column("active", BOOLEAN, nullable=False, default=True)
+    Column("active", BOOLEAN, nullable=False, default=True),
+    Column("freeroll_from", Integer, nullable=True, default=None)
 )
 
 character_class_table = sa.Table(
@@ -68,7 +68,6 @@ log_table = sa.Table(
     Column("author", BigInteger, nullable=False),
     Column("cc", Integer, nullable=True),
     Column("credits", Integer, nullable=True),
-    Column("token", Integer, nullable=True),
     Column("created_ts", DateTime(timezone=False), nullable=False, default=datetime.utcnow),
     Column("character_id", Integer, nullable=False),  # ref: > characters.id
     Column("activity", Integer, nullable=False),  # ref: > c_activity.id

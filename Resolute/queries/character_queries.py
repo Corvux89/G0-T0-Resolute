@@ -14,8 +14,7 @@ def get_active_character(player_id: int, guild_id: int) -> FromClause:
 
 def get_character_from_id(char_id: int) -> FromClause:
     return characters_table.select().where(
-        and_(characters_table.c.id == char_id, characters_table.c.active == True)
-    )
+        characters_table.c.id == char_id)
 
 
 def insert_new_character(character: PlayerCharacter):
@@ -26,11 +25,11 @@ def insert_new_character(character: PlayerCharacter):
         cc=character.cc,
         div_cc=character.div_cc,
         level=character.level,
-        token=character.token,
         player_id=character.player_id,
         guild_id=character.guild_id,
         reroll=character.reroll,
-        active=character.active
+        active=character.active,
+        freeroll_from=character.freeroll_from if hasattr(character, 'freeroll_from') else None
     ).returning(characters_table)
 
 
@@ -44,11 +43,11 @@ def update_character(character: PlayerCharacter):
         cc=character.cc,
         div_cc=character.div_cc,
         level=character.level,
-        token=character.token,
         player_id=character.player_id,
         guild_id=character.guild_id,
         reroll=character.reroll,
-        active=character.active
+        active=character.active,
+        freeroll_from=character.freeroll_from
     )
 
 

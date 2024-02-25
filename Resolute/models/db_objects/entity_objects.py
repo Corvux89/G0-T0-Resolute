@@ -34,10 +34,10 @@ class PlayerCharacter(object):
     credits: int
     cc: int
     div_cc: int
-    token: int
     level: int
     active: bool
     reroll: bool
+    freeroll_from: bool
 
     def __init__(self, **kwargs):
         for key, value in kwargs.items():
@@ -119,7 +119,6 @@ class DBLog(object):
     author: int
     cc: int
     credits: int
-    token: int
     character_id: int
     activity: Activity
     notes: str

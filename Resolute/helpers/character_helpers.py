@@ -156,28 +156,37 @@ def get_level_cap(character: PlayerCharacter, guild: PlayerGuild, compendium: Co
 
     return return_cap
 
-async def get_character_stats(bot: G0T0Bot, character: PlayerCharacter):
+async def get_character_stats(bot: G0T0Bot, character: PlayerCharacter, stats_ary: [] = []):
     stats = {"total": 0,
              "adventures": [],
              "cc_add": 0,
-             "cc_minus": 0
-             }
+             "cc_minus": 0,
+             "cc_init": 0,
+             "char": character}
 
     async with bot.db.acquire() as conn:
         async for row in conn.execute(get_player_logs(character.id)):
             if row is not None:
                 log: DBLog = LogSchema(bot.compendium).load(row)
                 stats["total"] += 1
-                if log.cc > 0:
-                    stats["cc_add"] += log.cc
+                if log.activity.value != "NEW_CHARACTER":
+                    if log.cc > 0:
+                        stats["cc_add"] += log.cc
+                    else:
+                        stats["cc_minus"] += log.cc
+
+                    if log.adventure_id:
+                        a = await conn.execute(get_adventure_by_id(log.adventure_id))
+                        a = await a.first()
+                        adventure: Adventure = AdventureSchema(bot.compendium).load(a)
+                        if adventure.id not in [x.id for x in stats["adventures"]]:
+                            stats["adventures"].append(adventure)
                 else:
-                    stats["cc_minus"] += log.cc
+                    stats["cc_init"] = log.cc
 
-                if log.adventure_id:
-                    a = await conn.execute(get_adventure_by_id(log.adventure_id))
-                    a = await a.first()
-                    adventure: Adventure = AdventureSchema(bot.compendium).load(a)
-                    if adventure.id not in [x.id for x in stats["adventures"]]:
-                        stats["adventures"].append(adventure)
-
-        return stats
+                if character.freeroll_from:
+                    old_char: PlayerCharacter = await get_character_from_char_id(bot, character.freeroll_from)
+                    await get_character_stats(bot, old_char, stats_ary)
+        stats_ary.append(stats)
+        stats_ary.sort(key=lambda x: x['char'].active, reverse=True)
+        return

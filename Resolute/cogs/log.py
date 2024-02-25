@@ -95,8 +95,7 @@ class Log(commands.Cog):
                         player: Option(Member, description="Player receiving the bonus", required=True),
                         reason: Option(str, description="The reason for the bonus", required=True),
                         cc: Option(int, description="The amount of Chain Codes", default=0, min_value=0, max_value=5),
-                        credits: Option(int, description="The amount of Credits", default=0, min_value=0, max_value=250),
-                        level_token: Option(int, description="Leveling token", default=0, min_value=0, max_value=1)):
+                        credits: Option(int, description="The amount of Credits", default=0, min_value=0, max_value=250)):
         """
         Log a bonus for a player
         :param ctx: Context
@@ -117,7 +116,7 @@ class Log(commands.Cog):
 
         act: Activity = ctx.bot.compendium.get_object("c_activity", "BONUS")
 
-        log_entry = await create_logs(ctx, character, act, reason, cc, credits, level_token, None, True)
+        log_entry = await create_logs(ctx, character, act, reason, cc, credits, None, True)
 
         await ctx.respond(embed=DBLogEmbed(ctx, log_entry, character))
 
@@ -223,7 +222,7 @@ class Log(commands.Cog):
             if character.cc < cost:
                 return await ctx.respond(embed=ErrorEmbed(description=f"{player.mention} cannot affort the {cost} CC cost"))
 
-            log_entry: DBLog = await create_logs(ctx, character, act, item, -cost, 0, 0, None, True)
+            log_entry: DBLog = await create_logs(ctx, character, act, item, -cost, 0, None, True)
 
         else:
             return await ctx.respond(embed=ErrorEmbed(description="Invalid currency selection"))
@@ -255,7 +254,7 @@ class Log(commands.Cog):
         if currency == "Credits":
             log_entry: DBLog = await create_logs(ctx, character, act, item, 0, cost)
         elif currency == "CC":
-            log_entry: DBLog = await create_logs(ctx, character, act, item, cost,0,0,None,True)
+            log_entry: DBLog = await create_logs(ctx, character, act, item, cost,0,None,True)
         else:
             return await ctx.respond(embed=ErrorEmbed(description="Invalid currency selection"))
 
@@ -290,7 +289,7 @@ class Log(commands.Cog):
                     description=f"{player.mention} doesn't have enough Chain Codes for this conversion. "
                                 f"Requires {str(cc)} cc"))
             else:
-                log_entry: DBLog = await create_logs(ctx, character, act, "Converting CC to Credits", -cc, credits, 0, None, True)
+                log_entry: DBLog = await create_logs(ctx, character, act, "Converting CC to Credits", -cc, credits, None, True)
         else:
             if character.credits < credits:
                 return await ctx.respond(embed=ErrorEmbed(
@@ -318,21 +317,26 @@ class Log(commands.Cog):
             return await ctx.respond(
                 embed=ErrorEmbed(description=f"No character information found for {player.mention}"),
                 ephemeral=True)
+        stats = []
+        await get_character_stats(ctx.bot, character, stats)
 
-        stats = await get_character_stats(ctx.bot, character)
-
-        embed = Embed(title=f"Log Statistics for {character.name}",
-                      description=f"**Total Logs**: {stats['total']}")
+        embed = Embed(title=f"Log Statistics for {character.name}")
         embed.set_thumbnail(url=player.display_avatar.url)
-        embed.add_field(name="Chain Codes",
-                        value=f"**Earned**: {stats['cc_add']}\n"
-                              f"**Spent**: {stats['cc_minus']}\n"
-                              f"**Total**: {stats['cc_add']+stats['cc_minus']}",
-                        inline=False)
 
-        ad_str = '\n'.join(f"{x.name}{'*' if x.end_ts != None else ''}" for x in stats['adventures'])
-        embed.add_field(name="Adventure (* = Closed)",
-                        value=f"{ad_str}")
+        for data in stats:
+            ch = data['char']
+            embed.add_field(name=f"Log Statistics for {ch.name}",
+                            value=f"**Starting CC**: {data['cc_init']}\n"
+                                  f"**Earned CC**: {data['cc_add']}\n"
+                                  f"**Spent CC**: {data['cc_minus']}\n"
+                                  f"**Total CC**: {data['cc_init']+data['cc_add']+data['cc_minus']}\n"
+                                  f"**Total Logs**: {data['total']}",
+                            inline=False)
+
+            if len(data['adventures']) > 0:
+                ad_str = '\n'.join(f"{x.name}{'*' if x.end_ts != None else ''}" for x in data['adventures'])
+                embed.add_field(name=f"Adventures for {ch.name} (* = Closed)",
+                                value=f"{ad_str}")
 
 
         await ctx.respond(embed=embed)

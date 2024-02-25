@@ -34,11 +34,11 @@ class CharacterSchema(Schema):
     div_cc = fields.Integer(data_key="div_cc", required=True)
     credits = fields.Integer(data_key="credits", required=True)
     level = fields.Integer(data_key="level", required=True)
-    token = fields.Integer(data_key="token", required=True)
     player_id = fields.Integer(data_key="player_id", required=True)
     guild_id = fields.Integer(data_key="guild_id", required=True)
     reroll = fields.Boolean(data_key="reroll", required=False, default=False)
     active = fields.Boolean(data_key="active", required=True)
+    freeroll_from = fields.Integer(data_key="freeroll_from", required=False, allow_none=True, default=None)
 
     def __init__(self, compendium, **kwargs):
         super().__init__(**kwargs)
@@ -76,7 +76,6 @@ class LogSchema(Schema):
     author = fields.Integer(data_key="author", required=True)
     cc = fields.Integer(data_key="cc", required=True)
     credits = fields.Integer(data_key="credits", required=True)
-    token = fields.Integer(data_key="token", required=True)
     created_ts = fields.Method(None, "load_timestamp")
     character_id = fields.Integer(data_key="character_id", required=True)
     activity = fields.Method(None, "load_activity")

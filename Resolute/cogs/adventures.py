@@ -397,16 +397,14 @@ class Adventures(commands.Cog):
             elif not to_end:
                 return await ctx.respond(f'Ok, cancelling.', delete_after=10)
 
-            if g.max_level >= 10 and reward:
+            if reward:
                 players = [p.id for p in role.members]
                 act: Activity = ctx.bot.compendium.get_object("c_activity", "ADVENTURE_END")
                 async with ctx.bot.db.acquire() as conn:
                     async for row in await conn.execute(get_multiple_characters(players, ctx.guild.id)):
                         if row is not None:
                             character: PlayerCharacter = CharacterSchema(ctx.bot.compendium).load(row)
-
-                            if character.token <1 :
-                                await create_logs(ctx, character, act, adventure.name, 0, 0, 1, adventure)
+                            await create_logs(ctx, character, act, adventure.name, 0, 0, adventure)
 
             adventure_role = adventure.get_adventure_role(ctx)
             adventure.end_ts = datetime.utcnow()
@@ -478,7 +476,7 @@ class Adventures(commands.Cog):
                         activity = char_act
                         log_cc = cc
 
-                    await create_logs(ctx, character, activity, adventure.name, log_cc, 0, 0, adventure)
+                    await create_logs(ctx, character, activity, adventure.name, log_cc, 0, adventure)
 
         await ctx.respond(embed=AdventureRewardEmbed(ctx, adventure, cc))
 

@@ -150,8 +150,7 @@ class Log(commands.Cog):
             else:
                 conf = await confirm(ctx,
                                      f"Are you sure you want to inactivate nullify the `{log_entry.activity.value}` log"
-                                     f" for {character.name} for ( {log_entry.cc} Chain Codes, {log_entry.credits} credits"
-                                     f"and {log_entry.token} leveling tokens?"
+                                     f" for {character.name} for ( {log_entry.cc} Chain Codes, {log_entry.credits} credits)"
                                      f" (Reply with yes/no)", True)
 
                 if conf is None:
@@ -163,7 +162,6 @@ class Log(commands.Cog):
 
                 character.cc -= log_entry.cc
                 character.credits -= log_entry.credits
-                character.token -= log_entry.token
 
                 if log_entry.created_ts > g.last_reset:
                     if log_entry.activity.diversion:
@@ -174,7 +172,7 @@ class Log(commands.Cog):
 
                 act = ctx.bot.compendium.get_object("c_activity", "MOD")
 
-                mod_log = DBLog(author=ctx.bot.user.id, cc=-log_entry.cc, credits=-log_entry.credits, token=-log_entry.token,
+                mod_log = DBLog(author=ctx.bot.user.id, cc=-log_entry.cc, credits=-log_entry.credits,
                                 character_id=character.id, activity=act, notes=note, invalid=False)
                 log_entry.invalid = True
 

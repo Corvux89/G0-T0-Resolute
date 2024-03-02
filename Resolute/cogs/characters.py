@@ -191,8 +191,6 @@ class Character(commands.Cog):
                                 f"Completed RPs: {character.completed_rps}/{character.needed_rps}\n"
                                 f"Completed Arena Phases: {character.completed_arenas}/{character.needed_arenas}"),
                     ephemeral=True)
-        elif character.level >= 9 and character.token < 1:
-            return await ctx.respond(embed=ErrorEmbed(description="Player doesn't have the necessary leveling token"))
         elif character.level + 1 > g.max_level:
             return await ctx.respond(embed=ErrorEmbed(description="Player level cannot exceed server max level."))
 

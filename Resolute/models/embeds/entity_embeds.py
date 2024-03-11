@@ -334,8 +334,14 @@ class GuildStatus(Embed):
                                  f"**Last Reset: ** <t:{g.get_last_reset()}>", inline=False)
 
         if display_inact and inactive is not None:
-            self.add_field(name="Inactive Characters",
-                           value="\n".join([f"\u200b - {p.get_member_mention(ctx)}" for p in inactive]), inline=False)
+            for i in range(0, len(inactive), 10):
+                self.add_field(name="Inactive Characters",
+                               value="\n".join([f"\u200b - {p.get_member_mention(ctx)}" for p in inactive[i:i+10]]),
+                               inline=False)
+            # out_list = "\n".join([f"\u200b - {p.get_member_mention(ctx)}" for p in inactive])
+            # self.add_field(name="Inactive Characters",
+            #                value="\n".join([f"\u200b - {p.get_member_mention(ctx)}" for p in inactive]), inline=False)
+
 
 class AdventuresEmbed(Embed):
     def __init__(self, ctx: ApplicationContext, character: PlayerCharacter, class_ary: List[PlayerCharacterClass],

@@ -1,3 +1,32 @@
 /Resolute/localsettings.py
 /Resolute/cogs/mod/credentials.json
 /token.pickle
+
+.vscode/*
+.vscode/settings.json
+.vscode/tasks.json
+.vscode/launch.json
+.vscode/extensions.json
+.vscode/*.code-snippets
+
+# Built Visual Studio Code Extensions
+*.vsix
+.vs/
+
+# User-specific stuff
+.idea
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+
+# Environments
+*.env
+*.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/

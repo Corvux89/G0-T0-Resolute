@@ -842,8 +842,14 @@ class Character(commands.Cog):
                                     free_reroll: Option(bool, description="Free reroll application", required=False,
                                                         default=False)):
         character: PlayerCharacter = await get_character(ctx.bot, ctx.author.id, ctx.guild_id)
+        app_text = await get_cached_application(ctx.bot, ctx.author.id)
 
-        ui = NewCharacterRequestUI.new(ctx.bot, ctx.author, character, free_reroll, NewCharacterApplication())
+        if app_text and get_application_type(app_text) == "New":
+            application = get_new_character_application(None, app_text)
+        else:
+            application = NewCharacterApplication(freroll = free_reroll)
+
+        ui = NewCharacterRequestUI.new(ctx.bot, ctx.author, character, application.freeroll, application)
 
         await ui.send_to(ctx)
         await ctx.delete()
@@ -869,17 +875,17 @@ class Character(commands.Cog):
                 return await ctx.respond("Application marked as invalid and cannot me modified", ephemeral=True)
 
             app_text = message.content
-            type_match = re.search(r"^(.*?) \|", app_text, re.MULTILINE)
             player_match = re.search(r"\*\*Player:\*\* (.+)", app_text)
             character: PlayerCharacter = await get_character(ctx.bot, ctx.author.id, ctx.guild_id)
+            app_type = get_application_type(app_text)
 
             if player_match and str(ctx.author.id) in player_match.group(1):
-                if type_match and type_match.group(1).strip().replace('*','') in ['Reroll', 'Free Reroll', 'New Character']:
+                if app_type == "New":
                     application: NewCharacterApplication = get_new_character_application(message)
                     ui = NewCharacterRequestUI.new(ctx.bot, ctx.author, character,application.freeroll, application)
                     await ui.send_to(ctx)
                     return await ctx.delete()
-                elif type_match and type_match.group(1).strip().replace('*','') == "Level Up":
+                elif app_type == "Level":
                     application: LevelUpApplication = get_level_up_application(message)
                     modal = LevelUpRequestView(ctx.author, character, application)
                     return await ctx.send_modal(modal)

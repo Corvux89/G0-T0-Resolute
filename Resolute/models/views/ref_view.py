@@ -4,7 +4,7 @@ import discord
 from discord import ChannelType, Embed, User, SelectOption
 from discord.ui import InputText, Modal
 
-from Resolute.helpers import get_character
+from Resolute.helpers import get_character, update_application
 from Resolute.models.db_objects import PlayerCharacter, CharacterSpecies, CharacterArchetype, CharacterClass, \
     NewCharacterApplication, LevelUpApplication
 from Resolute.bot import G0T0Bot
@@ -289,6 +289,10 @@ class NewCharacterRequestView(discord.ui.View):
     async def _before_send(self):
         pass
 
+    async def commit(self):
+        await update_application(self.bot, self.owner.id, self.application.format_app(self.owner, self.character, None, True))
+        pass
+
     async def on_timeout(self) -> None:
         if self.message is None:
             return
@@ -309,12 +313,7 @@ class NewCharacterRequestView(discord.ui.View):
         if stop:
             self.stop()
         await view._before_send()
-        await view.refresh_content(interaction)
-
-    async def commit(self):
-        test = vars(self.application)
-        here = 1
-
+        await view.refresh_content(interaction)        
 
     async def get_content(self) -> Mapping:
         return {}
@@ -545,6 +544,7 @@ class _ReviewUI(NewCharacterRequestView):
                 await thread.send(f'''Need to make an edit? Use:\n''')
                 await thread.send(f'''```/edit_application application_id:{msg.id}```''')
                 await interaction.response.send_message("Request Submitted", ephemeral=True)
+                await update_application(self.bot, self.owner.id, None)
         else:
             await interaction.response.send_message("Error submitting request", ephemeral=True)
         await self.on_timeout()
@@ -562,6 +562,7 @@ class _ReviewUI(NewCharacterRequestView):
                 await thread.send(f'''Need to make an edit? Use:\n''')
                 await thread.send(f'''```/edit_application application_id:{msg.id}```''')
                 await interaction.response.send_message("Draft Saved", ephemeral=True)
+            await update_application(self.bot, self.owner.id, None)
         else:
             await interaction.response.send_message("Error submitting draft", ephemeral=True)
         await self.on_timeout()

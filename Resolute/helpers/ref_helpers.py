@@ -8,9 +8,10 @@ from Resolute.bot import G0T0Bot
 from Resolute.models.db_objects import RefCategoryDashboard, RefWeeklyStipend, GlobalPlayer, GlobalEvent, \
     NewCharacterApplication, AppBaseScores, AppSpecies, AppClass, AppBackground, LevelUpApplication
 from Resolute.models.schemas import RefCategoryDashboardSchema, RefWeeklyStipendSchema, GlobalPlayerSchema, \
-    GlobalEventSchema
+    GlobalEventSchema, ApplicationSchema
 from Resolute.queries import get_dashboard_by_category_channel, get_weekly_stipend_query, get_all_global_players, \
-    get_active_global, get_global_player, delete_global_event, delete_global_players, get_class_census, get_level_distribution
+    get_active_global, get_global_player, delete_global_event, delete_global_players, get_class_census, get_level_distribution, \
+    get_player_application, insert_player_application, delete_player_application
 
 
 async def get_dashboard_from_category_channel_id(category_channel_id: int,
@@ -106,8 +107,9 @@ async def close_global(db: aiopg.sa.Engine, guild_id: int):
         await conn.execute(delete_global_players(guild_id))
 
 
-def get_new_character_application(message: discord.Message) -> NewCharacterApplication | None:
-    app_text = message.content
+def get_new_character_application(message: discord.Message, app_text: str = None) -> NewCharacterApplication | None:
+    if not app_text:
+        app_text = message.content
     name_match = re.search(r"\*\*Name:\*\* (.+)", app_text)
     base_scores_match = re.search(r"STR: (.+?)\n"
                                   r"DEX: (.+?)\n"
@@ -177,8 +179,9 @@ def get_new_character_application(message: discord.Message) -> NewCharacterAppli
     return application
 
 
-def get_level_up_application(message: discord.Message) -> LevelUpApplication | None:
-    app_text = message.content
+def get_level_up_application(message: discord.Message, app_text: str = None) -> LevelUpApplication | None:
+    if not app_text:
+        app_text = message.content
     application: LevelUpApplication = LevelUpApplication(
         message=message,
         level=re.search(r"\*\*New Level:\*\* (.+?)\n", app_text).group(1),
@@ -206,3 +209,35 @@ async def get_level_distribution_data(bot: G0T0Bot) -> []:
             result = dict(row)
             data.append([result['level'], result['#']])
     return data
+
+async def get_cached_application(bot: G0T0Bot, player_id: int) -> str | None:
+    async with bot.db.acquire() as conn:
+        results = await conn.execute(get_player_application(player_id))
+        row = await results.first()
+
+        if row is None:
+            return None
+        else:
+            application = ApplicationSchema().load(row)
+            return application["application"]
+        
+def get_application_type(application:str):
+    type_match = re.search(r"^(.*?) \|", application, re.MULTILINE)
+
+    if type_match:
+        group = type_match.group(1).strip().replace('*','')
+
+        if group in ["Reroll", "Free Reroll", "New Character"]:
+            return "New"
+        elif group == "Level Up":
+            return "Level"
+    
+    return "Unknown"
+
+async def update_application(bot: G0T0Bot, char_id: int, application: str|None):
+    async with bot.db.acquire() as conn:
+        await conn.execute(delete_player_application(char_id))
+        if application:
+            await conn.execute(insert_player_application(char_id, application))
+
+    

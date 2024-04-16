@@ -63,3 +63,7 @@ class GlobalPlayerSchema(Schema):
 
     def get_host_status(self, value):
         return self.compendium.get_object("c_host_status", value)
+    
+class ApplicationSchema(Schema):
+    id = fields.Integer(data_key="id", required=True)
+    application = fields.String(data_key="application", required=True)

@@ -159,3 +159,18 @@ def get_class_census() -> FromClause:
 
 def get_level_distribution() -> FromClause:
     return level_distribution_table.select()
+
+def get_player_application(char_id: int) -> FromClause:
+    return ref_applications_table.select().where(
+        ref_applications_table.c.id == char_id
+    )
+
+def insert_player_application(char_id: int, application: str) -> TableClause:
+    return ref_applications_table.insert().values(
+        id = char_id,
+        application = application
+    )
+
+def delete_player_application(char_id: int) -> TableClause:
+    return ref_applications_table.delete() \
+    .where(ref_applications_table.c.id == char_id)

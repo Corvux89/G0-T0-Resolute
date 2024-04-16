@@ -43,3 +43,10 @@ ref_gb_staging_player_table = sa.Table(
     Column("num_messages", Integer, nullable=False, default=0),
     Column("channels", sa.ARRAY(BigInteger), nullable=True, default=[])
 )
+
+ref_applications_table = sa.Table(
+    "ref_character_applications",
+    metadata,
+    Column("id", BigInteger, primary_key=True),
+    Column("application", String, nullable=False)
+)

@@ -73,7 +73,7 @@ class LevelUpRequestView(Modal):
                 msg = await character_app_channel.send(content=message)
                 thread = await msg.create_thread(name=f"{self.character.name}", auto_archive_duration=10080)
                 await thread.send(f'''Need to make an edit? Use:\n''')
-                await thread.send(f'''`/edit_application application_id:{msg.id}`''')
+                await thread.send(f'''`/edit_application`''')
                 await msg.edit(content=message)
                 return await interaction.response.send_message("Request submitted!", ephemeral=True)
         return await interaction.response.send_message("Issue submitting request", ephemeral=True)
@@ -542,7 +542,7 @@ class _ReviewUI(NewCharacterRequestView):
                 msg = await app_channel.send(content=message)
                 thread = await msg.create_thread(name=f"{self.application.name}", auto_archive_duration=10080)
                 await thread.send(f'''Need to make an edit? Use:\n''')
-                await thread.send(f'''```/edit_application application_id:{msg.id}```''')
+                await thread.send(f'''```/edit_application```''')
                 await interaction.response.send_message("Request Submitted", ephemeral=True)
                 await update_application(self.bot, self.owner.id, None)
         else:
@@ -560,7 +560,7 @@ class _ReviewUI(NewCharacterRequestView):
                 msg = await app_channel.send(content=message)
                 thread = await msg.create_thread(name=f"{interaction.user.display_name}", auto_archive_duration=10080)
                 await thread.send(f'''Need to make an edit? Use:\n''')
-                await thread.send(f'''```/edit_application application_id:{msg.id}```''')
+                await thread.send(f'''```/edit_application```''')
                 await interaction.response.send_message("Draft Saved", ephemeral=True)
             await update_application(self.bot, self.owner.id, None)
         else:

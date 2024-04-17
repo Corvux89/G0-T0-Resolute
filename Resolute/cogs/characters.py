@@ -859,40 +859,48 @@ class Character(commands.Cog):
         description="Edit an application"
     )
     async def edit_application(self, ctx: ApplicationContext,
-                           application_id: Option(str, description="Application ID", required=True)):
+                           application_id: Option(str, description="Application ID", required=False)):
+        
         if app_channel := discord.utils.get(ctx.guild.channels, name="character-apps"):
-            try:
-                message = await app_channel.fetch_message(int(application_id))
-            except ValueError:
-                return await ctx.respond("Invalid application identifier", ephemeral=True)
-            except discord.errors.NotFound:
-                return await ctx.respond("Application not found", ephemeral=True)
-
-            emoji = [x.emoji.name if hasattr(x.emoji, 'name') else x.emoji for x in message.reactions]
-            if '✅' in emoji or 'greencheck' in emoji:
-                return await ctx.respond("Application is already approved. Cannot edit at this time", ephemeral=True)
-            elif '❌' in emoji:
-                return await ctx.respond("Application marked as invalid and cannot me modified", ephemeral=True)
-
-            app_text = message.content
-            player_match = re.search(r"\*\*Player:\*\* (.+)", app_text)
-            character: PlayerCharacter = await get_character(ctx.bot, ctx.author.id, ctx.guild_id)
-            app_type = get_application_type(app_text)
-
-            if player_match and str(ctx.author.id) in player_match.group(1):
-                if app_type == "New":
-                    application: NewCharacterApplication = get_new_character_application(message)
-                    ui = NewCharacterRequestUI.new(ctx.bot, ctx.author, character,application.freeroll, application)
-                    await ui.send_to(ctx)
-                    return await ctx.delete()
-                elif app_type == "Level":
-                    application: LevelUpApplication = get_level_up_application(message)
-                    modal = LevelUpRequestView(ctx.author, character, application)
-                    return await ctx.send_modal(modal)
-                else:
-                    return await ctx.respond("Unsure what type of application this is", ephemeral=True)
+            if application_id:
+                try:
+                    message = await app_channel.fetch_message(int(application_id))
+                except ValueError:
+                    return await ctx.respond("Invalid application identifier", ephemeral=True)
+                except discord.errors.NotFound:
+                    return await ctx.respond("Application not found", ephemeral=True)
             else:
-                return await ctx.respond("Not your application", ephemeral=True)
+                try:
+                    message = await app_channel.fetch_message(int(ctx.channel_id))
+                    test = "here"
+                except:
+                    return await ctx.respond("Application not found", ephemeral=True)
+
+        emoji = [x.emoji.name if hasattr(x.emoji, 'name') else x.emoji for x in message.reactions]
+        if '✅' in emoji or 'greencheck' in emoji:
+            return await ctx.respond("Application is already approved. Cannot edit at this time", ephemeral=True)
+        elif '❌' in emoji:
+            return await ctx.respond("Application marked as invalid and cannot me modified", ephemeral=True)
+
+        app_text = message.content
+        player_match = re.search(r"\*\*Player:\*\* (.+)", app_text)
+        character: PlayerCharacter = await get_character(ctx.bot, ctx.author.id, ctx.guild_id)
+        app_type = get_application_type(app_text)
+
+        if player_match and str(ctx.author.id) in player_match.group(1):
+            if app_type == "New":
+                application: NewCharacterApplication = get_new_character_application(message)
+                ui = NewCharacterRequestUI.new(ctx.bot, ctx.author, character,application.freeroll, application)
+                await ui.send_to(ctx)
+                return await ctx.delete()
+            elif app_type == "Level":
+                application: LevelUpApplication = get_level_up_application(message)
+                modal = LevelUpRequestView(ctx.author, character, application)
+                return await ctx.send_modal(modal)
+            else:
+                return await ctx.respond("Unsure what type of application this is", ephemeral=True)
+        else:
+            return await ctx.respond("Not your application", ephemeral=True)
 
         return await ctx.respond("Something went wrong", ephemeral=True)
 

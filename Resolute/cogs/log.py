@@ -302,7 +302,6 @@ class Log(commands.Cog):
         name="stats",
         description="Log statistics for a character"
     )
-    @commands.check(is_admin)
     async def log_stats(self, ctx: ApplicationContext,
                         player: Option(Member, description="Player to view stats for", required=True),
                         all_chars: Option(bool, description="Stats for all player's characters", required=True,

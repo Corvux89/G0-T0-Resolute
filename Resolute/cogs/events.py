@@ -7,7 +7,9 @@ from discord.ext import commands
 
 from Resolute.bot import G0T0Bot
 from Resolute.helpers import get_character, get_player_adventures, get_or_create_guild
+from Resolute.helpers.ref_helpers import get_cached_application
 from Resolute.models.db_objects import PlayerCharacter
+from Resolute.queries.ref_queries import delete_player_application
 
 log = logging.getLogger(__name__)
 
@@ -23,6 +25,11 @@ class Events(commands.Cog):
         log.info(f'Cog \'Events\' loaded')
     @commands.Cog.listener()
     async def on_member_remove(self, member: discord.Member):
+        # Cleanup Reference Tables
+        async with self.bot.db.acquire() as conn:
+            await conn.execute(delete_player_application(member.id))
+
+
         if exit_channel := discord.utils.get(member.guild.channels, name="exit"):
             character: PlayerCharacter = await get_character(self.bot, member.id, member.guild.id)
             adventures = await get_player_adventures(self.bot, member)

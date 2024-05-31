@@ -1,7 +1,9 @@
 from discord import Embed, Color
 
-from .entity_embeds import *
-from .ref_embeds import *
+from .guilds import *
+from .characters import *
+from .logs import *
+from .players import *
 
 
 class ErrorEmbed(Embed):

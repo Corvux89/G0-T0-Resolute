@@ -6,7 +6,8 @@ from timeit import default_timer as timer
 from sqlalchemy.schema import CreateTable
 from Resolute.compendium import Compendium
 from Resolute.constants import DB_URL
-from Resolute.models.db_tables import *
+from Resolute.models import metadata
+
 
 log = logging.getLogger(__name__)
 

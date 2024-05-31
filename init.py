@@ -2,21 +2,18 @@ import asyncio
 import logging
 import sys
 import traceback
-from os import listdir
 import discord
-from discord import Intents, ApplicationContext, Embed
+
+from os import listdir
+from discord import Intents, ApplicationContext
 from discord.ext import commands
 from Resolute.bot import G0T0Bot
-from Resolute.constants import BOT_TOKEN, DEFAULT_PREFIX, DEBUG_GUILDS
-from Resolute.helpers import get_character, get_player_adventures, is_admin
-from Resolute.models.db_objects import PlayerCharacter
+from Resolute.constants import BOT_TOKEN, DEFAULT_PREFIX, DEBUG_GUILDS, ERROR_CHANNEL
+from Resolute.helpers import is_admin
 
 intents = Intents.default()
 intents.members = True
 intents.message_content = True
-
-# TODO: Error embeds instead of straight ctx.responds for consistency
-
 
 class MyHelpCommand(commands.MinimalHelpCommand):
     async def send_pages(self):
@@ -70,13 +67,6 @@ async def admin_say(ctx: ApplicationContext, channel_id, msg):
 
 @bot.event
 async def on_application_command_error(ctx: ApplicationContext, error):
-    """
-    Handle various exceptions and issues
-
-    :param ctx: Context
-    :param error: The error that was raised
-    """
-
     # Prevent any commands with local error handling from being handled here
     if hasattr(ctx.command, 'on_error'):
         return
@@ -84,11 +74,29 @@ async def on_application_command_error(ctx: ApplicationContext, error):
     if isinstance(error, discord.errors.CheckFailure):
         return await ctx.respond(f'You do not have required permissions for `{ctx.command}`')
     else:
-        log.warning("Error in command: '{}'".format(ctx.command))
-        for line in traceback.format_exception(type(error), error, error.__traceback__):
-            log.warning(line)
+        if hasattr(ctx, "bot") and hasattr(ctx.bot, "db"):
+            if ctx.selected_options is not None:
+                params = "".join([f" [{p['name']}: {p['value']}]" for p in ctx.selected_options]) or ""
+            else:
+                params = ""
+            out_str = "Error in command: cmd: chan {0.channel} [{0.channel.id}], serv: {0.guild} [{0.guild.id}] auth: {0.user} [{0.user.id}]: {0.command} ".format(ctx) + params
+            out_str += f"\n```"
+            for line in traceback.format_exception(type(error), error, error.__traceback__):
+                out_str+=line
+            out_str += "```"
+            
+            if ERROR_CHANNEL:
+                try:
+                    await ctx.bot.get_channel(int(ERROR_CHANNEL)).send(out_str)
+                except:
+                    log.error(out_str)
+            else:
+                log.error(out_str)
+
         try:
-            return await ctx.respond(f'Something went wrong. Let us know if it keeps up!')
+            if hasattr(ctx, "bot") and not hasattr(ctx.bot, "db"):
+                return await ctx.respond(f"Try again in a few seconds. I'm not fully awake yet.", ephemeral=True)
+            return await ctx.respond(f'Something went wrong. Let us know if it keeps up!', ephemeral=True)
         except:
             log.warning('Unable to respond')
 

@@ -1,16 +1,19 @@
 import asyncio
 import logging
 
-import discord
 from discord import SlashCommandGroup, Option, ExtensionAlreadyLoaded, ExtensionNotFound, ExtensionNotLoaded, \
-    ApplicationContext, ChannelType
+    ApplicationContext
 from discord.ext import commands, tasks
 from os import listdir
 
-from Resolute.constants import ADMIN_GUILDS, BOT_OWNERS
+from Resolute.constants import ADMIN_GUILDS
 from Resolute.helpers import is_owner
 from Resolute.bot import G0T0Bot
-from Resolute.models.views.ref_view import AutomationRequestView
+from Resolute.helpers.guilds import get_guild, get_guild_internal_date
+from Resolute.models.embeds.events import MemberLeaveEmbed
+from Resolute.models.objects.guilds import PlayerGuild
+from Resolute.helpers import *
+from Resolute.models.views.automation_request import AutomationRequestView
 
 log = logging.getLogger(__name__)
 
@@ -35,7 +38,16 @@ class Admin(commands.Cog):
         name="automation_request",
         description="Log an automation request"
     )
-    async def automation_request(self, ctx:ApplicationContext):
+    async def automation_request(self, ctx: ApplicationContext):
+        """
+        Used by players to submit an automation request
+
+        Args:
+            ctx (ApplicationContext): Represents a Discord application command interaction context.
+
+        Returns:
+            Interaction: Modal interaction to gather information about the request
+        """
         modal = AutomationRequestView()
         return await ctx.send_modal(modal)
 
@@ -47,10 +59,14 @@ class Admin(commands.Cog):
     async def load_cog(self, ctx: ApplicationContext,
                        cog: Option(str, description="Cog name", required=True)):
         """
-        Loads a cog in the bot
+        Loads up a cog
 
-        :param ctx: Application context
-        :param cog: Cog name to load
+        Args:
+            ctx (ApplicationContext): Represents a Discord application command interaction context.
+            cog (Option, optional): Cog name. required=True).
+
+        Returns:
+            _type_: _description_
         """
         try:
             self.bot.load_extension(f'Resolute.cogs.{cog}')
@@ -85,7 +101,7 @@ class Admin(commands.Cog):
             return await ctx.respond(f'Something went wrong', ephemeral=True)
         await ctx.respond(f'Cog unloaded', ephemeral=True)
 
-    # TODO: Once compendium is up and running reload that too in place of sheets
+
     @admin_commands.command(
         name="reload",
         description="Reloads either a specific cog, refresh DB information, or reload everything"
@@ -140,7 +156,7 @@ class Admin(commands.Cog):
         files = []
         for file_name in listdir('./Resolute/cogs'):
             if file_name.endswith('.py'):
-                files.append(file_name[:-3])
+                files.append(file_name[:-3]) 
         await ctx.respond("\n".join(files))
 
     @commands.command("overwrites")
@@ -159,6 +175,18 @@ class Admin(commands.Cog):
             str += f"{ctx.channel.category.overwrites[key]._values}\n"
 
         await ctx.send(str)
+    
+    @commands.command("dev")
+    @commands.check(is_owner)
+    async def dev_testing(self, ctx: ApplicationContext):
+        test_id = ctx.author.id
+        g: PlayerGuild = await get_guild(self.bot.db, ctx.guild.id)
+
+        player = await get_player(self.bot, test_id, ctx.guild.id)
+        player.adventures = await get_player_adventures(self.bot, player)
+        player.arenas = await get_player_arenas(self.bot, player)
+
+        await ctx.send(embed=MemberLeaveEmbed(self.bot, ctx.author, player))
 
     # --------------------------- #
     # Private Methods

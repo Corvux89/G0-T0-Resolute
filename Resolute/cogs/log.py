@@ -331,6 +331,7 @@ class Log(commands.Cog):
             stats = []
             await get_character_stats(ctx.bot, character, stats)
 
+        embeds = []
         embed = Embed(title=f"Log Statistics for {character.name}")
         embed.set_thumbnail(url=player.display_avatar.url)
 
@@ -348,9 +349,19 @@ class Log(commands.Cog):
                 ad_str = '\n'.join(f"{x.name}{'*' if x.end_ts != None else ''}" for x in data['adventures'])
                 embed.add_field(name=f"Adventures for {ch.name} (* = Closed)",
                                 value=f"{ad_str}")
+                
+            if len(embed.fields)>=23:
+                embeds.append(embed)
+                embed = Embed(title=f"Log Statistics for {character.name}")
+                embed.set_thumbnail(url=player.display_avatar.url)
 
+        if len(embed.fields) > 1:
+            embeds.append(embed)
 
-        await ctx.respond(embed=embed)
+        for embed in embeds:
+            await ctx.send(embed=embed)
+
+        await ctx.delete()
 
 
 

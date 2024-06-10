@@ -1,5 +1,5 @@
-# blind-prophet
-For the Blind Prophet Discord ~~Gsheet~~ bot.
+# G0-T0
+For the Resolute discord bot
 
 ## Environment variables:
 | Name                         | Description                                                                                                                                              | Used by/for                        | Required |
@@ -11,7 +11,7 @@ For the Blind Prophet Discord ~~Gsheet~~ bot.
 | `DASHBOARD_REFRESH_INTERVAL` | Refresh interval for dashboards in minutes. *Default is 15 minutes if not set.*                                                                          | `Dashboards` cog for task interval | No       |
 | `DATABASE_URL`               | Full Postgres database URL. Example: `postgresql://<user>:<password>@<server>:<port>/<database>`                                                         | Connection to DB                   | **Yes**  |
 | `GUILD`                      | Debug guilds for the bot. Used for non-production versions only.                                                                                         | Guild IDs for debugging            | No       |
-
+| `ERROR_CHANNEL`              | 
 
 ## Roles:
 All assumed roles by the bot.

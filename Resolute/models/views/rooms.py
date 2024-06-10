@@ -6,52 +6,17 @@ from discord.ui import Modal, InputText
 from Resolute.bot import G0T0Bot
 from Resolute.models.embeds import ErrorEmbed
 from Resolute.models.objects.adventures import Adventure
+from Resolute.models.views.base import InteractiveView
 
-class RoomSettings(discord.ui.View):
+class RoomSettings(InteractiveView):
     __menu_copy_attrs__ = ("bot", "adventure", "roles")
     bot: G0T0Bot
     owner: discord.Member = None
     adventure: Adventure = None
-    roles: list[discord.Role] = []
-
-    def __init__(self, owner: discord.Member, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.owner = owner
-        self.message = None # type: Optional[discord.Message]
-
-    async def interaction_check(self, interaction: discord.Interaction) -> bool:
-        if interaction.user.id == self.owner.id:
-            return True
-        await interaction.response.send_message("You are not the owner of this interaction", ephemeral=True)
-        return False
-    
-    @classmethod
-    def from_menu(cls, other: "RoomSettings"):
-        inst = cls(owner=other.owner)
-        inst.message = other.message
-        for attr in cls.__menu_copy_attrs__:
-            # copy the instance attr to the new instance if available, or fall back to the class default
-            sentinel = object()
-            value = getattr(other, attr, sentinel)
-            if value is sentinel:
-                value = getattr(cls, attr, None)
-            setattr(inst, attr, value)
-        return inst
+    roles: list[discord.Role] = []    
     
     async def _before_send(self, interaction: discord.Interaction):
         pass
-
-    async def commit(self):
-        pass
-
-    async def on_timeout(self) -> None:
-        if self.message is None:
-            return
-        try:
-            await self.message.edit(view=None)
-            await self.message.delete()
-        except discord.HTTPException:
-            pass
 
     async def send_to(self, destination, *args, **kwargs):
         content_kwargs = await self.get_content()
@@ -67,9 +32,6 @@ class RoomSettings(discord.ui.View):
         await view._before_send(interaction)
         await view.refresh_content(interaction)
 
-    async def get_content(self) -> Mapping:
-        return {}
-
     async def refresh_content(self, interaction: discord.Interaction, **kwargs):
         content_kwargs = await self.get_content()
         await self._before_send(interaction)
@@ -78,12 +40,6 @@ class RoomSettings(discord.ui.View):
             await interaction.edit_original_response(view=self, **content_kwargs, **kwargs)
         else:
             await interaction.response.edit_message(view=self, **content_kwargs, **kwargs)
-
-    @staticmethod
-    async def prompt_modal(interaction: discord.Interaction, modal):
-        await interaction.response.send_modal(modal)
-        await modal.wait()
-        return modal
     
 class RoomSettingsUI(RoomSettings):
     @classmethod

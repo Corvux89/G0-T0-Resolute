@@ -11,8 +11,11 @@ from Resolute.helpers import is_owner
 from Resolute.bot import G0T0Bot
 from Resolute.helpers.guilds import get_guild, get_guild_internal_date
 from Resolute.models.embeds.events import MemberLeaveEmbed
+from Resolute.models.embeds.logs import LogStatsEmbed
+from Resolute.models.objects.applications import AppBaseScores
 from Resolute.models.objects.guilds import PlayerGuild
 from Resolute.helpers import *
+from Resolute.models.objects.logs import player_stats_query
 from Resolute.models.views.automation_request import AutomationRequestView
 
 log = logging.getLogger(__name__)
@@ -179,14 +182,18 @@ class Admin(commands.Cog):
     @commands.command("dev")
     @commands.check(is_owner)
     async def dev_testing(self, ctx: ApplicationContext):
-        test_id = ctx.author.id
-        g: PlayerGuild = await get_guild(self.bot.db, ctx.guild.id)
+        player = await get_player(self.bot, ctx.author.id, ctx.guild.id, True)
+        async with self.bot.db.acquire() as conn:
+            results = await conn.execute(player_stats_query(self.bot.compendium, ctx.author.id))
+            row = await results.first()
+        test = dict(row)
+        embed=LogStatsEmbed(self.bot, player, test)
 
-        player = await get_player(self.bot, test_id, ctx.guild.id)
-        player.adventures = await get_player_adventures(self.bot, player)
-        player.arenas = await get_player_arenas(self.bot, player)
+        for character in player.characters:
+            embed.add_field(name=character.name,
+                            value=f"")
 
-        await ctx.send(embed=MemberLeaveEmbed(self.bot, ctx.author, player))
+        await ctx.send()
 
     # --------------------------- #
     # Private Methods

@@ -23,7 +23,7 @@ class Player(object):
 
     @property
     def highest_level_character(self) -> PlayerCharacter:
-        if hasattr(self, "characters"):
+        if hasattr(self, "characters") and self.characters:
             return max(self.characters, key=lambda char: char.level)
         return None
             

@@ -1,3 +1,4 @@
+import math
 import discord
 
 from typing import Mapping, Optional, Type
@@ -9,9 +10,10 @@ from Resolute.models.objects.characters import PlayerCharacter
 from Resolute.models.objects.guilds import PlayerGuild
 from Resolute.models.objects.players import Player
 from Resolute.models.categories import Activity, CodeConversion
+from Resolute.models.views.base import InteractiveView
 
 
-class LogPrompt(discord.ui.View):
+class LogPrompt(InteractiveView):
     __menu_copy_attrs__ = ("bot", "player", "member", "activity", "credits", "guild", "notes", "cc", "ignore_handicap", "conversion")
     owner: discord.Member = None
     member = discord.Member = None
@@ -26,76 +28,7 @@ class LogPrompt(discord.ui.View):
     ignore_handicap: bool = False
     conversion: bool = False
 
-    def __init__(self, owner: discord.Member, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.owner = owner
-        self.message = None # type: Optional[discord.Message]
-
-    async def interaction_check(self, interaction: discord.Interaction) -> bool:
-        if interaction.user.id == self.owner.id:
-            return True
-        await interaction.response.send_message("You are not the owner of this interaction", ephemeral=True)
-        return False
-    
-    @classmethod
-    def from_menu(cls, other: "LogPromptUI"):
-        inst = cls(owner=other.owner)
-        inst.message = other.message
-        for attr in cls.__menu_copy_attrs__:
-            # copy the instance attr to the new instance if available, or fall back to the class default
-            sentinel = object()
-            value = getattr(other, attr, sentinel)
-            if value is sentinel:
-                value = getattr(cls, attr, None)
-            setattr(inst, attr, value)
-        return inst
-    
-    async def _before_send(self):
-        pass
-
-    async def commit(self):
-        pass
-
-    async def on_timeout(self) -> None:
-        if self.message is None:
-            return
-        try:
-            await self.message.edit(view=None)
-            await self.message.delete()
-        except discord.HTTPException:
-            pass
-
-    async def send_to(self, destination, *args, **kwargs):
-        content_kwargs = await self.get_content()
-        await self._before_send()
-        message = await destination.send(*args, view=self, **content_kwargs, **kwargs)
-        self.message = message
-        return message
-
-    async def defer_to(self, view_type: Type["LogPromptUI"], interaction: discord.Interaction, stop=True):
-        view = view_type.from_menu(self)
-        if stop:
-            self.stop()
-        await view._before_send()
-        await view.refresh_content(interaction)
-
-    async def get_content(self) -> Mapping:
-        return {}
-
-    async def refresh_content(self, interaction: discord.Interaction, **kwargs):
-        content_kwargs = await self.get_content()
-        await self._before_send()
-        await self.commit()
-        if interaction.response.is_done():
-            await interaction.edit_original_response(view=self, **content_kwargs, **kwargs)
-        else:
-            await interaction.response.edit_message(view=self, **content_kwargs, **kwargs)
-
-    @staticmethod
-    async def prompt_modal(interaction: discord.Interaction, modal):
-        await interaction.response.send_modal(modal)
-        await modal.wait()
-        return modal
+   
     
 class LogPromptUI(LogPrompt):
     @classmethod
@@ -122,16 +55,24 @@ class LogPromptUI(LogPrompt):
 
     @discord.ui.button(label="Confirm", style=discord.ButtonStyle.green, row=2)
     async def confirm_log(self, _: discord.ui.Button, interaction: discord.Interaction):
+        rate: CodeConversion = self.bot.compendium.get_object(CodeConversion, self.character.level)
         if self.conversion:
-            rate: CodeConversion = self.bot.compendium.get_object(CodeConversion, self.character.level)
             self.credits = abs(self.cc) * rate.value
             self.ignore_handicap = True
 
         if (self.character.credits + self.credits) < 0:
-            await interaction.channel.send(embed=ErrorEmbed(description=f"{self.character.name} cannot afford the {self.credits} credit cost"))
+            convertedCC = math.ceil((self.credits - self.character.credits) / rate.value)
+            if self.player.cc < convertedCC:
+                await interaction.channel.send(embed=ErrorEmbed(description=f"{self.character.name} cannot afford the {self.credits} credit cost or to convert the {convertedCC} needed."))
+            else:
+                convert_activity = self.bot.compendium.get_object(Activity, "CONVERSION")
+                converted_entry = await create_log(self.bot, self.owner, self.guild, convert_activity, self.player, self.character, self.notes, -convertedCC, convertedCC*rate.value, None, True)
+                await interaction.channel.send(embed=LogEmbed(converted_entry, self.owner, self.member, self.character, True))
+                log_entry = await create_log(self.bot, self.owner, self.guild, self.activity, self.player, self.character, self.notes, self.cc, self.credits, None, self.ignore_handicap)
+                await interaction.channel.send(embed=LogEmbed(log_entry, self.owner, self.member, self.character))
         else:
             log_entry = await create_log(self.bot, self.owner, self.guild, self.activity, self.player, self.character, self.notes, self.cc, self.credits, None, self.ignore_handicap)
-            await interaction.channel.send(embed=LogEmbed(log_entry, self.owner, self.member, self.player, self.character))
+            await interaction.channel.send(embed=LogEmbed(log_entry, self.owner, self.member, self.character))
         await self.on_timeout()
 
     @discord.ui.button(label="Cancel", style=discord.ButtonStyle.grey, row=2)
@@ -148,5 +89,5 @@ class LogPromptUI(LogPrompt):
         self.character_select.options = char_list   
     
     async def get_content(self) -> Mapping:
-        return {"embed": None, "content": "Select a charcter to log this for:\n"}
+        return {"embed": None, "content": "Select a character to log this for:\n"}
     

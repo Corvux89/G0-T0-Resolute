@@ -16,8 +16,9 @@ from Resolute.models.embeds import ErrorEmbed
 from Resolute.models.embeds.adventures import AdventureRewardEmbed, AdventureSettingsEmbed
 from Resolute.models.objects.adventures import Adventure
 from Resolute.models.objects.characters import PlayerCharacter
+from Resolute.models.views.base import InteractiveView
 
-class AdventureSettings(discord.ui.View):
+class AdventureSettings(InteractiveView):
     __menu_copy_attrs__ = ("bot", "adventure", "dm_select")
     bot: G0T0Bot
     owner: discord.Member = None
@@ -25,45 +26,12 @@ class AdventureSettings(discord.ui.View):
     dm_select: bool = False
     member: discord.Member = None
     character: PlayerCharacter = None
-
-    def __init__(self, owner: discord.Member, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.owner = owner
-        self.message = None # type: Optional[discord.Message]
-
-    async def interaction_check(self, interaction: discord.Interaction) -> bool:
-        if interaction.user.id == self.owner.id:
-            return True
-        await interaction.response.send_message("You are not the owner of this interaction", ephemeral=True)
-        return False
-    
-    @classmethod
-    def from_menu(cls, other: "AdventureSettings"):
-        inst = cls(owner=other.owner)
-        inst.message = other.message
-        for attr in cls.__menu_copy_attrs__:
-            # copy the instance attr to the new instance if available, or fall back to the class default
-            sentinel = object()
-            value = getattr(other, attr, sentinel)
-            if value is sentinel:
-                value = getattr(cls, attr, None)
-            setattr(inst, attr, value)
-        return inst
     
     async def _before_send(self, interaction: discord.Interaction):
         pass
 
     async def commit(self):
         await upsert_adventure(self.bot, self.adventure)
-
-    async def on_timeout(self) -> None:
-        if self.message is None:
-            return
-        try:
-            await self.message.edit(view=None)
-            await self.message.delete()
-        except discord.HTTPException:
-            pass
 
     async def send_to(self, destination, *args, **kwargs):
         content_kwargs = await self.get_content(destination)
@@ -90,12 +58,6 @@ class AdventureSettings(discord.ui.View):
             await interaction.edit_original_response(view=self, **content_kwargs, **kwargs)
         else:
             await interaction.response.edit_message(view=self, **content_kwargs, **kwargs)
-
-    @staticmethod
-    async def prompt_modal(interaction: discord.Interaction, modal):
-        await interaction.response.send_modal(modal)
-        await modal.wait()
-        return modal
     
 class AdventureSettingsUI(AdventureSettings):
     @classmethod
@@ -106,17 +68,17 @@ class AdventureSettingsUI(AdventureSettings):
 
         return inst
     
-    @discord.ui.button(label="Manage DM's", style=discord.ButtonStyle.primary, row=1)
+    @discord.ui.button(label="Manage DM(s)", style=discord.ButtonStyle.primary, row=1)
     async def adventure_dm(self, _: discord.ui.Button, interaction: discord.Interaction):
         self.dm_select = True
         await self.defer_to(_AdventureMemberSelect, interaction)
 
-    @discord.ui.button(label="Manage Players's", style=discord.ButtonStyle.primary, row=1)
+    @discord.ui.button(label="Manage Player(s)", style=discord.ButtonStyle.primary, row=1)
     async def adventure_players(self, _: discord.ui.Button, interaction: discord.Interaction):
         self.dm_select = False
         await self.defer_to(_AdventureMemberSelect, interaction)
 
-    @discord.ui.button(label="Reward EP", style=discord.ButtonStyle.green, row=2)
+    @discord.ui.button(label="Reward CC", style=discord.ButtonStyle.green, row=2)
     async def adventure_reward(self, _: discord.ui.Button, interaction: discord.Interaction):
         modal = AdventureRewardModal(self.adventure)
         response = await self.prompt_modal(interaction, modal)

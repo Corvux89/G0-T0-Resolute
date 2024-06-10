@@ -22,11 +22,11 @@ from discord import SelectOption
 from discord.ui import Modal, InputText
 from timeit import default_timer as timer
 from Resolute.models.objects.characters import CharacterSchema, CharacterStarship, PlayerCharacterClass, upsert_character, upsert_class_query, upsert_starship_query
+from Resolute.models.views.base import InteractiveView
 
 log = logging.getLogger(__name__)
 
-
-class CharacterSettings(discord.ui.View):
+class CharacterSettings(InteractiveView):
     __menu_copy_attrs__ = ("bot", "player", "guild", "member", "discord_guild", "active_character", "active_ship")
     bot: G0T0Bot
     owner: discord.Member = None
@@ -37,77 +37,6 @@ class CharacterSettings(discord.ui.View):
     active_character: PlayerCharacter = None
     active_ship: CharacterStarship = None
 
-    def __init__(self, owner: discord.Member, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.owner = owner
-        self.message = None # type: Optional[discord.Message]
-
-    async def interaction_check(self, interaction: discord.Interaction) -> bool:
-        if interaction.user.id == self.owner.id:
-            return True
-        await interaction.response.send_message("You are not the owner of this interaction", ephemeral=True)
-        return False
-    
-    @classmethod
-    def from_menu(cls, other: "CharacterSettings"):
-        inst = cls(owner=other.owner)
-        inst.message = other.message
-        for attr in cls.__menu_copy_attrs__:
-            # copy the instance attr to the new instance if available, or fall back to the class default
-            sentinel = object()
-            value = getattr(other, attr, sentinel)
-            if value is sentinel:
-                value = getattr(cls, attr, None)
-            setattr(inst, attr, value)
-        return inst
-    
-    async def _before_send(self):
-        pass
-
-    async def commit(self):
-        pass
-
-    async def on_timeout(self) -> None:
-        if self.message is None:
-            return
-        try:
-            await self.message.edit(view=None)
-            await self.message.delete()
-        except discord.HTTPException:
-            pass
-
-    async def send_to(self, destination, *args, **kwargs):
-        content_kwargs = await self.get_content()
-        await self._before_send()
-        message = await destination.send(*args, view=self, **content_kwargs, **kwargs)
-        self.message = message
-        return message
-
-    async def defer_to(self, view_type: Type["CharacterSettings"], interaction: discord.Interaction, stop=True):
-        view = view_type.from_menu(self)
-        if stop:
-            self.stop()
-        await view._before_send()
-        await view.refresh_content(interaction)
-
-    async def get_content(self) -> Mapping:
-        return {}
-
-    async def refresh_content(self, interaction: discord.Interaction, **kwargs):
-        content_kwargs = await self.get_content()
-        await self._before_send()
-        await self.commit()
-        if interaction.response.is_done():
-            await interaction.edit_original_response(view=self, **content_kwargs, **kwargs)
-        else:
-            await interaction.response.edit_message(view=self, **content_kwargs, **kwargs)
-
-    @staticmethod
-    async def prompt_modal(interaction: discord.Interaction, modal):
-        await interaction.response.send_modal(modal)
-        await modal.wait()
-        return modal
-    
 class CharacterSettingsUI(CharacterSettings):
     @classmethod
     def new(cls, bot, owner, member, player, playerGuild, guild):
@@ -268,8 +197,8 @@ class _NewCharacter(CharacterSettings):
             new_character_type_options.append(SelectOption(label="New Character", value="new", default= True if self.new_type == "new" else False))
         
         if len(self.player.characters) > 0:
-            new_character_type_options.append(SelectOption(label="Death Reroll", value="death"))
-            new_character_type_options.append(SelectOption(label="Free Reroll", value="freeroll"))
+            new_character_type_options.append(SelectOption(label="Death Reroll", value="death", default=True if self.new_type == "death" else False))
+            new_character_type_options.append(SelectOption(label="Free Reroll", value="freeroll", default=True if self.new_type == "freeroll" else False))
 
         self.new_character_type.options = new_character_type_options
 
@@ -292,7 +221,7 @@ class _InactivateCharacter(CharacterSettings):
 
         log_entry = await create_log(self.bot, self.owner, self.guild, activity, self.player, self.active_character, "Inactivating Character")
 
-        await interaction.channel.send(embed=LogEmbed(log_entry, self.owner, self.member, self.player, self.active_character))
+        await interaction.channel.send(embed=LogEmbed(log_entry, self.owner, self.member, self.active_character))
 
         await self.on_timeout()
 
@@ -422,7 +351,7 @@ class _EditCharacterShips(CharacterSettings):
         modal = StarshipModal(self.active_character, self.bot.compendium)
         response = await self.prompt_modal(interaction, modal)
 
-        if response.starship:
+        if response.starship and response.starship is not None:
             starship = await upsert_starship(self.bot, response.starship)
             self.active_character.starships.append(starship)
             
@@ -460,11 +389,11 @@ class _EditCharacterShips(CharacterSettings):
         else:
             if not self.active_ship:
                 self.active_ship = self.active_character.starships[0]
-            else:
-                self.active_ship.owners = []
-                for char_id in self.active_ship.character_id:
-                    character = await get_character(self.bot, char_id)
-                    self.active_ship.owners.append(character)
+                
+            self.active_ship.owners = []
+            for char_id in self.active_ship.character_id:
+                character = await get_character(self.bot, char_id)
+                self.active_ship.owners.append(character)
 
 
             ship_options = []
@@ -505,17 +434,17 @@ class _EditStarshipOwners(CharacterSettings):
 
     @discord.ui.user_select(placeholder="Select a Player", row=1)
     async def member_select(self, user: discord.ui.Select, interaction: discord.Interaction):
-        member: discord.Member = user.value[0]
+        member: discord.Member = user.values[0]
         self.owner_member = member
         self.owner_player = await get_player(self.bot, member.id, interaction.guild.id)
         self.owner_character = None
 
-        if self.get_item("char_select") is None:
+        if self.get_item("ship_char_select") is None:
             self.add_item(self.character_select)
 
         await self.refresh_content(interaction)
 
-    @discord.ui.select(placeholder="Select a character", options=[SelectOption(label="You should never see me")], row=2, custom_id="char_select")
+    @discord.ui.select(placeholder="Select a character", options=[SelectOption(label="You should never see me")], row=2, custom_id="ship_char_select")
     async def character_select(self, char: discord.ui.Select, interaction: discord.Interaction):
         self.owner_character = self.owner_player.characters[int(char.values[0])]
         await self.refresh_content(interaction)
@@ -530,13 +459,14 @@ class _EditStarshipOwners(CharacterSettings):
             await interaction.channel.send(embed=ErrorEmbed(description=f"Character is already an owner of this ship"), delete_after=5)
         else:
             self.active_ship.character_id.append(self.owner_character.id)
+            self.active_ship.owners.append(self.owner_character)
             await upsert_starship(self.bot, self.active_ship)
         
         await self.refresh_content(interaction)
 
     @discord.ui.button(label="Remove Player", row=3)
     async def remove_owner(self, _: discord.ui.Button, interaction: discord.Interaction):
-        if len(self.active_character.character_id) == 1:
+        if len(self.active_ship.character_id) == 1:
             await interaction.channel.send(embed=ErrorEmbed(description=f"Can't remove the last owner. Either add someone first or delete the ship"), delete_after=5)
         elif self.owner_member is None:
             await interaction.channel.send(embed=ErrorEmbed(description=f"Select someone to remove"), delete_after=5)
@@ -547,10 +477,13 @@ class _EditStarshipOwners(CharacterSettings):
             await interaction.channel.send(embed=ErrorEmbed(description=f"Select a character to remove"), delete_after=5)
         else:
             self.active_ship.character_id.remove(self.owner_character.id)
+            self.active_ship.owners = [owner for owner in self.active_ship.owners if owner.id != self.owner_character.id]
             if self.owner_member == self.member:
                 self.active_character.starships.remove(self.active_ship)
 
             await upsert_starship(self.bot, self.active_ship)
+            
+        await self.refresh_content(interaction)
 
     @discord.ui.button(label="Back", style=discord.ButtonStyle.grey, row=4)
     async def back(self, _: discord.ui.Button, interaction: discord.Interaction):
@@ -589,7 +522,7 @@ class NewCharacterInformationModal(Modal):
         self.active_character = active_character
         self.new_cc = new_cc
         self.new_credits = new_credits
-        self.new_type =new_type
+        self.new_type=new_type
         self.transfer_ship = transfer_ship
 
         self.add_item(InputText(label="Character Name", style=discord.InputTextStyle.short, required=True, placeholder="Character Name", max_length=2000, value=self.character.name if self.character.name else ''))
@@ -639,7 +572,7 @@ class NewCharacterClassSpeciesModal(Modal):
         self.compendium = compendium
 
         self.add_item(InputText(label="Species", style=discord.InputTextStyle.short, required=True, placeholder="Species", max_length=100, value=self.character.species.value if hasattr(self.character.species, "value") else ''))
-        self.add_item(InputText(label="Class", style=discord.InputTextStyle.short, required=True, placeholder="Class", max_length=100, value=self.char_class.primary_class.value if hasattr(self.char_class, "primary_class") else ''))
+        self.add_item(InputText(label="Class", style=discord.InputTextStyle.short, required=True, placeholder="Class", max_length=100, value=self.char_class.primary_class.value if hasattr(self.char_class, "primary_class") and self.char_class.primary_class else ''))
         self.add_item(InputText(label="Archetype", style=discord.InputTextStyle.short, required=False, placeholder="Archetype", max_length=100, value=self.char_class.archetype.value if hasattr(self.char_class, "archetype") and self.char_class.archetype else ''))
 
     async def callback(self, interaction: discord.Interaction):
@@ -765,7 +698,7 @@ class StarshipModal(Modal):
             self.starship = None
             err_str.append("Tier must be a number")
 
-        if self.starship and not hasattr(self.starship, "id"):
+        if self.starship and (not hasattr(self.starship, "id") or self.starship.id is None):
             if ship_size := get_ship_size(self.children[2].value, self.compendium, err_str):
                 if ship_role := get_ship_role(self.children[3].value, ship_size, self.compendium, err_str):
                     self.starship.starship = ship_role

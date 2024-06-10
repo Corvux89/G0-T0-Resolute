@@ -6,7 +6,7 @@ from Resolute.models.categories import Activity
 from Resolute.models.objects.adventures import Adventure
 from Resolute.models.objects.characters import PlayerCharacter, upsert_character
 from Resolute.models.objects.guilds import PlayerGuild
-from Resolute.models.objects.logs import DBLog, LogSchema, get_log_by_id, upsert_log
+from Resolute.models.objects.logs import DBLog, LogSchema, character_stats_query, get_log_by_id, get_n_player_logs_query, player_stats_query, upsert_log
 from Resolute.models.objects.players import Player, upsert_player_query
 
 
@@ -66,3 +66,32 @@ async def create_log(bot: G0T0Bot, author: Member | ClientUser, guild: PlayerGui
 
     return log_entry
 
+async def get_n_player_logs(bot: G0T0Bot, player: Player, n: int = 5) -> list[DBLog]:
+    async with bot.db.acquire() as conn:
+        results = await conn.execute(get_n_player_logs_query(player.id, n))
+        rows = await results.fetchall()
+
+    if not rows:
+        return None
+
+    logs = [LogSchema(bot.compendium).load(row) for row in rows]
+
+    return logs
+
+
+async def get_player_stats(bot: G0T0Bot, player: Player):
+    async with bot.db.acquire() as conn:
+        results = await conn.execute(player_stats_query(bot.compendium, player.id))
+        row = await results.first()
+    
+    return dict(row)
+
+async def get_character_stats(bot: G0T0Bot, character: PlayerCharacter):
+    async with bot.db.acquire() as conn:
+        results = await conn.execute(character_stats_query(bot.compendium, character.id))
+        row = await results.first()
+
+    if row is None:
+        return None
+
+    return dict(row)

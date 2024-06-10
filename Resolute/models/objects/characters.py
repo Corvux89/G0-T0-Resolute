@@ -108,6 +108,9 @@ def get_active_characters(player_id: int, guild_id: int) -> FromClause:
              characters_table.c.active == True)
     )
 
+def get_all_characters(player_id: int, guild_id: int) -> FromClause:
+    return characters_table.select().where(and_(characters_table.c.player_id == player_id, characters_table.c.guild_id == guild_id))
+
 def get_player_character_history(player_id: int, guild_id: int) -> FromClause:
     return characters_table.select().where(
         and_(characters_table.c.player_id == player_id, characters_table.c.guild_id == guild_id)
@@ -176,8 +179,10 @@ class PlayerCharacterClass(object):
     def get_formatted_class(self):
         if hasattr(self, "archetype") and self.archetype is not None:
             return f"{self.archetype.value} {self.primary_class.value}"
-        else:
+        elif hasattr(self, "primary_class") and self.primary_class is not None:
             return f"{self.primary_class.value}"
+        else:
+            return ""
         
 character_class_table = sa.Table(
     "character_class",
@@ -238,13 +243,6 @@ def upsert_class_query(char_class: PlayerCharacterClass):
     return insert_statement
 
 class CharacterStarship(object):
-    character_id: list[int]
-    name: str
-    transponder: str
-    starship: StarshipRole
-    tier: int | None = None
-    active: bool = True
-
     def __init__(self, **kwargs):
         self.id = kwargs.get('id')
         self.character_id: list[int] = kwargs.get('character_id', [])

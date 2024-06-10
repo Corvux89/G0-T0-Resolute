@@ -13,84 +13,18 @@ from Resolute.models.objects.ref_objects import RefWeeklyStipend
 from Resolute.models.embeds import ErrorEmbed, GuildEmbed
 from typing import Mapping, Type
 
+from Resolute.models.views.base import InteractiveView
 
-class GuildSettings(discord.ui.View):
+
+class GuildSettings(InteractiveView):
     __menu_copy_attrs__ = ("guild", "bot", "d_guild")
     bot: G0T0Bot
     owner: discord.Member = None
     guild: PlayerGuild = None
     d_guild: discord.Guild = None
-    
-    def __init__(self, owner: discord.Member, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.owner = owner
-        self.message = None
-
-    async def interaction_check(self, interaction: discord.Interaction) -> bool:
-        if interaction.user.id == self.owner.id:
-            return True
-        await interaction.response.send_message("You are not the owner of this interaction", ephemeral=True)
-        return False
-
-    @classmethod
-    def from_menu(cls, other: "GuildSettingsUI"):
-        inst = cls(owner=other.owner)
-        inst.message = other.message
-        for attr in cls.__menu_copy_attrs__:
-            # copy the instance attr to the new instance if available, or fall back to the class default
-            sentinel = object()
-            value = getattr(other, attr, sentinel)
-            if value is sentinel:
-                value = getattr(cls, attr, None)
-            setattr(inst, attr, value)
-        return inst
-
-    async def _before_send(self):
-        pass
 
     async def commit(self):
         await update_guild(self.bot.db, self.guild)
-        pass
-
-    async def on_timeout(self) -> None:
-        if self.message is None:
-            return
-        try:
-            await self.message.edit(view=None)
-            await self.message.delete()
-        except discord.HTTPException:
-            pass
-
-    async def send_to(self, destination, *args, **kwargs):
-        content_kwargs = await self.get_content()
-        message = await destination.send(*args, view=self, **content_kwargs, **kwargs)
-        self.message = message
-        return message
-
-    async def defer_to(self, view_type: Type["GuildSettingsUI"], interaction: discord.Interaction, stop=True):
-        view = view_type.from_menu(self)
-        if stop:
-            self.stop()
-        await view._before_send()
-        await view.refresh_content(interaction)
-
-    async def get_content(self) -> Mapping:
-        return {}
-
-    async def refresh_content(self, interaction: discord.Interaction, **kwargs):
-        content_kwargs = await self.get_content()
-        await self.commit()
-        await self._before_send()
-        if interaction.response.is_done():
-            await interaction.edit_original_response(view=self, **content_kwargs, **kwargs)
-        else:
-            await interaction.response.edit_message(view=self, **content_kwargs, **kwargs)
-
-    @staticmethod
-    async def prompt_modal(interaction: discord.Interaction, modal):
-        await interaction.response.send_modal(modal)
-        await modal.wait()
-        return modal
     
 class GuildSettingsUI(GuildSettings):
     @classmethod

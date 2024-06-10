@@ -43,6 +43,6 @@ class PlayerOverviewEmbed(Embed):
                                value=f"\u200b \u200b \u200b **Class{'es' if len(character.classes) > 1 else ''}**: {class_str}\n"
                                      f"\u200b \u200b \u200b **Species**: {character.species.value}\n"
                                      f"\u200b \u200b \u200b **Level**: {character.level}\n"
-                                     f"\u200b \u200b \u200b **Credits**: {character.credits}\n"
+                                     f"\u200b \u200b \u200b **Credits**: {character.credits:,}\n"
                                      f"{starship_str}",
                                 inline=False)

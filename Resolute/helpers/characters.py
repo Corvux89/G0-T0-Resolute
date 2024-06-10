@@ -1,11 +1,14 @@
 
 from Resolute.bot import G0T0Bot
-from Resolute.models.objects.characters import CharacterSchema, CharacterStarship, CharacterStarshipSchema, PlayerCharacter, PlayerCharacterClass, PlayerCharacterClassSchema, get_active_characters, get_character_class, get_character_from_id, get_character_starships, upsert_class_query, upsert_starship_query
+from Resolute.models.objects.characters import CharacterSchema, CharacterStarship, CharacterStarshipSchema, PlayerCharacter, PlayerCharacterClass, PlayerCharacterClassSchema, get_active_characters, get_all_characters, get_character_class, get_character_from_id, get_character_starships, upsert_class_query, upsert_starship_query
 
 
-async def get_characters(bot: G0T0Bot, player_id: int, guild_id: int) -> list[PlayerCharacter]:
+async def get_characters(bot: G0T0Bot, player_id: int, guild_id: int, inactive: bool = False) -> list[PlayerCharacter]:
     async with bot.db.acquire() as conn:
-        results = await conn.execute(get_active_characters(player_id, guild_id))
+        if inactive:
+            results = await conn.execute(get_all_characters(player_id, guild_id))
+        else:
+            results = await conn.execute(get_active_characters(player_id, guild_id))
         rows = await results.fetchall()
 
     character_list = [CharacterSchema(bot.compendium).load(row) for row in rows]

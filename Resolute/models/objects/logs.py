@@ -1,11 +1,13 @@
+import calendar
 import sqlalchemy as sa
 import discord
 
 from discord import ApplicationContext
 from marshmallow import Schema, fields, post_load
 from datetime import timezone, datetime
-from sqlalchemy import Column, Integer, BigInteger, String, BOOLEAN, null, func, TIMESTAMP, and_, select
+from sqlalchemy import Column, Integer, BigInteger, String, BOOLEAN, null, func, TIMESTAMP, and_, select, case
 from Resolute.models.categories import Activity
+from Resolute.models.objects.characters import characters_table
 from Resolute.compendium import Compendium
 from Resolute.models import metadata
 from discord import ApplicationContext
@@ -31,6 +33,10 @@ class DBLog(object):
 
     def get_author(self, ctx: ApplicationContext) -> discord.Member | None:
         return discord.utils.get(ctx.guild.members, id=self.author)
+    
+    @property
+    def epoch_time(self):
+        return calendar.timegm(self.created_ts.utctimetuple())
     
 log_table = sa.Table(
     "log",
@@ -113,3 +119,41 @@ def upsert_log(log: DBLog):
     ).returning(log_table)
 
     return insert_statement
+
+def get_n_player_logs_query(player_id: int, n : int) -> FromClause:
+    return log_table.select().where(log_table.c.player_id == player_id).order_by(log_table.c.id.desc()).limit(n)
+
+def player_stats_query(compendium: Compendium, player_id: int):
+    new_character_activity = compendium.get_object(Activity, "NEW_CHARACTER")
+    activities = [x.id for x in compendium.activity[0].values() if x.value in ["RP", "ARENA", "ARENA_HOST", "GLOBAL"]]
+    activity_columns = [func.sum(case([(log_table.c.activity == act, 1)], else_=0)).label(f"Activity {act}") for act in activities]
+
+    query = select(log_table.c.player_id,
+                   func.count(log_table.c.id).label("#"),
+                   func.sum(case([(and_(log_table.c.cc > 0, log_table.c.activity != new_character_activity.id), log_table.c.cc)], else_=0)).label("debt"),
+                   func.sum(case([(and_(log_table.c.cc < 0, log_table.c.activity != new_character_activity.id), log_table.c.cc)], else_=0)).label("credit"),
+                   func.sum(case([(and_(log_table.c.cc > 0, log_table.c.activity == new_character_activity.id), log_table.c.cc)], else_=0)).label("starting"),
+                   *activity_columns)\
+                    .group_by(log_table.c.player_id)\
+                        .where(and_(log_table.c.player_id == player_id, log_table.c.invalid == False))
+    
+    return query
+
+def character_stats_query(compendium: Compendium, character_id: int):
+    new_character_activity = compendium.get_object(Activity, "NEW_CHARACTER")
+    conversion_activity = compendium.get_object(Activity, "CONVERSION")
+
+    query = select(log_table.c.character_id,
+                   func.count(log_table.c.id).label("#"),
+                   func.sum(case([(and_(log_table.c.cc > 0, log_table.c.activity != new_character_activity.id), log_table.c.cc)], else_=0)).label("cc debt"),
+                   func.sum(case([(and_(log_table.c.cc > 0, log_table.c.activity != new_character_activity.id), log_table.c.cc)], else_=0)).label("cc credit"),
+                   func.sum(case([(and_(log_table.c.cc > 0, log_table.c.activity == new_character_activity.id), log_table.c.cc)], else_=0)).label("cc starting"),
+                   func.sum(case([(and_(log_table.c.credits > 0, log_table.c.activity != new_character_activity.id), log_table.c.credits)], else_=0)).label("credit debt"),
+                   func.sum(case([(and_(log_table.c.cc < 0, log_table.c.activity != new_character_activity.id), log_table.c.credits)], else_=0)).label("credit credit"),
+                   func.sum(case([(and_(log_table.c.credits > 0, log_table.c.activity == new_character_activity.id), log_table.c.credits)], else_=0)).label("credit starting"),
+                   func.sum(case([(log_table.c.activity == conversion_activity.id, log_table.c.credits)], else_=0)).label("credits converted"))\
+                    .group_by(log_table.c.character_id)\
+                    .where(and_(log_table.c.character_id == character_id, log_table.c.invalid == False))
+    return query
+
+

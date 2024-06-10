@@ -18,6 +18,7 @@ VALUES(21, 'MOD_CHARACTER', NULL, false);
 :white_check_mark: Add a `server_date` (int4) column to track server date
 :white_check_mark: Add a `first_character_message` (varchar) Column to say when first character is made for a player
 :white_check_mark: Add a 'epoch_notation' (varchar) Column
+:pencil: Remove `max_rerolls`
 
 ```sql
 ALTER TABLE public.guilds
@@ -83,6 +84,13 @@ FROM characters
 WHERE log.character_id = characters.id;
 ```
 
+### `ref_category_dashboard`
+```sql
+ALTER TABLE public.ref_category_dashboard RENAME TO ref_dashboards;
+ALTER TABLE public.ref_category_dashboard RENAME COLUMN dashboard_post_id TO post_id;
+ALTER TABLE public.ref_dashboards RENAME COLUMN dashboard_post_channel_id TO channel_id;
+```
+
 ### `c_level_caps`
 Delete
 
@@ -132,19 +140,19 @@ INSERT INTO public.ref_server_calendar (day_start,day_end,display_name,guild_id)
 ### Characters
 :white_check_mark: Update `/get`
 :white_check_mark: Merge ~~`/character_admin create`~~, ~~`/character_admin reroll`~~, ~~`/character_admin level`~~, ~~`/character_admin species`~~, ~~`/character_admin archetype`~~, ~~`/character_admin add_multiclass`~~, ~~`/character_admin remove_multiclass`~~, ~~`/character_admin inactivate`~~ into one `/character_admin manage` command
-:pencil: Remove draft option from applications since caching to database
+:white_check_mark: Remove draft option from applications since caching to database
 :white_check_mark: Add `!approve` blurb on first character creation
-:pencil: Add `add_ship`, `upgrade_ship`, `modify_ship`, and `remove_ship` to `character_admin manage`
-:pencil: Level up application
-:pencil: New character applicaiton
-:pencil: Edit application
+:white_check_mark: Add `add_ship`, `upgrade_ship`, `modify_ship`, and `remove_ship` to `character_admin manage`
+:white_check_mark: Level up application
+:white_check_mark: New character applicaiton
+:white_check_mark: Edit application
 
 ### Events
 :white_check_mark: Update `on_member_remove`
 :pencil: Update `on_member_remove` to check arena board as well for cleanup
 
 ### Global Events
-Need to repoint all helpers to do CC at a player level rather than character. 
+:white_check_mark: Need to repoint all helpers to do CC at a player level rather than character. 
 
 ### Guilds
 :white_check_mark: Merged all setting commands to just a singular interactive `/guild settings` command. This reduces command overhead as well as improves visibility into various settings.
@@ -155,17 +163,18 @@ Need to repoint all helpers to do CC at a player level rather than character.
 :white_check_mark: Add way to preview reset message
 
 ### Log
-:pencil: Update `/log get_history`
+:white_check_mark: Update `/log get_history`
 :white_check_mark: Update `/log rp`
 :white_check_mark: Update `/log bonus`
 :white_check_mark: Update `/log null`
 :white_check_mark: Update `/log buy`
 :white_check_mark: Update `/log sell`
 :white_check_mark: Update `/log convert`
-:pencil: Update `/log stats`
+:white_check_mark: Update `/log stats`
 
 ### Dashboards
-:pencil: Update
+:white_check_mark: Update
+:white_check_mark: Convert census dashboards back to texttable format with timestamp
 
 ### Holdings
 :pencil: Update

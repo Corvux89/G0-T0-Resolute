@@ -5,6 +5,7 @@ from discord.ext import commands
 
 from Resolute.bot import G0T0Bot
 from Resolute.helpers.adventures import get_player_adventures
+from Resolute.helpers.appliations import upsert_application
 from Resolute.helpers.arenas import get_player_arenas
 from Resolute.helpers.general_helpers import process_message
 from Resolute.helpers.guilds import get_guild
@@ -26,10 +27,9 @@ class Events(commands.Cog):
 
     @commands.Cog.listener()
     async def on_member_remove(self, member: discord.Member):
-        # Cleanup reference tables
-        # async with self.bot.db.acquire() as conn:
-        #     await conn.execute(delete_player_application(member.id))
-
+        # Reference Table Cleanup
+        await upsert_application(self.bot.db, member.id)
+        
         if exit_channel := discord.utils.get(member.guild.channels, name="exit"):
             g = await get_guild(self.bot.db, member.guild.id)
             player = await get_player(self.bot, member.id, member.guild.id)

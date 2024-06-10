@@ -108,29 +108,3 @@ def get_server_calendar(guild_id: int) -> FromClause:
     return ref_server_calendar_table.select()\
            .where(ref_server_calendar_table.c.guild_id == guild_id)\
            .order_by(ref_server_calendar_table.c.day_start.asc())
-
-ref_applications_table = sa.Table(
-    "ref_character_applications",
-    metadata,
-    Column("id", BigInteger, primary_key=True),
-    Column("application", String, nullable=False)
-)
-
-class ApplicationSchema(Schema):
-    id = fields.Integer(data_key="id", required=True)
-    application = fields.String(data_key="application", required=True)
-
-
-def get_player_application(char_id: int) -> FromClause:
-    return ref_applications_table.select().where(
-        ref_applications_table.c.id == char_id
-    )
-
-def upsert_player_application(char_id: int, application: str) -> TableClause:
-    query = text("""
-            WITH delete AS(
-                 DELETE FROM ref_applications WHERE id = :char_id                    
-            )
-            INSERT INTO ref_applications (id, application) VALUES (:char_id, :application)     
-                 """).bindparams(char_id=char_id, application=application)
-    return query

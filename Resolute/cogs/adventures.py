@@ -33,7 +33,7 @@ class Adventures(commands.Cog):
         description="Shows active adventures for a player"
     )
     async def adventure_get(self, ctx: ApplicationContext,
-                            member: Option(Member, description="Player to get the information of", required=False),
+                            member: Option(discord.Member, description="Player to get the information of", required=False),
                             phrase: Option(str, description="Additional question/phrase to add", required=False),
                             phrase2: Option(str, description="Additional question/phrase to add", required=False)):
         await ctx.defer()

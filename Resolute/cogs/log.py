@@ -2,6 +2,7 @@ import logging
 import math
 
 from discord import SlashCommandGroup, Option, ApplicationContext, Member
+import discord
 from discord.ext import commands
 
 from Resolute.bot import G0T0Bot
@@ -34,7 +35,7 @@ class Log(commands.Cog):
         description="Logs a completed RP"
     )
     async def rp_log(self, ctx: ApplicationContext,
-                     member: Option(Member, description="Player who participated in the RP", required=True)):
+                     member: Option(discord.Member, description="Player who participated in the RP", required=True)):
         if activity := self.bot.compendium.get_object(Activity, "RP"):
             await self.prompt_log(ctx, member, activity)
         else:
@@ -45,7 +46,7 @@ class Log(commands.Cog):
         description="Give bonus gold and/or xp to a player"
     )
     async def bonus_log(self, ctx: ApplicationContext,
-                        member: Option(Member, description="Player receiving the bonus", required=True),
+                        member: Option(discord.Member, description="Player receiving the bonus", required=True),
                         reason: Option(str, description="The reason for the bonus", required=True),
                         cc: Option(int, description="The amount of Chain Codes", default=0, min_value=0, max_value=50),
                         credits: Option(int, description="The amount of Credits", default=0, min_value=0, max_value=20000)):
@@ -60,7 +61,7 @@ class Log(commands.Cog):
         description="Logs the sale of an item to a player"
     )
     async def buy_log(self, ctx: ApplicationContext,
-                      member: Option(Member, description="Player who bought the item", required=True),
+                      member: Option(discord.Member, description="Player who bought the item", required=True),
                       item: Option(str, description="The item being bought", required=True),
                       cost: Option(int, description="The cost of the item", min_value=0, max_value=9999999,
                                    required=True),
@@ -85,7 +86,7 @@ class Log(commands.Cog):
         description="Logs the sale of an item from a player. Not for player establishment sales"
     )
     async def sell_log(self, ctx: ApplicationContext,
-                       member: Option(Member, description="Player who bought the item", required=True),
+                       member: Option(discord.Member, description="Player who bought the item", required=True),
                        item: Option(str, description="The item being sold", required=True),
                        cost: Option(int, description="The cost of the item", min_value=0, max_value=9999999,
                                     required=True),
@@ -165,7 +166,7 @@ class Log(commands.Cog):
         description="Convert CC to credits or visa versa"
     )
     async def log_convert(self, ctx: ApplicationContext,
-                          member: Option(Member, description="Player doing the conversion", required=True),
+                          member: Option(discord.Member, description="Player doing the conversion", required=True),
                           cc: Option(int, description="Amount of Chain Codes to convert", required=True)):
         if activity := self.bot.compendium.get_object(Activity, "CONVERSION"):
             await self.prompt_log(ctx, member, activity, "Converting CC to Credits", -cc, 0, True, True)
@@ -177,7 +178,7 @@ class Log(commands.Cog):
         description="Log statistics for a character"
     )
     async def log_stats(self, ctx: ApplicationContext,
-                        member: Option(Member, description="Player to view stats for", required=True)):
+                        member: Option(discord.Member, description="Player to view stats for", required=True)):
         await ctx.defer()
 
         player = await get_player(self.bot, member.id, ctx.guild.id, True)
@@ -220,7 +221,7 @@ class Log(commands.Cog):
         description="Get the last weeks worth of logs for a player"
     )
     async def get_log_hx(self, ctx: ApplicationContext,
-                         member: Option(Member, description="Player to get logs for", required=True),
+                         member: Option(discord.Member, description="Player to get logs for", required=True),
                          num_logs: Option(int, description="Number of logs to get",
                                           min_value=1, max_value=20, default=5)):
         await ctx.defer()

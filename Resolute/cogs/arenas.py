@@ -97,7 +97,7 @@ class Arenas(commands.Cog):
         description="Adds the specified player to this arena"
     )
     async def arena_add(self, ctx: ApplicationContext,
-                        member: Option(Member, description="Player to add to arena", required=True)):
+                        member: Option(discord.Member, description="Player to add to arena", required=True)):
         arena = await get_arena(self.bot, ctx.channel.id)
 
         if arena is None:
@@ -126,7 +126,7 @@ class Arenas(commands.Cog):
         description="Removes the specified player from this arena"
     )
     async def arena_remove(self, ctx: ApplicationContext,
-                           member: Option(Member, description="Player to remove from arena", required=True)):
+                           member: Option(discord.Member, description="Player to remove from arena", required=True)):
         arena = await get_arena(self.bot, ctx.channel.id)
 
         if arena is None:

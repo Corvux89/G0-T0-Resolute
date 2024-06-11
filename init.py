@@ -1,22 +1,17 @@
 import asyncio
 import logging
 import sys
-import traceback
-from os import listdir
 import discord
-from discord import Intents, ApplicationContext, Embed
+
+from os import listdir
+from discord import Intents
 from discord.ext import commands
 from Resolute.bot import G0T0Bot
 from Resolute.constants import BOT_TOKEN, DEFAULT_PREFIX, DEBUG_GUILDS
-from Resolute.helpers import get_character, get_player_adventures, is_admin
-from Resolute.models.db_objects import PlayerCharacter
 
 intents = Intents.default()
 intents.members = True
 intents.message_content = True
-
-# TODO: Error embeds instead of straight ctx.responds for consistency
-
 
 class MyHelpCommand(commands.MinimalHelpCommand):
     async def send_pages(self):
@@ -55,57 +50,5 @@ for filename in listdir('Resolute/cogs'):
 async def ping(ctx):
     print("Pong")
     await ctx.send(f'Pong! Latency is {round(bot.latency * 1000)}ms.')
-
-@bot.command(name="asay")
-@commands.check(is_admin)
-async def admin_say(ctx: ApplicationContext, channel_id, msg):
-    channel = discord.utils.get(ctx.guild.channels, id=int(channel_id))
-    if channel is not None:
-        try:
-            await channel.send(msg)
-        except:
-            log.warning('Unable to send message')
-    return await ctx.respond("No channel found")
-
-
-@bot.event
-async def on_application_command_error(ctx: ApplicationContext, error):
-    """
-    Handle various exceptions and issues
-
-    :param ctx: Context
-    :param error: The error that was raised
-    """
-
-    # Prevent any commands with local error handling from being handled here
-    if hasattr(ctx.command, 'on_error'):
-        return
-
-    if isinstance(error, discord.errors.CheckFailure):
-        return await ctx.respond(f'You do not have required permissions for `{ctx.command}`')
-    else:
-        log.warning("Error in command: '{}'".format(ctx.command))
-        for line in traceback.format_exception(type(error), error, error.__traceback__):
-            log.warning(line)
-        try:
-            return await ctx.respond(f'Something went wrong. Let us know if it keeps up!')
-        except:
-            log.warning('Unable to respond')
-
-
-@bot.event
-async def on_application_command(ctx):
-    try:
-        if ctx.selected_options is not None:
-            params = "".join([f" [{p['name']}: {p['value']}]" for p in ctx.selected_options])
-        else:
-            params = ""
-        log.info(
-            "cmd: chan {0.channel} [{0.channel.id}], serv: {0.guild} [{0.guild.id}],"
-            " auth: {0.user} [{0.user.id}]: {0.command} ".format(ctx) + params
-        )
-    except AttributeError:
-        log.info("Command in PM with {0.message.author} ({0.message.author.id}): {0.message.content}.".format(ctx))
-
 
 bot.run(BOT_TOKEN)

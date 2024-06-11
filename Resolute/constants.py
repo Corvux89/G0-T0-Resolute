@@ -9,9 +9,14 @@ BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 DEFAULT_PREFIX = os.environ.get("COMMAND_PREFIX", ">")
 DEBUG_GUILDS = json.loads(os.environ["GUILD"]) if "GUILD" in os.environ else None
 DASHBOARD_REFRESH_INTERVAL = float(os.environ.get("DASHBOARD_REFRESH_INTERVAL", 15))
+ERROR_CHANNEL = os.environ.get("ERROR_CHANNEL")
 
 # Database Stuff
 DB_URL = os.environ.get("DATABASE_URL", "")
 
 # Misc
 THUMBNAIL = "https://cdn.discordapp.com/attachments/1069074273190285353/1070477277852340339/image.png"
+DAYS_OF_WEEK = [("None", "None"), ("Monday", "0"), ("Tuesday", "1"), ("Wednesday", "2"), ("Thursday", "3"), ("Friday", "4"), ("Saturday", "5"), ("Sunday", "6")]
+CHANNEL_BREAK = "```\n​\n```"
+
+# Role Names

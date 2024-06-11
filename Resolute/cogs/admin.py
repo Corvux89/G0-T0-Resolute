@@ -1,16 +1,17 @@
 import asyncio
 import logging
 
-import discord
 from discord import SlashCommandGroup, Option, ExtensionAlreadyLoaded, ExtensionNotFound, ExtensionNotLoaded, \
-    ApplicationContext, ChannelType
+    ApplicationContext
 from discord.ext import commands, tasks
 from os import listdir
 
-from Resolute.constants import ADMIN_GUILDS, BOT_OWNERS
+from Resolute.constants import ADMIN_GUILDS
 from Resolute.helpers import is_owner
 from Resolute.bot import G0T0Bot
-from Resolute.models.views.ref_view import AutomationRequestView
+from Resolute.helpers import *
+from Resolute.models.views.admin import AdminMenuUI
+from Resolute.models.views.automation_request import AutomationRequestView
 
 log = logging.getLogger(__name__)
 
@@ -35,9 +36,28 @@ class Admin(commands.Cog):
         name="automation_request",
         description="Log an automation request"
     )
-    async def automation_request(self, ctx:ApplicationContext):
+    async def automation_request(self, ctx: ApplicationContext):
+        """
+        Used by players to submit an automation request
+
+        Args:
+            ctx (ApplicationContext): Represents a Discord application command interaction context.
+
+        Returns:
+            Interaction: Modal interaction to gather information about the request
+        """
         modal = AutomationRequestView()
-        return await ctx.send_modal(modal)
+        await ctx.send_modal(modal)
+
+    @admin_commands.command(
+        name="admin",
+        description="Main administration command"
+    )
+    @commands.check(is_admin)
+    async def admin_admin(self, ctx: ApplicationContext):
+        ui = AdminMenuUI.new(ctx.author, self.bot)
+        await ui.send_to(ctx)
+        await ctx.delete()
 
     @admin_commands.command(
         name="load",
@@ -47,10 +67,14 @@ class Admin(commands.Cog):
     async def load_cog(self, ctx: ApplicationContext,
                        cog: Option(str, description="Cog name", required=True)):
         """
-        Loads a cog in the bot
+        Loads up a cog
 
-        :param ctx: Application context
-        :param cog: Cog name to load
+        Args:
+            ctx (ApplicationContext): Represents a Discord application command interaction context.
+            cog (Option, optional): Cog name. required=True).
+
+        Returns:
+            _type_: _description_
         """
         try:
             self.bot.load_extension(f'Resolute.cogs.{cog}')
@@ -85,7 +109,7 @@ class Admin(commands.Cog):
             return await ctx.respond(f'Something went wrong', ephemeral=True)
         await ctx.respond(f'Cog unloaded', ephemeral=True)
 
-    # TODO: Once compendium is up and running reload that too in place of sheets
+
     @admin_commands.command(
         name="reload",
         description="Reloads either a specific cog, refresh DB information, or reload everything"
@@ -140,25 +164,8 @@ class Admin(commands.Cog):
         files = []
         for file_name in listdir('./Resolute/cogs'):
             if file_name.endswith('.py'):
-                files.append(file_name[:-3])
+                files.append(file_name[:-3]) 
         await ctx.respond("\n".join(files))
-
-    @commands.command("overwrites")
-    @commands.check(is_owner)
-    async def overwrites(self, ctx: ApplicationContext):
-        str = f"**Channel Overwrites**\n"
-
-        for key in ctx.channel.overwrites:
-            str += f"{key.name.replace('@', '')}"
-            str += f" - {ctx.channel.overwrites[key]._values}\n"
-
-        str += f"\n\n**Category Overwrites**\n"
-
-        for key in ctx.channel.category.overwrites:
-            str += f"{key.name.replace('@', '')}"
-            str += f"{ctx.channel.category.overwrites[key]._values}\n"
-
-        await ctx.send(str)
 
     # --------------------------- #
     # Private Methods

@@ -1,16 +1,21 @@
 import asyncio
 import bisect
-from statistics import mode
+import logging
 import discord
+
+from statistics import mode
 from datetime import datetime, timezone
+
 from Resolute.bot import G0T0Bot
 from Resolute.helpers.characters import get_character
-from Resolute.models.categories.categories import ArenaTier
+from Resolute.models.categories import ArenaTier
 from Resolute.models.embeds import ErrorEmbed
 from Resolute.models.embeds.arenas import ArenaStatusEmbed
 from Resolute.models.objects.arenas import Arena, ArenaSchema, get_arena_by_channel_query, get_arena_by_host_query, get_character_arena_query, upsert_arena_query
 from Resolute.models.objects.characters import PlayerCharacter
 from Resolute.models.objects.players import Player
+
+log = logging.getLogger(__name__)
 
 
 async def get_arena(bot: G0T0Bot, channel_id: int) -> Arena:
@@ -74,12 +79,12 @@ async def remove_arena_board_post(ctx: discord.ApplicationContext | discord.Inte
     if arena_board := discord.utils.get(ctx.guild.channels, name="arena-board"):
         try:
             deleted_message = await arena_board.purge(check=predicate)
-            print(f"{len(deleted_message)} message{'s' if len(deleted_message)>1 else ''} by {ctx.guild.get_member(player.id).name} deleted from #{arena_board.name}")
+            log.info(f"{len(deleted_message)} message{'s' if len(deleted_message)>1 else ''} by {ctx.guild.get_member(player.id).name} deleted from #{arena_board.name}")
         except Exception as error:
             if isinstance(error, discord.errors.HTTPException):
                 await ctx.send(f'Warning: deleting users\'s post(s) from {arena_board.mention} failed')
             else:
-                print(error)
+                log.error(error)
 
 def update_arena_tier(bot: G0T0Bot, arena: Arena) -> None:
     if arena.player_characters:

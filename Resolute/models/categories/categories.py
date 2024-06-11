@@ -1,9 +1,10 @@
 import sqlalchemy as sa
 
 from marshmallow import Schema, post_load, fields
-from sqlalchemy import Column, Integer, String, Numeric, BOOLEAN, BigInteger
-from Resolute.models import metadata
+from sqlalchemy import Column, Integer, String, BOOLEAN
 from sqlalchemy.sql.selectable import FromClause
+
+from Resolute.models import metadata
 
 def get_category_table(table: sa.Table) -> FromClause:
     return table.select()

@@ -1,10 +1,11 @@
-from math import ceil
-from typing import Mapping, Optional, Type
 import discord
 
+from math import ceil
+from typing import Mapping, Type
 from datetime import datetime, timezone
 from discord import SelectOption
 from discord.ui import Modal, InputText
+
 from Resolute.bot import G0T0Bot
 from Resolute.helpers.adventures import update_dm, upsert_adventure
 from Resolute.helpers.general_helpers import confirm, is_admin

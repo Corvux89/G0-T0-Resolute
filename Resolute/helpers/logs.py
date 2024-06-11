@@ -10,7 +10,7 @@ from Resolute.models.objects.logs import DBLog, LogSchema, character_stats_query
 from Resolute.models.objects.players import Player, upsert_player_query
 
 
-def get_activity_amount(player: Player, guild: PlayerGuild, activity: Activity, override_amount: int = 0):
+def get_activity_amount(player: Player, guild: PlayerGuild, activity: Activity, override_amount: int = 0) -> int:
     reward_cc = override_amount if override_amount != 0 else activity.cc if activity.cc else 0
 
     if activity.diversion and (player.div_cc + reward_cc > guild.div_limit):
@@ -79,14 +79,14 @@ async def get_n_player_logs(bot: G0T0Bot, player: Player, n: int = 5) -> list[DB
     return logs
 
 
-async def get_player_stats(bot: G0T0Bot, player: Player):
+async def get_player_stats(bot: G0T0Bot, player: Player) -> dict:
     async with bot.db.acquire() as conn:
         results = await conn.execute(player_stats_query(bot.compendium, player.id))
         row = await results.first()
     
     return dict(row)
 
-async def get_character_stats(bot: G0T0Bot, character: PlayerCharacter):
+async def get_character_stats(bot: G0T0Bot, character: PlayerCharacter) -> dict:
     async with bot.db.acquire() as conn:
         results = await conn.execute(character_stats_query(bot.compendium, character.id))
         row = await results.first()

@@ -1,7 +1,8 @@
-from typing import Mapping
 import discord
 
 from discord.ui import Modal, InputText
+from typing import Mapping
+
 from Resolute.bot import G0T0Bot
 from Resolute.helpers.general_helpers import confirm
 from Resolute.helpers.guilds import get_guild

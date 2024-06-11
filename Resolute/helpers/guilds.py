@@ -29,9 +29,14 @@ async def load_calendar(db: aiopg.sa.Engine, guild: PlayerGuild) -> PlayerGuild:
     return guild
 
 
-async def update_guild(db: aiopg.sa.Engine, guild: PlayerGuild) -> None:
+async def update_guild(db: aiopg.sa.Engine, guild: PlayerGuild) -> PlayerGuild:
     async with db.acquire() as conn:
-        await conn.execute(upsert_guild(guild))
+        results = await conn.execute(upsert_guild(guild))
+        row = await results.first()
+
+    g = GuildSchema().load(row)
+
+    return g
 
 async def get_guilds_with_reset(db: aiopg.sa.Engine, day: int, hour: int) -> list[PlayerGuild]:
     async with db.acquire() as conn:
@@ -53,7 +58,7 @@ async def get_guild_stipends(db: aiopg.sa.Engine, guild_id: int) -> list[RefWeek
 
     return stipend_list
 
-async def get_weekly_stipend(db: aiopg.sa.Engine, role_id: int) -> RefWeeklyStipend | None:
+async def get_weekly_stipend(db: aiopg.sa.Engine, role_id: int) -> RefWeeklyStipend:
     async with db.acquire() as conn:
         results = await conn.execute(get_weekly_stipend_query(role_id))
         row = await results.first()

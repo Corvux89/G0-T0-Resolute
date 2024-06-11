@@ -1,10 +1,11 @@
 import sqlalchemy as sa
 
-from Resolute.models import metadata
 from sqlalchemy import Column, BigInteger, Integer, String, BOOLEAN
 from marshmallow import Schema, fields, post_load
-from sqlalchemy.sql import FromClause, TableClause, text
+from sqlalchemy.sql import FromClause, TableClause
 from sqlalchemy.dialects.postgresql import insert
+
+from Resolute.models import metadata
 
 class RefWeeklyStipend(object):
     def __init__(self, guild_id: int, role_id: int, amount: int = 1, reason: str = None, leadership: bool = False):

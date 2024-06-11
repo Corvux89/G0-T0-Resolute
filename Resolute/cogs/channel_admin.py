@@ -1,15 +1,10 @@
 import logging
-import discord
 
-from discord import SlashCommandGroup, ApplicationContext, Option
+from discord import SlashCommandGroup, ApplicationContext
 from discord.ext import commands
 
 from Resolute.bot import G0T0Bot
-from Resolute.helpers.adventures import get_adventure_from_category
-from Resolute.helpers.general_helpers import is_admin
-from Resolute.models.embeds import ErrorEmbed
 from Resolute.models.views.channel_admin import ChannelAdminUI
-from Resolute.models.views.rooms import RoomSettingsUI
 
 log = logging.getLogger(__name__)
 

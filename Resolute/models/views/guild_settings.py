@@ -1,18 +1,17 @@
 import discord
 
-from Resolute.constants import DAYS_OF_WEEK
+
 from discord.ui import Modal, InputText
 from discord import SelectOption
+
 from Resolute.bot import G0T0Bot
 from Resolute.constants import DAYS_OF_WEEK
 from Resolute.helpers.general_helpers import get_positivity
 from Resolute.helpers.guilds import delete_weekly_stipend, get_guild_internal_date, get_guild_stipends, get_weekly_stipend, update_guild, update_weekly_stipend
-from Resolute.models.embeds.guilds import ResetEmbed
+from Resolute.models.embeds.guilds import GuildEmbed, ResetEmbed
 from Resolute.models.objects.guilds import PlayerGuild
 from Resolute.models.objects.ref_objects import RefWeeklyStipend
-from Resolute.models.embeds import ErrorEmbed, GuildEmbed
-from typing import Mapping, Type
-
+from Resolute.models.embeds import ErrorEmbed
 from Resolute.models.views.base import InteractiveView
 
 
@@ -24,7 +23,7 @@ class GuildSettings(InteractiveView):
     d_guild: discord.Guild = None
 
     async def commit(self):
-        await update_guild(self.bot.db, self.guild)
+        self.guild = await update_guild(self.bot.db, self.guild)
     
 class GuildSettingsUI(GuildSettings):
     @classmethod
@@ -65,7 +64,7 @@ class GuildSettingsUI(GuildSettings):
         await self.on_timeout()
 
 class _GuildSettings2(GuildSettings):
-    @discord.ui.button(label="Update Server Date", style=discord.ButtonStyle.primary, row=1)
+    @discord.ui.button(label="Server Date", style=discord.ButtonStyle.primary, row=1)
     async def update_server_date(self, _: discord.ui.Button, interaction: discord.Interaction):
         modal = ServerDateModal(self.guild)
 
@@ -74,6 +73,12 @@ class _GuildSettings2(GuildSettings):
         self.guild.server_date = response.guild.server_date
         self.guild.epoch_notation = response.guild.epoch_notation
 
+        await self.refresh_content(interaction)
+
+    @discord.ui.button(label="New Player Messages", style=discord.ButtonStyle.primary, row=1)
+    async def new_player_messages(self, _: discord.ui.Button, interaction: discord.Interaction):
+        modal = NewPlayerMessageModal(self.guild)
+        await self.prompt_modal(interaction, modal)
         await self.refresh_content(interaction)
 
     @discord.ui.button(label="Back", style=discord.ButtonStyle.grey, row=3)
@@ -261,7 +266,7 @@ class GuildAnnouncementModal(Modal):
         self.stop()
 
 class ServerDateModal(Modal):
-    guld: PlayerGuild
+    guild: PlayerGuild
 
     def __init__(self, guild: PlayerGuild):
         super().__init__(title=f"Server Date")
@@ -283,5 +288,22 @@ class ServerDateModal(Modal):
             except:
                 await interaction.channel.send(embed=ErrorEmbed(description=f"Error setting server date"), delete_after=5)
     
+        await interaction.response.defer()
+        self.stop()
+
+class NewPlayerMessageModal(Modal):
+    guild: PlayerGuild
+
+    def __init__(self, guild: PlayerGuild):
+        super().__init__(title=f"New Player Messages")
+        self.guild = guild
+
+        self.add_item(InputText(label="New Member Greeting", style=discord.InputTextStyle.long, max_length=1000, required=False, value=self.guild.greeting))
+        self.add_item(InputText(label="New Character Message", style=discord.InputTextStyle.multiline, max_length=500, required=False, value=self.guild.first_character_message))
+
+    async def callback(self, interaction: discord.Interaction):
+        self.guild.greeting = self.children[0].value
+        self.guild.first_character_message = self.children[1].value
+
         await interaction.response.defer()
         self.stop()

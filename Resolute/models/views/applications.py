@@ -1,8 +1,9 @@
-from typing import Mapping, Optional, Type
 import discord
 
+from typing import Mapping
 from discord import Embed, SelectOption
 from discord.ui import Modal, InputText
+
 from Resolute.bot import G0T0Bot
 from Resolute.helpers.appliations import get_cached_application, upsert_application
 from Resolute.helpers.guilds import get_guild
@@ -447,7 +448,6 @@ class BaseScore2Modal(Modal):
         self.appliation.base_scores.cha = self.children[2].value
 
         await interaction.response.defer()
-
         self.stop()
 
 class LevelUpRequestModal(Modal):

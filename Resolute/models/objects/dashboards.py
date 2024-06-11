@@ -1,13 +1,13 @@
-from discord import TextChannel
 import sqlalchemy as sa
+
+from discord import TextChannel
 from sqlalchemy import Column, Integer, BigInteger, String
-from Resolute.compendium import Compendium
-from Resolute.models import metadata
 from marshmallow import Schema, fields, post_load
-from sqlalchemy import null, and_, or_
 from sqlalchemy.sql.selectable import FromClause, TableClause
 from sqlalchemy.dialects.postgresql import insert
 
+from Resolute.compendium import Compendium
+from Resolute.models import metadata
 from Resolute.models.categories.categories import DashboardType
 
 class RPDashboardCategory(object):

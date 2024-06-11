@@ -7,7 +7,7 @@ from Resolute.bot import G0T0Bot
 from Resolute.constants import BOT_OWNERS
 
 
-def is_owner(ctx: ApplicationContext):
+def is_owner(ctx: ApplicationContext) -> bool:
     """
     User is a bot owner (not just a server owner)
 
@@ -22,7 +22,7 @@ def is_owner(ctx: ApplicationContext):
     return author.id in BOT_OWNERS
 
 
-def is_admin(ctx: ApplicationContext | Interaction):
+def is_admin(ctx: ApplicationContext | Interaction) -> bool:
     """
     User is a designated administrator
 
@@ -44,7 +44,7 @@ def is_admin(ctx: ApplicationContext | Interaction):
         return False
 
 
-def get_positivity(string):
+def get_positivity(string) -> bool:
     if isinstance(string, bool):  # oi!
         return string
     lowered = string.lower()
@@ -56,17 +56,7 @@ def get_positivity(string):
         return None
 
 
-async def confirm(ctx, message, delete_msgs=False, bot: G0T0Bot = None, response_check=get_positivity):
-    """
-    Confirms whether a user wants to take an action.
-    :rtype: bool|None
-    :param ctx: The current Context.
-    :param message: The message for the user to confirm.
-    :param delete_msgs: Whether to delete the messages.
-    :param response_check: A function (str) -> bool that returns whether a given reply is a valid response.
-    :type response_check: (str) -> bool
-    :return: Whether the user confirmed or not. None if no reply was received
-    """
+async def confirm(ctx, message, delete_msgs=False, bot: G0T0Bot = None, response_check=get_positivity) -> bool:
     msg = await ctx.channel.send(message)
     
     if bot is None:
@@ -86,9 +76,7 @@ async def confirm(ctx, message, delete_msgs=False, bot: G0T0Bot = None, response
     return reply_bool
 
 
-def auth_and_chan(ctx):
-    """Message check: same author and channel"""
-
+def auth_and_chan(ctx) -> bool:
     if hasattr(ctx, 'author'):
         author = ctx.author
     else:
@@ -100,7 +88,7 @@ def auth_and_chan(ctx):
     return chk
 
 
-def process_message(message: str, guild: Guild,  member: Member = None, mappings: dict = None):
+def process_message(message: str, guild: Guild,  member: Member = None, mappings: dict = None) -> str:
     channel_mentions = re.findall(r'{#([^}]*)}', message)
     role_mentions = re.findall(r'{@([^}]*)}', message)
 

@@ -9,8 +9,7 @@ from Resolute.helpers.general_helpers import confirm, is_admin
 from Resolute.helpers.guilds import get_guild
 from Resolute.helpers.logs import create_log, get_character_stats, get_log, get_n_player_logs, get_player_stats
 from Resolute.helpers.players import get_player
-from Resolute.models.categories import Activity
-from Resolute.models.categories.categories import CodeConversion
+from Resolute.models.categories import Activity, CodeConversion
 from Resolute.models.embeds import ErrorEmbed
 from Resolute.models.embeds.logs import LogEmbed, LogHxEmbed, LogStatsEmbed
 from Resolute.models.objects.logs import upsert_log

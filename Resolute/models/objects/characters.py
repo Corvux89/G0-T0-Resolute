@@ -3,16 +3,14 @@ import discord
 
 from discord import ApplicationContext
 from marshmallow import Schema, fields, post_load
-from sqlalchemy import Column, Integer, BigInteger, String, BOOLEAN
-from Resolute.compendium import Compendium
-from Resolute.models.categories import CharacterArchetype, CharacterClass, CharacterSpecies
-from Resolute.models.categories.categories import StarshipRole
-from Resolute.models.objects.guilds import PlayerGuild
-from Resolute.models import metadata
-from discord import ApplicationContext
-from sqlalchemy import and_
+from sqlalchemy import Column, Integer, BigInteger, String, BOOLEAN, and_
 from sqlalchemy.sql import FromClause
 from sqlalchemy.dialects.postgresql import insert, ARRAY
+
+from Resolute.compendium import Compendium
+from Resolute.models.categories import CharacterArchetype, CharacterClass, CharacterSpecies, StarshipRole
+from Resolute.models.objects.guilds import PlayerGuild
+from Resolute.models import metadata
 
 class PlayerCharacter(object): 
     def __init__(self, **kwargs):

@@ -1,8 +1,9 @@
-from typing import Mapping, Optional, Type
 import discord
 
+from typing import Mapping, Type
 from discord import SelectOption
 from discord.ui import Modal, InputText
+
 from Resolute.bot import G0T0Bot
 from Resolute.models.embeds import ErrorEmbed
 from Resolute.models.objects.adventures import Adventure

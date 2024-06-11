@@ -1,7 +1,8 @@
 import math
 import discord
 
-from typing import Mapping, Optional, Type
+from typing import Mapping
+
 from Resolute.bot import G0T0Bot
 from Resolute.helpers.logs import create_log
 from Resolute.models.embeds import ErrorEmbed

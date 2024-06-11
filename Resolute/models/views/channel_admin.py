@@ -1,8 +1,8 @@
-
+import discord
 
 from typing import Mapping
-import discord
 from discord.ui import Modal, InputText
+
 from Resolute.bot import G0T0Bot
 from Resolute.helpers.channel_admin import add_owner, create_channel, remove_owner
 from Resolute.models.embeds import ErrorEmbed
@@ -136,6 +136,7 @@ class _NewPlayerchannel(ChannelAdmin):
                             f"**Channel Owner**: {self.member.mention if self.member else 'None'}\n"\
                             f"**Channel Category**: {self.category.mention if self.category else 'None'}\n"
         return {"embed": embed, "content": ""}
+
 
 class ChannelInfoModal(Modal):
     name = None

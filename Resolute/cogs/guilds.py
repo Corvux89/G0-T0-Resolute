@@ -6,16 +6,18 @@ import asyncio
 from datetime import datetime, timezone
 from discord.ext import commands, tasks
 from discord import SlashCommandGroup, ApplicationContext
+from timeit import default_timer as timer
+
 from Resolute.bot import G0T0Bot
 from Resolute.models.categories import Activity
 from Resolute.helpers.guilds import get_guilds_with_reset, get_guild, update_guild
 from Resolute.helpers.guilds import delete_weekly_stipend, get_guild_stipends
 from Resolute.helpers.logs import create_log
-from Resolute.helpers.players import get_all_players, get_player
+from Resolute.helpers.players import get_player
 from Resolute.models.embeds.guilds import ResetEmbed
 from Resolute.models.objects.guilds import PlayerGuild
+from Resolute.models.objects.players import reset_div_cc
 from Resolute.models.views.guild_settings import GuildSettingsUI
-from timeit import default_timer as timer
 
 log = logging.getLogger(__name__)
 
@@ -50,31 +52,6 @@ class Guilds(commands.Cog):
         return await ctx.delete()
 
 
-
-    
-    # @guilds_commands.command(
-    #     name="status",
-    #     description="Gets the current server's settings/status"
-    # )
-    # async def guild_status(self, ctx: ApplicationContext,
-    #                        display_inactive: Option(bool, description="Display inactive players",
-    #                                                 required=False,
-    #                                                 default=False)):
-    #     """
-    #     Displays the current server's/Guilds status
-
-    #     :param ctx: Context
-    #     :param display_inactive: Display the inactive players (defined by no logs in the past two weeks)
-    #     """
-    #     await ctx.defer()
-
-    #     g: PlayerGuild = await get_or_create_guild(ctx.bot.db, ctx.guild_id)
-
-    #     total, inactive = await get_guild_character_summary_stats(ctx.bot, ctx.guild_id)
-
-    #     await ctx.respond(embed=GuildStatus(ctx, g, total, inactive, display_inactive))
-
-
     @guilds_commands.command(
         name="weekly_reset",
         description="Performs a weekly reset for the server"
@@ -93,17 +70,10 @@ class Guilds(commands.Cog):
         return await ctx.respond("Weekly reset manually completed")
 
     async def perform_weekly_reset(self, g: PlayerGuild):
-        """
-        Primary method for performing a weekly reset for a server
-
-        :param g: PlayerGuild
-        """
         # Setup
         start = timer()
         player_cc = 0
         stipends = await get_guild_stipends(self.bot.db, g.id)
-        players = await get_all_players(self.bot, g.id)
-        player_dict = {player.id: player for player in players}
         guild = self.bot.get_guild(g.id)   
         stipend_task = []
 
@@ -118,12 +88,7 @@ class Guilds(commands.Cog):
 
         # Reset Player CC's     
         async with self.bot.db.acquire() as conn:
-            for player in players:
-                player_cc += player.div_cc
-                player.div_cc = 0
-
-        log.info(f"Weekly stats for {guild.name} [ {g.id} ]: "
-                 f"Player Chain Codes = {player_cc}")
+            await conn.execute(reset_div_cc(g.id))
         
         # Stipends
         if activity := self.bot.compendium.get_object(Activity, "STIPEND"):
@@ -136,13 +101,7 @@ class Guilds(commands.Cog):
                         members = list(filter(lambda m: m.id not in leadership_stipend_players, members))
                         leadership_stipend_players.update(m.id for m in stipend_role.members)
 
-                    player_list = [player_dict[m.id] for m in members if m.id in player_dict]
-
-                    # Handle members not in the player table yet
-                    if len(player_list) != len(members):
-                        missing_members = [m for m in members if m.id not in player_dict]
-                        missing_players = await asyncio.gather(*(get_player(self.bot, m.id, g.id) for m in missing_members))
-                        player_list.extend(missing_players)                 
+                    player_list = await asyncio.gather(*(get_player(self.bot, m.id, g.id) for m in members))
                     
                     for player in player_list:
                         stipend_task.append(create_log(self.bot, self.bot.user, g, activity, player, None, stipend.reason or "Weekly Stipend", stipend.amount))

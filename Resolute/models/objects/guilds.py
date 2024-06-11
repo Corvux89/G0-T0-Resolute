@@ -1,14 +1,13 @@
 import calendar
-from math import floor
 import sqlalchemy as sa
 
-
+from math import floor
 from marshmallow import Schema, fields, post_load
-from sqlalchemy import Column, Integer, BigInteger, String, TIMESTAMP
-from sqlalchemy import and_
+from sqlalchemy import Column, Integer, BigInteger, String, TIMESTAMP, and_
 from sqlalchemy.sql import FromClause
 from sqlalchemy.dialects.postgresql import insert
 from datetime import datetime, timezone, timedelta
+
 from Resolute.models import metadata
 from Resolute.models.objects.ref_objects import RefServerCalendar
 
@@ -194,6 +193,7 @@ def upsert_guild(guild: PlayerGuild):
         'weekly_announcement': guild.weekly_announcement,
         'server_date': guild.server_date,
         'epoch_notation': guild.epoch_notation,
+        'greeting': guild.greeting,
         'first_character_message': guild.first_character_message
     }
 

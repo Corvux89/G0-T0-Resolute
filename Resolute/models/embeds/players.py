@@ -1,7 +1,8 @@
 from discord import Embed, Member
+
 from Resolute.compendium import Compendium
 from Resolute.models.objects.guilds import PlayerGuild
-from  Resolute.models.objects.players import Player
+from Resolute.models.objects.players import Player
 
 class PlayerOverviewEmbed(Embed):
     def __init__(self, player: Player, member: Member, guild: PlayerGuild, compendium: Compendium):

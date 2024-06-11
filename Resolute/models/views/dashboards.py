@@ -1,7 +1,8 @@
-from typing import Mapping
 import discord
 
 from discord import ChannelType, SelectOption
+from typing import Mapping
+
 from Resolute.bot import G0T0Bot
 from Resolute.helpers.dashboards import get_dashboard_from_post, get_guild_dashboards, update_dashboard, upsert_dashboard
 from Resolute.models.categories.categories import DashboardType

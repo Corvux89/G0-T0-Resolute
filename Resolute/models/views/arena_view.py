@@ -1,6 +1,6 @@
-from typing import Type
 import discord
 
+from typing import Type
 from Resolute.bot import G0T0Bot
 from Resolute.helpers.arenas import add_player_to_arena, get_arena
 from Resolute.helpers.characters import get_character

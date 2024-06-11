@@ -41,7 +41,7 @@ async def get_cached_application(db: aiopg.sa.Engine, player_id: int) -> str:
 
     return application["application"]
 
-async def get_new_character_application(bot: G0T0Bot, application_text: str = None, message: discord.Message = None):
+async def get_new_character_application(bot: G0T0Bot, application_text: str = None, message: discord.Message = None) -> NewCharacterApplication:
     app_text = application_text or message.content
 
     def get_match(pattern, text, group=1, default=None):

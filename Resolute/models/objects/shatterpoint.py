@@ -1,11 +1,11 @@
 import sqlalchemy as sa
-from sqlalchemy import Column, Integer, BigInteger, Numeric, String, BOOLEAN
-from Resolute.compendium import Compendium
-from Resolute.models import metadata
+
+from sqlalchemy import Column, Integer, BigInteger, String, BOOLEAN
 from marshmallow import Schema, fields, post_load
-from sqlalchemy import null, and_, or_
 from sqlalchemy.sql.selectable import FromClause, TableClause
 from sqlalchemy.dialects.postgresql import insert
+
+from Resolute.models import metadata
 
 class Shatterpoint(object):
     def __init__(self, **kwargs):

@@ -1,9 +1,13 @@
-from typing import Mapping, Optional, Type
+from typing import Mapping
 import discord
 import logging
 import re
 
 from discord.ui.button import Button
+from discord.ui import Modal, InputText
+from timeit import default_timer as timer
+from discord import SelectOption
+
 from Resolute.bot import G0T0Bot
 from Resolute.compendium import Compendium
 from Resolute.helpers.characters import get_character, upsert_class, upsert_starship
@@ -18,9 +22,6 @@ from Resolute.models.embeds.logs import LogEmbed
 from Resolute.models.embeds.players import PlayerOverviewEmbed
 from Resolute.models.objects.guilds import PlayerGuild
 from Resolute.models.objects.players import Player, PlayerCharacter
-from discord import SelectOption
-from discord.ui import Modal, InputText
-from timeit import default_timer as timer
 from Resolute.models.objects.characters import CharacterSchema, CharacterStarship, PlayerCharacterClass, upsert_character, upsert_class_query, upsert_starship_query
 from Resolute.models.views.base import InteractiveView
 
@@ -180,8 +181,9 @@ class _NewCharacter(CharacterSettings):
         log.info(f"Time to create character {self.new_character.id}: [ {end-start:.2f} ]s")
         await interaction.channel.send(embed=NewcharacterEmbed(self.owner, self.member, self.new_character, log_entry, self.bot.compendium))
 
-        if self.guild.first_character_message and not self.player.characters:
-            mappings = {"character.name": self.new_character.name}
+        if self.guild.first_character_message and self.guild.first_character_message != "" and self.guild.first_character_message is not None and not self.player.characters:
+            mappings = {"character.name": self.new_character.name,
+                        "character.level": str(self.new_character.level)}
             await interaction.channel.send(process_message(self.guild.first_character_message, self.discord_guild, self.member, mappings))
 
         await self.on_timeout()

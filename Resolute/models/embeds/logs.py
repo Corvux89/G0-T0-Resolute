@@ -1,9 +1,8 @@
 from datetime import datetime, timezone
 from discord import Embed, Member, Color
+
 from Resolute.bot import G0T0Bot
-from Resolute.compendium import Compendium
-from Resolute.helpers.characters import get_character
-from Resolute.models.categories.categories import Activity
+from Resolute.models.categories import Activity
 from Resolute.models.objects.logs import DBLog
 from Resolute.models.objects.players import Player
 from Resolute.models.objects.characters import PlayerCharacter

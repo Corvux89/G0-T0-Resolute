@@ -1,5 +1,6 @@
-from typing import Mapping, Optional, Type
 import discord
+
+from typing import Mapping, Optional, Type
 
 class InteractiveView(discord.ui.View):
     def __init__(self, owner: discord.Member, *args, **kwargs):

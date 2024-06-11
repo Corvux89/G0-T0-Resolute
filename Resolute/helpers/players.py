@@ -6,7 +6,6 @@ from Resolute.models.objects.logs import get_log_count_by_player_and_activity
 from Resolute.models.objects.players import Player, get_player_query, upsert_player_query, PlayerSchema
 from Resolute.helpers import get_characters
 from Resolute.bot import G0T0Bot
-from Resolute.models.objects.players import get_guild_players
 
 
 async def get_player(bot: G0T0Bot, player_id: int, guild_id: int, inactive: bool = False) -> Player:
@@ -54,12 +53,3 @@ async def get_player_quests(bot: G0T0Bot, player: Player) -> Player:
     player.needed_arenas = 1 if player.highest_level_character.level == 1 else 2
 
     return player
-
-async def get_all_players(bot: G0T0Bot, guild_id: int) -> list[Player]:
-    async with bot.db.acquire() as conn:
-        results = await conn.execute(get_guild_players(guild_id))
-        rows = await results.fetchall()
-
-    player_list = [await get_player(bot, PlayerSchema().load(row).id, guild_id) for row in rows]
-
-    return player_list

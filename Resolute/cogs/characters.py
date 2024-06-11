@@ -1,9 +1,10 @@
 import logging
 import re
+import discord
 
 from discord import SlashCommandGroup, Option, ApplicationContext, Member
-import discord
 from discord.ext import commands
+
 from Resolute.bot import G0T0Bot
 from Resolute.helpers.appliations import get_cached_application, get_level_up_application, get_new_character_application
 from Resolute.helpers.guilds import get_guild

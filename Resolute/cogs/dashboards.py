@@ -1,16 +1,14 @@
 import logging
-
 import discord.utils
 import discord
+
 from discord import ApplicationContext, SlashCommandGroup
 from discord.ext import commands, tasks
+from timeit import default_timer as timer
 
 from Resolute.bot import G0T0Bot
 from Resolute.constants import DASHBOARD_REFRESH_INTERVAL
-from Resolute.helpers.dashboards import delete_dashboard, get_dashboard_channels, get_dashboard_from_category, get_last_message, get_pinned_post, update_dashboard
-from timeit import default_timer as timer
-
-from Resolute.helpers.guilds import get_guild
+from Resolute.helpers.dashboards import delete_dashboard, get_dashboard_from_category, get_pinned_post, update_dashboard
 from Resolute.models.embeds.dashboards import RPDashboardEmbed
 from Resolute.models.objects.dashboards import RPDashboardCategory, RefDashboard, RefDashboardSchema, get_dashboards
 from Resolute.models.views.dashboards import DashboardSettingsUI

@@ -1,10 +1,10 @@
 import sqlalchemy as sa
 
 from marshmallow import Schema, fields, post_load
-from sqlalchemy import Column, Integer, BigInteger
-from sqlalchemy import and_
+from sqlalchemy import Column, Integer, BigInteger, and_, update
 from sqlalchemy.sql import FromClause
 from sqlalchemy.dialects.postgresql import insert
+
 from Resolute.models import metadata
 from Resolute.models.objects.characters import PlayerCharacter
 
@@ -56,10 +56,8 @@ def get_player_query(player_id: int, guild_id: int) -> FromClause:
         and_(player_table.c.id == player_id, player_table.c.guild_id == guild_id)
     )
 
-def get_guild_players(guild_id: int) -> FromClause:
-    return player_table.select().where(
-        player_table.c.guild_id == guild_id
-    )
+def reset_div_cc(guild_id: int):
+    return update(player_table).where(player_table.c.guild_id == guild_id).values(div_cc =0)
 
 def upsert_player_query(player: Player):
     insert_statement = insert(player_table).values(

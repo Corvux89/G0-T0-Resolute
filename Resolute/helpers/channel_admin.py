@@ -19,14 +19,14 @@ readonly_overwrites = discord.PermissionOverwrite(view_channel=True,
                                                   manage_roles=False,
                                                   send_messages_in_threads=False)
 
-async def add_owner(channel: discord.TextChannel, member: discord.Member):
+async def add_owner(channel: discord.TextChannel, member: discord.Member) -> None:
     channel_overwrites = channel.overwrites
 
     channel_overwrites[member] = owner_overwrites
 
     await channel.edit(overwrites=channel_overwrites)
 
-async def remove_owner(channel: discord.TextChannel, member: discord.Member):
+async def remove_owner(channel: discord.TextChannel, member: discord.Member) -> None:
     channel_overwrites = channel.overwrites
 
     del channel_overwrites[member]

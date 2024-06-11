@@ -1,8 +1,8 @@
 from discord import *
 from discord.ext import commands
-from Resolute.bot import G0T0Bot
 from discord.commands import SlashCommandGroup
 
+from Resolute.bot import G0T0Bot
 from Resolute.helpers.shatterpoint import get_shatterpoint
 from Resolute.models.views.shatterpoint import ShatterpointSettingsUI
 

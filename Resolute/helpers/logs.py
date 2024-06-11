@@ -42,8 +42,8 @@ async def create_log(bot: G0T0Bot, author: Member | ClientUser, guild: PlayerGui
 
     # Handicap Adjustment
     if not ignore_handicap and guild.handicap_cc and player.handicap_amount < guild.handicap_cc:
-        extra_cc = min(char_log.cc*2, guild.handicap_cc - player.handicap_amount)
-        char_log.cc = extra_cc
+        extra_cc = min(char_log.cc, guild.handicap_cc - player.handicap_amount)
+        char_log.cc += extra_cc
         player.handicap_amount += extra_cc
 
     # Updates

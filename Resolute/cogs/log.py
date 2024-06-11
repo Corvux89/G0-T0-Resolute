@@ -215,7 +215,6 @@ class Log(commands.Cog):
             await ctx.send(embed=embed)
         await ctx.delete()
 
-
     @log_commands.command(
         name="get_history",
         description="Get the last weeks worth of logs for a player"
@@ -231,8 +230,7 @@ class Log(commands.Cog):
         logs = await get_n_player_logs(self.bot, player, num_logs)
 
         await ctx.respond(embed=LogHxEmbed(self.bot, player, logs))
-
-
+         
     # --------------------------- #
     # Private Methods
     # --------------------------- #

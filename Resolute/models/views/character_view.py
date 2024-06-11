@@ -25,8 +25,6 @@ from Resolute.models.objects.players import Player, PlayerCharacter
 from Resolute.models.objects.characters import CharacterSchema, CharacterStarship, PlayerCharacterClass, upsert_character, upsert_class_query, upsert_starship_query
 from Resolute.models.views.base import InteractiveView
 
-log = logging.getLogger(__name__)
-
 class CharacterSettings(InteractiveView):
     __menu_copy_attrs__ = ("bot", "player", "guild", "member", "discord_guild", "active_character", "active_ship")
     bot: G0T0Bot
@@ -178,7 +176,7 @@ class _NewCharacter(CharacterSettings):
 
         await manage_player_roles(self.discord_guild, self.member, self.player, "Character Created!")
         end = timer()
-        log.info(f"Time to create character {self.new_character.id}: [ {end-start:.2f} ]s")
+        print(f"Time to create character {self.new_character.id}: [ {end-start:.2f} ]s")
         await interaction.channel.send(embed=NewcharacterEmbed(self.owner, self.member, self.new_character, log_entry, self.bot.compendium))
 
         if self.guild.first_character_message and self.guild.first_character_message != "" and self.guild.first_character_message is not None and not self.player.characters:

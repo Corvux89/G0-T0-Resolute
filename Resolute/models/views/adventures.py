@@ -186,7 +186,7 @@ class _AdventureMemberSelect(AdventureSettings):
                 else:
                     await interaction.channel.send(embed=ErrorEmbed(description=f"{self.member.mention} has no characters."), delete_after=5)
             else:
-                if self.character.id in self.adventure.characters:
+                if self.adventure.characters and self.character.id in self.adventure.characters:
                     await interaction.channel.send(embed=ErrorEmbed(description=f"{self.character.name} is already in the adventure"), delete_after=5)
                 elif self.member.id in self.adventure.dms:
                     await interaction.channel.send(embed=ErrorEmbed(description=f"{self.character.name} is a DM for this adventure"), delete_after=5)
@@ -249,6 +249,9 @@ class _AdventureMemberSelect(AdventureSettings):
             self.remove_item(self.character_select)
         else:
             if self.player.characters:
+                if self.character is None:
+                    self.character = self.player.characters[0]
+
                 char_list = []
                 for char in self.player.characters:
                     char_list.append(SelectOption(label=f"{char.name}", value=f"{self.player.characters.index(char)}", default=True if self.character and  self.player.characters.index(char) == self.player.characters.index(self.character) else False))

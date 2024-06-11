@@ -33,7 +33,7 @@ class Adventures(commands.Cog):
         description="Shows active adventures for a player"
     )
     async def adventure_get(self, ctx: ApplicationContext,
-                            member: Option(discord.Member, description="Player to get the information of", required=False),
+                            member: Option(discord.SlashCommandOptionType(6), description="Player to get the information of", required=False),
                             phrase: Option(str, description="Additional question/phrase to add", required=False),
                             phrase2: Option(str, description="Additional question/phrase to add", required=False)):
         await ctx.defer()
@@ -64,7 +64,7 @@ class Adventures(commands.Cog):
                                                       required=True),
                                role_name: Option(str, description="The name of the Role to be created for adventure"
                                                                   "participants", required=True),
-                               dm: Option(discord.Member, description="The DM of the adventure. "
+                               dm: Option(discord.SlashCommandOptionType(6), description="The DM of the adventure. "
                                                                       "Multiple DM's can be added via the add_dm "
                                                                       "command", required=True)):
         await ctx.defer()

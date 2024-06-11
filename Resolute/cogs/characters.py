@@ -34,7 +34,7 @@ class Character(commands.Cog):
         description="Manage a players character(s)"
     )
     async def character_manage(self, ctx: ApplicationContext,
-                               member: Option(discord.Member, description="Player", required=True)):
+                               member: Option(discord.SlashCommandOptionType(6), description="Player", required=True)):
         
         player = await get_player(self.bot, member.id, ctx.guild.id)
         g = await get_guild(self.bot.db, ctx.guild.id)
@@ -49,7 +49,7 @@ class Character(commands.Cog):
         description="Displays character information for a player's character"
     )
     async def character_get(self, ctx: ApplicationContext,
-                            member: Option(discord.Member, description="Player to get the information of",
+                            member: Option(discord.SlashCommandOptionType(6), description="Player to get the information of",
                                            required=False)):
         await ctx.defer()
 

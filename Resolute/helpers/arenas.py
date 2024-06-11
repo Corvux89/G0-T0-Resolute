@@ -1,6 +1,7 @@
 import asyncio
 import bisect
 import discord
+import logging
 
 from statistics import mode
 from datetime import datetime, timezone
@@ -13,6 +14,8 @@ from Resolute.models.embeds.arenas import ArenaStatusEmbed
 from Resolute.models.objects.arenas import Arena, ArenaSchema, get_arena_by_channel_query, get_arena_by_host_query, get_character_arena_query, upsert_arena_query
 from Resolute.models.objects.characters import PlayerCharacter
 from Resolute.models.objects.players import Player
+
+log = logging.getLogger(__name__)
 
 async def get_arena(bot: G0T0Bot, channel_id: int) -> Arena:
     async with bot.db.acquire() as conn:

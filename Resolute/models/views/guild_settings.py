@@ -1,3 +1,4 @@
+import re
 import discord
 
 
@@ -249,6 +250,13 @@ class GuildStipendModal(Modal):
 class GuildAnnouncementModal(Modal):
     guild: PlayerGuild
 
+    def split_string(self, input_string) -> []:
+        parts = re.findall(r'"(.*?)"', input_string)
+        if not parts or parts is None:
+            return []
+
+        return parts
+
     def __init__(self, guild: PlayerGuild):
         super().__init__(title=f"Guild Reset Announcements")
         self.guild = guild
@@ -260,7 +268,7 @@ class GuildAnnouncementModal(Modal):
 
     async def callback(self, interaction: discord.Interaction):    
         self.guild.reset_message = self.children[0].value or None
-        self.guild.weekly_announcement = [x.strip('"') for x in self.children[1].value.split(',')] or []
+        self.guild.weekly_announcement = self.split_string(self.children[1].value)
 
         await interaction.response.defer()
         self.stop()

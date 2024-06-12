@@ -70,10 +70,10 @@ class LogPromptUI(LogPrompt):
                 converted_entry = await create_log(self.bot, self.owner, self.guild, convert_activity, self.player, self.character, self.notes, -convertedCC, convertedCC*rate.value, None, True)
                 await interaction.channel.send(embed=LogEmbed(converted_entry, self.owner, self.member, self.character, True))
                 log_entry = await create_log(self.bot, self.owner, self.guild, self.activity, self.player, self.character, self.notes, self.cc, self.credits, None, self.ignore_handicap)
-                await interaction.channel.send(embed=LogEmbed(log_entry, self.owner, self.member, self.character))
+                await interaction.channel.send(embed=LogEmbed(log_entry, self.owner, self.member, self.character, True))
         else:
             log_entry = await create_log(self.bot, self.owner, self.guild, self.activity, self.player, self.character, self.notes, self.cc, self.credits, None, self.ignore_handicap)
-            await interaction.channel.send(embed=LogEmbed(log_entry, self.owner, self.member, self.character))
+            await interaction.channel.send(embed=LogEmbed(log_entry, self.owner, self.member, self.character, True))
         await self.on_timeout()
 
     @discord.ui.button(label="Cancel", style=discord.ButtonStyle.grey, row=2)

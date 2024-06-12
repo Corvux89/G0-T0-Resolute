@@ -267,7 +267,7 @@ class Log(commands.Cog):
                 await ctx.send(embed=LogEmbed(converted_entry, ctx.author, member, player.characters[0], True))
             
             log_entry = await create_log(self.bot, ctx.author, g, activity, player, character, notes, cc, credits, None, ignore_handicap)
-            return await ctx.respond(embed=LogEmbed(log_entry, ctx.author, member, player.characters[0]))
+            return await ctx.respond(embed=LogEmbed(log_entry, ctx.author, member, player.characters[0],True))
         else:
             ui = LogPromptUI.new(self.bot, ctx.author, member, player, g, activity, credits, cc, notes, ignore_handicap, conversion)    
             await ui.send_to(ctx)

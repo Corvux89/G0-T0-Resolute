@@ -1,6 +1,5 @@
 from typing import Mapping
 import discord
-import logging
 import re
 
 from discord.ui.button import Button
@@ -17,7 +16,7 @@ from Resolute.helpers.players import get_player, manage_player_roles
 from Resolute.models.categories import CharacterClass, CharacterSpecies, Activity
 from Resolute.models.categories.categories import CharacterArchetype, StarshipSize
 from Resolute.models.embeds import ErrorEmbed
-from Resolute.models.embeds.characters import CharacterEmbed, NewCharacterSetupEmbed, NewcharacterEmbed, StarshipEmbed
+from Resolute.models.embeds.characters import CharacterEmbed, LevelUpEmbed, NewCharacterSetupEmbed, NewcharacterEmbed, StarshipEmbed
 from Resolute.models.embeds.logs import LogEmbed
 from Resolute.models.embeds.players import PlayerOverviewEmbed
 from Resolute.models.objects.guilds import PlayerGuild
@@ -263,6 +262,9 @@ class _EditCharacter(CharacterSettings):
         elif (activity := self.bot.compendium.get_object(Activity, "LEVEL")):
             self.active_character.level += 1
             await create_log(self.bot, self.owner, self.guild, activity, self.player, self.active_character, "Player level up")
+            await manage_player_roles(self.discord_guild, self.member, self.player, "Level up")
+
+            await interaction.channel.send(embed=LevelUpEmbed(self.member, self.active_character))
 
         await self.refresh_content(interaction)
 

@@ -81,3 +81,9 @@ class StarshipEmbed(Embed):
         self.add_field(name=f"Owner{'s' if len(starship.character_id) > 1 else ''}",
                        value="\n".join([f"{char.name} ( {member.guild.get_member(char.player_id).mention} )" for char in starship.owners]),
                        inline=False)
+        
+class LevelUpEmbed(Embed):
+    def __init__(self, member: Member, character: PlayerCharacter):
+        super().__init__(title=f"{character.name} ({member.mention}) is now level {character.level}",
+                         color=Color.random())
+        self.set_thumbnail(url=member.display_avatar.url)

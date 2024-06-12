@@ -71,13 +71,13 @@ class PlayerGuild(object):
     
     @property
     def server_year(self):
-        if not self.calendar or not self.server_date:
+        if not self.calendar or self.server_date is None:
             return None
         return floor(self.server_date / self.days_in_server_year)
     
     @property
     def server_month(self) -> RefServerCalendar:
-        if not self.calendar or not self.server_date:
+        if not self.calendar or self.server_date is None:
             return None
         days_in_year = self.server_date % self.days_in_server_year
         return next((month for month in self.calendar if month.day_start <= days_in_year <= month.day_end), None)

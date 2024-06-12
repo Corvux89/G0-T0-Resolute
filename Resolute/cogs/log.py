@@ -76,7 +76,7 @@ class Log(commands.Cog):
                 g = await get_guild(self.bot.db, ctx.guild.id)
                 player = await get_player(self.bot, member.id, ctx.guild.id)
                 log_entry = await create_log(self.bot, ctx.author, g, activity, player, None, item, -cost, 0, None, True)
-                return await ctx.respond(embed=LogEmbed(log_entry, ctx.author, member))
+                return await ctx.respond(embed=LogEmbed(log_entry, ctx.author, member, None, True))
             else:
                 return await ctx.respond(embed=ErrorEmbed(description="Invalid currency selection"),
                                          ephemeral=True)
@@ -101,7 +101,7 @@ class Log(commands.Cog):
                 g = await get_guild(self.bot.db, ctx.guild.id)
                 player = await get_player(self.bot, member.id, ctx.guild.id)
                 log_entry = await create_log(self.bot, ctx.author, g, activity, player, None, item, cost, 0, None, True)
-                return await ctx.respond(embed=LogEmbed(log_entry, ctx.author, member))
+                return await ctx.respond(embed=LogEmbed(log_entry, ctx.author, member, None, True))
             else:
                 return await ctx.respond(embed=ErrorEmbed(description="Invalid currency selection"),
                                          ephemeral=True)

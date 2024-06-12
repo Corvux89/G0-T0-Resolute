@@ -142,6 +142,7 @@ class _NewCharacter(CharacterSettings):
         if self.new_type in ['freeroll', 'death']:
             self.new_character.reroll = True
             self.active_character.active = False
+            self.player.handicap_amount = 0
 
             async with self.bot.db.acquire() as conn:
                 await conn.execute(upsert_character(self.active_character))

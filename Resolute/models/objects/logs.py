@@ -20,6 +20,7 @@ class DBLog(object):
         self.id = kwargs.get('id')
         self.author = kwargs.get('author')
         self.player_id = kwargs.get('player_id')
+        self.guild_id = kwargs.get('guild_id')
         self.cc = kwargs.get('cc', 0)
         self.credits = kwargs.get('credits', 0)
         self.character_id = kwargs.get('character_id')
@@ -49,7 +50,8 @@ log_table = sa.Table(
     Column("notes", String, nullable=True),
     Column("adventure_id", Integer, nullable=True),  # ref: > adventures.id
     Column("invalid", BOOLEAN, nullable=False, default=False),
-    Column("player_id", BigInteger, nullable=False)
+    Column("player_id", BigInteger, nullable=False),
+    Column("guild_id", BigInteger, nullable=False)
 )
 
 class LogSchema(Schema):
@@ -65,6 +67,7 @@ class LogSchema(Schema):
     adventure_id = fields.Integer(required=False, allow_none=True)
     invalid = fields.Boolean(required=True)
     player_id = fields.Integer(required=True)
+    guild_id = fields.Integer(required=True)
 
     def __init__(self, compendium, **kwargs):
         super().__init__(**kwargs)
@@ -84,9 +87,11 @@ class LogSchema(Schema):
 def get_log_by_id(log_id: int) -> FromClause:
     return log_table.select().where(log_table.c.id == log_id)
 
-def get_log_count_by_player_and_activity(player_id: int, activity_id: int) -> FromClause:
+def get_log_count_by_player_and_activity(player_id: int, guild_id: int,  activity_id: int) -> FromClause:
     return select([func.count()]).select_from(log_table).where(
-        and_(log_table.c.player_id == player_id, log_table.c.activity == activity_id, log_table.c.invalid == False)
+        and_(log_table.c.player_id == player_id,
+             log_table.c.guild_id == guild_id, 
+             log_table.c.activity == activity_id, log_table.c.invalid == False)
     )
 
 def upsert_log(log: DBLog):
@@ -110,6 +115,7 @@ def upsert_log(log: DBLog):
         credits=log.credits,
         created_ts=datetime.now(timezone.utc),
         character_id=log.character_id,
+        guild_id=log.guild_id,
         activity=log.activity.id,
         notes=log.notes if hasattr(log, "notes") else None,
         adventure_id=None if not hasattr(log, "adventure_id") else log.adventure_id,
@@ -118,10 +124,10 @@ def upsert_log(log: DBLog):
 
     return insert_statement
 
-def get_n_player_logs_query(player_id: int, n : int) -> FromClause:
-    return log_table.select().where(log_table.c.player_id == player_id).order_by(log_table.c.id.desc()).limit(n)
+def get_n_player_logs_query(player_id: int, guild_id: int, n : int) -> FromClause:
+    return log_table.select().where(and_(log_table.c.player_id == player_id, log_table.c.guild_id == guild_id)).order_by(log_table.c.id.desc()).limit(n)
 
-def player_stats_query(compendium: Compendium, player_id: int):
+def player_stats_query(compendium: Compendium, player_id: int, guild_id: int):
     new_character_activity = compendium.get_object(Activity, "NEW_CHARACTER")
     activities = [x.id for x in compendium.activity[0].values() if x.value in ["RP", "ARENA", "ARENA_HOST", "GLOBAL"]]
     activity_columns = [func.sum(case([(log_table.c.activity == act, 1)], else_=0)).label(f"Activity {act}") for act in activities]
@@ -133,7 +139,9 @@ def player_stats_query(compendium: Compendium, player_id: int):
                    func.sum(case([(and_(log_table.c.cc > 0, log_table.c.activity == new_character_activity.id), log_table.c.cc)], else_=0)).label("starting"),
                    *activity_columns)\
                     .group_by(log_table.c.player_id)\
-                        .where(and_(log_table.c.player_id == player_id, log_table.c.invalid == False))
+                        .where(and_(log_table.c.player_id == player_id,
+                                    log_table.c.guild_id == guild_id,
+                                     log_table.c.invalid == False))
     
     return query
 

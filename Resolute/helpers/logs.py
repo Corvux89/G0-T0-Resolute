@@ -38,7 +38,8 @@ async def create_log(bot: G0T0Bot, author: Member | ClientUser, guild: PlayerGui
     player.div_cc += char_cc if activity.diversion else 0
 
     char_log = DBLog(author=author.id, cc=char_cc, credits=credits, player_id=player.id, character_id=character.id if character else None,
-                     activity=activity, notes=notes, adventure_id=adventure.id if adventure else None)
+                     activity=activity, notes=notes, guild_id=guild.id,
+                     adventure_id=adventure.id if adventure else None)
 
     # Handicap Adjustment
     if not ignore_handicap and guild.handicap_cc and player.handicap_amount < guild.handicap_cc:
@@ -68,7 +69,7 @@ async def create_log(bot: G0T0Bot, author: Member | ClientUser, guild: PlayerGui
 
 async def get_n_player_logs(bot: G0T0Bot, player: Player, n: int = 5) -> list[DBLog]:
     async with bot.db.acquire() as conn:
-        results = await conn.execute(get_n_player_logs_query(player.id, n))
+        results = await conn.execute(get_n_player_logs_query(player.id, player.guild_id, n))
         rows = await results.fetchall()
 
     if not rows:
@@ -81,7 +82,7 @@ async def get_n_player_logs(bot: G0T0Bot, player: Player, n: int = 5) -> list[DB
 
 async def get_player_stats(bot: G0T0Bot, player: Player) -> dict:
     async with bot.db.acquire() as conn:
-        results = await conn.execute(player_stats_query(bot.compendium, player.id))
+        results = await conn.execute(player_stats_query(bot.compendium, player.id, player.guild_id))
         row = await results.first()
     
     return dict(row)

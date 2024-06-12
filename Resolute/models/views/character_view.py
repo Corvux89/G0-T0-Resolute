@@ -202,7 +202,7 @@ class _NewCharacter(CharacterSettings):
 
         self.new_character_type.options = new_character_type_options
 
-        if self.new_type and self.new_character.is_valid(self.guild) and self.new_class.is_valid():
+        if self.new_type and self.new_character.is_valid(self.guild) and self.new_class.is_valid() and (self.player.cc + self.new_1cc >= 0):
             self.new_character_create.disabled=False
         else:
             self.new_character_create.disabled=True

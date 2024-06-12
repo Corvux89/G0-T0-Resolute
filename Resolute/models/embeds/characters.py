@@ -21,8 +21,8 @@ class NewCharacterSetupEmbed(Embed):
                            f"**Class**: {newClass.get_formatted_class() if hasattr(newClass, 'primary_class') else ''}\n"\
                            f"**Starting Credits**: {starting_credits:,}\n" 
                            
-        if cc_credit > 0:
-            self.description += f"**CC Credit**: {cc_credit}\n"
+        if cc_credit != 0:
+            self.description += f"**CC Adjustment**: {cc_credit}{f''' (*This would put the player at {player.cc + cc_credit:,} CC*)''' if player.cc + cc_credit < 0 else ''}\n"
         
         if transfer_ship:
             self.description += f"**Transfer Ship**: True"
@@ -36,7 +36,7 @@ class NewcharacterEmbed(Embed):
                            f"**Species**: {character.species.value}\n"\
                            f"**Class**: {character.classes[0].get_formatted_class()}\n"\
                            f"**Starting Credits**: {log.credits:,}\n"\
-                           f"{f'**CC Credit**: {log.cc:,}' if log.cc > 0 else ''}"
+                           f"{f'**CC Adjustment**: {log.cc:,}' if log.cc != 0 and log.cc != None else ''}"
         
         if len(character.starships) > 0:
             self.add_field(name="Starships: ",

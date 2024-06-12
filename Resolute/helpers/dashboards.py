@@ -154,7 +154,7 @@ async def update_dashboard(bot: G0T0Bot, dashboard: RefDashboard):
 
         footer = f"Last Updated - <t:{calendar.timegm(datetime.now(timezone.utc).timetuple())}:F>"
 
-        return await original_message.edit(content=f"```{class_table.draw()}```{footer}", embed=None)
+        return await original_message.edit(content=f"```\n{class_table.draw()}```{footer}", embed=None)
     
     elif dashboard.dashboard_type.value.upper() == "LDIST":
         data = await get_level_distribution_data(bot)
@@ -168,6 +168,6 @@ async def update_dashboard(bot: G0T0Bot, dashboard: RefDashboard):
 
         footer = f"Last Updated - <t:{calendar.timegm(datetime.now(timezone.utc).timetuple())}:F>"
 
-        return await original_message.edit(content=f"```{dist_table.draw()}```{footer}", embed=None)
+        return await original_message.edit(content=f"```\n{dist_table.draw()}```{footer}", embed=None)
 
 

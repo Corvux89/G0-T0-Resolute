@@ -36,6 +36,8 @@ async def update_guild(db: aiopg.sa.Engine, guild: PlayerGuild) -> PlayerGuild:
 
     g = GuildSchema().load(row)
 
+    g = await load_calendar(db, g)
+
     return g
 
 async def get_guilds_with_reset(db: aiopg.sa.Engine, day: int, hour: int) -> list[PlayerGuild]:

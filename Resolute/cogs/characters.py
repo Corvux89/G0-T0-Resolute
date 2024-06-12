@@ -140,7 +140,7 @@ class Character(commands.Cog):
                 if player.characters:
                     ui = CharacterSelectUI.new(self.bot, ctx.author, player, False, application, True)
                 else:
-                    ui = NewCharacterRequestUI.new(self.bot, ctx.author, player, False, application, True)
+                    ui = NewCharacterRequestUI.new(self.bot, ctx.author, player, False, application)
                 
                 await ui.send_to(ctx)
                 await ctx.delete()

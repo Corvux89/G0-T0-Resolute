@@ -47,7 +47,7 @@ async def create_log(bot: G0T0Bot, author: Member | ClientUser, guild: PlayerGui
         player.handicap_amount += extra_cc
 
     # Updates
-    if character:
+    if character: 
         character.credits+=char_log.credits
 
     player.cc += char_log.cc

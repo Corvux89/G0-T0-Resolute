@@ -313,8 +313,3 @@ def upsert_starship_query(starship: CharacterStarship):
     ).returning(character_starship_table)
 
     return insert_statement
-
-# def get_starship_by_transponder(tran_code: str) -> FromClause:
-#     return character_starship_table.select().where(
-#         and_(character_starship_table.c.transponder == tran_code, character_starship_table.c.active == True)
-#    )

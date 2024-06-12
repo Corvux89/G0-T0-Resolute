@@ -273,7 +273,7 @@ class ServerDateModal(Modal):
         self.guild = guild
 
         self.add_item(InputText(label="Year", required=False, placeholder="Year", max_length=5, value=self.guild.server_year))
-        self.add_item(InputText(label="Month", required=False, placeholder="Month", max_length=50, value=self.guild.server_month.display_name))
+        self.add_item(InputText(label="Month", required=False, placeholder="Month", max_length=50, value=self.guild.server_month.display_name if self.guild.server_month is not None else ""))
         self.add_item(InputText(label="Day", required=False, placeholder="Day", max_length=3, value=self.guild.server_day))
         self.add_item(InputText(label="Notation", required=False, placeholder="Notation", max_length=20, value=guild.epoch_notation))
 

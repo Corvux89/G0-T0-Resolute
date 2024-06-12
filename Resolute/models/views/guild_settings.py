@@ -251,7 +251,7 @@ class GuildAnnouncementModal(Modal):
     guild: PlayerGuild
 
     def split_string(self, input_string) -> []:
-        parts = re.findall(r'"(.*?)"', input_string)
+        parts = re.findall(r'"(.*?)"', input_string, re.DOTALL)
         if not parts or parts is None:
             return []
 

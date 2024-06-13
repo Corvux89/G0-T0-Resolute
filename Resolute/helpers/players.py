@@ -28,7 +28,7 @@ async def get_player(bot: G0T0Bot, player_id: int, guild_id: int, inactive: bool
     return player
 
 async def manage_player_roles(guild: Guild, member: Member, player: Player, reason: str = None) -> None:
-    if (acolyte_role := discord.utils.get(guild.roles, name="Acolyte")) and (citizen_role := discord.utils.get(guild.roles, name="Citizen") and (high_char := player.highest_level_character)):
+    if (acolyte_role := discord.utils.get(guild.roles, name="Acolyte")) and (citizen_role := discord.utils.get(guild.roles, name="Citizen")) and (high_char := player.highest_level_character):
         if high_char.level < 3 and (acolyte_role not in member.roles) and (citizen_role not in member.roles):
             await member.add_roles(acolyte_role, reason=reason)
         elif high_char.level >= 3:

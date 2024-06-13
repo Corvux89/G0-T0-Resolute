@@ -34,7 +34,7 @@ async def manage_player_roles(guild: Guild, member: Member, player: Player, reas
         elif high_char.level >= 3:
             if acolyte_role in member.roles:
                 await member.remove_roles(acolyte_role, reason=reason)
-            if citizen_role in member.roles:
+            if citizen_role not in member.roles:
                 await member.add_roles(citizen_role, reason=reason)
 
 async def get_player_quests(bot: G0T0Bot, player: Player) -> Player:

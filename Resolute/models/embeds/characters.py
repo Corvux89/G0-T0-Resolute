@@ -84,6 +84,7 @@ class StarshipEmbed(Embed):
         
 class LevelUpEmbed(Embed):
     def __init__(self, member: Member, character: PlayerCharacter):
-        super().__init__(title=f"{character.name} ({member.mention}) is now level {character.level}",
+        super().__init__(title="Level up successful!",
                          color=Color.random())
         self.set_thumbnail(url=member.display_avatar.url)
+        self.description=f"{character.name} ({member.mention}) is now level {character.level}"

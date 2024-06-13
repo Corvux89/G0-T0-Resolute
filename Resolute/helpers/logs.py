@@ -30,8 +30,34 @@ async def get_log(bot: G0T0Bot, log_id: int) -> DBLog:
 
     return log_enty
 
-async def create_log(bot: G0T0Bot, author: Member | ClientUser, guild: PlayerGuild, activity: Activity, player: Player, character: PlayerCharacter = None, 
-                      notes: str = None, cc: int = 0, credits: int = 0, adventure: Adventure = None, ignore_handicap: bool = False) -> DBLog:
+async def create_log(bot: G0T0Bot, author: Member | ClientUser, guild: PlayerGuild, activity: Activity, player: Player, **kwargs) -> DBLog:    
+    """Create a log entry for a player
+
+    Args:
+        bot (G0T0Bot): Bot
+        author (Member | ClientUser): Who is creating the log
+        guild (PlayerGuild): Guild settings
+        activity (Activity): What is the log for
+        player (Player): Who is the log for
+
+    Keyword Args:
+        character (PlayerCharacter): The character the log is for
+        notes (str): Log notes
+        cc (int): Chain Codes
+        credits (int): Credits
+        adventure (Adventure): Adventure the log is for
+        ignore_handicap (bool): Ignore the handicap adjustment
+        
+    Returns:
+        DBLog: Log entry
+    """
+    # Kwargs stuff
+    character: PlayerCharacter = kwargs.get('character')
+    notes: str = kwargs.get('notes')
+    cc: int = kwargs.get('cc', 0)
+    credits: int = kwargs.get('credits', 0)
+    adventure: Adventure = kwargs.get('adventure')
+    ignore_handicap: bool = kwargs.get('ignore_handicap', False)
 
     char_cc = get_activity_amount(player, guild, activity, cc)
 

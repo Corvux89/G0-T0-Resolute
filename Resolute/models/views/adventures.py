@@ -92,7 +92,10 @@ class AdventureSettingsUI(AdventureSettings):
                 dm_reward = response.cc + ceil(response.cc * .25)
                 for dm in self.adventure.dms:
                     player = await get_player(self.bot, dm, interaction.guild.id)
-                    await create_log(self.bot, self.owner, g, dm_activity, player, None, f"{self.adventure.name}", dm_reward, 0, self.adventure)
+                    await create_log(self.bot, self.owner, g, dm_activity, player, 
+                                     notes=f"{self.adventure.name}",
+                                     cc=dm_reward, 
+                                     adventure=self.adventure)
             else:
                 await interaction.channel.send(embed=ErrorEmbed(description=f"Error getting DM Activity"), delete_after=5)
             
@@ -101,7 +104,11 @@ class AdventureSettingsUI(AdventureSettings):
 
                 for character in self.adventure.player_characters:
                     player = await get_player(self.bot, character.player_id, interaction.guild.id)
-                    await create_log(self.bot, self.owner, g, player_activity, player, character, f"{self.adventure.name}", player_reward, 0, self.adventure)
+                    await create_log(self.bot, self.owner, g, player_activity, player, 
+                                     character=character, 
+                                     notes=f"{self.adventure.name}", 
+                                     cc=player_reward, 
+                                     adventure=self.adventure)
             else:
                 await interaction.channel.send(embed=ErrorEmbed(description=f"Error getting Player Adventure Activity"), delete_after=5)
             

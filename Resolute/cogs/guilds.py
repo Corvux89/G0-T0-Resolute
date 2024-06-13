@@ -80,7 +80,7 @@ class Guilds(commands.Cog):
         # Guild updates
         g.weeks += 1
         g._last_reset = datetime.now(timezone.utc)
-        if g.server_date:
+        if g.server_date and g.server_date is not None:
             g.server_date += random.randint(13, 16)
 
         # Reset weekly stats
@@ -104,7 +104,9 @@ class Guilds(commands.Cog):
                     player_list = await asyncio.gather(*(get_player(self.bot, m.id, g.id) for m in members))
                     
                     for player in player_list:
-                        stipend_task.append(create_log(self.bot, self.bot.user, g, activity, player, None, stipend.reason or "Weekly Stipend", stipend.amount))
+                        stipend_task.append(create_log(self.bot, self.bot.user, g, activity, player,
+                                                       notes=stipend.reason or "Weekly Stipend",
+                                                       cc=stipend.amount))
                     
                 else:
                     await delete_weekly_stipend(self.bot.db, stipend)

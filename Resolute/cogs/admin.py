@@ -60,57 +60,6 @@ class Admin(commands.Cog):
         await ctx.delete()
 
     @admin_commands.command(
-        name="load",
-        description="Load a cog"
-    )
-    @commands.check(is_owner)
-    async def load_cog(self, ctx: ApplicationContext,
-                       cog: Option(str, description="Cog name", required=True)):
-        """
-        Loads up a cog
-
-        Args:
-            ctx (ApplicationContext): Represents a Discord application command interaction context.
-            cog (Option, optional): Cog name. required=True).
-
-        Returns:
-            _type_: _description_
-        """
-        try:
-            self.bot.load_extension(f'Resolute.cogs.{cog}')
-        except ExtensionAlreadyLoaded:
-            return await ctx.respond(f'Cog already loaded', ephemeral=True)
-        except ExtensionNotFound:
-            return await ctx.respond(f'No cog found by the name: {cog}', ephemeral=True)
-        except:
-            return await ctx.respond(f'Something went wrong', ephemeral=True)
-        await ctx.respond(f'Cog Loaded.', ephemeral=True)
-
-    @admin_commands.command(
-        name="unload",
-        description="Unload a cog"
-    )
-    @commands.check(is_owner)
-    async def unload_cog(self, ctx: ApplicationContext,
-                         cog: Option(str, description="Cog name", required=True)):
-        """
-        Unloads a cog from the bot
-
-        :param ctx: Application context
-        :param cog: Cog name to unload
-        """
-        try:
-            self.bot.unload_extension(f'Resolute.cogs.{cog}')
-        except ExtensionNotLoaded:
-            return await ctx.respond(f'Cog was already unloaded', ephemeral=True)
-        except ExtensionNotFound:
-            return await ctx.respond(f'No cog found by the name: {cog}', ephemeral=True)
-        except:
-            return await ctx.respond(f'Something went wrong', ephemeral=True)
-        await ctx.respond(f'Cog unloaded', ephemeral=True)
-
-
-    @admin_commands.command(
         name="reload",
         description="Reloads either a specific cog, refresh DB information, or reload everything"
     )
@@ -148,24 +97,6 @@ class Admin(commands.Cog):
 
             self.bot.load_extension(f'Resolute.cogs.{cog}')
             await ctx.respond(f'Cog {cog} reloaded')
-
-    @admin_commands.command(
-        name="list",
-        description="List out all cogs"
-    )
-    @commands.check(is_owner)
-    async def list(self, ctx: ApplicationContext):
-        """
-        List all cogs
-
-        :param ctx: Context
-        """
-
-        files = []
-        for file_name in listdir('./Resolute/cogs'):
-            if file_name.endswith('.py'):
-                files.append(file_name[:-3]) 
-        await ctx.respond("\n".join(files))
 
     # --------------------------- #
     # Private Methods

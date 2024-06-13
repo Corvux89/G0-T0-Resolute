@@ -15,7 +15,7 @@ from Resolute.models.views.base import InteractiveView
 
 
 class LogPrompt(InteractiveView):
-    __menu_copy_attrs__ = ("bot", "player", "member", "activity", "credits", "guild", "notes", "cc", "ignore_handicap", "conversion")
+    __menu_copy_attrs__ = ("bot", "player", "member", "activity", "credits", "guild", "notes", "cc", "ignore_handicap", "show_values")
     owner: discord.Member = None
     member = discord.Member = None
     bot: G0T0Bot
@@ -27,27 +27,27 @@ class LogPrompt(InteractiveView):
     character: PlayerCharacter = None
     notes: str = None
     ignore_handicap: bool = False
-    conversion: bool = False
+    show_values: bool = False
 
    
     
 class LogPromptUI(LogPrompt):
     @classmethod
-    def new(cls, bot: G0T0Bot, owner: discord.Member, member: discord.Member, player: Player, guild: PlayerGuild, activity: Activity, 
-            credits: int = 0, cc: int = 0, notes: str = None, ignore_handicap: bool = False, conversion: bool = False):
-        inst = cls(owner = owner)
+    def new(cls, bot: G0T0Bot, owner: discord.Member, member: discord.Member, player: Player, guild: PlayerCharacter, activity: Activity, **kwargs):
+        inst = cls(owner=owner)
         inst.bot = bot
         inst.member = member
-        inst.guild = guild
         inst.player = player
+        inst.guild = guild
         inst.activity = activity
-        inst.credits = credits
-        inst.cc = cc
-        inst.notes = notes
+        inst.credits = kwargs.get('credits', 0)
+        inst.cc = kwargs.get('cc', 0)
+        inst.notes = kwargs.get('notes')
         inst.character = player.characters[0] if len(player.characters) > 0 else None
-        inst.ignore_handicap=ignore_handicap
-        inst.conversion = conversion
+        inst.ignore_handicap = kwargs.get('ignore_handicap', False)
+        inst.show_values = kwargs.get('show_values', False)
         return inst
+
     
     @discord.ui.select(placeholder="Select a character", row=1)
     async def character_select(self, char: discord.ui.Select, interation: discord.Interaction):
@@ -56,24 +56,35 @@ class LogPromptUI(LogPrompt):
 
     @discord.ui.button(label="Confirm", style=discord.ButtonStyle.green, row=2)
     async def confirm_log(self, _: discord.ui.Button, interaction: discord.Interaction):
-        rate: CodeConversion = self.bot.compendium.get_object(CodeConversion, self.character.level)
-        if self.conversion:
-            self.credits = abs(self.cc) * rate.value
-            self.ignore_handicap = True
-
         if (self.character.credits + self.credits) < 0:
+            rate: CodeConversion = self.bot.compendium.get_object(CodeConversion, self.character.level)
             convertedCC = math.ceil((self.credits - self.character.credits) / rate.value)
             if self.player.cc < convertedCC:
                 await interaction.channel.send(embed=ErrorEmbed(description=f"{self.character.name} cannot afford the {self.credits} credit cost or to convert the {convertedCC} needed."))
             else:
                 convert_activity = self.bot.compendium.get_object(Activity, "CONVERSION")
-                converted_entry = await create_log(self.bot, self.owner, self.guild, convert_activity, self.player, self.character, self.notes, -convertedCC, convertedCC*rate.value, None, True)
-                await interaction.channel.send(embed=LogEmbed(converted_entry, self.owner, self.member, self.character, True))
-                log_entry = await create_log(self.bot, self.owner, self.guild, self.activity, self.player, self.character, self.notes, self.cc, self.credits, None, self.ignore_handicap)
-                await interaction.channel.send(embed=LogEmbed(log_entry, self.owner, self.member, self.character, True))
+                converted_entry = await create_log(self.bot, self.owner, self.guild, convert_activity, self.player, 
+                                                   character=self.character, 
+                                                   notes=self.notes, 
+                                                   cc=-convertedCC, 
+                                                   credits=convertedCC*rate.value, 
+                                                   ignore_handicap=True)
+                await interaction.channel.send(embed=LogEmbed(converted_entry, self.owner, self.member, self.character, self.show_values))
+                log_entry = await create_log(self.bot, self.owner, self.guild, self.activity, self.player, 
+                                             character=self.character, 
+                                             notes=self.notes, 
+                                             cc=self.cc, 
+                                             credits=self.credits, 
+                                             ignore_handicap=self.ignore_handicap)
+                await interaction.channel.send(embed=LogEmbed(log_entry, self.owner, self.member, self.character, self.show_values))
         else:
-            log_entry = await create_log(self.bot, self.owner, self.guild, self.activity, self.player, self.character, self.notes, self.cc, self.credits, None, self.ignore_handicap)
-            await interaction.channel.send(embed=LogEmbed(log_entry, self.owner, self.member, self.character, True))
+            log_entry = await create_log(self.bot, self.owner, self.guild, self.activity, self.player, 
+                                         character=self.character, 
+                                         notes=self.notes, 
+                                         cc=self.cc, 
+                                         credits=self.credits, 
+                                         ignore_handicap=self.ignore_handicap)
+            await interaction.channel.send(embed=LogEmbed(log_entry, self.owner, self.member, self.character, self.show_values))
         await self.on_timeout()
 
     @discord.ui.button(label="Cancel", style=discord.ButtonStyle.grey, row=2)

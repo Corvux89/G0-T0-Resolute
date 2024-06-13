@@ -186,11 +186,13 @@ class Arenas(commands.Cog):
             # Rewards
             for character in arena.player_characters:
                 player = await get_player(self.bot, character.player_id, ctx.guild.id)
-                await create_log(self.bot, ctx.author, g, arena_activity, player, character, result)
+                await create_log(self.bot, ctx.author, g, arena_activity, player,
+                                 character=character, notes=result)
                 arena.players.append(player)
 
                 if arena.completed_phases - 1 >= (arena.tier.max_phases / 2) and result == "WIN":
-                    await create_log(self.bot, ctx.author, g, bonus_activity, player, character)
+                    await create_log(self.bot, ctx.author, g, bonus_activity, player,
+                                     character=character)
                 
             await update_arena_view_embed(ctx, arena)
             await ctx.respond(embed=ArenaPhaseEmbed(ctx, arena, result))

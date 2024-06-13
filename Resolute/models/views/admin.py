@@ -47,6 +47,10 @@ class _BotMessage(AdminMenu):
         
         await self.refresh_content(interaction)
 
+    @discord.ui.button(label="Back", style=discord.ButtonStyle.grey, row=3)
+    async def back(self, _: discord.ui.Button, interaction: discord.Interaction):
+        await self.defer_to(AdminMenuUI, interaction)
+
     async def _before_send(self):
         if self.channel is None:
             self.send_message.disabled = True

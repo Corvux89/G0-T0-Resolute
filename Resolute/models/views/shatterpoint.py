@@ -65,7 +65,9 @@ class ShatterpointSettingsUI(ShatterpointSettings):
             g = await get_guild(self.bot.db, interaction.guild.id)
             for p in self.shatterpoint.players:
                 player = await get_player(self.bot, p.player_id, interaction.guild.id)
-                await create_log(self.bot, self.owner, g, activity, player, None, self.shatterpoint.name, p.cc)
+                await create_log(self.bot, self.owner, g, activity, player, 
+                                 notes=self.shatterpoint.name, 
+                                 cc=p.cc)
             
             await delete_shatterpoint(self.bot, interaction.guild.id)
             await delete_players(self.bot, interaction.guild.id)

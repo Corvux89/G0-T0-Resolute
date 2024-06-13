@@ -172,7 +172,12 @@ class _NewCharacter(CharacterSettings):
                 async with self.bot.db.acquire() as conn:
                     await conn.execute(upsert_starship_query(ship))
 
-        log_entry = await create_log(self.bot, self.owner, self.guild, new_activity, self.player, self.new_character, "Initial Log",self.new_cc, self.new_credits,None,True)
+        log_entry = await create_log(self.bot, self.owner, self.guild, new_activity, self.player, 
+                                     character=self.new_character, 
+                                     notes="Initial Log",
+                                     cc=self.new_cc, 
+                                     credits=self.new_credits,
+                                     ignore_handicap=True)
 
         await manage_player_roles(self.discord_guild, self.member, self.player, "Character Created!")
         end = timer()
@@ -219,7 +224,9 @@ class _InactivateCharacter(CharacterSettings):
         self.active_character.active = False
         activity = self.bot.compendium.get_object(Activity, "MOD_CHARACTER")
 
-        log_entry = await create_log(self.bot, self.owner, self.guild, activity, self.player, self.active_character, "Inactivating Character")
+        log_entry = await create_log(self.bot, self.owner, self.guild, activity, self.player, 
+                                     character=self.active_character, 
+                                     notes="Inactivating Character")
 
         await interaction.channel.send(embed=LogEmbed(log_entry, self.owner, self.member, self.active_character))
 
@@ -249,7 +256,9 @@ class _EditCharacter(CharacterSettings):
         response: CharacterInformationModal = await self.prompt_modal(interaction, modal)
 
         if response.update and (activity := self.bot.compendium.get_object(Activity, "MOD_CHARACTER")):
-            await create_log(self.bot, self.owner, self.guild, activity, self.player, self.active_character, "Character Modification")
+            await create_log(self.bot, self.owner, self.guild, activity, self.player, 
+                             character=self.active_character,
+                             notes="Character Modification")
 
         await self.refresh_content(interaction)
 
@@ -262,7 +271,9 @@ class _EditCharacter(CharacterSettings):
                                                       delete_after=5)
         elif (activity := self.bot.compendium.get_object(Activity, "LEVEL")):
             self.active_character.level += 1
-            await create_log(self.bot, self.owner, self.guild, activity, self.player, self.active_character, "Player level up")
+            await create_log(self.bot, self.owner, self.guild, activity, self.player,
+                             character=self.active_character,
+                             notes="Player level up")
             await manage_player_roles(self.discord_guild, self.member, self.player, "Level up")
 
             await interaction.channel.send(embed=LevelUpEmbed(self.member, self.active_character))

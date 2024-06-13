@@ -52,7 +52,7 @@ class Log(commands.Cog):
                         credits: Option(int, description="The amount of Credits", default=0, min_value=0, max_value=20000)):
         
         if (activity := self.bot.compendium.get_object(Activity, "BONUS")) and (credits > 0 or cc > 0):
-            await self.prompt_log(ctx, member, activity, reason, cc, credits)
+            await self.prompt_log(ctx, member, activity, reason, cc, credits, False, False, True)
         else:
             return await ctx.respond(embed=ErrorEmbed(description="Activity not found"), ephemeral=True)
         
@@ -70,12 +70,15 @@ class Log(commands.Cog):
         
         if activity := self.bot.compendium.get_object(Activity, "BUY"):
             if currency == 'Credits':
-                await self.prompt_log(ctx, member, activity, item, 0, -cost, True)
+                await self.prompt_log(ctx, member, activity, item, 0, -cost, True, False, True)
             elif currency == "CC":
                 await ctx.defer()
                 g = await get_guild(self.bot.db, ctx.guild.id)
                 player = await get_player(self.bot, member.id, ctx.guild.id)
-                log_entry = await create_log(self.bot, ctx.author, g, activity, player, None, item, -cost, 0, None, True)
+                log_entry = await create_log(self.bot, ctx.author, g, activity, player,
+                                             notes=item,
+                                              cc=-cost,
+                                              ignore_handicap=True)
                 return await ctx.respond(embed=LogEmbed(log_entry, ctx.author, member, None, True))
             else:
                 return await ctx.respond(embed=ErrorEmbed(description="Invalid currency selection"),
@@ -95,12 +98,15 @@ class Log(commands.Cog):
         
         if activity := self.bot.compendium.get_object(Activity, "SELL"):
             if currency == 'Credits':
-                await self.prompt_log(ctx, member, activity, item, 0, cost, True)
+                await self.prompt_log(ctx, member, activity, item, 0, cost, True, False, True)
             elif currency == "CC":
                 await ctx.defer()
                 g = await get_guild(self.bot.db, ctx.guild.id)
                 player = await get_player(self.bot, member.id, ctx.guild.id)
-                log_entry = await create_log(self.bot, ctx.author, g, activity, player, None, item, cost, 0, None, True)
+                log_entry = await create_log(self.bot, ctx.author, g, activity, player,
+                                             notes=item,
+                                             cc=cost,
+                                             ignore_handicap=True)
                 return await ctx.respond(embed=LogEmbed(log_entry, ctx.author, member, None, True))
             else:
                 return await ctx.respond(embed=ErrorEmbed(description="Invalid currency selection"),
@@ -152,26 +158,19 @@ class Log(commands.Cog):
 
             note = f"{log_entry.activity.value} log # {log_entry.id} nulled by "\
                    f"{ctx.author} for reason: {reason}"
-            
-            mod_log = await create_log(self.bot, ctx.author, g, activity, player, character, note, -log_entry.cc, -log_entry.credits, None, True)
+
+            mod_log = await create_log(self.bot, ctx.author, g, activity, player,
+                                       character=character,
+                                       note=note,
+                                       cc=-log_entry.cc,
+                                       credits=-log_entry.credits,
+                                       ignore_handicap=True)
             log_entry.invalid = True
 
             async with self.bot.db.acquire() as conn:
                 await conn.execute(upsert_log(log_entry))            
             
             return await ctx.respond(embed=LogEmbed(mod_log, ctx.author, member,character))
-
-    @log_commands.command(
-        name="convert",
-        description="Convert CC to credits or visa versa"
-    )
-    async def log_convert(self, ctx: ApplicationContext,
-                          member: Option(discord.SlashCommandOptionType(6), description="Player doing the conversion", required=True),
-                          cc: Option(int, description="Amount of Chain Codes to convert", required=True)):
-        if activity := self.bot.compendium.get_object(Activity, "CONVERSION"):
-            await self.prompt_log(ctx, member, activity, "Converting CC to Credits", -cc, 0, True, True)
-        else:
-            return await ctx.respond(embed=ErrorEmbed(description="Activity not found"), ephemeral=True)
 
     @log_commands.command(
         name="stats",
@@ -237,7 +236,7 @@ class Log(commands.Cog):
     # --------------------------- #
 
     async def prompt_log(self, ctx: ApplicationContext, member: discord.Member, activity: Activity, notes: str = None, 
-                         cc: int = 0, credits: int = 0, ignore_handicap: bool = False, conversion: bool = False) -> None:
+                         cc: int = 0, credits: int = 0, ignore_handicap: bool = False, conversion: bool = False, show_values: bool = False) -> None:
         await ctx.defer()
 
         player = await get_player(self.bot, member.id, ctx.guild_id)
@@ -263,12 +262,24 @@ class Log(commands.Cog):
                     return await ctx.respond(embed=ErrorEmbed(description=f"{character.name} cannot afford the {credits} credit cost or to convert the {convertedCC} needed."))
 
                 convert_activity = self.bot.compendium.get_object(Activity, "CONVERSION")
-                converted_entry = await create_log(self.bot, ctx.author, g, convert_activity, player, character, notes, -convertedCC, convertedCC*rate.value, None, True)  
-                await ctx.send(embed=LogEmbed(converted_entry, ctx.author, member, player.characters[0], True))
+                converted_entry = await create_log(self.bot, ctx.author, g, convert_activity, player, 
+                                                   character=character, 
+                                                   notes=notes, 
+                                                   cc=-convertedCC, 
+                                                   credits=convertedCC*rate.value, 
+                                                   ignore_handicap=True)  
+                await ctx.send(embed=LogEmbed(converted_entry, ctx.author, member, player.characters[0], show_values))
             
-            log_entry = await create_log(self.bot, ctx.author, g, activity, player, character, notes, cc, credits, None, ignore_handicap)
-            return await ctx.respond(embed=LogEmbed(log_entry, ctx.author, member, player.characters[0],True))
+            log_entry = await create_log(self.bot, ctx.author, g, activity, player, 
+                                         character=character, 
+                                         notes=notes, 
+                                         cc=cc, 
+                                         credits=credits, 
+                                         ignore_handicap=ignore_handicap)
+            
+            return await ctx.respond(embed=LogEmbed(log_entry, ctx.author, member, player.characters[0],show_values))
         else:
-            ui = LogPromptUI.new(self.bot, ctx.author, member, player, g, activity, credits, cc, notes, ignore_handicap, conversion)    
+            ui = LogPromptUI.new(self.bot, ctx.author, member, player, g, activity, credits=credits, cc=cc, notes=notes,
+                                 ignore_handicap=ignore_handicap, show_values=show_values)    
             await ui.send_to(ctx)
             await ctx.delete()

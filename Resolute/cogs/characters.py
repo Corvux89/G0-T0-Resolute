@@ -151,7 +151,7 @@ class Character(commands.Cog):
                 if not player.characters:
                     return await ctx.respond(embed=ErrorEmbed(description="You do not have any characters to level up"), ephemeral=True)
                 elif len(player.characters) == 1:
-                    modal = LevelUpRequestModal(player.characters[0])
+                    modal = LevelUpRequestModal(player.characters[0], application)
                     return await ctx.send_modal(modal)
                 else:
                     ui = CharacterSelectUI.new(self.bot, ctx.author, player, True, application, True)

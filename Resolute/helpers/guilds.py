@@ -1,11 +1,12 @@
 import asyncio
 import aiopg
+from Resolute.bot import G0T0Bot
 from Resolute.models.objects.guilds import *
 from Resolute.models.objects.ref_objects import RefWeeklyStipend
 from Resolute.models.objects.ref_objects import RefServerCalendarSchema, RefWeeklyStipendSchema, get_guild_weekly_stipends_query, get_server_calendar, get_weekly_stipend_query, upsert_weekly_stipend, delete_weekly_stipend_query
 
-async def get_guild(db: aiopg.sa.Engine, guild_id: int) -> PlayerGuild:
-    async with db.acquire() as conn:
+async def get_guild(bot: G0T0Bot, guild_id: int) -> PlayerGuild:
+    async with bot.db.acquire() as conn:
         async with conn.begin():
             results = await conn.execute(get_guild_from_id(guild_id))
             guild_row = await results.first()
@@ -17,7 +18,8 @@ async def get_guild(db: aiopg.sa.Engine, guild_id: int) -> PlayerGuild:
 
             g: PlayerGuild = GuildSchema().load(guild_row)
 
-    g = await load_calendar(db, g)
+    g = await load_calendar(bot.db, g)
+    g.guild = bot.get_guild(guild_id)
     return g
 
 async def load_calendar(db: aiopg.sa.Engine, guild: PlayerGuild) -> PlayerGuild:
@@ -37,17 +39,21 @@ async def update_guild(db: aiopg.sa.Engine, guild: PlayerGuild) -> PlayerGuild:
     g = GuildSchema().load(row)
 
     g = await load_calendar(db, g)
+    g.guild = guild.guild
 
     return g
 
-async def get_guilds_with_reset(db: aiopg.sa.Engine, day: int, hour: int) -> list[PlayerGuild]:
-    async with db.acquire() as conn:
+async def get_guilds_with_reset(bot: G0T0Bot, day: int, hour: int) -> list[PlayerGuild]:
+    async with bot.db.acquire() as conn:
         results = await conn.execute(get_guilds_with_reset_query(day, hour))
         rows = await results.fetchall()
 
     guild_list = [GuildSchema().load(row) for row in rows]
 
-    guild_list = await asyncio.gather(*(load_calendar(db, g) for g in guild_list))
+    guild_list = await asyncio.gather(*(load_calendar(bot.db, g) for g in guild_list))
+
+    for g in guild_list:
+        g.guild = bot.get_guild(g.id)
 
     return guild_list
 

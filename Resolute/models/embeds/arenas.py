@@ -1,5 +1,5 @@
 from discord import Embed, ApplicationContext, Interaction, Color
-from Resolute.constants import THUMBNAIL
+from Resolute.constants import THUMBNAIL, ZWSP3
 from Resolute.models.objects.arenas import Arena
 
 class ArenaStatusEmbed(Embed):
@@ -16,12 +16,12 @@ class ArenaStatusEmbed(Embed):
             self.description += f"\nBonus active!"
 
         self.add_field(name=f"**Host**:",
-                       value=f"\u200b - {ctx.guild.get_member(arena.host_id).mention}",
+                       value=f"{ZWSP3}- {ctx.guild.get_member(arena.host_id).mention}",
                        inline=False)
         
         if arena.player_characters:
             self.add_field(name="**Players**:",
-                        value="\n".join([f"\u200b - {c.name}{'*inactive*' if not c.active else ''} ({ctx.guild.get_member(c.player_id).mention})" for c in arena.player_characters]),
+                        value="\n".join([f"{ZWSP3}- {c.name}{'*inactive*' if not c.active else ''} ({ctx.guild.get_member(c.player_id).mention})" for c in arena.player_characters]),
                         inline=False)
             
 class ArenaPhaseEmbed(Embed):

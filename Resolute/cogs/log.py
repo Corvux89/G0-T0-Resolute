@@ -6,6 +6,7 @@ from discord import SlashCommandGroup, Option, ApplicationContext
 from discord.ext import commands
 
 from Resolute.bot import G0T0Bot
+from Resolute.constants import ZWSP3
 from Resolute.helpers.general_helpers import confirm, is_admin
 from Resolute.helpers.guilds import get_guild
 from Resolute.helpers.logs import create_log, get_character_stats, get_log, get_n_player_logs, get_player_stats
@@ -36,7 +37,7 @@ class Log(commands.Cog):
     )
     async def rp_log(self, ctx: ApplicationContext,
                      member: Option(discord.SlashCommandOptionType(6),description="Player who participated in the RP", required=True)):
-        if activity := self.bot.compendium.get_object(Activity, "RP"):
+        if activity := self.bot.compendium.get_activity("RP"):
             await self.prompt_log(ctx, member, activity)
         else:
             return await ctx.respond(embed=ErrorEmbed(description="Activity not found"), ephemeral=True)
@@ -51,7 +52,7 @@ class Log(commands.Cog):
                         cc: Option(int, description="The amount of Chain Codes", default=0, min_value=0, max_value=50),
                         credits: Option(int, description="The amount of Credits", default=0, min_value=0, max_value=20000)):
         
-        if (activity := self.bot.compendium.get_object(Activity, "BONUS")) and (credits > 0 or cc > 0):
+        if (activity := self.bot.compendium.get_activity("BONUS")) and (credits > 0 or cc > 0):
             await self.prompt_log(ctx, member, activity, reason, cc, credits, False, False, True)
         else:
             return await ctx.respond(embed=ErrorEmbed(description="Activity not found"), ephemeral=True)
@@ -68,12 +69,12 @@ class Log(commands.Cog):
                       currency: Option(str, description="Credits or Chain Codes. Default: Credits",
                                        choices=['Credits', 'CC'], default="Credits", required=False)):
         
-        if activity := self.bot.compendium.get_object(Activity, "BUY"):
+        if activity := self.bot.compendium.get_activity("BUY"):
             if currency == 'Credits':
                 await self.prompt_log(ctx, member, activity, item, 0, -cost, True, False, True)
             elif currency == "CC":
                 await ctx.defer()
-                g = await get_guild(self.bot.db, ctx.guild.id)
+                g = await get_guild(self.bot, ctx.guild.id)
                 player = await get_player(self.bot, member.id, ctx.guild.id)
                 log_entry = await create_log(self.bot, ctx.author, g, activity, player,
                                              notes=item,
@@ -96,12 +97,12 @@ class Log(commands.Cog):
                        currency: Option(str, description="Credits or Chain Codes. Default: Credits",
                                         choices=['Credits', 'CC'], default="Credits", required=False)):
         
-        if activity := self.bot.compendium.get_object(Activity, "SELL"):
+        if activity := self.bot.compendium.get_activity("SELL"):
             if currency == 'Credits':
                 await self.prompt_log(ctx, member, activity, item, 0, cost, True, False, True)
             elif currency == "CC":
                 await ctx.defer()
-                g = await get_guild(self.bot.db, ctx.guild.id)
+                g = await get_guild(self.bot, ctx.guild.id)
                 player = await get_player(self.bot, member.id, ctx.guild.id)
                 log_entry = await create_log(self.bot, ctx.author, g, activity, player,
                                              notes=item,
@@ -134,7 +135,7 @@ class Log(commands.Cog):
         
         player = await get_player(self.bot, log_entry.player_id, ctx.guild.id)
         member: discord.Member = ctx.guild.get_member(player.id)
-        g = await get_guild(self.bot.db, ctx.guild.id)
+        g = await get_guild(self.bot, ctx.guild.id)
 
         if log_entry.character_id:
             character = next((c for c in player.characters if c.id == log_entry.character_id), None)
@@ -152,7 +153,7 @@ class Log(commands.Cog):
         elif not conf:
             return await ctx.respond(f"Ok, cancelling.", delete_after=5)
         
-        if activity := self.bot.compendium.get_object(Activity, "MOD"):
+        if activity := self.bot.compendium.get_activity("MOD"):
             if log_entry.created_ts > g._last_reset and log_entry.activity.diversion:
                 player.div_cc -= log_entry.cc
 
@@ -191,13 +192,13 @@ class Log(commands.Cog):
                 char_stats = await get_character_stats(self.bot, character)
                 if char_stats:
                     embed.add_field(name=f"{character.name}{' (*inactive*)' if not character.active else ''}",
-                                    value=f"\u200b \u200b \u200b **Starting Credits**: {char_stats['credit starting']:,}\n"
-                                        f"\u200b \u200b \u200b **Starting CC**: {char_stats['cc starting']:,}\n"
-                                        f"\u200b \u200b \u200b **CC Earned**: {char_stats['cc debt']:,}\n"
-                                        f"\u200b \u200b \u200b **CC Spent**: {char_stats['cc credit']:,}\n"
-                                        f"\u200b \u200b \u200b **Credits Earned**: {char_stats['credit debt']:,}\n"
-                                        f"\u200b \u200b \u200b **Credits Spent**: {char_stats['credit credit']:,}\n"
-                                        f"\u200b \u200b \u200b **Credits Converted**: {char_stats['credits converted']:,}",
+                                    value=f"{ZWSP3}**Starting Credits**: {char_stats['credit starting']:,}\n"
+                                        f"{ZWSP3}**Starting CC**: {char_stats['cc starting']:,}\n"
+                                        f"{ZWSP3}**CC Earned**: {char_stats['cc debt']:,}\n"
+                                        f"{ZWSP3}**CC Spent**: {char_stats['cc credit']:,}\n"
+                                        f"{ZWSP3}**Credits Earned**: {char_stats['credit debt']:,}\n"
+                                        f"{ZWSP3}**Credits Spent**: {char_stats['credit credit']:,}\n"
+                                        f"{ZWSP3}**Credits Converted**: {char_stats['credits converted']:,}",
                                         inline=False)
                 else:
                     embed.add_field(name=f"{character.name}{' (*inactive*)' if not character.active else ''}",
@@ -240,7 +241,7 @@ class Log(commands.Cog):
         await ctx.defer()
 
         player = await get_player(self.bot, member.id, ctx.guild_id)
-        g = await get_guild(self.bot.db, ctx.guild.id)
+        g = await get_guild(self.bot, ctx.guild.id)
 
         if not player.characters:
             return await ctx.respond(embed=ErrorEmbed(description=f"No character information found for {member.mention}"),
@@ -261,7 +262,7 @@ class Log(commands.Cog):
                 if player.cc < convertedCC:
                     return await ctx.respond(embed=ErrorEmbed(description=f"{character.name} cannot afford the {credits} credit cost or to convert the {convertedCC} needed."))
 
-                convert_activity = self.bot.compendium.get_object(Activity, "CONVERSION")
+                convert_activity = self.bot.compendium.get_activity("CONVERSION")
                 converted_entry = await create_log(self.bot, ctx.author, g, convert_activity, player, 
                                                    character=character, 
                                                    notes=notes, 

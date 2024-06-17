@@ -25,17 +25,19 @@ async def get_player(bot: G0T0Bot, player_id: int, guild_id: int, inactive: bool
     if len(player.characters) > 0 and player.highest_level_character.level < 3:
         player = await get_player_quests(bot, player )
 
+    player.member = bot.get_guild(guild_id).get_member(player_id)
+
     return player
 
-async def manage_player_roles(guild: Guild, member: Member, player: Player, reason: str = None) -> None:
-    if (acolyte_role := discord.utils.get(guild.roles, name="Acolyte")) and (citizen_role := discord.utils.get(guild.roles, name="Citizen")) and (high_char := player.highest_level_character):
-        if high_char.level < 3 and (acolyte_role not in member.roles) and (citizen_role not in member.roles):
-            await member.add_roles(acolyte_role, reason=reason)
+async def manage_player_roles(player: Player, reason: str = None) -> None:
+    if (acolyte_role := discord.utils.get(player.member.guild.roles, name="Acolyte")) and (citizen_role := discord.utils.get(player.member.guild.roles, name="Citizen")) and (high_char := player.highest_level_character):
+        if high_char.level < 3 and (acolyte_role not in player.member.roles) and (citizen_role not in player.member.roles):
+            await player.member.add_roles(acolyte_role, reason=reason)
         elif high_char.level >= 3:
-            if acolyte_role in member.roles:
-                await member.remove_roles(acolyte_role, reason=reason)
-            if citizen_role not in member.roles:
-                await member.add_roles(citizen_role, reason=reason)
+            if acolyte_role in player.member.roles:
+                await player.member.remove_roles(acolyte_role, reason=reason)
+            if citizen_role not in player.member.roles:
+                await player.member.add_roles(citizen_role, reason=reason)
 
 async def get_player_quests(bot: G0T0Bot, player: Player) -> Player:
     rp_activity = bot.compendium.get_object(Activity, "RP")

@@ -8,6 +8,7 @@ from sqlalchemy.sql import FromClause
 from sqlalchemy.dialects.postgresql import insert, ARRAY
 
 from Resolute.compendium import Compendium
+from Resolute.constants import ZWSP3
 from Resolute.models.categories import CharacterArchetype, CharacterClass, CharacterSpecies, StarshipRole
 from Resolute.models.objects.guilds import PlayerGuild
 from Resolute.models import metadata
@@ -36,7 +37,7 @@ class PlayerCharacter(object):
 
         if len(self.starships) > 0:
             str += "\n"
-            str += f"\n".join([f"\u200b \u200b \u200b {s.get_formatted_starship(compendium)}" for s in self.starships])
+            str += f"\n".join([f"{ZWSP3}{s.get_formatted_starship(compendium)}" for s in self.starships])
 
         return str
 
@@ -89,6 +90,7 @@ class CharacterSchema(Schema):
     active = fields.Boolean(required=True)
     freeroll_from = fields.Integer(allow_none=True)
 
+
     def __init__(self, compendium, **kwargs):
         super().__init__(**kwargs)
         self.compendium = compendium
@@ -130,7 +132,7 @@ def get_guild_characters_query(guild_id: int) -> FromClause:
     ).order_by(characters_table.c.id.desc())
 
 
-def upsert_character(character: PlayerCharacter):
+def upsert_character_query(character: PlayerCharacter):
     if hasattr(character, "id") and character.id is not None:
         update_dict = {
         'name': character.name,
@@ -144,7 +146,7 @@ def upsert_character(character: PlayerCharacter):
         'freeroll_from': character.freeroll_from if hasattr(character, 'freeroll_from') else None
         }
         
-        update_statement = characters_table.update().where(characters_table.c.id == character.id).values(**update_dict)
+        update_statement = characters_table.update().where(characters_table.c.id == character.id).values(**update_dict).returning(characters_table)
         return update_statement
 
 
@@ -249,6 +251,9 @@ class CharacterStarship(object):
         self.starship: StarshipRole = kwargs.get('starship')
         self.tier = kwargs.get('tier', 0)
         self.active = kwargs.get('active', True)
+
+        # Virtual
+        self.owners: list[PlayerCharacter] = []
 
     def get_formatted_starship(self, compendium):
         return f"**{self.name}** *(Tier {self.tier} {self.starship.get_size(compendium).value} {self.starship.value})*"

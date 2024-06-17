@@ -37,10 +37,10 @@ class Character(commands.Cog):
                                member: Option(discord.SlashCommandOptionType(6), description="Player", required=True)):
         
         player = await get_player(self.bot, member.id, ctx.guild.id)
-        g = await get_guild(self.bot.db, ctx.guild.id)
+        g = await get_guild(self.bot, ctx.guild.id)
         
 
-        ui = CharacterSettingsUI.new(self.bot, ctx.author, member, player, g, ctx.guild)
+        ui = CharacterSettingsUI.new(self.bot, ctx.author, player, g)
         await ui.send_to(ctx)
         await ctx.delete()
 
@@ -54,10 +54,10 @@ class Character(commands.Cog):
         await ctx.defer()
 
         member = member or ctx.author
-        g = await get_guild(self.bot.db, ctx.guild.id)
+        g = await get_guild(self.bot, ctx.guild.id)
         player = await get_player(self.bot, member.id, ctx.guild.id)
 
-        return await ctx.respond(embed=PlayerOverviewEmbed(player, member, g, self.bot.compendium))
+        return await ctx.respond(embed=PlayerOverviewEmbed(player, g, self.bot.compendium))
 
     @commands.slash_command(
         name="level_request",
@@ -65,7 +65,7 @@ class Character(commands.Cog):
     )
     async def character_level_request(self, ctx: ApplicationContext):
         player = await get_player(self.bot, ctx.author.id, ctx.guild.id)
-        g = await get_guild(self.bot.db, ctx.guild.id)
+        g = await get_guild(self.bot, ctx.guild.id)
 
         if not player.characters:
             return await ctx.respond(embed=ErrorEmbed(description="You do not have any characters to level up"), ephemeral=True)

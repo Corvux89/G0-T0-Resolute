@@ -62,7 +62,7 @@ class ShatterpointSettingsUI(ShatterpointSettings):
             await interaction.channel.send(embed=ErrorEmbed(description="Ok, cancelling"), delete_after=5)
         else:
             activity = self.bot.compendium.get_object(Activity, "GLOBAL")
-            g = await get_guild(self.bot.db, interaction.guild.id)
+            g = await get_guild(self.bot, interaction.guild.id)
             for p in self.shatterpoint.players:
                 player = await get_player(self.bot, p.player_id, interaction.guild.id)
                 await create_log(self.bot, self.owner, g, activity, player, 

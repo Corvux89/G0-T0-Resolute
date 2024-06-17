@@ -1,4 +1,5 @@
 import calendar
+import discord
 import sqlalchemy as sa
 
 from math import floor
@@ -35,6 +36,7 @@ class PlayerGuild(object):
 
         # Virtual attributes
         self.calendar = None
+        self.guild: discord.Guild = None
 
     @property
     def get_reset_day(self):

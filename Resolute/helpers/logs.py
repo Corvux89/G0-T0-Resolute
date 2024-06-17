@@ -4,7 +4,7 @@ from discord import Member, ClientUser
 from Resolute.bot import G0T0Bot
 from Resolute.models.categories import Activity
 from Resolute.models.objects.adventures import Adventure
-from Resolute.models.objects.characters import PlayerCharacter, upsert_character
+from Resolute.models.objects.characters import PlayerCharacter, upsert_character_query
 from Resolute.models.objects.guilds import PlayerGuild
 from Resolute.models.objects.logs import DBLog, LogSchema, character_stats_query, get_log_by_id, get_n_player_logs_query, player_stats_query, upsert_log
 from Resolute.models.objects.players import Player, upsert_player_query
@@ -86,7 +86,7 @@ async def create_log(bot: G0T0Bot, author: Member | ClientUser, guild: PlayerGui
         await conn.execute(upsert_player_query(player))
 
         if character:
-            await conn.execute(upsert_character(character))
+            await conn.execute(upsert_character_query(character))
 
     log_entry = LogSchema(bot.compendium).load(row)
 

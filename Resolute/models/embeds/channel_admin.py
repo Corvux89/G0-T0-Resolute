@@ -2,6 +2,8 @@ import discord
 
 from discord import Embed, Member, PermissionOverwrite, Role
 
+from Resolute.constants import ZWSP3
+
 class ChannelEmbed(Embed):
     def __init__(self, channel: discord.TextChannel):
         super().__init__(title=f"{channel.name} Summary")
@@ -30,7 +32,7 @@ def get_overwrite_string(overwrites: dict[Role | Member, PermissionOverwrite]):
         ovr = [x for x in overwrites[target] if x[1] is not None]
 
         if ovr:
-            value += "\n".join([f"\u200b \u200b \u200b {o[0]} - {o[1]}" for o in ovr])
+            value += "\n".join([f"{ZWSP3}{o[0]} - {o[1]}" for o in ovr])
         else:
             value += "None\n"
         

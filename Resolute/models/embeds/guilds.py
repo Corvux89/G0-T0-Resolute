@@ -9,8 +9,8 @@ from Resolute.models.objects.ref_objects import RefWeeklyStipend
 
 
 class GuildEmbed(Embed):
-    def __init__(self, g: PlayerGuild, guild: discord.Guild, stipends: list[RefWeeklyStipend] = None):
-        super().__init__(title=f'Server Settings for {guild.name}',
+    def __init__(self, g: PlayerGuild, stipends: list[RefWeeklyStipend] = None):
+        super().__init__(title=f'Server Settings for {g.guild.name}',
                          colour=Color.random())
         self.set_thumbnail(url=THUMBNAIL)
 
@@ -31,18 +31,18 @@ class GuildEmbed(Embed):
             
         if len(stipends) > 0:
             self.add_field(name="Stipends (* = Leadership Role and only applies highest amount)",
-                        value="\n".join([f"{discord.utils.get(guild.roles, id=s.role_id).mention} ({s.amount} CC's){'*' if s.leadership else ''}{f' - {s.reason}' if s.reason else ''}" for s in stipends]),
+                        value="\n".join([f"{discord.utils.get(g.guild.roles, id=s.role_id).mention} ({s.amount} CC's){'*' if s.leadership else ''}{f' - {s.reason}' if s.reason else ''}" for s in stipends]),
                            inline=False)
             
 class ResetEmbed(Embed):
-    def __init__(self, g: PlayerGuild, guild: discord.Guild, completeTime: float):
+    def __init__(self, g: PlayerGuild, completeTime: float):
         super().__init__(title=f"Weekly Reset",
                          color=Color.random())
         
         self.set_thumbnail(url=THUMBNAIL)
 
         if g.reset_message:
-            self.description = f"{process_message(g.reset_message, guild)}"
+            self.description = f"{process_message(g.reset_message, g)}"
 
         if g.calendar and g.server_date:
             self.add_field(name="Galactic Date",
@@ -55,7 +55,7 @@ class ResetEmbed(Embed):
                 title = parts[0] if len(parts) > 1 else "Announcement"
                 body = parts[1] if len(parts) > 1 else parts[0]
                 self.add_field(name=title,
-                               value=process_message(body, guild),
+                               value=process_message(body, g),
                                inline=False)
 
         self.set_footer(text=f"Weekly reset complete in {completeTime:.2f} seconds")

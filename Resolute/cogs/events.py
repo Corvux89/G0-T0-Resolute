@@ -46,13 +46,13 @@ class Events(commands.Cog):
                     log.error(error)
         
         if exit_channel := discord.utils.get(member.guild.channels, name="exit"):
-            g = await get_guild(self.bot.db, member.guild.id)
+            g = await get_guild(self.bot, member.guild.id)
             player = await get_player(self.bot, member.id, member.guild.id)
-            player.adventures = await get_player_adventures(self.bot, player)
-            player.arenas = await get_player_arenas(self.bot, player)
+            adventures = await get_player_adventures(self.bot, player)
+            arenas = await get_player_arenas(self.bot, player)
 
             try:
-                await exit_channel.send(embed=MemberLeaveEmbed(self.bot, member, player))
+                await exit_channel.send(embed=MemberLeaveEmbed(player, adventures, arenas))
             except Exception as error:
                 if isinstance(error, discord.errors.HTTPException):
                     log.error(f"ON_MEMBER_REMOVE: Error sending message to exit channel in "
@@ -61,7 +61,7 @@ class Events(commands.Cog):
 
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member):
-        g = await get_guild(self.bot.db, member.guild.id)
+        g = await get_guild(self.bot, member.guild.id)
 
         if (entrance_channel := discord.utils.get(member.guild.channels, name="entrance")) and g.greeting != None and g.greeting != "":
             message = process_message(g.greeting, member.guild, member)

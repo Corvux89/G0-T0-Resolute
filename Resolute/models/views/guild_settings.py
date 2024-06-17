@@ -17,27 +17,25 @@ from Resolute.models.views.base import InteractiveView
 
 
 class GuildSettings(InteractiveView):
-    __menu_copy_attrs__ = ("guild", "bot", "d_guild")
+    __menu_copy_attrs__ = ("guild", "bot")
     bot: G0T0Bot
     owner: discord.Member = None
     guild: PlayerGuild = None
-    d_guild: discord.Guild = None
 
     async def commit(self):
         self.guild = await update_guild(self.bot.db, self.guild)
     
 class GuildSettingsUI(GuildSettings):
     @classmethod
-    def new(cls, bot, owner, guild, d_guild):
+    def new(cls, bot, owner, guild):
         inst = cls(owner=owner)
         inst.bot = bot
         inst.guild = guild
-        inst.d_guild = d_guild
         return inst
     
     async def get_content(self):
-        stipend_list  = await get_guild_stipends(self.bot.db, self.d_guild.id)
-        embed = GuildEmbed(self.guild, self.d_guild, stipend_list)
+        stipend_list  = await get_guild_stipends(self.bot.db, self.guild.id)
+        embed = GuildEmbed(self.guild, stipend_list)
 
         return {"embed": embed, "content": None}
     
@@ -87,8 +85,8 @@ class _GuildSettings2(GuildSettings):
         await self.defer_to(GuildSettingsUI, interaction)
 
     async def get_content(self):
-        stipend_list  = await get_guild_stipends(self.bot.db, self.d_guild.id)
-        embed = GuildEmbed(self.guild, self.d_guild, stipend_list)
+        stipend_list  = await get_guild_stipends(self.bot.db, self.guild.id)
+        embed = GuildEmbed(self.guild, stipend_list)
 
         return {"embed": embed, "content": None}
 
@@ -105,7 +103,7 @@ class _GuildResetView(GuildSettings):
 
     @discord.ui.button(label="Preview Reset", style=discord.ButtonStyle.primary, row=1)
     async def preview_reset(self, _: discord.ui.Button, interaction: discord.Interaction):
-        await interaction.channel.send(embed=ResetEmbed(self.guild, self.d_guild, 1.23), delete_after=5)
+        await interaction.channel.send(embed=ResetEmbed(self.guild, 1.23), delete_after=5)
         await self.refresh_content(interaction)
 
     @discord.ui.select(placeholder="Reset Day", row=2)
@@ -136,8 +134,8 @@ class _GuildResetView(GuildSettings):
         pass
 
     async def get_content(self):
-        stipend_list  = await get_guild_stipends(self.bot.db, self.d_guild.id)
-        embed = GuildEmbed(self.guild, self.d_guild, stipend_list)
+        stipend_list  = await get_guild_stipends(self.bot.db, self.guild.id)
+        embed = GuildEmbed(self.guild, stipend_list)
 
         return {"embed": embed, "content": None}
     
@@ -183,8 +181,8 @@ class _GuildStipendView(GuildSettings):
         await self.defer_to(GuildSettingsUI, interaction)
 
     async def get_content(self):
-        stipend_list  = await get_guild_stipends(self.bot.db, self.d_guild.id)
-        embed = GuildEmbed(self.guild, self.d_guild, stipend_list)
+        stipend_list  = await get_guild_stipends(self.bot.db, self.guild.id)
+        embed = GuildEmbed(self.guild, stipend_list)
 
         return {"embed": embed, "content": None}
 

@@ -1,3 +1,4 @@
+import discord
 import sqlalchemy as sa
 
 from marshmallow import Schema, fields, post_load
@@ -20,6 +21,11 @@ class Player(object):
 
         # Virtual Attributes
         self.characters: list[PlayerCharacter] = []
+        self.member: discord.Member = None
+        self.completed_rps: int = None
+        self.completed_arenas: int = None
+        self.needed_rps: int = None
+        self.needed_arenas: int = None
 
     @property
     def highest_level_character(self) -> PlayerCharacter:

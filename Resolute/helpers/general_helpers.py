@@ -5,6 +5,7 @@ from sqlalchemy.util import asyncio
 
 from Resolute.bot import G0T0Bot
 from Resolute.constants import BOT_OWNERS
+from Resolute.models.objects.guilds import PlayerGuild
 
 
 def is_owner(ctx: ApplicationContext) -> bool:
@@ -88,15 +89,15 @@ def auth_and_chan(ctx) -> bool:
     return chk
 
 
-def process_message(message: str, guild: Guild,  member: Member = None, mappings: dict = None) -> str:
+def process_message(message: str, g: PlayerGuild,  member: Member = None, mappings: dict = None) -> str:
     channel_mentions = re.findall(r'{#([^}]*)}', message)
     role_mentions = re.findall(r'{@([^}]*)}', message)
 
     for chan in channel_mentions:
-        if (channel := discord.utils.get(guild.channels, name=chan)):
+        if (channel := discord.utils.get(g.guild.channels, name=chan)):
             message = message.replace("{#"+chan+"}", f"{channel.mention}")
     for r in role_mentions:
-        if (role := discord.utils.get(guild.roles, name=r)):
+        if (role := discord.utils.get(g.guild.roles, name=r)):
             message = message.replace("{@"+r+"}", f"{role.mention}")
 
     if mappings:

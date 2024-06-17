@@ -7,6 +7,7 @@ from sqlalchemy.sql.selectable import FromClause, TableClause
 from sqlalchemy.dialects.postgresql import insert
 
 from Resolute.compendium import Compendium
+from Resolute.constants import ZWSP3
 from Resolute.models import metadata
 from Resolute.models.categories.categories import DashboardType
 
@@ -22,7 +23,7 @@ class RPDashboardCategory(object):
 
             return "\n".join([f"{c.mention}" for c in sorted_channels])
         
-        return "\u200b"
+        return ZWSP3
 
 class RefDashboard(object):
     def __init__(self, **kwargs):

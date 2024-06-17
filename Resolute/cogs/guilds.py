@@ -44,9 +44,9 @@ class Guilds(commands.Cog):
             description="Modify the current guild/server settings"
     )
     async def guild_settings(self, ctx: ApplicationContext):
-        g = await get_guild(self.bot.db, ctx.guild.id)
+        g = await get_guild(self.bot, ctx.guild.id)
 
-        ui = GuildSettingsUI.new(self.bot, ctx.author, g, ctx.guild)
+        ui = GuildSettingsUI.new(self.bot, ctx.author, g)
 
         await ui.send_to(ctx)
         return await ctx.delete()
@@ -64,7 +64,7 @@ class Guilds(commands.Cog):
         """
         await ctx.defer()
 
-        g: PlayerGuild = await get_guild(self.bot.db, ctx.guild.id)
+        g: PlayerGuild = await get_guild(self.bot, ctx.guild.id)
 
         await self.perform_weekly_reset(g)
         return await ctx.respond("Weekly reset manually completed")
@@ -118,7 +118,7 @@ class Guilds(commands.Cog):
         # Announce we're all done!
         if announcement_channel := discord.utils.get(guild.channels, name="announcements"):
             try:
-                await announcement_channel.send(embed=ResetEmbed(g, guild, end-start))
+                await announcement_channel.send(embed=ResetEmbed(g, end-start))
             except Exception as error:
                 if isinstance(error, discord.errors.HTTPException):
                     log.error(f"WEEKLY RESET: Error sending message to announcements channel in "
@@ -134,7 +134,7 @@ class Guilds(commands.Cog):
         hour = datetime.now(timezone.utc).hour
         day = datetime.now(timezone.utc).weekday()
         log.info(f"GUIlDS: Checking reset for day {day} and hour {hour}")
-        guild_list = await get_guilds_with_reset(self.bot.db, day, hour)
+        guild_list = await get_guilds_with_reset(self.bot, day, hour)
 
         for guild in guild_list:
             await self.perform_weekly_reset(guild)

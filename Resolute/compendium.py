@@ -64,3 +64,6 @@ class Compendium:
         except:
             pass
         return None
+    
+    def get_activity(self, activity: str | int = None):
+        return self.get_object(Activity, activity)

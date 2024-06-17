@@ -172,7 +172,7 @@ class Arenas(commands.Cog):
             arena_activity = self.bot.compendium.get_object(Activity, "ARENA")
             host_activity = self.bot.compendium.get_object(Activity, "ARENA_HOST")
             bonus_activity = self.bot.compendium.get_object(Activity, "ARENA_BONUS")
-            g = await get_guild(self.bot.db, ctx.guild.id)
+            g = await get_guild(self.bot, ctx.guild.id)
 
 
             arena.completed_phases += 1

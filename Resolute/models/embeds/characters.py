@@ -1,6 +1,7 @@
 from discord import Embed, Member, Color
 from Resolute.bot import G0T0Bot
 from Resolute.compendium import Compendium
+from Resolute.constants import ZWSP3
 from Resolute.helpers.characters import get_character
 from Resolute.models.objects.players import Player
 from Resolute.models.objects.guilds import PlayerGuild
@@ -9,11 +10,11 @@ from Resolute.models.objects.logs import DBLog
                 
             
 class NewCharacterSetupEmbed(Embed):
-    def __init__(self, player: Player, member: Member, guild: PlayerGuild, new_character: PlayerCharacter, newClass: PlayerCharacterClass, 
+    def __init__(self, player: Player, guild: PlayerGuild, new_character: PlayerCharacter, newClass: PlayerCharacterClass, 
                  starting_credits: int = 0, cc_credit: int = 0, transfer_ship: bool=False):
-        super().__init__(title=f"Information for {member.display_name}")
-        self.set_thumbnail(url=member.display_avatar.url)
-        self.color = member.color
+        super().__init__(title=f"Information for {player.member.display_name}")
+        self.set_thumbnail(url=player.member.display_avatar.url)
+        self.color = player.member.color
 
         self.description = f"**Name**: {new_character.name if new_character.name else ''}\n" \
                            f"**Level**: {new_character.level}{f' (*Too high for server. Max server level is `{guild.max_level}`*)' if new_character.level > guild.max_level else ''}\n" \
@@ -28,10 +29,10 @@ class NewCharacterSetupEmbed(Embed):
             self.description += f"**Transfer Ship**: True"
 
 class NewcharacterEmbed(Embed):
-    def __init__(self, author: Member, member: Member, character: PlayerCharacter, log: DBLog, compendium: Compendium):
+    def __init__(self, author: Member, player: Player, character: PlayerCharacter, log: DBLog, compendium: Compendium):
         super().__init__(title=f"Character Created - {character.name}")
 
-        self.description = f"**Player**: {member.mention}\n"\
+        self.description = f"**Player**: {player.member.mention}\n"\
                            f"**Level**: {character.level}\n"\
                            f"**Species**: {character.species.value}\n"\
                            f"**Class**: {character.classes[0].get_formatted_class()}\n"\
@@ -40,23 +41,23 @@ class NewcharacterEmbed(Embed):
         
         if len(character.starships) > 0:
             self.add_field(name="Starships: ",
-                           value = f"\n".join([f"\u200b \u200b \u200b {s.get_formatted_starship(compendium)}" for s in character.starships]))
+                           value = f"\n".join([f"{ZWSP3}{s.get_formatted_starship(compendium)}" for s in character.starships]))
         
         self.color = Color.random()
-        self.set_thumbnail(url=member.display_avatar.url)
+        self.set_thumbnail(url=player.member.display_avatar.url)
         self.set_footer(text=f"Created by: {author.name} - Log #: {log.id}",
                         icon_url=author.display_avatar.url)
         
 class CharacterEmbed(Embed):
-    def __init__(self, member: Member, character: PlayerCharacter, compendium: Compendium):
+    def __init__(self, player: Player, character: PlayerCharacter, compendium: Compendium):
         super().__init__(title=f"Character Info - {character.name}")
-        self.color = member.color
-        self.set_thumbnail(url=member.display_avatar.url)
+        self.color = player.member.color
+        self.set_thumbnail(url=player.member.display_avatar.url)
 
         starship_str = ""
 
         if character.starships:
-            starship_str = "\u200b \u200b \u200b **Starships**:\n" + "\n".join([f"\u200b \u200b \u200b \u200b \u200b \u200b {s.get_formatted_starship(compendium)}" for s in character.starships]) 
+            starship_str = "{ZWSP3}**Starships**:\n" + "\n".join([f"{ZWSP3*2}{s.get_formatted_starship(compendium)}" for s in character.starships]) 
 
         class_str = "\n".join([f" {c.get_formatted_class()}" for c in character.classes])
 
@@ -68,10 +69,10 @@ class CharacterEmbed(Embed):
 
 
 class StarshipEmbed(Embed):
-    def __init__(self, bot: G0T0Bot, member: Member, starship: CharacterStarship):
+    def __init__(self, bot: G0T0Bot, player: Player, starship: CharacterStarship):
         super().__init__(title=f"{starship.name} Information")
-        self.color = member.color
-        self.set_thumbnail(url=member.display_avatar.url)
+        self.color = player.member.color
+        self.set_thumbnail(url=player.member.display_avatar.url)
 
         self.description = f"**Tier**: {starship.tier}\n"\
                            f"**Size**: {starship.starship.get_size(bot.compendium).value}\n"\
@@ -79,12 +80,12 @@ class StarshipEmbed(Embed):
 
 
         self.add_field(name=f"Owner{'s' if len(starship.character_id) > 1 else ''}",
-                       value="\n".join([f"{char.name} ( {member.guild.get_member(char.player_id).mention} )" for char in starship.owners]),
+                       value="\n".join([f"{char.name} ( {player.member.guild.get_member(char.player_id).mention} )" for char in starship.owners]),
                        inline=False)
         
 class LevelUpEmbed(Embed):
-    def __init__(self, member: Member, character: PlayerCharacter):
+    def __init__(self, player: Player, character: PlayerCharacter):
         super().__init__(title="Level up successful!",
                          color=Color.random())
-        self.set_thumbnail(url=member.display_avatar.url)
-        self.description=f"{character.name} ({member.mention}) is now level {character.level}"
+        self.set_thumbnail(url=player.member.display_avatar.url)
+        self.description=f"{character.name} ({player.member.mention}) is now level {character.level}"

@@ -70,7 +70,7 @@ class CharacterSelectUI(CharacterSelect):
             await self.refresh_content()
         else:
             if self.levelUp:
-                g = await get_guild(self.bot.db, interaction.guild.id)
+                g = await get_guild(self.bot, interaction.guild.id)
 
                 if self.character.level >= g.max_level:
                     await interaction.channel.send(embed=ErrorEmbed(description="Character is already at max level for the server"), delete_after=5)

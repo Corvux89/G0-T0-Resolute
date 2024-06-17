@@ -85,7 +85,7 @@ class AdventureSettingsUI(AdventureSettings):
         response = await self.prompt_modal(interaction, modal)
 
         if response.cc > 0:
-            g = await get_guild(self.bot.db, interaction.guild.id)
+            g = await get_guild(self.bot, interaction.guild.id)
             self.adventure.cc += response.cc
 
             if dm_activity := self.bot.compendium.get_object(Activity, "ADVENTURE_DM"):

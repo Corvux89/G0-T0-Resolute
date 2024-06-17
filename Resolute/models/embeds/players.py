@@ -15,7 +15,7 @@ class PlayerOverviewEmbed(Embed):
 
         # Guild Handicap
         if guild.handicap_cc > 0 and player.handicap_amount < guild.handicap_cc:
-            self.description += f"\n**Booster enabled. All CC Rewards Coubled**"
+            self.description += f"\n**Booster enabled. All CC Rewards Doubled**"
         
         # Diversion Limits
         self.add_field(name="Weekly Limits: ",

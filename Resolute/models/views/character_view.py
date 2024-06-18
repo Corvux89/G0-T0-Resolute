@@ -239,7 +239,7 @@ class _EditCharacter(CharacterSettings):
 
             await interaction.channel.send(embed=LevelUpEmbed(self.player, self.active_character))
 
-        await self.refresh_content(interaction)
+        await self.on_timeout()
 
     @discord.ui.button(label="Back", style=discord.ButtonStyle.grey, row=3)
     async def back(self, _: discord.ui.Button, interaction: discord.Interaction):

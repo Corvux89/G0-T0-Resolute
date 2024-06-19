@@ -4,7 +4,7 @@ import sqlalchemy as sa
 
 from math import floor
 from marshmallow import Schema, fields, post_load
-from sqlalchemy import Column, Integer, BigInteger, String, TIMESTAMP, and_
+from sqlalchemy import Column, Integer, BigInteger, String, TIMESTAMP, and_, BOOLEAN
 from sqlalchemy.sql import FromClause
 from sqlalchemy.dialects.postgresql import insert
 from datetime import datetime, timezone, timedelta
@@ -20,7 +20,6 @@ class PlayerGuild(object):
 
         self.max_level: int = kwargs.get('max_level', 3)
         self.weeks: int = kwargs.get('weeks', 0)
-        self.max_reroll: int = kwargs.get('max_reroll', 1)
         self._reset_day: int = kwargs.get('reset_day')
         self._reset_hour: int = kwargs.get('reset_hour')
         self._last_reset: datetime = kwargs.get('last_reset', datetime.now(timezone.utc))
@@ -33,6 +32,7 @@ class PlayerGuild(object):
         self.server_date: int = kwargs.get('server_date')
         self.epoch_notation: str = kwargs.get('epoch_notation')
         self.first_character_message: str = kwargs.get('first_character_message')
+        self.ping_announcement: bool = kwargs.get('ping_announcement', False)
 
         # Virtual attributes
         self.calendar = None
@@ -108,7 +108,6 @@ guilds_table = sa.Table(
     Column("id", BigInteger, primary_key=True, nullable=False),
     Column("max_level", Integer, nullable=False, default=3),
     Column("weeks", Integer, nullable=False, default=0),
-    Column("max_reroll", Integer, nullable=False, default=1),
     Column("reset_day", Integer, nullable=True),
     Column("reset_hour", Integer, nullable=True),
     Column("last_reset", TIMESTAMP(timezone=timezone.utc)),
@@ -120,14 +119,14 @@ guilds_table = sa.Table(
     Column("weekly_announcement", sa.ARRAY(String), nullable=True),
     Column("server_date", Integer, nullable=True),
     Column("epoch_notation", String, nullable=True),
-    Column("first_character_message", String, nullable=True)
+    Column("first_character_message", String, nullable=True),
+    Column("ping_announcement", BOOLEAN, default=False, nullable=False)
 )
 
 class GuildSchema(Schema):
     id = fields.Integer(required=True)
     max_level = fields.Integer()
     weeks = fields.Integer()
-    max_reroll = fields.Integer()
     reset_day = fields.Integer(allow_none=True)
     reset_hour = fields.Integer(allow_none=True)
     last_reset = fields.Method(None, "load_timestamp")
@@ -140,6 +139,7 @@ class GuildSchema(Schema):
     server_date = fields.Integer(allow_none=True)
     epoch_notation = fields.String(allow_none=True)
     first_character_message = fields.String(allow_none=True)
+    ping_announcement = fields.Boolean(allow_none=False)
 
     @post_load
     def make_guild(self, data, **kwargs):
@@ -167,7 +167,6 @@ def upsert_guild(guild: PlayerGuild):
         id=guild.id,
         max_level=guild.max_level,
         weeks=guild.weeks,
-        max_reroll=guild.max_reroll,
         reset_day=guild._reset_day,
         reset_hour=guild._reset_hour,
         last_reset=guild._last_reset,
@@ -179,7 +178,8 @@ def upsert_guild(guild: PlayerGuild):
         weekly_announcement=guild.weekly_announcement,
         server_date=guild.server_date,
         epoch_notation=guild.epoch_notation,
-        first_character_message=guild.first_character_message
+        first_character_message=guild.first_character_message,
+        ping_announcement=guild.ping_announcement
     ).returning(guilds_table)
 
     update_dict = {
@@ -196,7 +196,8 @@ def upsert_guild(guild: PlayerGuild):
         'server_date': guild.server_date,
         'epoch_notation': guild.epoch_notation,
         'greeting': guild.greeting,
-        'first_character_message': guild.first_character_message
+        'first_character_message': guild.first_character_message,
+        'ping_announcement': guild.ping_announcement
     }
 
     upsert_statement = insert_statment.on_conflict_do_update(

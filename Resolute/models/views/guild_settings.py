@@ -103,7 +103,7 @@ class _GuildResetView(GuildSettings):
 
     @discord.ui.button(label="Preview Reset", style=discord.ButtonStyle.primary, row=1)
     async def preview_reset(self, _: discord.ui.Button, interaction: discord.Interaction):
-        await interaction.channel.send(embed=ResetEmbed(self.guild, 1.23), delete_after=5)
+        await interaction.channel.send(embed=ResetEmbed(self.guild, 1.23), content=f"{'Citizen Acolyte' if self.guild.ping_announcement else ''}", delete_after=5)
         await self.refresh_content(interaction)
 
     @discord.ui.select(placeholder="Reset Day", row=2)
@@ -195,7 +195,6 @@ class GuildLimitsModal(Modal):
         self.guild = guild
 
         self.add_item(InputText(label="Max Level", required=True, placeholder="Max Level", max_length=2, value=self.guild.max_level))
-        self.add_item(InputText(label="Max # Rerolls", required=True, placeholder="Max Rerolls", max_length=2, value=self.guild.max_reroll))
         self.add_item(InputText(label="Max # Characters", required=True, placeholder="Max Characters", max_length=2, value=self.guild.max_characters))
         self.add_item(InputText(label="Handicap Amount", required=True, placeholder="Handicap Amount", max_length=3, value=self.guild.handicap_cc))
         self.add_item(InputText(label="Diversion Limit (CC)", required=True, placeholder="Diversion Limit", max_length=3, value=self.guild.div_limit))
@@ -204,10 +203,9 @@ class GuildLimitsModal(Modal):
         err_str = []
         values = [
             (self.children[0].value, "max_level", "Max level must be a number!"),
-            (self.children[1].value, "max_reroll", "Max reroll must be a number!"),
-            (self.children[2].value, "max_characters", "Max characters must be a number!"),
-            (self.children[3].value, "handicap_cc", "Handicap amount must be a number!"),
-            (self.children[4].value, "div_limit", "Diversion limit must be a number!")
+            (self.children[1].value, "max_characters", "Max characters must be a number!"),
+            (self.children[2].value, "handicap_cc", "Handicap amount must be a number!"),
+            (self.children[3].value, "div_limit", "Diversion limit must be a number!")
         ]
 
         for value, node, err_msg in values:
@@ -263,10 +261,12 @@ class GuildAnnouncementModal(Modal):
 
         self.add_item(InputText(label="Reset Message", style=discord.InputTextStyle.long, required=False, placeholder="Reset Message", max_length=3500, value=self.guild.reset_message))
         self.add_item(InputText(label="Weekly Announcements", style=discord.InputTextStyle.long, required=False, placeholder="Weekly Announcements", value=announcement_string))
+        self.add_item(InputText(label="Ping on announcement?", required=False, placeholder="Ping on announcement?", value=f"{guild.ping_announcement}"))
 
     async def callback(self, interaction: discord.Interaction):    
         self.guild.reset_message = self.children[0].value or None
         self.guild.weekly_announcement = self.split_string(self.children[1].value)
+        self.guild.ping_announcement = True if self.children[2] and get_positivity(self.children[2].value.lower()) else False
 
         await interaction.response.defer()
         self.stop()

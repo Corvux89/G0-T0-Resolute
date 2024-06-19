@@ -118,7 +118,10 @@ class Guilds(commands.Cog):
         # Announce we're all done!
         if announcement_channel := discord.utils.get(guild.channels, name="announcements"):
             try:
-                await announcement_channel.send(embed=ResetEmbed(g, end-start))
+                if g.ping_announcement == True and (citizen_role := discord.utils.get(guild.roles, name="Citizen")) and (acolyte_role := discord.utils.get(guild.roles, name="Acolyte")):
+                    await announcement_channel.send(embed=ResetEmbed(g, end-start), content=f"{citizen_role.mention}{acolyte_role.mention}")
+                else:
+                    await announcement_channel.send(embed=ResetEmbed(g, end-start))
             except Exception as error:
                 if isinstance(error, discord.errors.HTTPException):
                     log.error(f"WEEKLY RESET: Error sending message to announcements channel in "

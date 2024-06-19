@@ -16,7 +16,6 @@ class GuildEmbed(Embed):
 
         self.add_field(name="**Settings**",
                        value=f"**Max Level**: {g.max_level}\n"
-                             f"**Max Rerolls**: {g.max_reroll}\n"
                              f"**Max Characters**: {g.max_characters}\n"
                              f"**Handicap CC Amount**: {g.handicap_cc}\n"
                              f"**Diversion Limit**: {g.div_limit}\n",

@@ -57,9 +57,10 @@ class CharacterEmbed(Embed):
         starship_str = ""
 
         if character.starships:
-            starship_str = "{ZWSP3}**Starships**:\n" + "\n".join([f"{ZWSP3*2}{s.get_formatted_starship(compendium)}" for s in character.starships]) 
+            starship_str = f"{ZWSP3}**Starships**:\n" + "\n".join([f"{ZWSP3*2}{s.get_formatted_starship(compendium)}" for s in character.starships]) 
 
-        class_str = "\n".join([f" {c.get_formatted_class()}" for c in character.classes])
+        class_str = f"\n{ZWSP3*2}".join([f"{c.get_formatted_class()}" for c in character.classes])
+        class_str = f"\n{ZWSP3*2}{class_str}" if len(character.classes) > 1 else class_str
 
         self.description = f"**Class{'es' if len(character.classes) > 1 else ''}**: {class_str}\n"\
                            f"**Species**: {character.species.value}\n"\

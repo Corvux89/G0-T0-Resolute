@@ -39,7 +39,8 @@ class PlayerOverviewEmbed(Embed):
                 if character.starships:
                     starship_str = f"{ZWSP3}**Starships**:\n" + "\n".join([f"{ZWSP3*2}{s.get_formatted_starship(compendium)}" for s in character.starships]) 
 
-                class_str = "\n".join([f" {c.get_formatted_class()}" for c in character.classes])
+                class_str = f"\n{ZWSP3}{ZWSP3}".join([f"{c.get_formatted_class()}" for c in character.classes])
+                class_str = f"\n{ZWSP3}{ZWSP3}{class_str}" if len(character.classes) > 1 else class_str
 
                 self.add_field(name=f"Character: {character.name}",
                                value=f"{ZWSP3}**Class{'es' if len(character.classes) > 1 else ''}**: {class_str}\n"

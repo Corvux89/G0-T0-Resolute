@@ -145,7 +145,7 @@ class _NewCharacter(CharacterSettings):
 
         await interaction.channel.send(embed=NewcharacterEmbed(self.owner, self.player, self.new_character, log_entry, self.bot.compendium))
 
-        if self.guild.first_character_message and self.guild.first_character_message != "" and self.guild.first_character_message is not None and not self.player.characters:
+        if self.guild.first_character_message and self.guild.first_character_message != "" and self.guild.first_character_message is not None and len(self.player.characters) == 1:
             mappings = {"character.name": self.new_character.name,
                         "character.level": str(self.new_character.level)}
             await interaction.channel.send(process_message(self.guild.first_character_message, self.guild, self.player.member, mappings))

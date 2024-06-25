@@ -334,7 +334,7 @@ class MiscModal(Modal):
         self.add_item(InputText(label="Starting Credits", placeholder="Starting Credits", value=self.application.credits, max_length=150))
         self.add_item(InputText(label="Homeworld", placeholder="Homeworld", value=self.application.homeworld, max_length=500))
         self.add_item(InputText(label="Motivation for working with the New Republic", style=discord.InputTextStyle.long, placeholder="Motivation", 
-                                value=self.application.motivation, max_length=2000))
+                                value=self.application.motivation, max_length=1000))
         self.add_item(InputText(label="Character Sheet Link", placeholder="Character Sheet Link", value=self.application.link))
 
     async def callback(self, interaction: discord.Interaction):

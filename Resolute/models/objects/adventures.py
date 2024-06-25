@@ -90,7 +90,8 @@ def upsert_adventure_query(adventure: Adventure):
         dms=adventure.dms,
         category_channel_id=adventure.category_channel_id,
         cc=adventure.cc,
-        created_ts=adventure.created_ts
+        created_ts=adventure.created_ts,
+        characters=adventure.characters
     ).returning(adventures_table)
     
 def get_character_adventures_query(char_id: int) -> FromClause:

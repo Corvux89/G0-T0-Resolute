@@ -7,22 +7,28 @@ from Resolute.constants import ZWSP3
 class ChannelEmbed(Embed):
     def __init__(self, channel: discord.TextChannel):
         super().__init__(title=f"{channel.name} Summary")
+        chunk_size = 1000
 
         self.description = f"**Category**: {channel.category.mention}\n"\
         
 
         category_overwrites = channel.category.overwrites
+        category_string = "\n".join(get_overwrite_string(category_overwrites))
+        category_chunk = [category_string[i:i+chunk_size] for i in range(0, len(category_string), chunk_size)]
 
-
-        self.add_field(name="Category Overwrites",
-                       value="\n".join(get_overwrite_string(category_overwrites)),
-                       inline=False)
+        for i,chunk in enumerate(category_chunk):
+            self.add_field(name=f"Category Overwrites {f'{i+1}' if len(category_chunk)>1 else ''}",
+                        value=chunk,
+                        inline=False)
         
         channel_overwrites = channel.overwrites
+        channel_string = "\n".join(get_overwrite_string(channel_overwrites))
+        channel_chunk = [channel_string[i:i+chunk_size] for i in range(0, len(channel_string), chunk_size)]
 
-        self.add_field(name="Channel Overwrites",
-                       value="\n".join(get_overwrite_string(channel_overwrites)),
-                       inline=False)
+        for i,chunk in enumerate(channel_chunk):
+            self.add_field(name=f"Channel Overwrites {f'{i+1}' if len(channel_chunk)>1 else ''}",
+                        value=chunk,
+                        inline=False)
 
 
 def get_overwrite_string(overwrites: dict[Role | Member, PermissionOverwrite]):

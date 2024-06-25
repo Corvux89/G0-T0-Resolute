@@ -41,6 +41,17 @@ class Log(commands.Cog):
             await self.prompt_log(ctx, member, activity)
         else:
             return await ctx.respond(embed=ErrorEmbed(description="Activity not found"), ephemeral=True)
+        
+    @log_commands.command(
+        name="snapshot",
+        description="Logs a completed snapshot"
+    )
+    async def rp_log(self, ctx: ApplicationContext,
+                     member: Option(discord.SlashCommandOptionType(6),description="Player who participated in the snapshot", required=True)):
+        if activity := self.bot.compendium.get_activity("SNAPSHOT"):
+            await self.prompt_log(ctx, member, activity)
+        else:
+            return await ctx.respond(embed=ErrorEmbed(description="Activity not found"), ephemeral=True)
 
     @log_commands.command(
         name="bonus",

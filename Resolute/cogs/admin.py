@@ -30,7 +30,8 @@ class Admin(commands.Cog):
 
     @commands.Cog.listener()
     async def on_db_connected(self):
-        asyncio.ensure_future(self.reload_category_task.start())
+        if not self.reload_category_task.is_running():
+            asyncio.ensure_future(self.reload_category_task.start())
 
     @commands.slash_command(
         name="automation_request",

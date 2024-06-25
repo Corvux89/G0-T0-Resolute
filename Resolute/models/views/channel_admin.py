@@ -48,9 +48,9 @@ class ChannelAdminUI(ChannelAdmin):
         else:
             await interaction.channel.send(embed=ErrorEmbed(description="Select a channel to edit first."), delete_after=5)
 
-    @discord.ui.button(label="Archive Channel", style=discord.ButtonStyle.primary, row=3)
-    async def archive_channel(self, _: discord.ui.Button, interaction: discord.Interaction):
-        await self.refresh_content(interaction)
+    # @discord.ui.button(label="Archive Channel", style=discord.ButtonStyle.primary, row=3)
+    # async def archive_channel(self, _: discord.ui.Button, interaction: discord.Interaction):
+    #     await self.refresh_content(interaction)
 
     @discord.ui.button(label="Exit", style=discord.ButtonStyle.danger, row=4)
     async def exit(self, *_):

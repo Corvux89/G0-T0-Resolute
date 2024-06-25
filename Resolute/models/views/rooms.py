@@ -54,16 +54,15 @@ class RoomSettingsUI(RoomSettings):
     @discord.ui.select(placeholder="Select a view option", row=1)
     async def room_view(self, choice: discord.ui.Select, interaction: discord.Interaction):
         view = int(choice.values[0])
-        overwrites = interaction.channel.overwrites
 
         read = True if view == 1 or view == 2 else False
         write = True if view == 1 else False
 
         for role in self.roles:
-            overwrites[role] = discord.PermissionOverwrite(view_channel=read,
-                                                           send_messages=write)
-        
-        await interaction.channel.edit(overwrites=overwrites)
+            perms = interaction.channel.overwrites_for(role)
+            perms.view_channel=read
+            perms.send_messages=write
+            await interaction.channel.set_permissions(role, overwrite=perms)
 
         await self.refresh_content(interaction)
 
@@ -102,11 +101,12 @@ class RoomSettingsUI(RoomSettings):
 
         # Defaulting
         default = 1
-        check_role = self.roles[0]
+        channel = interaction.guild.get_channel(interaction.channel.id)
+        perms = channel.permissions_for(self.roles[0])
 
-        if not interaction.channel.permissions_for(check_role).send_messages and not interaction.channel.permissions_for(check_role).view_channel:
+        if perms.send_messages == False and perms.view_channel == False:
             default = 3
-        elif interaction.channel.permissions_for(check_role).view_channel and not interaction.channel.permissions_for(check_role).send_messages:
+        elif perms.view_channel == True and perms.send_messages == False:
             default = 2
 
 

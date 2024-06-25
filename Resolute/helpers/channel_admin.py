@@ -8,7 +8,9 @@ general_overwrites = discord.PermissionOverwrite(view_channel=True,
                                                  send_messages=False)
 
 bot_overwrites = discord.PermissionOverwrite(view_channel=True,
-                                             send_messages=True)
+                                             send_messages=True,
+                                             manage_messages=True,
+                                             manage_channels=True)                                             
 
 readonly_overwrites = discord.PermissionOverwrite(view_channel=True,
                                                   send_messages=False,
@@ -20,18 +22,11 @@ readonly_overwrites = discord.PermissionOverwrite(view_channel=True,
                                                   send_messages_in_threads=False)
 
 async def add_owner(channel: discord.TextChannel, member: discord.Member) -> None:
-    channel_overwrites = channel.overwrites
+    await channel.set_permissions(member, overwrite=owner_overwrites)
 
-    channel_overwrites[member] = owner_overwrites
-
-    await channel.edit(overwrites=channel_overwrites)
 
 async def remove_owner(channel: discord.TextChannel, member: discord.Member) -> None:
-    channel_overwrites = channel.overwrites
-
-    del channel_overwrites[member]
-
-    await channel.edit(overwrites=channel_overwrites)
+    await channel.set_permissions(member, overwrite=None)
 
 async def create_channel(name: str, category: discord.TextChannel, member: discord.Member) -> discord.TextChannel:
     channel_overwrites = {}

@@ -41,9 +41,11 @@ class Room(commands.Cog):
                 roles+=[member_role, initiate_role]
             else:
                 return await ctx.respond(embed=ErrorEmbed(description=f"Problem finding roles to manage"), ephemeral=True)
-            
-            ui = RoomSettingsUI.new(self.bot, ctx.author, roles, adventure)
-            await ui.send_to(ctx)
-            await ctx.delete()
+            if roles:
+                ui = RoomSettingsUI.new(self.bot, ctx.author, roles, adventure)
+                await ui.send_to(ctx)
+                await ctx.delete()
+            else:
+                return await ctx.respond("No roles to manage")
         else:
             return await ctx.respond(embed=ErrorEmbed(description=f"There is nothing in this channel you can do"), ephemeral=True)

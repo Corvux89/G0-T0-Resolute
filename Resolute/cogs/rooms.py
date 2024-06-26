@@ -32,7 +32,7 @@ class Room(commands.Cog):
         description="Room settings"
     )
     async def room_settings(self, ctx: ApplicationContext):
-        if (ctx.author in ctx.channel.overwrites or is_admin(ctx)):
+        if ctx.channel.overwrites_for(ctx.author).manage_channels == True or is_admin(ctx):
             roles = []
 
             if (adventure := await get_adventure_from_category(self.bot, ctx.channel.category.id)) and (questor_role := discord.utils.get(ctx.guild.roles, name="Quester")):

@@ -93,15 +93,16 @@ async def create_new_character(bot: G0T0Bot, type: str, player: Player, new_char
     transfer_ship: bool = kwargs.get('transfer_ship', False)
 
     new_character.player_id = player.id
-    new_character.guild_id = player.guild_id
-
-    if type == 'freeroll':
-        new_character.freeroll_from = old_character.id
+    new_character.guild_id = player.guild_id        
 
     if type in ['freeroll', 'death']:
         new_character.reroll = True
         old_character.active = False
-        player.handicap_amount = 0
+
+        if type == 'freeroll':
+            new_character.freeroll_from = old_character.id
+        else:
+            player.handicap_amount = 0
 
         old_character = await upsert_character(bot, old_character)
 

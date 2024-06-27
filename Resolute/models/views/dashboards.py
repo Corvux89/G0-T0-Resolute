@@ -1,4 +1,5 @@
 import discord
+import logging
 
 from discord import ChannelType, SelectOption
 from typing import Mapping
@@ -10,6 +11,8 @@ from Resolute.models.embeds import ErrorEmbed
 from Resolute.models.embeds.dashboards import DashboardEditEmbed
 from Resolute.models.objects.dashboards import RefDashboard
 from Resolute.models.views.base import InteractiveView
+
+log = logging.getLogger(__name__)
 
 
 class DashboardSettings(InteractiveView):

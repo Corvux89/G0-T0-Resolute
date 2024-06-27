@@ -1,9 +1,12 @@
 
 import discord
+import logging
 
 from typing import Mapping
 from Resolute.bot import G0T0Bot
 from Resolute.models.views.base import InteractiveView
+
+log = logging.getLogger(__name__)
 
 
 class AdminMenu(InteractiveView):
@@ -43,6 +46,7 @@ class _BotMessage(AdminMenu):
         response = await self.prompt_modal(interaction, modal)
 
         if response.message is not None and response.message != "":
+            log.info(f"ADMIN: Bot message from {interaction.user} [ {interaction.user.id} ] to {self.channel.name} [ {self.channel.id} ]")
             await self.channel.send(response.message)
         
         await self.refresh_content(interaction)

@@ -8,6 +8,8 @@ from discord.ext import commands, tasks
 from discord import SlashCommandGroup, ApplicationContext
 from timeit import default_timer as timer
 
+import discord.ext.tasks
+
 from Resolute.bot import G0T0Bot
 from Resolute.models.categories import Activity
 from Resolute.helpers.guilds import get_guilds_with_reset, get_guild, update_guild
@@ -18,6 +20,7 @@ from Resolute.models.embeds.guilds import ResetEmbed
 from Resolute.models.objects.guilds import PlayerGuild
 from Resolute.models.objects.players import reset_div_cc
 from Resolute.models.views.guild_settings import GuildSettingsUI
+import discord.ext
 
 log = logging.getLogger(__name__)
 
@@ -132,12 +135,11 @@ class Guilds(commands.Cog):
     # --------------------------- #
     # Task Helpers
     # --------------------------- #
-    @tasks.loop(minutes=30)
+    @tasks.loop(minutes=5)
     async def schedule_weekly_reset(self):
         hour = datetime.now(timezone.utc).hour
         day = datetime.now(timezone.utc).weekday()
-        log.info(f"GUIlDS: Checking reset for day {day} and hour {hour}")
+        # log.info(f"GUIlDS: Checking reset for day {day} and hour {hour}")
         guild_list = await get_guilds_with_reset(self.bot, day, hour)
-
         for guild in guild_list:
             await self.perform_weekly_reset(guild)

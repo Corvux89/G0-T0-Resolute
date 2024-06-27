@@ -502,7 +502,7 @@ class NewCharacterInformationModal(Modal):
         self.add_item(InputText(label="Character Name", style=discord.InputTextStyle.short, required=True, placeholder="Character Name", max_length=2000, value=self.character.name if self.character.name else ''))
         self.add_item(InputText(label="Level", style=discord.InputTextStyle.short, required=True, placeholder="Level", max_length=2, value=str(self.character.level)))
         self.add_item(InputText(label="Credits", style=discord.InputTextStyle.short, required=True, placeholder="Credits", max_length=7, value=str(self.new_credits)))
-        self.add_item(InputText(label="Chain Codes", style=discord.InputTextStyle.short, required=False, placeholder="Chain Codes", max_length=7, value=str(self.new_cc)))
+        self.add_item(InputText(label="CC Refund/Adjustment", style=discord.InputTextStyle.short, required=False, placeholder="Chain Codes", max_length=7, value=str(self.new_cc)))
 
         if self.new_type in ['freeroll', 'death'] and len(self.active_character.starships) > 0:
             self.add_item(InputText(label="Transfer Ship to new character?", style=discord.InputTextStyle.short, required=False, placeholder="Transfer Ship?", max_length=5, value=self.transfer_ship))

@@ -26,7 +26,7 @@ class Dashboards(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
-        print(f'Cog \'Dashboards\' loaded')
+        log.info(f'Cog \'Dashboards\' loaded')
 
     @commands.Cog.listener()
     async def on_compendium_loaded(self):

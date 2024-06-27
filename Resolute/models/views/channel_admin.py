@@ -1,4 +1,5 @@
 import discord
+import logging
 
 from typing import Mapping
 from discord.ui import Modal, InputText
@@ -8,6 +9,8 @@ from Resolute.helpers.channel_admin import add_owner, create_channel, remove_own
 from Resolute.models.embeds import ErrorEmbed
 from Resolute.models.embeds.channel_admin import ChannelEmbed
 from Resolute.models.views.base import InteractiveView
+
+log = logging.getLogger(__name__)
 
 
 class ChannelAdmin(InteractiveView):
@@ -41,7 +44,7 @@ class ChannelAdminUI(ChannelAdmin):
                         managed = True
             
             if not managed:
-                await interaction.channel.send(embed=ErrorEmbed(description="This doesn't look to be a player manage channel"), delete_after=5)
+                await interaction.channel.send(embed=ErrorEmbed(description="This doesn't look to be a player managed channel"), delete_after=5)
                 await self.refresh_content(interaction)
             else:
                 await self.defer_to(_EditPlayerChannel, interaction)
@@ -75,12 +78,14 @@ class _EditPlayerChannel(ChannelAdmin):
         if self.member in self.channel.overwrites.keys() and self.channel.overwrites_for(self.member).manage_messages == True:
             await interaction.channel.send(embed=ErrorEmbed(description=f"{self.member.mention} is already a channel owner."), delete_after=5)
         else:
+            log.info(f"CHANNEL ADMIN: {self.member} [ {self.member.id} ] added to {self.channel.name} [ {self.channel.id} ] by {interaction.user} [ {interaction.user.id} ]")
             await add_owner(self.channel, self.member)
         await self.refresh_content(interaction)
 
     @discord.ui.button(label="Remove Owner", style=discord.ButtonStyle.red, row=2)
     async def remove_owner(self, _: discord.ui.Button, interaction: discord.Interaction):
         if self.member in self.channel.overwrites.keys() and self.channel.overwrites_for(self.member).manage_messages == True:
+            log.info(f"CHANNEL ADMIN: {self.member} [ {self.member.id} ] removed from {self.channel.name} [ {self.channel.id} ] by {interaction.user} [ {interaction.user.id} ]")
             await remove_owner(self.channel, self.member)
         else:
             await interaction.channel.send(embed=ErrorEmbed(description=f"{self.member.mention} is not a channel owner."), delete_after=5)
@@ -118,6 +123,7 @@ class _NewPlayerchannel(ChannelAdmin):
     @discord.ui.button(label="Create Channel", style=discord.ButtonStyle.green, row=3, disabled=True)
     async def channel_create(self, _: discord.ui.Button, interaction: discord.Interaction):
         self.channel = await create_channel(self.name, self.category, self.member)
+        log.info(f"CHANNEL ADMIN: {self.channel.name} [ {self.channel.id} ] created for {self.member} [ {self.member.id} ] by {interaction.user} [ {interaction.user.id} ]")
         await self.defer_to(ChannelAdminUI, interaction)
 
     @discord.ui.button(label="Back", style=discord.ButtonStyle.grey, row=4)

@@ -23,7 +23,7 @@ class GuildSettings(InteractiveView):
     guild: PlayerGuild = None
 
     async def commit(self):
-        self.guild = await update_guild(self.bot.db, self.guild)
+        self.guild = await update_guild(self.bot, self.guild)
     
 class GuildSettingsUI(GuildSettings):
     @classmethod

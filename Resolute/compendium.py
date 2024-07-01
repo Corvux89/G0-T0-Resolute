@@ -13,7 +13,7 @@ async def get_table_values(conn, comp: CompendiumObject) -> list:
         val = comp.schema().load(row)
 
         d1[val.id] = val
-        key = getattr(val, "value", getattr(val, "avg_level", getattr(val, "name", None)))
+        key = getattr(val, "value", getattr(val, "avg_level", getattr(val, "name", getattr(val, "cc", None))))
 
         if key is not None:
             d2[key] = val
@@ -26,8 +26,9 @@ class Compendium:
             rarity, char_class, char_archetype,
             char_species, arena_tier, activity, 
             dashboard_type, cc_conversion, starship_role,
-            starship_size, arena_type
-        ]
+            starship_size, arena_type, transaction_type, transaction_subtype,
+            level_cost
+            ]
 
         for category in self.categories:
             setattr(self, category.key, [])

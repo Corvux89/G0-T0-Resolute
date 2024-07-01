@@ -153,15 +153,16 @@ class NewCharacterRequestUI(CharacterSelect):
 
     @discord.ui.button(label="Submit", style=discord.ButtonStyle.green, row=2)
     async def submit(self, _: discord.ui.Button, interaction: discord.Interaction):
-        if (arch_role := discord.utils.get(interaction.guild.roles, name="Archivist")) and (app_channel := discord.utils.get(interaction.guild.channels, name="character-apps")):
-            message = self.application.format_app(self.owner, arch_role)
+        guild = await get_guild(self.bot, interaction.guild.id)
+        if guild.archivist_role and guild.character_application_channel:
+            message = self.application.format_app(self.owner, guild.archivist_role)
             
             if self.application.message:
                 await self.application.message.edit(content=message)
                 await interaction.response.send_message("Request Updated", ephemeral=True)
                 await upsert_application(self.bot.db, self.owner.id)
             else:
-                msg = await app_channel.send(content=message)
+                msg = await guild.character_application_channel.send(content=message)
                 thread = await msg.create_thread(name=f"{self.application.name}", auto_archive_duration=10080)
                 await thread.send(f'''Need to make an edit? Use: `/edit_application` in this thread''')
                 await interaction.response.send_message("Request submitted!", ephemeral=True)

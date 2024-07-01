@@ -7,8 +7,9 @@ from discord.ext import commands, tasks
 from timeit import default_timer as timer
 
 from Resolute.bot import G0T0Bot
-from Resolute.constants import DASHBOARD_REFRESH_INTERVAL
+from Resolute.constants import DASHBOARD_REFRESH_INTERVAL, ZWSP3
 from Resolute.helpers.dashboards import delete_dashboard, get_dashboard_from_category, get_pinned_post, update_dashboard
+from Resolute.helpers.guilds import get_guild
 from Resolute.models.embeds.dashboards import RPDashboardEmbed
 from Resolute.models.objects.dashboards import RPDashboardCategory, RefDashboard, RefDashboardSchema, get_dashboards
 from Resolute.models.views.dashboards import DashboardSettingsUI
@@ -48,9 +49,11 @@ class Dashboards(commands.Cog):
             if not post_message or not post_message.pinned:
                 return await delete_dashboard(self.bot, dashboard)
             
+            guild = await get_guild(self.bot, message.guild.id)
+            
             if dashboard.dashboard_type.value.upper() == "RP":
                 embed = post_message.embeds[0]
-                pre_channels = [self.bot.get_channel(self.strip_field(x))  for x in [x.value if "Archivist" in x.name else "" for x in embed.fields][0].split('\n')]
+                # pre_channels = [self.bot.get_channel(self.strip_field(x))  for x in [x.value if "Archivist" in x.name else "" for x in embed.fields][0].split('\n')]
 
                 archivist_field = RPDashboardCategory(title="Archivist",
                                                       name="<:pencil:989284061786808380> -- Awaiting Archivist",
@@ -75,14 +78,14 @@ class Dashboards(commands.Cog):
                 if not message.content or message.content in ["```\n​\n```", "```\n \n```"]:
                     available_field.channels.append(message.channel)                     
                     update = True if available_field.title != node else False
-                elif (archivist_role := discord.utils.get(message.guild.roles, name="Archivist")) and archivist_role.mention in message.content:
+                elif guild.archivist_role and guild.archivist_role.mention in message.content:
                     archivist_field.channels.append(message.channel)
                     update = True if available_field.title != node else False
                 else:
                     unavailable_field.channels.append(message.channel)
                     update = True if available_field.title != node else False
 
-                all_fields = [f for f in all_fields if f.channels or f.title != "Archivist"]
+                all_fields = [f for f in all_fields if len(f.channels)>0 or f.title != "Archivist"]
 
                 if update:
                     return await post_message.edit(content="", embed=RPDashboardEmbed(all_fields, message.channel.category.name))
@@ -98,7 +101,7 @@ class Dashboards(commands.Cog):
 
 
     def strip_field(self, str) -> int:
-        if str == '\u200b' or str == "":
+        if str.replace(' ','') == ZWSP3.replace(' ', '') or str == '':
             return
         return int(str.replace('\u200b', '').replace('<#','').replace('>',''))
 

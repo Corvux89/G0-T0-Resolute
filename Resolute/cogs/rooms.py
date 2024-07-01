@@ -7,6 +7,7 @@ from discord.ext import commands
 from Resolute.bot import G0T0Bot
 from Resolute.helpers.adventures import get_adventure_from_category
 from Resolute.helpers.general_helpers import is_admin
+from Resolute.helpers.guilds import get_guild
 from Resolute.models.embeds import ErrorEmbed
 from Resolute.models.views.rooms import RoomSettingsUI
 
@@ -32,13 +33,15 @@ class Room(commands.Cog):
         description="Room settings"
     )
     async def room_settings(self, ctx: ApplicationContext):
-        if (ctx.author in ctx.channel.overwrites or is_admin(ctx)):
+        channel = ctx.guild.get_channel(ctx.channel.id)
+        if (ctx.author in channel.overwrites or is_admin(ctx)):
             roles = []
+            guild = await get_guild(self.bot, ctx.guild.id)
 
             if (adventure := await get_adventure_from_category(self.bot, ctx.channel.category.id)) and (questor_role := discord.utils.get(ctx.guild.roles, name="Quester")):
                 roles.append(questor_role)    
-            elif (member_role := discord.utils.get(ctx.guild.roles, name="Citizen")) and (initiate_role := discord.utils.get(ctx.guild.roles, name="Acolyte")):
-                roles+=[member_role, initiate_role]
+            elif guild.citizen_role and guild.acolyte_role:
+                roles+=[guild.citizen_role, guild.acolyte_role]
             else:
                 return await ctx.respond(embed=ErrorEmbed(description=f"Problem finding roles to manage"), ephemeral=True)
             if roles:

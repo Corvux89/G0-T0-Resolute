@@ -28,7 +28,8 @@ class Events(commands.Cog):
         log.info(f'Cog \'Events\' loaded')
 
     @commands.Cog.listener()
-    async def on_member_remove(self, member: discord.Member):
+    async def on_raw_member_remove(self, payload: discord.RawMemberRemoveEvent):
+        member = self.bot.get_guild(payload.guild_id).get_member(payload.user.id)
         # Reference Table Cleanup
         await upsert_application(self.bot.db, member.id)
 
@@ -46,7 +47,6 @@ class Events(commands.Cog):
                     log.error(error)
         
         if exit_channel := discord.utils.get(member.guild.channels, name="exit"):
-            g = await get_guild(self.bot, member.guild.id)
             player = await get_player(self.bot, member.id, member.guild.id)
             adventures = await get_player_adventures(self.bot, player)
             arenas = await get_player_arenas(self.bot, player)
@@ -57,6 +57,7 @@ class Events(commands.Cog):
                 if isinstance(error, discord.errors.HTTPException):
                     log.error(f"ON_MEMBER_REMOVE: Error sending message to exit channel in "
                             f"{member.guild.name} [ {member.guild.id} ] for {member.name} [ {member.id} ]")
+        
             
 
     @commands.Cog.listener()

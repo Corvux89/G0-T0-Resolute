@@ -105,18 +105,19 @@ class Character(commands.Cog):
     )
     async def edit_application(self, ctx: ApplicationContext,
                                application_id: Option(str, description="Application ID", required=False)):
+        guild = await get_guild(self.bot, ctx.guild.id)
         
-        if app_channel := discord.utils.get(ctx.guild.channels, name="character-apps"):
+        if guild.character_application_channel:
             if application_id:
                 try:
-                    message = await app_channel.fetch_message(int(application_id))
+                    message = await guild.character_application_channel.fetch_message(int(application_id))
                 except ValueError:
                     return await ctx.respond(embed=ErrorEmbed(description="Invalid application identifier"), ephemeral=True)
                 except discord.errors.NotFound:
                     return await ctx.respond(embed=ErrorEmbed(description="Application not found"), ephemeral=True)
             else:
                 try:
-                    message = await app_channel.fetch_message(ctx.channel.id)
+                    message = await guild.character_application_channel.fetch_message(ctx.channel.id)
                 except:
                     return await ctx.respond(embed=ErrorEmbed(description="Application not found"), ephemeral=True)
         

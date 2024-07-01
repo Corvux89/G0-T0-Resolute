@@ -87,7 +87,7 @@ class Guilds(commands.Cog):
             g.server_date += random.randint(13, 16)
 
         # Reset weekly stats
-        await update_guild(self.bot.db, g)
+        await update_guild(self.bot, g)
 
         # Reset Player CC's     
         async with self.bot.db.acquire() as conn:
@@ -119,12 +119,12 @@ class Guilds(commands.Cog):
         end = timer()
 
         # Announce we're all done!
-        if announcement_channel := discord.utils.get(guild.channels, name="announcements"):
+        if g.announcement_channel:
             try:
-                if g.ping_announcement == True and (citizen_role := discord.utils.get(guild.roles, name="Citizen")) and (acolyte_role := discord.utils.get(guild.roles, name="Acolyte")):
-                    await announcement_channel.send(embed=ResetEmbed(g, end-start), content=f"{citizen_role.mention}{acolyte_role.mention}")
+                if g.ping_announcement == True and g.citizen_role and g.acolyte_role:
+                    await g.announcement_channel.send(embed=ResetEmbed(g, end-start), content=f"{g.citizen_role.mention}{g.acolyte_role.mention}")
                 else:
-                    await announcement_channel.send(embed=ResetEmbed(g, end-start))
+                    await g.announcement_channel.send(embed=ResetEmbed(g, end-start))
             except Exception as error:
                 if isinstance(error, discord.errors.HTTPException):
                     log.error(f"WEEKLY RESET: Error sending message to announcements channel in "

@@ -37,6 +37,14 @@ class PlayerGuild(object):
         # Virtual attributes
         self.calendar = None
         self.guild: discord.Guild = None
+        self.archivist_role: discord.Role = None
+        self.citizen_role: discord.Role = None
+        self.acolyte_role: discord.Role = None
+        self.senate_role: discord.Role = None
+        self.help_channel: discord.TextChannel = None
+        self.character_application_channel: discord.TextChannel = None
+        self.market_channel: discord.TextChannel = None
+        self.announcement_channel: discord.TextChannel = None
 
     @property
     def get_reset_day(self):

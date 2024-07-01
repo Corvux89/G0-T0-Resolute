@@ -286,3 +286,78 @@ class ArenaTypeSchema(Schema):
         return ArenaType(**data)
 
 arena_type = CompendiumObject("arena_type", ArenaType, c_arena_type_table, ArenaTypeSchema)
+
+# Transaction Type
+c_transaction_type_table = sa.Table(
+    "c_transaction_type",
+    metadata,
+    Column("id", Integer, primary_key=True),
+    Column("value", String, nullable=False),
+    Column("currency", String, nullable=False)
+)
+
+class TransactionType(object):
+    def __init__(self, id, value, currency):
+        self.id = id
+        self.value = value
+        self.currency = currency
+
+class TransactionTypeSchema(Schema):
+    id = fields.Integer(data_key="id", required=True)
+    value = fields.String(data_key="value", required=True)
+    currency = fields.String(data_key="currency", required=True)
+
+    @post_load
+    def make_transaction_type(self, data, **kwargs):
+        return TransactionType(**data)
+    
+transaction_type = CompendiumObject("transaction_type", TransactionType, c_transaction_type_table, TransactionTypeSchema)
+
+# Transaction Subtype
+c_transaction_subtype_table = sa.Table(
+    "c_transaction_subtype",
+    metadata,
+    Column("id", Integer, primary_key=True),
+    Column("parent", Integer, nullable=False),
+    Column("value", String, nullable=False)
+)
+
+class TransactionSubType(object):
+    def __init__(self, id, value, parent):
+        self.id = id
+        self.parent = parent
+        self.value = value
+
+class TransactionSubTypeSchema(Schema):
+    id = fields.Integer(data_key="id", required=True)
+    value = fields.String(data_key="value", required=True)
+    parent = fields.Integer(data_key="parent", required=True)
+
+    @post_load
+    def make_transaction_subtype(self, data, **kwargs):
+        return TransactionSubType(**data)
+    
+transaction_subtype = CompendiumObject("transaction_subtype", TransactionSubType, c_transaction_subtype_table, TransactionSubTypeSchema)
+
+# Level Costs
+c_level_cost_table = sa.Table(
+    "c_level_costs",
+    metadata,
+    Column("id", Integer, primary_key=True),
+    Column("cc", Integer, nullable=False)
+)
+
+class LevelCost(object):
+    def __init__(self, id, cc):
+        self.id = id
+        self.cc = cc
+
+class LevelCostSchema(Schema):
+    id = fields.Integer(data_key="id", required=True)
+    cc = fields.Integer(data_key="cc", required=True)
+
+    @post_load
+    def make_level_cost(self, data, **kwargs):
+        return LevelCost(**data)
+    
+level_cost = CompendiumObject("level_cost", LevelCost, c_level_cost_table, LevelCostSchema)

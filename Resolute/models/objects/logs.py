@@ -31,7 +31,7 @@ class DBLog(object):
         self.created_ts = kwargs.get('created_ts', datetime.now(timezone.utc))
 
     def get_author(self, ctx: ApplicationContext) -> discord.Member | None:
-        return discord.utils.get(ctx.guild.members, id=self.author)
+        return ctx.guild.get_member(self.author)
     
     @property
     def epoch_time(self):

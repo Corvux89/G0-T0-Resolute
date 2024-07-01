@@ -3,6 +3,7 @@ import discord
 
 from datetime import datetime, timezone
 from Resolute.bot import G0T0Bot
+from Resolute.helpers.guilds import get_guild
 from Resolute.models.embeds.dashboards import RPDashboardEmbed
 from Resolute.models.objects.dashboards import RPDashboardCategory, RefDashboard, RefDashboardSchema, delete_dashboard_query, get_class_census, get_dashboard_by_category_channel_query, get_dashboard_by_post_id, get_dashboards, get_level_distribution, upsert_dashboard_query
 from texttable import Texttable
@@ -112,10 +113,11 @@ async def update_dashboard(bot: G0T0Bot, dashboard: RefDashboard):
     if not original_message or not original_message.pinned:
         return await delete_dashboard(bot, dashboard)
     
+    guild = await get_guild(bot, original_message.guild.id)
+    
     if dashboard.dashboard_type.value.upper() == "RP":
         channels = get_dashboard_channels(bot, dashboard)
         category = bot.get_channel(dashboard.category_channel_id)
-        archivist_role = discord.utils.get(category.guild.roles, name="Archivist")
 
         archivist_field = RPDashboardCategory(title="Archivist",
                                                 name="<:pencil:989284061786808380> -- Awaiting Archivist")
@@ -130,7 +132,7 @@ async def update_dashboard(bot: G0T0Bot, dashboard: RefDashboard):
             if last_message := await get_last_message(c):
                 if last_message.content in ["```\n​\n```", "```\n \n```"]:
                     available_field.channels.append(c)
-                elif archivist_role and archivist_role.mention in last_message.content:
+                elif guild.archivist_role and guild.archivist_role.mention in last_message.content:
                     archivist_field.channels.append(c)
                 else:
                     unavailable_field.channels.append(c)

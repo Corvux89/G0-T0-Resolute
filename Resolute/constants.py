@@ -19,6 +19,6 @@ THUMBNAIL = "https://cdn.discordapp.com/attachments/1069074273190285353/10704772
 DAYS_OF_WEEK = [("None", "None"), ("Monday", "0"), ("Tuesday", "1"), ("Wednesday", "2"), ("Thursday", "3"), ("Friday", "4"), ("Saturday", "5"), ("Sunday", "6")]
 CHANNEL_BREAK = "```\n​\n```"
 ZWSP3 = "\u200b \u200b \u200b "
-
-
-# Role Names
+APPROVAL_EMOJI = ['greencheck', '✅']
+DENIED_EMOJI = ['❌']
+EDIT_EMOJI = ['✏️', '📝']

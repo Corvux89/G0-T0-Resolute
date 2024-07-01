@@ -29,15 +29,15 @@ class Events(commands.Cog):
 
     @commands.Cog.listener()
     async def on_raw_member_remove(self, payload: discord.RawMemberRemoveEvent):
-        member = self.bot.get_guild(payload.guild_id).get_member(payload.user.id)
+        guild = self.bot.get_guild(payload.guild_id)
         # Reference Table Cleanup
-        await upsert_application(self.bot.db, member.id)
+        await upsert_application(self.bot.db, payload.user.id)
 
         # Cleanup Arena Board
         def predicate(message):
-            return message.author == member
+            return message.author == payload.user
         
-        if arena_board := discord.utils.get(member.guild.channels, name="arena-board"):
+        if arena_board := discord.utils.get(guild.channels, name="arena-board"):
             try:
                 await arena_board.purge(check=predicate)
             except Exception as error:
@@ -46,8 +46,9 @@ class Events(commands.Cog):
                 else:
                     log.error(error)
         
-        if exit_channel := discord.utils.get(member.guild.channels, name="exit"):
-            player = await get_player(self.bot, member.id, member.guild.id)
+        if exit_channel := discord.utils.get(guild.channels, name="exit"):
+            player = await get_player(self.bot, payload.user.id, payload.guild_id)
+            player.member = payload.user
             adventures = await get_player_adventures(self.bot, player)
             arenas = await get_player_arenas(self.bot, player)
 
@@ -56,7 +57,7 @@ class Events(commands.Cog):
             except Exception as error:
                 if isinstance(error, discord.errors.HTTPException):
                     log.error(f"ON_MEMBER_REMOVE: Error sending message to exit channel in "
-                            f"{member.guild.name} [ {member.guild.id} ] for {member.name} [ {member.id} ]")
+                            f"{guild.name} [ {guild.id} ] for {payload.user.display_name} [ {payload.user.id} ]")
         
             
 

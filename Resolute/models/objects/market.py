@@ -1,3 +1,5 @@
+import discord
+
 from Resolute.models.categories.categories import TransactionSubType, TransactionType
 from Resolute.models.objects.characters import PlayerCharacter
 from Resolute.models.objects.players import Player
@@ -13,6 +15,7 @@ class MarketTransaction(object):
         self.cc: int = kwargs.get('cc', 0)
         self.credits: int = kwargs.get('credits', 0)
         self.character: PlayerCharacter = kwargs.get('character')
+        self.message: discord.Message = kwargs.get('message')
 
     @property
     def format_type(self):

@@ -7,7 +7,6 @@ from Resolute.helpers.guilds import get_guild
 from Resolute.models.categories.categories import LevelCost, TransactionSubType, TransactionType
 from Resolute.models.embeds import ErrorEmbed
 from Resolute.models.embeds.market import TransactionEmbed
-from Resolute.models.objects.characters import PlayerCharacter
 from Resolute.models.objects.market import MarketTransaction
 from Resolute.models.objects.players import Player
 from Resolute.models.views.base import InteractiveView
@@ -81,7 +80,7 @@ class TransactionPromptUI(MarketPrompt):
 
             if self.transaction.type.currency == "CC":
                 self.transaction.credits = 0
-            else:
+            elif self.transaction.type.currency == "CR":
                 self.transaction.cc = 0
 
         await self.refresh_content(interaction)
@@ -100,7 +99,11 @@ class TransactionPromptUI(MarketPrompt):
     @discord.ui.button(label="Submit", style=discord.ButtonStyle.green, row=3)
     async def submit_transaction(self, _: discord.ui.Button, interaction: discord.Interaction):
         guild = await get_guild(self.bot, interaction.guild.id)
-        if guild.market_channel:
+        if self.transaction.message:
+            await self.transaction.message.edit(embed=TransactionEmbed(self.transaction))
+            await self.transaction.message.thread.delete()
+            await self.transaction.message.clear_reactions()
+        elif guild.market_channel:
             await guild.market_channel.send(embed=TransactionEmbed(self.transaction))           
             await interaction.response.send_message("Request Submitted!", ephemeral=True)
         else:
@@ -127,7 +130,7 @@ class TransactionPromptUI(MarketPrompt):
         subtypes = [discord.SelectOption(label=f"{x.value}", value=f"{x.id}", default=True if self.transaction.subtype and self.transaction.subtype.id == x.id else False) for x in self.bot.compendium.transaction_subtype[0].values() if self.transaction.type and self.transaction.type.id == x.parent]
 
         self.transaction_details.disabled = False if self.transaction.type else True
-        self.submit_transaction.disabled = False if self.transaction.type and (self.transaction.cc > 0 if self.transaction.type.currency == "CC" else self.transaction.credits > 0) else True
+        self.submit_transaction.disabled = False if self.transaction.type and (self.transaction.cc > 0 if self.transaction.type.currency == "CC" else self.transaction.credits > 0 if self.transaction.type.currency == "CR" else (self.transaction.cc > 0 or self.transaction.credits > 0)) else True
 
         if len(subtypes) > 0:
             if not self.get_item("subtype"):
@@ -147,10 +150,11 @@ class TransactionDetails(discord.ui.Modal):
         self.add_item(InputText(label="Transaction Details", placeholder="Transaction Details", style=discord.InputTextStyle.long, max_length=2000, 
                                 value=transaction.notes))
         
-        if self.transaction.type.currency == "CC":
+        if self.transaction.type.currency == "CC" or self.transaction.type.currency == "Both":
             self.add_item(InputText(label="Total CC Cost", placeholder="Total CC Cost",
                                     value=transaction.cc))
-        else:
+
+        if self.transaction.type.currency == "CR" or self.transaction.type.currency == "Both":
             self.add_item(InputText(label="Total Credit Cost", placeholder="Total Credit Cost",
                                     value=transaction.credits))
         
@@ -159,10 +163,13 @@ class TransactionDetails(discord.ui.Modal):
         self.transaction.notes = self.children[0].value
 
         try:
-            if self.transaction.type.currency == "CC":
-                self.transaction.cc = int(self.children[1].value)
+            if self.transaction.type.currency == "CC" or self.transaction.type.currency == "Both":
+                self.transaction.cc = int(self.children[1].value) or 0
             else:
-                self.transaction.credits = int(self.children[1].value)
+                self.transaction.credits = int(self.children[1].value) or 0
+
+            if self.transaction.type.currency == "Both":
+                self.transaction.credits = int(self.children[2].value) or 0
         except:
             err_str.append("Cost must be a number")
 

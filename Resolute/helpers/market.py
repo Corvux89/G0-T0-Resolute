@@ -47,7 +47,8 @@ async def get_market_request(bot: G0T0Bot, message: discord.Message) -> MarketTr
                                     notes=notes,
                                     cc=int(cc.replace(',', '')),
                                     credits=int(credits.replace(',','')),
-                                    character=character)
+                                    character=character,
+                                    message=message)
 
 
     return transaction

@@ -61,7 +61,7 @@ async def get_guilds_with_reset(bot: G0T0Bot, day: int, hour: int) -> list[Playe
 
     guild_list = [GuildSchema().load(row) for row in rows]
 
-    guild_list = await asyncio.gather(*(build_guild(bot, g) for g in guild_list))
+    await asyncio.gather(*(build_guild(bot, g) for g in guild_list))
 
     return guild_list
 

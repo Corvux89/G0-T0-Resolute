@@ -124,7 +124,7 @@ class NewCharacterApplication(object):
 
 
     def format_app(self, owner: discord.Member, archivist: discord.Role = None):
-        hp_str = f"**HP:** {self.hp}\n\n" if self.hp != "" else ""
+        hp_str = f"**HP:** {self.hp}\n\n" if self.hp != "" and self.hp != "None" and self.hp is not None else ""
         level_str=f"**Level:** {self.level}\n" if self.level != "" else "" 
         reroll_str=f"**Reroll From:** {self.character.name} [{self.character.id}]\n" if self.type in ["Reroll", "Free Reroll"] else ""
         return (

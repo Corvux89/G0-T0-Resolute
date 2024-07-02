@@ -29,7 +29,7 @@ async def remove_owner(channel: discord.TextChannel, member: discord.Member) -> 
     await channel.set_permissions(member, overwrite=None)
 
 async def create_channel(name: str, category: discord.TextChannel, member: discord.Member) -> discord.TextChannel:
-    channel_overwrites = {}
+    channel_overwrites = category.overwrites
 
     channel_overwrites[member] = owner_overwrites
     

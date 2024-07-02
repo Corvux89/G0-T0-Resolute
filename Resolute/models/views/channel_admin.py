@@ -50,6 +50,7 @@ class ChannelAdminUI(ChannelAdmin):
                 await self.defer_to(_EditPlayerChannel, interaction)
         else:
             await interaction.channel.send(embed=ErrorEmbed(description="Select a channel to edit first."), delete_after=5)
+            await self.refresh_content(interaction)
 
     # @discord.ui.button(label="Archive Channel", style=discord.ButtonStyle.primary, row=3)
     # async def archive_channel(self, _: discord.ui.Button, interaction: discord.Interaction):

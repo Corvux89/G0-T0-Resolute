@@ -10,12 +10,12 @@ from Resolute.models import metadata
 
 class AppBaseScores(object):
     def __init__(self, **kwargs):
-        self.str = kwargs.get('str')
-        self.dex = kwargs.get('dex')
-        self.con = kwargs.get('con')
-        self.int = kwargs.get('int')
-        self.wis = kwargs.get('wis')
-        self.cha = kwargs.get('cha')
+        self.str = kwargs.get('str',"")
+        self.dex = kwargs.get('dex',"")
+        self.con = kwargs.get('con',"")
+        self.int = kwargs.get('int',"")
+        self.wis = kwargs.get('wis',"")
+        self.cha = kwargs.get('cha',"")
 
     def status(self):
         attributes = [self.str, self.dex, self.con, self.int, self.wis, self.cha]
@@ -56,10 +56,10 @@ class AppSpecies(object):
 
 class AppClass(object):
     def __init__(self, **kwargs):
-        self.char_class = kwargs.get('char_class')
-        self.skills = kwargs.get('skills')
-        self.feats = kwargs.get('feats')
-        self.equipment = kwargs.get('equipment')
+        self.char_class = kwargs.get('char_class',"")
+        self.skills = kwargs.get('skills',"")
+        self.feats = kwargs.get('feats',"")
+        self.equipment = kwargs.get('equipment',"")
 
     def status(self):
         attributes = [self.char_class, self.skills, self.feats, self.equipment]
@@ -81,11 +81,11 @@ class AppBackground(object):
     equipment: str = ""
 
     def __init__(self, **kwargs):
-        self.background = kwargs.get('background')
-        self.skills = kwargs.get('skills')
-        self.tools = kwargs.get('tools')
-        self.feat = kwargs.get('feat')
-        self.equipment = kwargs.get('equipment')
+        self.background = kwargs.get('background',"")
+        self.skills = kwargs.get('skills',"")
+        self.tools = kwargs.get('tools',"")
+        self.feat = kwargs.get('feat',"")
+        self.equipment = kwargs.get('equipment',"")
 
     def status(self):
         attributes = [self.background, self.skills, self.tools, self.feat, self.equipment]
@@ -103,17 +103,17 @@ class NewCharacterApplication(object):
     def __init__(self, **kwargs):
         self.message: discord.Message = kwargs.get('message')
         self.character: PlayerCharacter = kwargs.get('character')
-        self.name = kwargs.get('name')
+        self.name = kwargs.get('name',"")
         self.type = kwargs.get('type', "New Character")
         self.base_scores: AppBaseScores = kwargs.get('base_scores', AppBaseScores())
         self.species: AppSpecies = kwargs.get('species', AppSpecies())
         self.char_class: AppClass = kwargs.get('char_class', AppClass())
         self.background: AppBackground = kwargs.get('background', AppBackground())
         self.credits = kwargs.get('credits', "0")
-        self.homeworld = kwargs.get('homeworld')
-        self.motivation = kwargs.get('motivation')
-        self.link = kwargs.get('link')
-        self.hp = kwargs.get('hp')
+        self.homeworld = kwargs.get('homeworld',"")
+        self.motivation = kwargs.get('motivation',"")
+        self.link = kwargs.get('link',"")
+        self.hp = kwargs.get('hp',"")
         self.level = kwargs.get('level', "1")
 
     def can_submit(self):
@@ -187,9 +187,9 @@ def delete_player_application(char_id: int) -> TableClause:
     .where(ref_applications_table.c.id == char_id)
     
 def status(attributes = []) -> str:
-    if all(a is None for a in attributes):
+    if all(a is None or a == "" for a in attributes):
         return "<:x:983576786447245312> -- Incomplete" 
-    elif all(a is not None for a in attributes):
+    elif all(a is not None and a != "" for a in attributes):
         return "<:white_check_mark:983576747381518396> -- Complete"
     else:
         return "<:pencil:989284061786808380> -- In-Progress"

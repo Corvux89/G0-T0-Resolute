@@ -7,6 +7,7 @@ from discord.ext import commands
 
 from Resolute.bot import G0T0Bot
 from Resolute.helpers.appliations import get_cached_application, get_level_up_application, get_new_character_application
+from Resolute.helpers.general_helpers import is_admin
 from Resolute.helpers.guilds import get_guild
 from Resolute.helpers.players import get_player
 from Resolute.models.embeds import ErrorEmbed
@@ -129,7 +130,7 @@ class Character(commands.Cog):
             return await ctx.respond(embed=ErrorEmbed(description="Application marked as invalid and cannot me modified"), ephemeral=True)
         
         appliation_text = message.content
-        player_match = re.search(r"\*\*Player:\*\* (.+)", appliation_text)
+        player_match = re.search(r"^\*\*Player:\*\* (.+)", appliation_text)
         player = await get_player(self.bot, ctx.author.id, ctx.guild.id)
         type_match = re.search(r"^\*\*(.*?)\*\*\s\|", appliation_text, re.MULTILINE)
         type = type_match.group(1).strip().replace('*', '') if type_match else None

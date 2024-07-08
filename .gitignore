@@ -1,6 +1,7 @@
 /Resolute/localsettings.py
 /Resolute/cogs/mod/credentials.json
 /token.pickle
+.VSCodeCounter
 
 .vscode/*
 .vscode/settings.json

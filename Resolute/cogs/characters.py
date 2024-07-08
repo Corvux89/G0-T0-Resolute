@@ -130,7 +130,7 @@ class Character(commands.Cog):
             return await ctx.respond(embed=ErrorEmbed(description="Application marked as invalid and cannot me modified"), ephemeral=True)
         
         appliation_text = message.content
-        player_match = re.search(r"^\*\*Player:\*\* (.+)", appliation_text)
+        player_match = re.search(r"^\*\*Player:\*\* (.+)", appliation_text, re.MULTILINE)
         player = await get_player(self.bot, ctx.author.id, ctx.guild.id)
         type_match = re.search(r"^\*\*(.*?)\*\*\s\|", appliation_text, re.MULTILINE)
         type = type_match.group(1).strip().replace('*', '') if type_match else None

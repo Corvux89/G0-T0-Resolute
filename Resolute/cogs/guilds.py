@@ -11,6 +11,7 @@ from timeit import default_timer as timer
 import discord.ext.tasks
 
 from Resolute.bot import G0T0Bot
+from Resolute.helpers.general_helpers import confirm
 from Resolute.models.categories import Activity
 from Resolute.helpers.guilds import get_guilds_with_reset, get_guild, update_guild
 from Resolute.helpers.guilds import delete_weekly_stipend, get_guild_stipends
@@ -68,6 +69,13 @@ class Guilds(commands.Cog):
         await ctx.defer()
 
         g: PlayerGuild = await get_guild(self.bot, ctx.guild.id)
+
+        conf = await confirm(ctx, f"Are you sure you want to manually do a weekly reset? (Reply with yes/no)", True)
+
+        if conf is None:
+            return await ctx.respond(f"Times oud waiting for a response or invalid response.", delete_after=10)
+        elif not conf:
+            return await ctx.respond(f"Ok, cancelling.", delete_after=10)
 
         await self.perform_weekly_reset(g)
         return await ctx.respond("Weekly reset manually completed")

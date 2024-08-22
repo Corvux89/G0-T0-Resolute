@@ -87,6 +87,10 @@ class Log(commands.Cog):
                 await ctx.defer()
                 g = await get_guild(self.bot, ctx.guild.id)
                 player = await get_player(self.bot, member.id, ctx.guild.id)
+
+                if (player.cc - cost ) < 0:
+                    return await ctx.respond(embed=ErrorEmbed(description=f"{player.member.mention} cannot afford the {cost} CC cost."))
+                
                 log_entry = await create_log(self.bot, ctx.author, g, activity, player,
                                              notes=item,
                                               cc=-cost,

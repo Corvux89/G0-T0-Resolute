@@ -116,6 +116,10 @@ class TransactionPromptUI(MarketPrompt):
 
     @discord.ui.button(label="Cancel", style=discord.ButtonStyle.grey, row=4)
     async def exit(self, *_):
+        if self.transaction.message:
+            await self.transaction.message.edit(embed=TransactionEmbed(self.transaction))
+            await self.transaction.message.thread.delete()
+            await self.transaction.message.clear_reactions()
         await self.on_timeout()
 
     async def get_content(self) -> Mapping:

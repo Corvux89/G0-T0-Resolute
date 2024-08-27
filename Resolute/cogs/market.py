@@ -20,7 +20,7 @@ log = logging.getLogger(__name__)
 
 
 def setup(bot: commands.Bot):
-    # bot.add_cog(Market(bot))
+    bot.add_cog(Market(bot))
     pass
 
 class Market(commands.Cog):

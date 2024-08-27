@@ -61,7 +61,7 @@ class TransactionPromptUI(MarketPrompt):
         inst = cls(owner=owner)
         inst.bot = bot
         inst.player = player
-        character = transaction.character or player.characters[0] if len(player.characters) > 0 else None
+        character = transaction.character if transaction else player.characters[0] if len(player.characters) > 0 else None
         inst.transaction = transaction or MarketTransaction(inst.player, character=character)
         return inst
     

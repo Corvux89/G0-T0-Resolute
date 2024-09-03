@@ -2,17 +2,15 @@ import re
 import discord
 from Resolute.bot import G0T0Bot
 from Resolute.helpers.characters import get_character
+from Resolute.helpers.logs import get_log
 from Resolute.helpers.players import get_player
 from Resolute.models.categories.categories import TransactionSubType, TransactionType
+from Resolute.models.objects.logs import DBLog
 from Resolute.models.objects.market import MarketTransaction
 
 
 async def get_market_request(bot: G0T0Bot, message: discord.Message) -> MarketTransaction:
     embed = message.embeds[0]
-
-    def get_match(pattern, text, group=1, default=None):
-        match = re.search(pattern, text, re.DOTALL)
-        return match.group(group) if match and match.group(group) != 'None' else default
     
     player_id = get_match(r"\*\*Player\*\*:\s*<@(\d+)>\n", embed.description)
     char_id = get_match(r"\*\*Character\*\*:.*\[(\d+)\]", embed.description)
@@ -52,4 +50,17 @@ async def get_market_request(bot: G0T0Bot, message: discord.Message) -> MarketTr
 
 
     return transaction
+
+async def get_market_log(bot: G0T0Bot, message: discord.Message) -> DBLog:
+    embed = message.embeds[0]
+    log_id = get_match(f"ID:\s*(\d+)", embed.footer.text)
+
+    log_entry = await get_log(bot, log_id)
+
+    return log_entry
+
+
+def get_match(pattern, text, group=1, default=None):
+    match = re.search(pattern, text, re.DOTALL)
+    return match.group(group) if match and match.group(group) != 'None' else default
     

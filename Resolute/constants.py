@@ -21,4 +21,5 @@ CHANNEL_BREAK = "```\n​\n```"
 ZWSP3 = "\u200b \u200b \u200b "
 APPROVAL_EMOJI = ['greencheck', '✅']
 DENIED_EMOJI = ['❌']
+NULL_EMOJI = ['◀️', '⏪']
 EDIT_EMOJI = ['✏️', '📝']

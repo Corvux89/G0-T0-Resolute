@@ -57,7 +57,7 @@ def get_positivity(string) -> bool:
         return None
 
 
-async def confirm(ctx, message, delete_msgs=False, bot: G0T0Bot = None, response_check=get_positivity) -> bool:
+async def confirm(ctx, message, delete_msgs=False, bot: G0T0Bot = None, response_check=get_positivity) -> bool|str:
     msg = await ctx.channel.send(message)
     
     if bot is None:
@@ -67,7 +67,10 @@ async def confirm(ctx, message, delete_msgs=False, bot: G0T0Bot = None, response
         reply = await bot.wait_for("message", timeout=30, check=auth_and_chan(ctx))
     except asyncio.TimeoutError:
         return None
-    reply_bool = response_check(reply.content) if reply is not None else None
+    if response_check:
+        reply_bool = response_check(reply.content) if reply is not None else None
+    else:
+        reply_bool = reply.content
     if delete_msgs:
         try:
             await msg.delete()

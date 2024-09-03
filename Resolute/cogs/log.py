@@ -149,7 +149,6 @@ class Log(commands.Cog):
                                                       ephemeral=True))
         
         player = await get_player(self.bot, log_entry.player_id, ctx.guild.id)
-        member: discord.Member = ctx.guild.get_member(player.id)
         g = await get_guild(self.bot, ctx.guild.id)
 
         if log_entry.character_id:
@@ -159,7 +158,7 @@ class Log(commands.Cog):
 
         conf = await confirm(ctx,
                              f"Are you sure you want to nullify the `{log_entry.activity.value}` log"
-                             f" for {member.display_name} {f'[ Character: {character.name} ]' if character else ''} "
+                             f" for {player.member.display_name} {f'[ Character: {character.name} ]' if character else ''} "
                              f" for {log_entry.cc} chain codes, {log_entry.credits} credits\n"
                              f"(Reply with yes/no)", True)
         
@@ -177,7 +176,7 @@ class Log(commands.Cog):
 
             mod_log = await create_log(self.bot, ctx.author, g, activity, player,
                                        character=character,
-                                       note=note,
+                                       notes=note,
                                        cc=-log_entry.cc,
                                        credits=-log_entry.credits,
                                        ignore_handicap=True)
@@ -186,7 +185,7 @@ class Log(commands.Cog):
             async with self.bot.db.acquire() as conn:
                 await conn.execute(upsert_log(log_entry))            
             
-            return await ctx.respond(embed=LogEmbed(mod_log, ctx.author, member,character))
+            return await ctx.respond(embed=LogEmbed(mod_log, ctx.author, player.member, character))
 
     @log_commands.command(
         name="stats",

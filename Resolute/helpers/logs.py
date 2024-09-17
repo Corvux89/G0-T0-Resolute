@@ -79,9 +79,12 @@ async def create_log(bot: G0T0Bot, author: Member | ClientUser, guild: PlayerGui
 
     # Log Author Rewards
     if activity.value != "LOG_REWARD" and guild.reward_threshold and author_player.points >= guild.reward_threshold:
-        reward_activity = bot.compendium.get_activity("LOG_REWARD")
-        reward_log = await create_log(bot, bot.user, guild, reward_activity, author_player)
-        author_player.points = max(0, author_player.points-guild.reward_threshold)
+        reward_activity: Activity = bot.compendium.get_activity("LOG_REWARD")
+        qty = max(1, author_player.points//guild.reward_threshold)
+        reward_log = await create_log(bot, bot.user, guild, reward_activity, author_player, 
+                                      cc=reward_activity.cc*qty, 
+                                      notes=f"Rewards for {guild.reward_threshold*qty} points")
+        author_player.points = max(0, author_player.points-(guild.reward_threshold*qty))
 
         if guild.archivist_channel:
             await guild.archivist_channel.send(embed=LogEmbed(reward_log, bot.user, author, None, True))

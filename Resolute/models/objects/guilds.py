@@ -33,6 +33,7 @@ class PlayerGuild(object):
         self.epoch_notation: str = kwargs.get('epoch_notation')
         self.first_character_message: str = kwargs.get('first_character_message')
         self.ping_announcement: bool = kwargs.get('ping_announcement', False)
+        self.reward_threshold: int = kwargs.get('reward_threshold')
 
         # Virtual attributes
         self.calendar = None
@@ -45,6 +46,7 @@ class PlayerGuild(object):
         self.character_application_channel: discord.TextChannel = None
         self.market_channel: discord.TextChannel = None
         self.announcement_channel: discord.TextChannel = None
+        self.archivist_channel: discord.TextChannel = None
 
     @property
     def get_reset_day(self):
@@ -128,7 +130,8 @@ guilds_table = sa.Table(
     Column("server_date", Integer, nullable=True),
     Column("epoch_notation", String, nullable=True),
     Column("first_character_message", String, nullable=True),
-    Column("ping_announcement", BOOLEAN, default=False, nullable=False)
+    Column("ping_announcement", BOOLEAN, default=False, nullable=False),
+    Column("reward_threshold", Integer, nullable=True)
 )
 
 class GuildSchema(Schema):
@@ -148,6 +151,7 @@ class GuildSchema(Schema):
     epoch_notation = fields.String(allow_none=True)
     first_character_message = fields.String(allow_none=True)
     ping_announcement = fields.Boolean(allow_none=False)
+    reward_threshold = fields.Integer(allow_none=True)
 
     @post_load
     def make_guild(self, data, **kwargs):
@@ -187,7 +191,8 @@ def upsert_guild(guild: PlayerGuild):
         server_date=guild.server_date,
         epoch_notation=guild.epoch_notation,
         first_character_message=guild.first_character_message,
-        ping_announcement=guild.ping_announcement
+        ping_announcement=guild.ping_announcement,
+        reward_threshold=guild.reward_threshold
     ).returning(guilds_table)
 
     update_dict = {
@@ -205,7 +210,8 @@ def upsert_guild(guild: PlayerGuild):
         'epoch_notation': guild.epoch_notation,
         'greeting': guild.greeting,
         'first_character_message': guild.first_character_message,
-        'ping_announcement': guild.ping_announcement
+        'ping_announcement': guild.ping_announcement,
+        'reward_threshold': guild.reward_threshold
     }
 
     upsert_statement = insert_statment.on_conflict_do_update(

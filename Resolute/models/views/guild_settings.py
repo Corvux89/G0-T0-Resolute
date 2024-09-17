@@ -198,6 +198,7 @@ class GuildLimitsModal(Modal):
         self.add_item(InputText(label="Max # Characters", required=True, placeholder="Max Characters", max_length=2, value=self.guild.max_characters))
         self.add_item(InputText(label="Handicap Amount", required=True, placeholder="Handicap Amount", max_length=3, value=self.guild.handicap_cc))
         self.add_item(InputText(label="Diversion Limit (CC)", required=True, placeholder="Diversion Limit", max_length=3, value=self.guild.div_limit))
+        self.add_item(InputText(label="Log Reward Points Threshold", required=False, placeholder="Log Reward Points Threshold", max_length=3, value=self.guild.reward_threshold))
 
     async def callback(self, interaction: discord.Interaction):
         err_str = []
@@ -213,6 +214,15 @@ class GuildLimitsModal(Modal):
                 setattr(self.guild, node, int(value))
             except:
                 err_str.append(err_msg)
+
+        if self.children[4].value:
+            try:
+                self.guild.reward_threshold = int(self.children[4].value)
+            except:
+                err_str.append("Reward threshold must be a number!")
+        else:
+            self.guild.reward_threshold = None
+        
 
         if len(err_str) > 0:
             await interaction.channel.send(embed=ErrorEmbed(description="\n".join(err_str)), delete_after=5)

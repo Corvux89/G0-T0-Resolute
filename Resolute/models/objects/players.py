@@ -18,6 +18,7 @@ class Player(object):
         self.handicap_amount: int = kwargs.get('handicap_amount', 0)
         self.cc: int = kwargs.get('cc', 0)
         self.div_cc: int = kwargs.get('div_cc', 0)
+        self.points: int = kwargs.get('points', 0)
 
         # Virtual Attributes
         self.characters: list[PlayerCharacter] = []
@@ -42,7 +43,8 @@ player_table = sa.Table(
     Column("guild_id", BigInteger, primary_key=True),
     Column("handicap_amount", Integer),
     Column("cc", Integer),
-    Column("div_cc", Integer)
+    Column("div_cc", Integer),
+    Column("points", Integer)
 )
 
 class PlayerSchema(Schema):
@@ -51,6 +53,7 @@ class PlayerSchema(Schema):
     handicap_amount = fields.Integer()
     cc = fields.Integer()
     div_cc = fields.Integer()
+    points = fields.Integer()
 
     @post_load
     def make_discord_player(self, data, **kwargs):
@@ -63,7 +66,7 @@ def get_player_query(player_id: int, guild_id: int) -> FromClause:
     )
 
 def reset_div_cc(guild_id: int):
-    return update(player_table).where(player_table.c.guild_id == guild_id).values(div_cc =0)
+    return update(player_table).where(player_table.c.guild_id == guild_id).values(div_cc=0)
 
 def upsert_player_query(player: Player):
     insert_statement = insert(player_table).values(
@@ -71,7 +74,8 @@ def upsert_player_query(player: Player):
         guild_id=player.guild_id,
         handicap_amount=player.handicap_amount,
         cc=player.cc,
-        div_cc=player.div_cc
+        div_cc=player.div_cc,
+        points=player.points
     ).returning(player_table)
 
     update_dict = {
@@ -79,7 +83,8 @@ def upsert_player_query(player: Player):
         'guild_id': player.guild_id,
         'handicap_amount': player.handicap_amount,
         'cc': player.cc,
-        'div_cc': player.div_cc
+        'div_cc': player.div_cc,
+        'points': player.points
     }
 
     upsert_statement = insert_statement.on_conflict_do_update(

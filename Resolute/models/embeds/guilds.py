@@ -18,7 +18,8 @@ class GuildEmbed(Embed):
                        value=f"**Max Level**: {g.max_level}\n"
                              f"**Max Characters**: {g.max_characters}\n"
                              f"**Handicap CC Amount**: {g.handicap_cc}\n"
-                             f"**Diversion Limit**: {g.div_limit}\n",
+                             f"**Diversion Limit**: {g.div_limit}\n"
+                             f"**Log Reward Point Threshold**: {g.reward_threshold or ''}\n",
                        inline=False)
 
         reset_str = f"**Approx Next Run**: <t:{g.get_next_reset}>\n" if g.get_next_reset else ""
@@ -58,3 +59,4 @@ class ResetEmbed(Embed):
                                inline=False)
 
         self.set_footer(text=f"Weekly reset complete in {completeTime:.2f} seconds")
+        

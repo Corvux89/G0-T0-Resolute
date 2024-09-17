@@ -144,21 +144,24 @@ c_activity_table = sa.Table(
     Column("id", Integer, primary_key=True, autoincrement='auto'),
     Column("value", String, nullable=False),
     Column("cc",Integer, nullable=True),
-    Column("diversion", BOOLEAN, nullable=False)
+    Column("diversion", BOOLEAN, nullable=False),
+    Column("points", Integer, nullable=False)
 )
 
 class Activity(object):
-    def __init__(self, id, value, cc, diversion):
+    def __init__(self, id, value, cc, diversion, points):
         self.id = id
         self.value = value
         self.cc = cc
         self.diversion = diversion
+        self.points = points
 
 class ActivitySchema(Schema):
     id = fields.Integer(data_key="id", required=True)
     value = fields.String(data_key="value", required=True)
     cc = fields.Integer(data_key="cc", required=False, allow_none=True)
     diversion = fields.Boolean(data_key="diversion", required=True)
+    points = fields.Integer(data_key="points", required=False, allow_none=False)
 
     @post_load
     def make_c_activity(self, data, **kwargs):

@@ -34,6 +34,7 @@ async def build_guild(bot: G0T0Bot, guild: PlayerGuild):
     guild.character_application_channel = discord.utils.get(guild.guild.channels, name="character-apps")
     guild.market_channel = discord.utils.get(guild.guild.channels, name="galactic-market")
     guild.announcement_channel = discord.utils.get(guild.guild.channels, name="announcements")
+    guild.archivist_channel = discord.utils.get(guild.guild.channels, name="archivist-roundtable")
 
 
 async def load_calendar(db: aiopg.sa.Engine, guild: PlayerGuild):

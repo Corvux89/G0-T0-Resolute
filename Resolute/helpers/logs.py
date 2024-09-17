@@ -65,7 +65,7 @@ async def create_log(bot: G0T0Bot, author: Member | ClientUser, guild: PlayerGui
     author_player = await get_player(bot, author.id, guild.id)
 
     player.div_cc += char_cc if activity.diversion else 0
-    author_player.points += activity.points
+    author_player.points += activity.points if guild.reward_threshold else 0
 
     char_log = DBLog(author=author.id, cc=char_cc, credits=credits, player_id=player.id, character_id=character.id if character else None,
                      activity=activity, notes=notes, guild_id=guild.id,

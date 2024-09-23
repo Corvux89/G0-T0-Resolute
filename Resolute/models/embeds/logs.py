@@ -15,10 +15,10 @@ class LogEmbed(Embed):
                          color=Color.random(),
                          timestamp=log_entry.created_ts)
         
-        self.set_thumbnail(url=member.display_avatar.url or THUMBNAIL)
+        self.set_thumbnail(url=member.display_avatar.url if member else THUMBNAIL)
         self.set_footer(text=f"Logged by {author.name} - ID: {log_entry.id}",
                         icon_url=author.display_avatar.url)
-        self.description = f"**Player**: {member.mention or 'Player not found'}\n"
+        self.description = f"**Player**: {member.mention if member else 'Player not found'}\n"
 
         self.description += f"**Character**: {character.name}\n" if character else ''
 

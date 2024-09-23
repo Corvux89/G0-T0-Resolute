@@ -39,7 +39,7 @@ class ArenaPhaseEmbed(Embed):
         field_str = [f"{ctx.guild.get_member(arena.host_id).mention}: 'HOST'"]
 
         for character in arena.player_characters:
-            text = f"{character.name} ({ctx.guild.get_member(character.player_id).mention}): '{result}'{f', `BONUS`' if bonus else ''}"
+            text = f"{character.name} ({ctx.guild.get_member(character.player_id).mention or character.name}): '{result}'{f', `BONUS`' if bonus else ''}"
             field_str.append(text)
         
         self.add_field(name="The following rewards have been applied:",

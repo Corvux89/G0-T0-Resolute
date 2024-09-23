@@ -158,7 +158,7 @@ class Log(commands.Cog):
 
         conf = await confirm(ctx,
                              f"Are you sure you want to nullify the `{log_entry.activity.value}` log"
-                             f" for {player.member.display_name} {f'[ Character: {character.name} ]' if character else ''} "
+                             f" for {player.member.display_name if player.member else 'Player not found'} {f'[ Character: {character.name} ]' if character else ''} "
                              f" for {log_entry.cc} chain codes, {log_entry.credits} credits\n"
                              f"(Reply with yes/no)", True)
         

@@ -96,7 +96,8 @@ class Events(commands.Cog):
                       f"{''.join(traceback.format_exception(type(error), error, error.__traceback__))}"\
                       f"```"
             
-            if ERROR_CHANNEL:
+            # At this time...I don't want DM Errors...cause those are going to happen a lot for now. 
+            if ERROR_CHANNEL and ctx.guild:
                 try:
                     await ctx.bot.get_channel(int(ERROR_CHANNEL)).send(out_str)
                 except:

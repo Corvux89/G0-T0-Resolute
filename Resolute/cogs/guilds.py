@@ -32,7 +32,7 @@ def setup(bot: commands.Bot):
 
 class Guilds(commands.Cog):
     bot: G0T0Bot
-    guilds_commands = SlashCommandGroup("guild", "Commands related to guild specific settings")
+    guilds_commands = SlashCommandGroup("guild", "Commands related to guild specific settings", guild_only=True)
 
     def __init__(self, bot):
         self.bot = bot

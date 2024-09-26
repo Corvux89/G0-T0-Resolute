@@ -23,7 +23,7 @@ def setup(bot: commands.Bot):
 
 class Dashboards(commands.Cog):
     bot: G0T0Bot
-    dashboard_commands = SlashCommandGroup("dashboard", "Dashboard commands")
+    dashboard_commands = SlashCommandGroup("dashboard", "Dashboard commands", guild_only=True)
 
     def __init__(self, bot):
         self.bot = bot

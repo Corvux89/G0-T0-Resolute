@@ -47,6 +47,7 @@ class PlayerGuild(object):
         self.market_channel: discord.TextChannel = None
         self.announcement_channel: discord.TextChannel = None
         self.archivist_channel: discord.TextChannel = None
+        self.automation_channel: discord.TextChannel = None
 
     @property
     def get_reset_day(self):

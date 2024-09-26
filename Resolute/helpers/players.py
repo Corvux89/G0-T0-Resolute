@@ -9,23 +9,27 @@ from Resolute.bot import G0T0Bot
 
 
 async def get_player(bot: G0T0Bot, player_id: int, guild_id: int, inactive: bool = False) -> Player:
+
     async with bot.db.acquire() as conn:
         results = await conn.execute(get_player_query(player_id, guild_id))
-        row = await results.first()
+        rows = await results.fetchall()
 
-        if row is None:
+        if rows is None and guild_id:
             player = Player(id=player_id, guild_id=guild_id)
             results = await conn.execute(upsert_player_query(player))
             row = await results.first()
+        else:
+            row = rows[0]
+        
 
     player: Player = PlayerSchema().load(row)
 
-    player.characters = await get_characters(bot, player_id, guild_id, inactive)
+    player.characters = await get_characters(bot, player_id, player.guild_id, inactive)
 
     if len(player.characters) > 0 and player.highest_level_character.level < 3:
         player = await get_player_quests(bot, player )
 
-    player.member = bot.get_guild(guild_id).get_member(player_id)
+    player.member = bot.get_guild(player.guild_id).get_member(player_id)
 
     return player
 

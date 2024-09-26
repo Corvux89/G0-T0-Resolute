@@ -40,7 +40,7 @@ class Market(commands.Cog):
     )
     async def market_request(self, ctx: ApplicationContext):
         await ctx.defer()
-        player = await get_player(self.bot, ctx.author.id, ctx.guild.id)
+        player = await get_player(self.bot, ctx.author.id, ctx.guild.id if ctx.guild else None)
 
         if not player.characters:
             return await ctx.respond(embed=ErrorEmbed(description=f"No character information found for {ctx.author.mention}"),

@@ -60,9 +60,15 @@ class PlayerSchema(Schema):
         return Player(**data)
     
 
-def get_player_query(player_id: int, guild_id: int) -> FromClause:
+def get_player_query(player_id: int, guild_id: int = None) -> FromClause:
+
+    if guild_id:
+        return player_table.select().where(
+            and_(player_table.c.id == player_id, player_table.c.guild_id == guild_id)
+        )
+    
     return player_table.select().where(
-        and_(player_table.c.id == player_id, player_table.c.guild_id == guild_id)
+        and_(player_table.c.id == player_id)
     )
 
 def reset_div_cc(guild_id: int):

@@ -25,7 +25,7 @@ def setup(bot: commands.Bot):
 
 class Log(commands.Cog):
     bot: G0T0Bot
-    log_commands = SlashCommandGroup("log", "Logging commands for the Archivist")
+    log_commands = SlashCommandGroup("log", "Logging commands for the Archivist", guild_only=True)
 
     def __init__(self, bot):
         self.bot = bot

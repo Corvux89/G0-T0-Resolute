@@ -98,7 +98,7 @@ class TransactionPromptUI(MarketPrompt):
 
     @discord.ui.button(label="Submit", style=discord.ButtonStyle.green, row=3)
     async def submit_transaction(self, _: discord.ui.Button, interaction: discord.Interaction):
-        guild = await get_guild(self.bot, interaction.guild.id)
+        guild = await get_guild(self.bot, self.player.guild_id)
         if self.transaction.message:
             await self.transaction.message.edit(embed=TransactionEmbed(self.transaction))
             await self.transaction.message.thread.delete()

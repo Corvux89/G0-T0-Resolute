@@ -10,6 +10,7 @@ from Resolute.constants import ADMIN_GUILDS
 from Resolute.helpers import is_owner
 from Resolute.bot import G0T0Bot
 from Resolute.helpers import *
+from Resolute.helpers.guilds import get_guild
 from Resolute.models.views.admin import AdminMenuUI
 from Resolute.models.views.automation_request import AutomationRequestView
 
@@ -47,7 +48,9 @@ class Admin(commands.Cog):
         Returns:
             Interaction: Modal interaction to gather information about the request
         """
-        modal = AutomationRequestView()
+        player = await get_player(self.bot, ctx.author.id, ctx.guild.id if ctx.guild else None)
+        g = await get_guild(self.bot, player.guild_id)
+        modal = AutomationRequestView(g)
         await ctx.send_modal(modal)
 
     @admin_commands.command(

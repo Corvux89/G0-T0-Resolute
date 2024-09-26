@@ -11,14 +11,16 @@ from Resolute.models.embeds import ErrorEmbed
 from Resolute.models.embeds.applications import NewCharacterRequestEmbed
 from Resolute.models.objects.applications import LevelUpApplication, NewCharacterApplication
 from Resolute.models.objects.characters import PlayerCharacter
+from Resolute.models.objects.guilds import PlayerGuild
 from Resolute.models.objects.players import Player
 from Resolute.models.views.base import InteractiveView
 
 class CharacterSelect(InteractiveView):
-    __menu_copy_attrs__ = ("bot", "player", "character", "levelUp", "application", "editOnly")
+    __menu_copy_attrs__ = ("bot", "player", "character", "levelUp", "application", "editOnly", "guild")
     bot: G0T0Bot
     player: Player
     character: PlayerCharacter
+    guild: PlayerGuild
     levelUp: bool
     editOnly: bool
     application: NewCharacterApplication|LevelUpApplication
@@ -57,7 +59,7 @@ class CharacterSelectUI(CharacterSelect):
     @discord.ui.button(label="Edit Application", style=discord.ButtonStyle.primary, row=3)
     async def application_edit(self, _: discord.ui.Button, interaction: discord.Interaction):
         if self.levelUp:
-            modal = LevelUpRequestModal(self.character, self.application)
+            modal = LevelUpRequestModal(self.guild, self.character, self.application)
             await self.prompt_modal(interaction, modal)
             await self.on_timeout()
         else:
@@ -70,13 +72,13 @@ class CharacterSelectUI(CharacterSelect):
             await self.refresh_content()
         else:
             if self.levelUp:
-                g = await get_guild(self.bot, interaction.guild.id)
+                g = await get_guild(self.bot, self.player.guild_id)
 
                 if self.character.level >= g.max_level:
                     await interaction.channel.send(embed=ErrorEmbed(description="Character is already at max level for the server"), delete_after=5)
                     await self.refresh_content(interaction)
                 else:    
-                    modal = LevelUpRequestModal(self.character)
+                    modal = LevelUpRequestModal(self.guild, self.character)
                     await self.prompt_modal(interaction, modal)
                     await self.on_timeout()
             else:
@@ -453,10 +455,12 @@ class BaseScore2Modal(Modal):
 
 class LevelUpRequestModal(Modal):
     application: LevelUpApplication
+    guild: PlayerGuild
 
-    def __init__(self, character: PlayerCharacter = None, application: LevelUpApplication = None):
+    def __init__(self, guild: PlayerGuild, character: PlayerCharacter = None, application: LevelUpApplication = None):
         super().__init__(title=f"Level Up Request")
         self.application = application or LevelUpApplication(level=f"{character.level+1}", character=character)
+        self.guild = guild
 
         self.add_item(InputText(label="Level", placeholder=f"Level", max_length=3, value=self.application.level))
         self.add_item(InputText(label="HP", placeholder="HP", max_length=500, value=self.application.hp))
@@ -466,21 +470,20 @@ class LevelUpRequestModal(Modal):
         self.add_item(InputText(label="Link", placeholder="Link to character sheet", max_length=500, value=self.application.link))
 
     async def callback(self, interaction: discord.Interaction):
-        if (character_app_channel := discord.utils.get(interaction.guild.channels, name="character-apps")) and (
-        arch_role := discord.utils.get(interaction.guild.roles, name="Archivist")):
+        if self.guild.archivist_role and self.guild.character_application_channel:
             self.application.level = self.children[0].value
             self.application.hp = self.children[1].value
             self.application.feats = self.children[2].value
             self.application.changes = self.children[3].value
             self.application.link = self.children[4].value
 
-            message = self.application.format_app(interaction.user, arch_role)
+            message = self.application.format_app(interaction.user, self.guild.archivist_role)
 
             if self.application.message:
                 await self.application.message.edit(content=message)
                 return await interaction.response.send_message("Request updated!", ephemeral=True)
             else:
-                msg = await character_app_channel.send(content=message)
+                msg = await self.guild.character_application_channel.send(content=message)
                 thread = await msg.create_thread(name=f"{self.application.character.name}", auto_archive_duration=10080)
                 await thread.send(f'''Need to make an edit? Use: `/edit_application` in this thread''')
                 await msg.edit(content=message)

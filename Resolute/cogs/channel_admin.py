@@ -15,7 +15,7 @@ def setup(bot: commands.Bot):
 class ChannelAdmin(commands.Cog):
     bot: G0T0Bot
 
-    channel_commands = SlashCommandGroup("channel", "Channel commands")
+    channel_commands = SlashCommandGroup("channel", "Channel commands", guild_only=True)
     
     def __init__(self, bot):
         # Setting up some objects
@@ -25,7 +25,7 @@ class ChannelAdmin(commands.Cog):
 
     @channel_commands.command(
         name="manage",
-        description="Room settings"
+        description="Room settings",
     )
     async def channel_settings(self, ctx: ApplicationContext):
         ui = ChannelAdminUI.new(self.bot, ctx.author)

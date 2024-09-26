@@ -24,7 +24,7 @@ def setup(bot: commands.Bot):
 
 class Character(commands.Cog):
     bot: G0T0Bot
-    character_admin_commands = SlashCommandGroup("character_admin", "Character administration commands")
+    character_admin_commands = SlashCommandGroup("character_admin", "Character administration commands", guild_only=True)
 
     def __init__(self, bot):
         self.bot = bot
@@ -55,8 +55,8 @@ class Character(commands.Cog):
         await ctx.defer()
 
         member = member or ctx.author
-        g = await get_guild(self.bot, ctx.guild.id)
-        player = await get_player(self.bot, member.id, ctx.guild.id)
+        player = await get_player(self.bot, member.id, ctx.guild.id if ctx.guild else None)
+        g = await get_guild(self.bot, player.guild_id)
 
         return await ctx.respond(embed=PlayerOverviewEmbed(player, g, self.bot.compendium))
 
@@ -65,15 +65,15 @@ class Character(commands.Cog):
         description="Level Request"
     )
     async def character_level_request(self, ctx: ApplicationContext):
-        player = await get_player(self.bot, ctx.author.id, ctx.guild.id)
-        g = await get_guild(self.bot, ctx.guild.id)
+        player = await get_player(self.bot, ctx.author.id, ctx.guild.id if ctx.guild else None)
+        g = await get_guild(self.bot, player.guild_id)
 
         if not player.characters:
             return await ctx.respond(embed=ErrorEmbed(description="You do not have any characters to level up"), ephemeral=True)
         elif len(player.characters) == 1:
             if player.characters[0].level >= g.max_level:
                 return await ctx.respond(embed=ErrorEmbed(description="Character is already at max level for the server"), ephemeral=True)
-            modal = LevelUpRequestModal(player.characters[0])
+            modal = LevelUpRequestModal(g, player.characters[0])
             return await ctx.send_modal(modal)
         else:
             ui = CharacterSelectUI.new(self.bot, ctx.author, player, True)
@@ -85,7 +85,7 @@ class Character(commands.Cog):
         description="New Character Request"
     )
     async def new_character_request(self, ctx: ApplicationContext):
-        player = await get_player(self.bot, ctx.author.id, ctx.guild.id)
+        player = await get_player(self.bot, ctx.author.id, ctx.guild.id if ctx.guild else None)
         application_text = await get_cached_application(self.bot.db, player.id)
         application = None
 
@@ -131,7 +131,8 @@ class Character(commands.Cog):
         
         appliation_text = message.content
         player_match = re.search(r"^\*\*Player:\*\* (.+)", appliation_text, re.MULTILINE)
-        player = await get_player(self.bot, ctx.author.id, ctx.guild.id)
+        player = await get_player(self.bot, ctx.author.id, ctx.guild.id if ctx.guild else None)
+        g = await get_guild(self.bot, player.guild_id)
         type_match = re.search(r"^\*\*(.*?)\*\*\s\|", appliation_text, re.MULTILINE)
         type = type_match.group(1).strip().replace('*', '') if type_match else None
 
@@ -153,7 +154,7 @@ class Character(commands.Cog):
                 if not player.characters:
                     return await ctx.respond(embed=ErrorEmbed(description="You do not have any characters to level up"), ephemeral=True)
                 elif len(player.characters) == 1:
-                    modal = LevelUpRequestModal(player.characters[0], application)
+                    modal = LevelUpRequestModal(g, player.characters[0], application)
                     return await ctx.send_modal(modal)
                 else:
                     ui = CharacterSelectUI.new(self.bot, ctx.author, player, True, application, True)

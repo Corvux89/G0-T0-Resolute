@@ -1,6 +1,6 @@
 import logging
 
-from discord import ApplicationContext, Member, Option, SlashCommandGroup
+from discord import ApplicationContext, Option, SlashCommandGroup
 import discord
 from discord.ext import commands
 
@@ -20,7 +20,7 @@ def setup(bot: commands.Bot):
 
 class Adventures(commands.Cog):
     bot: G0T0Bot  # Typing annotation for my IDE's sake
-    adventure_commands = SlashCommandGroup("adventure", "Adventure commands")
+    adventure_commands = SlashCommandGroup("adventure", "Adventure commands", guild_only=True)
 
     def __init__(self, bot):
         # Setting up some objects
@@ -41,7 +41,7 @@ class Adventures(commands.Cog):
         if member is None:
             member = ctx.author
 
-        player = await get_player(self.bot, member.id, ctx.guild.id)
+        player = await get_player(self.bot, member.id, ctx.guild.id if ctx.guild else None)
         
         if not player.characters:
             return await ctx.respond(embed=ErrorEmbed(description=f"No character information found for {member.mention}"),

@@ -3,9 +3,14 @@ import discord
 from discord import ChannelType
 from discord.ui import Modal, InputText
 
+from Resolute.models.objects.guilds import PlayerGuild
+
 class AutomationRequestView(Modal):
-    def __init__(self):
+    guild: PlayerGuild
+
+    def __init__(self, guild: PlayerGuild):
         super().__init__(title="Automation Request")
+        self.guild = guild
 
         self.add_item(
             InputText(label="Request Summary", style=discord.InputTextStyle.short, required=True, custom_id="summary",
@@ -16,11 +21,11 @@ class AutomationRequestView(Modal):
                                 placeholder="Link to issue/reference material", max_length=200))
 
     async def callback(self, interaction: discord.Interaction):
-        if alias_channel := discord.utils.get(interaction.guild.channels, name="aliasing-and-snippet-help"):
+        if self.guild.automation_channel:
             title = f'''{interaction.user.display_name}: {self.children[0].value}'''
             message = f'''**Request Title**: {self.children[0].value}\n\n**Requestor**: {interaction.user.mention}\n**Notes**: {self.children[1].value}\n**Reference  URL**: {self.children[2].value} '''
 
-            thread = await alias_channel.create_thread(auto_archive_duration=10080,
+            thread = await self.guild.automation_channel.create_thread(auto_archive_duration=10080,
                                                        name=title, type=ChannelType.public_thread)
             await thread.send(content=message)
             return await interaction.response.send_message("Request submitted!", ephemeral=True)

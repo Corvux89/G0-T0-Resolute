@@ -26,7 +26,7 @@ def setup(bot):
 
 class Arenas(commands.Cog):
     bot: G0T0Bot  # Typing annotation for my IDE's sake
-    arena_commands = SlashCommandGroup("arena", "Commands for arenas!")
+    arena_commands = SlashCommandGroup("arena", "Commands for arenas!", guild_only=True)
 
     def __init__(self, bot):
         self.bot = bot

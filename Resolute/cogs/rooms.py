@@ -20,7 +20,7 @@ def setup(bot: commands.Bot):
 class Room(commands.Cog):
     bot: G0T0Bot
 
-    room_commands = SlashCommandGroup("room", "Room commands")
+    room_commands = SlashCommandGroup("room", "Room commands", guild_only=True)
     
     def __init__(self, bot):
         # Setting up some objects

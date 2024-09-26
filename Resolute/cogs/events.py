@@ -78,7 +78,8 @@ class Events(commands.Cog):
             log.info(f"cmd: chan {ctx.channel} [{ctx.channel.id}], serv: {ctx.guild.name} [{ctx.guild.id}], "
                      f"auth: {ctx.user} [{ctx.user.id}]: {ctx.command} {params}")
         except AttributeError:
-            log.info(f"Command in PM with {ctx.message.author} [{ctx.message.author.id}]: {ctx.message.content}")
+            params = "".join([f" [{p['name']}: {p['value']}]" for p in (ctx.selected_options or [])])
+            log.info(f"Command in PM with {ctx.user} [{ctx.user.id}]: {ctx.command} {params}")
 
     @commands.Cog.listener()
     async def on_application_command_error(self, ctx: discord.ApplicationContext, error):
@@ -91,7 +92,7 @@ class Events(commands.Cog):
         if hasattr(ctx, "bot") and hasattr(ctx.bot, "db"):
             params = "".join([f" [{p['name']}: {p['value']}]" for p in (ctx.selected_options or [])])
 
-            out_str = f"Error in command: cmd: chan {ctx.channel} [{ctx.channel.id}], serv: {ctx.guild} [{ctx.guild.id}] auth: {ctx.user} [{ctx.user.id}]: {ctx.command} {params}\n```"\
+            out_str = f"Error in command: cmd: chan {ctx.channel} [{ctx.channel.id}], {f'serv: {ctx.guild} [{ctx.guild.id}]' if ctx.guild else ''} auth: {ctx.user} [{ctx.user.id}]: {ctx.command} {params}\n```"\
                       f"{''.join(traceback.format_exception(type(error), error, error.__traceback__))}"\
                       f"```"
             
@@ -106,6 +107,10 @@ class Events(commands.Cog):
         try:
             if hasattr(ctx, "bot") and not hasattr(ctx.bot, "db"):
                 return await ctx.respond(f"Try again in a few seconds. I'm not fully awake yet.", ephemeral=True)
+            
+            if not ctx.guild:
+                return await ctx.respond(f"This command isn't supported in direct messages.", ephemeral=True)    
+
             return await ctx.respond(f'Something went wrong. Let us know if it keeps up!', ephemeral=True)
         except:
             log.warning('Unable to respond')

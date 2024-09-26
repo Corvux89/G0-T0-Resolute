@@ -37,10 +37,10 @@ bot = G0T0Bot(command_prefix=DEFAULT_PREFIX,
               description='Resolute - Created and maintained by Corvux',
               case_insensitive=True,
               help_command=MyHelpCommand(),
-              intents=intents,
-              debug_guilds=DEBUG_GUILDS
+              intents=intents
               )
 
+# Load the cogs!
 for filename in listdir('Resolute/cogs'):
     if filename.endswith('.py'):
         bot.load_extension(f'Resolute.cogs.{filename[:-3]}')

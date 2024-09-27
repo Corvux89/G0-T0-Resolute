@@ -62,10 +62,8 @@ async def create_log(bot: G0T0Bot, author: Member | ClientUser, guild: PlayerGui
     ignore_handicap: bool = kwargs.get('ignore_handicap', False)
 
     char_cc = get_activity_amount(player, guild, activity, cc)
-    author_player = await get_player(bot, author.id, guild.id) if author.id != player.id else player
 
     player.div_cc += char_cc if activity.diversion else 0
-    author_player.points += activity.points if guild.reward_threshold else 0
 
     char_log = DBLog(author=author.id, cc=char_cc, credits=credits, player_id=player.id, character_id=character.id if character else None,
                      activity=activity, notes=notes, guild_id=guild.id,
@@ -76,19 +74,6 @@ async def create_log(bot: G0T0Bot, author: Member | ClientUser, guild: PlayerGui
         extra_cc = min(char_log.cc, guild.handicap_cc - player.handicap_amount)
         char_log.cc += extra_cc
         player.handicap_amount += extra_cc
-
-    # Log Author Rewards
-    if activity.value != "LOG_REWARD" and guild.reward_threshold and author_player.points >= guild.reward_threshold:
-        reward_activity: Activity = bot.compendium.get_activity("LOG_REWARD")
-        qty = max(1, author_player.points//guild.reward_threshold)
-        reward_log = await create_log(bot, bot.user, guild, reward_activity, author_player, 
-                                      cc=reward_activity.cc*qty, 
-                                      notes=f"Rewards for {guild.reward_threshold*qty} points")
-        author_player.points = max(0, author_player.points-(guild.reward_threshold*qty))
-
-        if guild.archivist_channel:
-            await guild.archivist_channel.send(embed=LogEmbed(reward_log, bot.user, author, None, True))
-
 
     # Updates
     if character: 
@@ -101,13 +86,29 @@ async def create_log(bot: G0T0Bot, author: Member | ClientUser, guild: PlayerGui
         row = await results.first()
 
         await conn.execute(upsert_player_query(player))
-        await conn.execute(upsert_player_query(author_player))
 
         if character:
             await conn.execute(upsert_character_query(character))
 
     log_entry = LogSchema(bot.compendium).load(row)
 
+    # Author Rewards
+    author_player = await get_player(bot, author.id, guild.id) if author.id != player.id else player
+    author_player.points += activity.points if guild.reward_threshold else 0
+
+    if activity.value != "LOG_REWARD" and guild.reward_threshold and author_player.points >= guild.reward_threshold:
+        reward_activity: Activity = bot.compendium.get_activity("LOG_REWARD")
+        qty = max(1, author_player.points//guild.reward_threshold)
+        reward_log = await create_log(bot, bot.user, guild, reward_activity, author_player, 
+                                      cc=reward_activity.cc*qty, 
+                                      notes=f"Rewards for {guild.reward_threshold*qty} points")
+        author_player.points = max(0, author_player.points-(guild.reward_threshold*qty))
+
+        if guild.archivist_channel:
+            await guild.archivist_channel.send(embed=LogEmbed(reward_log, bot.user, author, None, True))
+    
+    async with bot.db.acquire() as conn:
+            await conn.execute(upsert_player_query(author_player))
 
     return log_entry
 

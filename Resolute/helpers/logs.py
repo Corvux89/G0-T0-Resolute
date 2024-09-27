@@ -62,7 +62,7 @@ async def create_log(bot: G0T0Bot, author: Member | ClientUser, guild: PlayerGui
     ignore_handicap: bool = kwargs.get('ignore_handicap', False)
 
     char_cc = get_activity_amount(player, guild, activity, cc)
-    author_player = await get_player(bot, author.id, guild.id)
+    author_player = await get_player(bot, author.id, guild.id) if author.id != player.id else player
 
     player.div_cc += char_cc if activity.diversion else 0
     author_player.points += activity.points if guild.reward_threshold else 0

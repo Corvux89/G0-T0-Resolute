@@ -1,5 +1,4 @@
 import logging
-import discord
 
 from Resolute.bot import G0T0Bot
 from Resolute.models.objects.characters import CharacterSchema, CharacterStarship, CharacterStarshipSchema, PlayerCharacter, PlayerCharacterClass, PlayerCharacterClassSchema, get_active_characters, get_all_characters, get_character_class, get_character_from_id, get_character_starships, upsert_character_query, upsert_class_query, upsert_starship_query
@@ -128,6 +127,11 @@ async def create_new_character(bot: G0T0Bot, type: str, player: Player, new_char
     log.info(f"Time to create character {new_character.id}: [ {end-start:.2f} ]s")
 
     return new_character
+
+
+    
+
+
 
 
 

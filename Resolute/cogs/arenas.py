@@ -1,22 +1,22 @@
 import logging
 import discord
 
-from discord import ApplicationContext, Member, Option
+from discord import ApplicationContext, Option
 from discord.commands import SlashCommandGroup
 from discord.ext import commands
 
 from Resolute.bot import G0T0Bot
 from Resolute.constants import CHANNEL_BREAK
-from Resolute.helpers.arenas import add_player_to_arena, close_arena, get_arena, update_arena_tier, update_arena_view_embed, upsert_arena
-from Resolute.helpers.general_helpers import confirm
+from Resolute.helpers.arenas import add_player_to_arena, build_arena_post, close_arena, get_arena, update_arena_tier, update_arena_view_embed, upsert_arena
+from Resolute.helpers.general_helpers import confirm, get_positivity
 from Resolute.helpers.guilds import get_guild
 from Resolute.helpers.logs import create_log
 from Resolute.helpers.players import get_player
 from Resolute.models.categories.categories import Activity, ArenaTier, ArenaType
 from Resolute.models.embeds import ErrorEmbed
 from Resolute.models.embeds.arenas import ArenaPhaseEmbed, ArenaStatusEmbed
-from Resolute.models.objects.arenas import Arena
-from Resolute.models.views.arena_view import ArenaCharacterSelect, CharacterArenaViewUI
+from Resolute.models.objects.arenas import Arena, ArenaPost
+from Resolute.models.views.arena_view import ArenaCharacterSelect, ArenaRequestCharacterSelect, CharacterArenaViewUI
 
 log = logging.getLogger(__name__)
 
@@ -36,6 +36,26 @@ class Arenas(commands.Cog):
     async def on_compendium_loaded(self):
         self.bot.add_view(CharacterArenaViewUI.new(self.bot))
         self.bot.add_view(ArenaCharacterSelect(self.bot))
+
+    # @commands.slash_command(
+    #         name="arena_request",
+    #         description="Request to join an arena"
+    # )
+    async def arena_request(self, ctx: ApplicationContext):
+        player = await get_player(self.bot, ctx.author.id, ctx.guild.id if ctx.guild else None)
+        g = await get_guild(self.bot, player.guild_id)
+
+        if len(player.characters) == 0:
+            return await ctx.respond(embed=ErrorEmbed(description="You need a character first in order to join an arena"))
+        elif len(player.characters) == 1:
+            post = ArenaPost(player, player.characters)
+            await build_arena_post(ctx, self.bot, post)
+        else:
+            ui = ArenaRequestCharacterSelect.new(self.bot, ctx.author, player)
+            test = await ui.send_to(ctx)
+            await ctx.delete()
+
+        
 
     @arena_commands.command(
         name="claim",

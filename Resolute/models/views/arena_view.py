@@ -1,12 +1,16 @@
 import discord
 
-from typing import Type
+from typing import Mapping, Type
 from Resolute.bot import G0T0Bot
-from Resolute.helpers.arenas import add_player_to_arena, get_arena
+from Resolute.helpers.arenas import add_player_to_arena, build_arena_post, get_arena, get_player_arenas
 from Resolute.helpers.characters import get_character
 from Resolute.helpers.players import get_player
 from Resolute.models.embeds import ErrorEmbed
+from Resolute.models.embeds.arenas import ArenaPostEmbed
+from Resolute.models.objects.arenas import ArenaPost
+from Resolute.models.objects.characters import PlayerCharacter
 from Resolute.models.objects.players import Player
+from Resolute.models.views.base import InteractiveView
 
 
 class ArenaView(discord.ui.View):
@@ -156,5 +160,59 @@ class ArenaCharacterSelect(ArenaView):
         self.character_select.__setattr__("placeholder", f"{self.bot.get_guild(self.player.guild_id).get_member(self.player.id).display_name} select a character to join arena")
         self.character_select.options = char_list
 
+class ArenaRequest(InteractiveView):
+    __menu_copy_attrs__ = ("bot", "post")   
+    bot: G0T0Bot
+    post: ArenaPost
+
+    async def get_content(self):
+        return {"content": "", "embed": ArenaPostEmbed(self.post)}
+    
+    
+class ArenaRequestCharacterSelect(ArenaRequest):
+    character: PlayerCharacter = None
+
+    @classmethod
+    def new(cls, bot: G0T0Bot, owner: discord.Member, player: Player):
+        inst = cls(owner=owner)
+        inst.bot = bot
+        inst.post = ArenaPost(player)
+        return inst
+
+    async def _before_send(self):
+        char_list = []
+        for char in self.post.player.characters:
+            char_list.append(discord.SelectOption(label=f"{char.name}", value=f"{char.id}", default=True if self.character and char.id == self.character.id else False))
+        self.character_select.options = char_list
+
+    @discord.ui.select(placeholder="Select a character to join arena", row=1, custom_id="character_select")
+    async def character_select(self, char: discord.ui.Select, interaction: discord.Interaction):
+        character = await get_character(self.bot, char.values[0])
+ 
+        if character.player_id != interaction.user.id and interaction.user.id != self.owner.id:
+            return await interaction.response.send_message(embed=ErrorEmbed(description="That's not your character"), ephemeral=True)
         
+        self.character = character
+        
+        await self.refresh_content(interaction)
+    
+    @discord.ui.button(label="Add", style=discord.ButtonStyle.primary, custom_id="add_character", row=2)
+    async def queue_character(self, _: discord.ui.Button, interaction: discord.Interaction):
+        self.post.characters.append(self.character)
+        await self.refresh_content(interaction)
+
+    @discord.ui.button(label="Remove", style=discord.ButtonStyle.red, custom_id="remove_character", row=2)
+    async def remove_character(self, _: discord.ui.Button, interaction: discord.Interaction):
+        self.post.characters.remove(self.character)
+        await self.refresh_content(interaction)
+
+    @discord.ui.button(label="Accept", style=discord.ButtonStyle.primary, row=3)
+    async def next_application(self, _: discord.ui.Button, interaction: discord.Interaction):
+        await build_arena_post(interaction, self.bot, self.post)
+
+    @discord.ui.button(label="Exit", style=discord.ButtonStyle.red, row=3)
+    async def exit_application(self, _: discord.ui.Button, interaction: discord.Interaction):
+        await self.on_timeout()
+
+                
     

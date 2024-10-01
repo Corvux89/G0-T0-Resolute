@@ -119,3 +119,21 @@ def upsert_arena_query(arena: Arena):
         created_ts=arena.created_ts,
         completed_phases=arena.completed_phases
     ).returning(arenas_table)
+
+class ArenaPost(object):
+    def __init__(self, player: Player, characters: list[PlayerCharacter] = [], content: str = None):
+        self.player = player
+        self.characters = characters
+        self.content = content
+
+    @property
+    def message(self):
+
+        char_string = "\n".join([f'**Character {self.characters.index(c)+1}**: {c.name} [{c.id}] - Level {c.level}' for c in self.characters])
+
+        return (f"**Player**: {self.player.member.mention}\n"
+                f"{char_string}\n\n"
+                f"{self.content}")
+
+                
+        

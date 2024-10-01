@@ -51,13 +51,13 @@ def get_positivity(string) -> bool:
     lowered = string.lower()
     if lowered in ("yes", "y", "true", "t", "1", "enable", "on"):
         return True
-    elif lowered in ("no", "n", "false", "f", "0", "disable", "off"):
+    elif lowered in ("no", "n", "false", "f", "0", "disable", "off", "cancel"):
         return False
     else:
         return None
 
 
-async def confirm(ctx, message, delete_msgs=False, bot: G0T0Bot = None, response_check=get_positivity) -> bool|str:
+async def confirm(ctx, message, delete_msgs=False, bot: G0T0Bot = None, response_check=get_positivity, full_reply: bool = False) -> bool|str:
     msg = await ctx.channel.send(message)
     
     if bot is None:
@@ -69,6 +69,8 @@ async def confirm(ctx, message, delete_msgs=False, bot: G0T0Bot = None, response
         return None
     if response_check:
         reply_bool = response_check(reply.content) if reply is not None else None
+    elif full_reply:
+        reply_bool = reply
     else:
         reply_bool = reply.content
     if delete_msgs:

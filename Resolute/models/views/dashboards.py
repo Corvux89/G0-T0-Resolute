@@ -62,7 +62,7 @@ class DashboardSettingsUI(DashboardSettings):
         else:
             self.remove_item(self.dashboard_select)
             self.remove_item(self.manage_dashboard)
-            self.remove_item(self.delete_dashboard)
+            # self.remove_item(self.delete_dashboard)
 
     async def get_content(self) -> Mapping:
         return {"embed": None, "content": "Select an Option:\n"}

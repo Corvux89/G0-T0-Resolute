@@ -1,6 +1,5 @@
 import discord
 
-from discord import Guild, Member
 from Resolute.models.categories import Activity
 from Resolute.models.objects.logs import get_log_count_by_player_and_activity
 from Resolute.models.objects.players import Player, get_player_query, upsert_player_query, PlayerSchema

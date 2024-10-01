@@ -78,7 +78,7 @@ class CharacterSelectUI(CharacterSelect):
                     await interaction.channel.send(embed=ErrorEmbed(description="Character is already at max level for the server"), delete_after=5)
                     await self.refresh_content(interaction)
                 else:    
-                    modal = LevelUpRequestModal(self.guild, self.character)
+                    modal = LevelUpRequestModal(g, self.character)
                     await self.prompt_modal(interaction, modal)
                     await self.on_timeout()
             else:

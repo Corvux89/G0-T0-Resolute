@@ -8,10 +8,12 @@ from datetime import datetime, timezone
 
 from Resolute.bot import G0T0Bot
 from Resolute.helpers.characters import get_character
+from Resolute.helpers.general_helpers import confirm, get_positivity
+from Resolute.helpers.guilds import get_guild
 from Resolute.models.categories import ArenaTier
 from Resolute.models.embeds import ErrorEmbed
 from Resolute.models.embeds.arenas import ArenaStatusEmbed
-from Resolute.models.objects.arenas import Arena, ArenaSchema, get_arena_by_channel_query, get_arena_by_host_query, get_character_arena_query, upsert_arena_query
+from Resolute.models.objects.arenas import Arena, ArenaPost, ArenaSchema, get_arena_by_channel_query, get_arena_by_host_query, get_character_arena_query, upsert_arena_query
 from Resolute.models.objects.characters import PlayerCharacter
 from Resolute.models.objects.players import Player
 
@@ -123,5 +125,28 @@ async def get_player_arenas(bot: G0T0Bot, player: Player) -> list[Arena]:
     
     return arenas
 
-        
+async def build_arena_post(ctx: discord.ApplicationContext | discord.Interaction, bot: G0T0Bot, post: ArenaPost):
+    g = await get_guild(bot, post.player.guild_id)
+
+    content_message = await confirm(ctx, "What do you want to post on the board?", True, bot, None, True)  
+
+    if not content_message or content_message.content == "" or get_positivity(content_message.content) == False:
+            return await ctx.respond(f"Request cancelled!", ephemeral=True)
+    
+    post.content = content_message.content
+
+    if g.arena_board:
+        guild_member = g.guild.get_member(post.player.id)
+        webhook = await g.arena_board.create_webhook(name=guild_member.name)
+        for char in post.characters:
+            await webhook.send(content_message.content, username=f"{char.name} [{char.level}]", avatar_url=guild_member.display_avatar.url)
+        await webhook.delete()
+        if ctx.response.is_done():
+            await ctx.edit_original_response(f"Request Submitted!", embed=None, ephemeral=True)
+        else:
+            await ctx.respond(f"Request submitted!", ephemeral=True)
+    else:
+        await ctx.respond(f"Something went wrong", ephemeral=True)
+
+    
 

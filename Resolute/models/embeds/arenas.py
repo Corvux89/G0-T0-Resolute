@@ -1,6 +1,6 @@
 from discord import Embed, ApplicationContext, Interaction, Color
 from Resolute.constants import THUMBNAIL, ZWSP3
-from Resolute.models.objects.arenas import Arena
+from Resolute.models.objects.arenas import Arena, ArenaPost
 
 class ArenaStatusEmbed(Embed):
     def __init__(self, ctx: ApplicationContext | Interaction, arena: Arena):
@@ -45,3 +45,18 @@ class ArenaPhaseEmbed(Embed):
         self.add_field(name="The following rewards have been applied:",
                        value="\n".join(field_str),
                        inline=False)
+        
+class ArenaPostEmbed(Embed):
+    def __init__(self, post: ArenaPost):
+        super().__init__(
+            title=f"Arena Request for {post.player.member.display_name}",
+            color=Color.random()
+        )
+
+        self.set_thumbnail(url=post.player.member.avatar.url)
+
+        char_str = "\n".join([f'{c.name} - {c.level}' for c in post.characters])
+
+        self.description = f"**Characters**:\n{char_str}"
+
+        

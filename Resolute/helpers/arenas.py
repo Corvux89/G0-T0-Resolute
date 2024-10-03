@@ -125,7 +125,7 @@ async def get_player_arenas(bot: G0T0Bot, player: Player) -> list[Arena]:
     
     return arenas
 
-async def build_arena_post(ctx: discord.ApplicationContext | discord.Interaction, bot: G0T0Bot, post: ArenaPost):
+async def build_arena_post(ctx: discord.ApplicationContext | discord.Interaction, bot: G0T0Bot, post: ArenaPost) -> bool:
     g = await get_guild(bot, post.player.guild_id)
 
     content_message = await confirm(ctx, "What do you want to post on the board?", True, bot, None, True)  
@@ -139,14 +139,10 @@ async def build_arena_post(ctx: discord.ApplicationContext | discord.Interaction
         guild_member = g.guild.get_member(post.player.id)
         webhook = await g.arena_board.create_webhook(name=guild_member.name)
         for char in post.characters:
-            await webhook.send(content_message.content, username=f"{char.name} [{char.level}]", avatar_url=guild_member.display_avatar.url)
+            await webhook.send(content_message.content, username=f"[{char.level}] {char.name} ({guild_member.display_name})", avatar_url=guild_member.display_avatar.url)
         await webhook.delete()
-        if ctx.response.is_done():
-            await ctx.edit_original_response(f"Request Submitted!", embed=None, ephemeral=True)
-        else:
-            await ctx.respond(f"Request submitted!", ephemeral=True)
-    else:
-        await ctx.respond(f"Something went wrong", ephemeral=True)
+        return True
+    return False
 
     
 

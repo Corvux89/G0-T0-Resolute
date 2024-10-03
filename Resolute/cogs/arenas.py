@@ -7,7 +7,7 @@ from discord.ext import commands
 
 from Resolute.bot import G0T0Bot
 from Resolute.constants import CHANNEL_BREAK
-from Resolute.helpers.arenas import add_player_to_arena, build_arena_post, close_arena, get_arena, update_arena_tier, update_arena_view_embed, upsert_arena
+from Resolute.helpers.arenas import add_player_to_arena, build_arena_post, close_arena, get_arena, get_player_arenas, update_arena_tier, update_arena_view_embed, upsert_arena
 from Resolute.helpers.general_helpers import confirm, get_positivity
 from Resolute.helpers.guilds import get_guild
 from Resolute.helpers.logs import create_log
@@ -48,13 +48,20 @@ class Arenas(commands.Cog):
         if len(player.characters) == 0:
             return await ctx.respond(embed=ErrorEmbed(description="You need a character first in order to join an arena"))
         elif len(player.characters) == 1:
+            arenas = await get_player_arenas(self.bot, player)
+
+            for arena in arenas:
+                if player.characters[0].id in arena.characters and arena.completed_phases < arena.tier.max_phases-1:
+                    return await ctx.respond(f"Character already in a new arena.", ephemeral=True)
+
             post = ArenaPost(player, player.characters)
-            await build_arena_post(ctx, self.bot, post)
+            if await build_arena_post(ctx, self.bot, post):
+                return await ctx.respond(f"Request submitted!", ephemeral=True)
         else:
             ui = ArenaRequestCharacterSelect.new(self.bot, ctx.author, player)
-            test = await ui.send_to(ctx)
-            await ctx.delete()
-
+            await ui.send_to(ctx)
+            return await ctx.delete()
+        await ctx.respond(f"Something went wrong", ephemeral=True)
         
 
     @arena_commands.command(

@@ -146,6 +146,7 @@ class _ManageDashboardUI(DashboardSettings):
             await interaction.channel.send(embed=ErrorEmbed(description=f"Channel not in this dashbaords category"), delete_after=5)
         else:
             self.channel = channel
+        await self.refresh_content(interaction)
 
     @discord.ui.button(label="Add Exclusion", style=discord.ButtonStyle.primary, row=2)
     async def add_exclusion(self, _: discord.ui.Button, interaction: discord.Interaction):

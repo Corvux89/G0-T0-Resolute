@@ -198,17 +198,32 @@ class ArenaRequestCharacterSelect(ArenaRequest):
     
     @discord.ui.button(label="Add", style=discord.ButtonStyle.primary, custom_id="add_character", row=2)
     async def queue_character(self, _: discord.ui.Button, interaction: discord.Interaction):
-        self.post.characters.append(self.character)
+        arenas = await get_player_arenas(self.bot, self.post.player)
+        add = True
+
+        for arena in arenas:
+            if self.character.id in arena.characters and arena.completed_phases < arena.tier.max_phases-1:
+                add = False
+                await interaction.channel.send("Character already in a new arena.", delete_after=5)
+
+        if self.character not in self.post.characters and add:
+            self.post.characters.append(self.character)
+            
         await self.refresh_content(interaction)
 
     @discord.ui.button(label="Remove", style=discord.ButtonStyle.red, custom_id="remove_character", row=2)
     async def remove_character(self, _: discord.ui.Button, interaction: discord.Interaction):
-        self.post.characters.remove(self.character)
+        if self.character in self.post.characters:
+            self.post.characters.remove(self.character)
         await self.refresh_content(interaction)
 
     @discord.ui.button(label="Accept", style=discord.ButtonStyle.primary, row=3)
     async def next_application(self, _: discord.ui.Button, interaction: discord.Interaction):
-        await build_arena_post(interaction, self.bot, self.post)
+        await self.on_timeout()
+        if await build_arena_post(interaction, self.bot, self.post):
+            await interaction.channel.send("Request Submitted!", delete_after=5)
+        else:
+            await interaction.channel.send("Something went wrong", delete_after=5)
 
     @discord.ui.button(label="Exit", style=discord.ButtonStyle.red, row=3)
     async def exit_application(self, _: discord.ui.Button, interaction: discord.Interaction):

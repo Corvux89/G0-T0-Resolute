@@ -13,6 +13,8 @@ async def get_pinned_post(bot: G0T0Bot, dashboard: RefDashboard) -> discord.Mess
     if channel := bot.get_channel(dashboard.channel_id):
         try:
             msg = await channel.fetch_message(dashboard.post_id)
+        except discord.HTTPException:
+            return True
         except:
             return None
         
@@ -110,7 +112,7 @@ async def get_level_distribution_data(bot: G0T0Bot) -> []:
 async def update_dashboard(bot: G0T0Bot, dashboard: RefDashboard):
     original_message = await get_pinned_post(bot, dashboard)
 
-    if not original_message or not original_message.pinned:
+    if not original_message or not original_message.pinned and original_message is not True:
         return await delete_dashboard(bot, dashboard)
     
     guild = await get_guild(bot, original_message.guild.id)

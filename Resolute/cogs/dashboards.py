@@ -46,7 +46,7 @@ class Dashboards(commands.Cog):
             
             post_message = await get_pinned_post(self.bot, dashboard)
 
-            if not post_message or not post_message.pinned:
+            if not post_message or not post_message.pinned and post_message is not True:
                 return await delete_dashboard(self.bot, dashboard)
             
             guild = await get_guild(self.bot, message.guild.id)
@@ -80,10 +80,10 @@ class Dashboards(commands.Cog):
                     update = True if available_field.title != node else False
                 elif guild.archivist_role and guild.archivist_role.mention in message.content:
                     archivist_field.channels.append(message.channel)
-                    update = True if available_field.title != node else False
+                    update = True if archivist_field.title != node else False
                 else:
                     unavailable_field.channels.append(message.channel)
-                    update = True if available_field.title != node else False
+                    update = True if unavailable_field.title != node else False
 
                 all_fields = [f for f in all_fields if len(f.channels)>0 or f.title != "Archivist"]
 

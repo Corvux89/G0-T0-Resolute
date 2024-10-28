@@ -23,6 +23,9 @@ def setup(bot: commands.Bot):
 
 
 class Character(commands.Cog):
+    # TODO: Webhook for character chats
+    # TODO: Settings to set global character and auto-add channels to character for defaulting, and set factions
+    # TODO: Activity points
     bot: G0T0Bot
     character_admin_commands = SlashCommandGroup("character_admin", "Character administration commands", guild_only=True)
 

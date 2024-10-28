@@ -49,14 +49,18 @@ class ArenaPhaseEmbed(Embed):
 class ArenaPostEmbed(Embed):
     def __init__(self, post: ArenaPost):
         super().__init__(
-            title=f"Arena Request for {post.player.member.display_name}",
+            title=f"Arena Request",
             color=Color.random()
         )
 
         self.set_thumbnail(url=post.player.member.avatar.url)
 
-        char_str = "\n".join([f'{c.name} - {c.level}' for c in post.characters])
+        char_str = "\n\n".join([f'[{post.characters.index(c)+1}] {c.inline_class_description()}' for c in post.characters])
 
-        self.description = f"**Characters**:\n{char_str}"
+        self.add_field(name="Character Priority",
+                       value=char_str,
+                       inline=False)
+        
+        self.set_footer(text=f"{post.player.member.id}")
 
         

@@ -8,11 +8,11 @@ from datetime import datetime, timezone
 
 from Resolute.bot import G0T0Bot
 from Resolute.helpers.characters import get_character
-from Resolute.helpers.general_helpers import confirm, get_positivity
+from Resolute.helpers.general_helpers import confirm, get_positivity, get_webhook
 from Resolute.helpers.guilds import get_guild
 from Resolute.models.categories import ArenaTier
 from Resolute.models.embeds import ErrorEmbed
-from Resolute.models.embeds.arenas import ArenaStatusEmbed
+from Resolute.models.embeds.arenas import ArenaPostEmbed, ArenaStatusEmbed
 from Resolute.models.objects.arenas import Arena, ArenaPost, ArenaSchema, get_arena_by_channel_query, get_arena_by_host_query, get_character_arena_query, upsert_arena_query
 from Resolute.models.objects.characters import PlayerCharacter
 from Resolute.models.objects.players import Player
@@ -75,6 +75,9 @@ async def update_arena_view_embed(interaction: discord.Interaction | discord.App
 
 async def remove_arena_board_post(ctx: discord.ApplicationContext | discord.Interaction, player: Player) -> None:
     def predicate(message):
+        if message.author.bot:
+            return message.embeds[0].footer.text == f"{player.id}"
+        
         return message.author == ctx.guild.get_member(player.id)
     
     if arena_board := discord.utils.get(ctx.guild.channels, name="arena-board"):
@@ -128,21 +131,16 @@ async def get_player_arenas(bot: G0T0Bot, player: Player) -> list[Arena]:
 async def build_arena_post(ctx: discord.ApplicationContext | discord.Interaction, bot: G0T0Bot, post: ArenaPost) -> bool:
     g = await get_guild(bot, post.player.guild_id)
 
-    content_message = await confirm(ctx, "What do you want to post on the board?", True, bot, None, True)  
-
-    if not content_message or content_message.content == "" or get_positivity(content_message.content) == False:
-            return await ctx.respond(f"Request cancelled!", ephemeral=True)
-    
-    post.content = content_message.content
-
     if g.arena_board:
         guild_member = g.guild.get_member(post.player.id)
-        webhook = await g.arena_board.create_webhook(name=guild_member.name)
-        for char in post.characters:
-            await webhook.send(content_message.content, username=f"[{char.level}] {char.name} ({guild_member.display_name})", avatar_url=guild_member.display_avatar.url)
-        await webhook.delete()
+        webhook = await get_webhook(g.arena_board)
+        if post.message:
+            await webhook.edit_message(post.message.id, embed=ArenaPostEmbed(post))
+        else:
+            await webhook.send(username=guild_member.display_name, avatar_url=guild_member.display_avatar.url,
+                                embed=ArenaPostEmbed(post))
         return True
     return False
 
     
-
+ 

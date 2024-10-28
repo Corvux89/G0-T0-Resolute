@@ -1,3 +1,4 @@
+import discord
 import sqlalchemy as sa
 
 from sqlalchemy import Column, Integer, BigInteger, null, TIMESTAMP, and_, null
@@ -121,19 +122,13 @@ def upsert_arena_query(arena: Arena):
     ).returning(arenas_table)
 
 class ArenaPost(object):
-    def __init__(self, player: Player, characters: list[PlayerCharacter] = [], content: str = None):
+    def __init__(self, player: Player, characters: list[PlayerCharacter] = [], *args, **kwargs):
         self.player = player
         self.characters = characters
-        self.content = content
 
-    @property
-    def message(self):
+        self.message: discord.Message = kwargs.get("message")
 
-        char_string = "\n".join([f'**Character {self.characters.index(c)+1}**: {c.name} [{c.id}] - Level {c.level}' for c in self.characters])
 
-        return (f"**Player**: {self.player.member.mention}\n"
-                f"{char_string}\n\n"
-                f"{self.content}")
 
                 
         

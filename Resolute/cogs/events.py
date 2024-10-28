@@ -21,6 +21,7 @@ def setup(bot: commands.Bot):
     bot.add_cog(Events(bot))
 
 class Events(commands.Cog):
+    # TODO: Track stats on # of times per character, and assign activity points
     bot: G0T0Bot
 
     def __init__(self, bot):
@@ -45,7 +46,7 @@ class Events(commands.Cog):
                     pass
                 else:
                     log.error(error)
-        
+                    
         if exit_channel := discord.utils.get(guild.channels, name="exit"):
             player = await get_player(self.bot, payload.user.id, payload.guild_id)
             player.member = payload.user

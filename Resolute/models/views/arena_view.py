@@ -151,7 +151,7 @@ class ArenaCharacterSelect(ArenaView):
         else:
             return await interaction.response.send_message(embed=ErrorEmbed(description=f"Role @{interaction.channel.name} doesn't exist"),
                                                   ephemeral=True)
-        return
+        await self.on_timeout()
 
     async def _before_send(self):
         char_list = []
@@ -173,10 +173,11 @@ class ArenaRequestCharacterSelect(ArenaRequest):
     character: PlayerCharacter = None
 
     @classmethod
-    def new(cls, bot: G0T0Bot, owner: discord.Member, player: Player):
+    def new(cls, bot: G0T0Bot, owner: discord.Member, player: Player, post: ArenaPost = None):
         inst = cls(owner=owner)
         inst.bot = bot
-        inst.post = ArenaPost(player)
+        inst.post = post or ArenaPost(player, [])
+        inst.character = None
         return inst
 
     async def _before_send(self):
@@ -184,6 +185,11 @@ class ArenaRequestCharacterSelect(ArenaRequest):
         for char in self.post.player.characters:
             char_list.append(discord.SelectOption(label=f"{char.name}", value=f"{char.id}", default=True if self.character and char.id == self.character.id else False))
         self.character_select.options = char_list
+
+        self.queue_character.disabled = False if self.character else True
+        self.remove_character.disabled = False if self.character else True
+        self.next_application.disabled = False if len(self.post.characters) > 0 else True
+
 
     @discord.ui.select(placeholder="Select a character to join arena", row=1, custom_id="character_select")
     async def character_select(self, char: discord.ui.Select, interaction: discord.Interaction):
@@ -206,24 +212,26 @@ class ArenaRequestCharacterSelect(ArenaRequest):
                 add = False
                 await interaction.channel.send("Character already in a new arena.", delete_after=5)
 
-        if self.character not in self.post.characters and add:
+        if self.character.id not in [c.id for c in self.post.characters] and add:
             self.post.characters.append(self.character)
             
         await self.refresh_content(interaction)
 
     @discord.ui.button(label="Remove", style=discord.ButtonStyle.red, custom_id="remove_character", row=2)
     async def remove_character(self, _: discord.ui.Button, interaction: discord.Interaction):
-        if self.character in self.post.characters:
-            self.post.characters.remove(self.character)
+        if self.character.id in [c.id for c in self.post.characters]:
+            char = next((c for c in self.post.characters if c.id == self.character.id), None)
+            self.post.characters.remove(char)
         await self.refresh_content(interaction)
 
     @discord.ui.button(label="Accept", style=discord.ButtonStyle.primary, row=3)
     async def next_application(self, _: discord.ui.Button, interaction: discord.Interaction):
-        await self.on_timeout()
         if await build_arena_post(interaction, self.bot, self.post):
             await interaction.channel.send("Request Submitted!", delete_after=5)
         else:
             await interaction.channel.send("Something went wrong", delete_after=5)
+
+        await self.on_timeout()
 
     @discord.ui.button(label="Exit", style=discord.ButtonStyle.red, row=3)
     async def exit_application(self, _: discord.ui.Button, interaction: discord.Interaction):

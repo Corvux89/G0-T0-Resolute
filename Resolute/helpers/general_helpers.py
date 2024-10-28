@@ -4,7 +4,7 @@ from discord import ApplicationContext, Member, Guild, Interaction
 from sqlalchemy.util import asyncio
 
 from Resolute.bot import G0T0Bot
-from Resolute.constants import BOT_OWNERS
+from Resolute.constants import BOT_OWNERS, THUMBNAIL
 from Resolute.models.objects.guilds import PlayerGuild
 
 
@@ -113,5 +113,17 @@ def process_message(message: str, g: PlayerGuild,  member: Member = None, mappin
         message = message.replace("{user}", f"{member.mention}")
 
     return message
+
+async def get_webhook(channel: discord.TextChannel) -> discord.Webhook:
+    webhooks = await channel.webhooks()
+    for hook in webhooks:
+        if (hook.token):
+            return hook
+        
+    hook = await channel.create_webhook(name="G0T0 Hook",
+                                 reason="G0T0 Bot Webhook")
+    
+    return hook
+
 
     

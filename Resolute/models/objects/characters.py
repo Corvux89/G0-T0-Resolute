@@ -40,6 +40,11 @@ class PlayerCharacter(object):
             str += f"\n".join([f"{ZWSP3}{s.get_formatted_starship(compendium)}" for s in self.starships])
 
         return str
+    
+    def inline_class_description(self):
+        class_str = "".join([f" {c.get_formatted_class()}" for c in self.classes])
+        return f"**{self.name}** - Level {self.level} {self.species.value} [{class_str}]" 
+
 
     def is_valid(self, guild: PlayerGuild):
         return (hasattr(self, "name") and self.name is not None and 

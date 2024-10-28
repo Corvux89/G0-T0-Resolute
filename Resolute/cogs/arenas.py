@@ -1,12 +1,12 @@
 import logging
 import discord
 
-from discord import ApplicationContext, Option
+from discord import ApplicationContext, Option, RawReactionActionEvent
 from discord.commands import SlashCommandGroup
 from discord.ext import commands
 
 from Resolute.bot import G0T0Bot
-from Resolute.constants import CHANNEL_BREAK
+from Resolute.constants import CHANNEL_BREAK, DENIED_EMOJI, EDIT_EMOJI
 from Resolute.helpers.arenas import add_player_to_arena, build_arena_post, close_arena, get_arena, get_player_arenas, update_arena_tier, update_arena_view_embed, upsert_arena
 from Resolute.helpers.general_helpers import confirm, get_positivity
 from Resolute.helpers.guilds import get_guild
@@ -37,10 +37,53 @@ class Arenas(commands.Cog):
         self.bot.add_view(CharacterArenaViewUI.new(self.bot))
         self.bot.add_view(ArenaCharacterSelect(self.bot))
 
-    # @commands.slash_command(
-    #         name="arena_request",
-    #         description="Request to join an arena"
-    # )
+    @commands.Cog.listener()
+    async def on_raw_reaction_add(self, payload: RawReactionActionEvent):
+        if not hasattr(self.bot, "db") or not hasattr(self.bot, "compendium"):
+            return
+
+        guild = await get_guild(self.bot, payload.guild_id)
+
+        if guild.arena_board and payload.channel_id == guild.arena_board.id:
+            user = guild.guild.get_member(payload.user_id)
+            player = await get_player(self.bot, user.id, guild.id)
+
+            if payload.emoji.name in [*EDIT_EMOJI, *DENIED_EMOJI]:
+                message = None
+                try:
+                    message = await guild.guild.get_channel(payload.channel_id).fetch_message(payload.message_id)
+                except:
+                    pass
+
+                if not message or not message.author.bot:
+                    return
+                
+                if message.embeds[0].footer.text != f"{user.id}":
+                    return
+                
+                if payload.emoji.name in EDIT_EMOJI and len(player.characters) <= 1:
+                    return
+                
+                if payload.emoji.name in DENIED_EMOJI:
+                    return await message.delete()
+                    
+                
+                
+                post = ArenaPost(player)
+
+                post.message = message
+
+                ui = ArenaRequestCharacterSelect.new(self.bot, user, player, post)
+                await ui.send_to(user)
+                await message.clear_reactions()
+
+
+
+
+    @commands.slash_command(
+            name="arena_request",
+            description="Request to join an arena"
+    )
     async def arena_request(self, ctx: ApplicationContext):
         player = await get_player(self.bot, ctx.author.id, ctx.guild.id if ctx.guild else None)
         g = await get_guild(self.bot, player.guild_id)
@@ -48,6 +91,7 @@ class Arenas(commands.Cog):
         if len(player.characters) == 0:
             return await ctx.respond(embed=ErrorEmbed(description="You need a character first in order to join an arena"))
         elif len(player.characters) == 1:
+            await ctx.defer()
             arenas = await get_player_arenas(self.bot, player)
 
             for arena in arenas:

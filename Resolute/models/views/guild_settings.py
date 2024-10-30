@@ -225,7 +225,7 @@ class GuildLimitsModal(Modal):
         
 
         if len(err_str) > 0:
-            await interaction.channel.send(embed=ErrorEmbed(description="\n".join(err_str)), delete_after=5)
+            await interaction.channel.send(embed=ErrorEmbed("\n".join(err_str)), delete_after=5)
 
         await interaction.response.defer()
 
@@ -302,7 +302,7 @@ class ServerDateModal(Modal):
             try:
                 self.guild.server_date = get_guild_internal_date(self.guild, int(self.children[2].value), self.guild.calendar.index(month)+1, int(self.children[0].value))
             except:
-                await interaction.channel.send(embed=ErrorEmbed(description=f"Error setting server date"), delete_after=5)
+                await interaction.channel.send(embed=ErrorEmbed(f"Error setting server date"), delete_after=5)
     
         await interaction.response.defer()
         self.stop()

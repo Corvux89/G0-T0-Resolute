@@ -60,7 +60,7 @@ class LogPromptUI(LogPrompt):
             rate: CodeConversion = self.bot.compendium.get_object(CodeConversion, self.character.level)
             convertedCC = math.ceil((self.credits - self.character.credits) / rate.value)
             if self.player.cc < convertedCC:
-                await interaction.channel.send(embed=ErrorEmbed(description=f"{self.character.name} cannot afford the {self.credits} credit cost or to convert the {convertedCC} needed."))
+                await interaction.channel.send(embed=ErrorEmbed(f"{self.character.name} cannot afford the {self.credits} credit cost or to convert the {convertedCC} needed."))
             else:
                 convert_activity = self.bot.compendium.get_object(Activity, "CONVERSION")
                 converted_entry = await create_log(self.bot, self.owner, self.guild, convert_activity, self.player, 

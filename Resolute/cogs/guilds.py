@@ -11,7 +11,7 @@ from timeit import default_timer as timer
 import discord.ext.tasks
 
 from Resolute.bot import G0T0Bot
-from Resolute.helpers.general_helpers import confirm
+from Resolute.helpers.general_helpers import confirm, get_webhook
 from Resolute.models.categories import Activity
 from Resolute.helpers.guilds import get_guilds_with_reset, get_guild, update_guild
 from Resolute.helpers.guilds import delete_weekly_stipend, get_guild_stipends
@@ -42,6 +42,15 @@ class Guilds(commands.Cog):
     async def on_compendium_loaded(self):
         if not self.schedule_weekly_reset.is_running():
             asyncio.ensure_future(self.schedule_weekly_reset.start())
+
+    @commands.Cog.listener()
+    async def on_command_error(self, ctx: discord.ApplicationContext, error):
+        # TODO: Make this better with some validation and guild settings
+        if ctx.invoked_with == "gm":
+            webhook = await get_webhook(ctx.channel)
+            await webhook.send(username="GM",
+                               content=f"{ctx.message.content.replace('>gm','')}")
+            await ctx.message.delete()
     
     @guilds_commands.command(
             name="settings",
@@ -97,7 +106,7 @@ class Guilds(commands.Cog):
         # Reset weekly stats
         await update_guild(self.bot, g)
 
-        # Reset Player CC's     
+        # Reset Player CC's and 
         async with self.bot.db.acquire() as conn:
             await conn.execute(reset_div_cc(g.id))
         

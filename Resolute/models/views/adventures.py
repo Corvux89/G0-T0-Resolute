@@ -97,7 +97,7 @@ class AdventureSettingsUI(AdventureSettings):
                                      cc=dm_reward, 
                                      adventure=self.adventure)
             else:
-                await interaction.channel.send(embed=ErrorEmbed(description=f"Error getting DM Activity"), delete_after=5)
+                await interaction.channel.send(embed=ErrorEmbed(f"Error getting DM Activity"), delete_after=5)
             
             if player_activity := self.bot.compendium.get_object(Activity, "ADVENTURE"):
                 player_reward = response.cc
@@ -110,7 +110,7 @@ class AdventureSettingsUI(AdventureSettings):
                                      cc=player_reward, 
                                      adventure=self.adventure)
             else:
-                await interaction.channel.send(embed=ErrorEmbed(description=f"Error getting Player Adventure Activity"), delete_after=5)
+                await interaction.channel.send(embed=ErrorEmbed(f"Error getting Player Adventure Activity"), delete_after=5)
             
             await interaction.channel.send(embed=AdventureRewardEmbed(interaction, self.adventure, response.cc))
         await self.refresh_content(interaction)
@@ -121,10 +121,10 @@ class AdventureSettingsUI(AdventureSettings):
             conf = await confirm(interaction, "Are you sure you want to end this adventure? (Reply with yes/no)", True, self.bot)
 
             if conf is None:
-                await interaction.channel.send(embed=ErrorEmbed(description=f"Timed out waiting for a response or invalid response."), delete_after=5)
+                await interaction.channel.send(embed=ErrorEmbed(f"Timed out waiting for a response or invalid response."), delete_after=5)
                 await self.refresh_content(interaction)
             elif not conf:
-                await interaction.channel.send(embed=ErrorEmbed(description=f"Ok, cancelling"), delete_after=5)
+                await interaction.channel.send(embed=ErrorEmbed(f"Ok, cancelling"), delete_after=5)
                 await self.refresh_content(interaction)
             else:
                 self.adventure.end_ts = datetime.now(timezone.utc)
@@ -170,12 +170,12 @@ class _AdventureMemberSelect(AdventureSettings):
         adventure_role = interaction.guild.get_role(self.adventure.role_id)
 
         if self.member is None:
-            await interaction.channel.send(embed=ErrorEmbed(description=f"Select someone to add"), delete_after=5)
+            await interaction.channel.send(embed=ErrorEmbed(f"Select someone to add"), delete_after=5)
         if self.dm_select:
             if self.member.id in self.adventure.dms:
-                await interaction.channel.send(embed=ErrorEmbed(description=f"{self.member.mention} is already a DM of this adventure"), delete_after=5)
+                await interaction.channel.send(embed=ErrorEmbed(f"{self.member.mention} is already a DM of this adventure"), delete_after=5)
             elif character := next((ch for ch in self.adventure.player_characters if ch.player_id == self.player.id), None):
-                await interaction.channel.send(embed=ErrorEmbed(description=f"{self.member.mention} can't be a player and a DM"), delete_after=5)
+                await interaction.channel.send(embed=ErrorEmbed(f"{self.member.mention} can't be a player and a DM"), delete_after=5)
             else:
                 self.adventure.dms.append(self.member.id)
 
@@ -189,16 +189,16 @@ class _AdventureMemberSelect(AdventureSettings):
         else:
             if self.character is None:
                 if not self.player.characters:
-                    await interaction.channel.send(embed=ErrorEmbed(description=f"{self.member.mention} has no characters."), delete_after=5)
+                    await interaction.channel.send(embed=ErrorEmbed(f"{self.member.mention} has no characters."), delete_after=5)
                 else:
-                    await interaction.channel.send(embed=ErrorEmbed(description=f"{self.member.mention} has no characters."), delete_after=5)
+                    await interaction.channel.send(embed=ErrorEmbed(f"{self.member.mention} has no characters."), delete_after=5)
             else:
                 if self.adventure.characters and self.character.id in self.adventure.characters:
-                    await interaction.channel.send(embed=ErrorEmbed(description=f"{self.character.name} is already in the adventure"), delete_after=5)
+                    await interaction.channel.send(embed=ErrorEmbed(f"{self.character.name} is already in the adventure"), delete_after=5)
                 elif self.member.id in self.adventure.dms:
-                    await interaction.channel.send(embed=ErrorEmbed(description=f"{self.character.name} is a DM for this adventure"), delete_after=5)
+                    await interaction.channel.send(embed=ErrorEmbed(f"{self.character.name} is a DM for this adventure"), delete_after=5)
                 elif character := next((ch for ch in self.adventure.player_characters if ch.player_id == self.player.id), None):
-                    await interaction.channel.send(embed=ErrorEmbed(description=f"{self.member.mention} already has a character in the adventure"), delete_after=5)
+                    await interaction.channel.send(embed=ErrorEmbed(f"{self.member.mention} already has a character in the adventure"), delete_after=5)
                 else:
                     self.adventure.player_characters.append(self.character)
                     self.adventure.characters.append(self.character.id)
@@ -216,9 +216,9 @@ class _AdventureMemberSelect(AdventureSettings):
 
         if self.dm_select:
             if self.member.id not in self.adventure.dms:
-                await interaction.channel.send(embed=ErrorEmbed(description=f"{self.member.mention} is not a DM of this adventure"), delete_after=5)
+                await interaction.channel.send(embed=ErrorEmbed(f"{self.member.mention} is not a DM of this adventure"), delete_after=5)
             elif len(self.adventure.dms) == 1:
-                await interaction.channel.send(embed=ErrorEmbed(description=f"Cannot remove the last DM. Either add another one first, or close the adventure"), delete_after=5)
+                await interaction.channel.send(embed=ErrorEmbed(f"Cannot remove the last DM. Either add another one first, or close the adventure"), delete_after=5)
             else:
                 self.adventure.dms.remove(self.member.id)
 
@@ -238,7 +238,7 @@ class _AdventureMemberSelect(AdventureSettings):
                 if adventure_role in self.member.roles:
                     await self.member.remove_roles(adventure_role, reason=f"Removed from {self.adventure.name} by {self.owner.name}")
             else:
-                await interaction.channel.send(embed=ErrorEmbed(description=f"{self.member.mention} is not part of this adventure"), delete_after=5)
+                await interaction.channel.send(embed=ErrorEmbed(f"{self.member.mention} is not part of this adventure"), delete_after=5)
                 
             
         await self.refresh_content(interaction)
@@ -293,7 +293,7 @@ class AdventureRewardModal(Modal):
         try:
             self.cc = int(self.children[0].value)
         except:
-            await interaction.channel.send(embed=ErrorEmbed(description=f"Chain codes must be a number!"), delete_after=5)
+            await interaction.channel.send(embed=ErrorEmbed(f"Chain codes must be a number!"), delete_after=5)
         
         await interaction.response.defer()
         self.stop()

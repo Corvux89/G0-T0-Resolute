@@ -73,23 +73,23 @@ class CharacterArenaViewUI(ArenaView):
         arena = await get_arena(self.bot, interaction.channel.id)
 
         if arena is None or arena.type.value != "CHARACTER":
-            return await interaction.response.send_message(embed=ErrorEmbed(description="No active arena present in this channel"),
+            return await interaction.response.send_message(embed=ErrorEmbed("No active arena present in this channel"),
                                                   ephemeral=True)
         elif channel_role := interaction.guild.get_role(arena.role_id):
             if interaction.user.id == arena.host_id:
-                return await interaction.response.send_message(embed=ErrorEmbed(description=f"You're the host..."), ephemeral=True)
+                return await interaction.response.send_message(embed=ErrorEmbed(f"You're the host..."), ephemeral=True)
             
             self.player = await get_player(self.bot, interaction.user.id, interaction.guild.id)
 
             if not self.player.characters:
-                return await interaction.response.send_message(embed=ErrorEmbed(description=f"You don't have any characters to join"), ephemeral=True)
+                return await interaction.response.send_message(embed=ErrorEmbed(f"You don't have any characters to join"), ephemeral=True)
             elif len(self.player.characters) == 1:
                 await add_player_to_arena(self.bot, interaction, self.player, self.player.characters[0], arena)
             else:
                 await self.defer_to(ArenaCharacterSelect, interaction)
 
         else:
-            return await interaction.response.send_message(embed=ErrorEmbed(description=f"Role @{interaction.channel.name} doesn't exist"),
+            return await interaction.response.send_message(embed=ErrorEmbed(f"Role @{interaction.channel.name} doesn't exist"),
                                                   ephemeral=True)
         return
     
@@ -122,7 +122,7 @@ class ArenaCharacterSelect(ArenaView):
             self.player = await get_player(self.bot, character.player_id, interaction.guild.id)
 
         if character.player_id != interaction.user.id and interaction.user.id != arena.host_id and interaction.user.id != self.owner_id:
-            return await interaction.response.send_message(embed=ErrorEmbed(description="That's not your character"), ephemeral=True)
+            return await interaction.response.send_message(embed=ErrorEmbed("That's not your character"), ephemeral=True)
 
         await add_player_to_arena(self.bot, interaction, self.player, character, arena)
 
@@ -133,23 +133,23 @@ class ArenaCharacterSelect(ArenaView):
         arena = await get_arena(self.bot, interaction.channel.id)
 
         if arena is None or arena.type.value != "CHARACTER":
-            return await interaction.response.send_message(embed=ErrorEmbed(description="No active arena present in this channel"),
+            return await interaction.response.send_message(embed=ErrorEmbed("No active arena present in this channel"),
                                                   ephemeral=True)
         elif channel_role := interaction.guild.get_role(arena.role_id):
             if interaction.user.id == arena.host_id:
-                return await interaction.response.send_message(embed=ErrorEmbed(description=f"You're the host..."), ephemeral=True)
+                return await interaction.response.send_message(embed=ErrorEmbed(f"You're the host..."), ephemeral=True)
             
             self.player = await get_player(self.bot, interaction.user.id, interaction.guild.id)
 
             if not self.player.characters:
-                return await interaction.response.send_message(embed=ErrorEmbed(description=f"You don't have any characters to join"), ephemeral=True)
+                return await interaction.response.send_message(embed=ErrorEmbed(f"You don't have any characters to join"), ephemeral=True)
             elif len(self.player.characters) == 1:
                 await add_player_to_arena(self.bot, interaction, self.player, self.player.characters[0], arena)
             else:
                 await self.defer_to(ArenaCharacterSelect, interaction)
 
         else:
-            return await interaction.response.send_message(embed=ErrorEmbed(description=f"Role @{interaction.channel.name} doesn't exist"),
+            return await interaction.response.send_message(embed=ErrorEmbed(f"Role @{interaction.channel.name} doesn't exist"),
                                                   ephemeral=True)
         await self.on_timeout()
 
@@ -196,7 +196,7 @@ class ArenaRequestCharacterSelect(ArenaRequest):
         character = await get_character(self.bot, char.values[0])
  
         if character.player_id != interaction.user.id and interaction.user.id != self.owner.id:
-            return await interaction.response.send_message(embed=ErrorEmbed(description="That's not your character"), ephemeral=True)
+            return await interaction.response.send_message(embed=ErrorEmbed("That's not your character"), ephemeral=True)
         
         self.character = character
         

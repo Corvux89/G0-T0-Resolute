@@ -11,7 +11,8 @@ class PlayerOverviewEmbed(Embed):
         self.set_thumbnail(url=player.member.display_avatar.url)
         self.color = player.member.color
 
-        self.description = f"**Chain Codes**: {player.cc:,}"
+        self.description = (f"**Chain Codes**: {player.cc:,}\n"
+                            f"**Total Renown**: {player.total_renown}")
 
         # Guild Handicap
         if guild.handicap_cc > 0 and player.handicap_amount < guild.handicap_cc:
@@ -34,18 +35,22 @@ class PlayerOverviewEmbed(Embed):
         # Character List
         if player.characters:
             for character in player.characters:
-                starship_str = ""
-
-                if character.starships:
-                    starship_str = f"{ZWSP3}**Starships**:\n" + "\n".join([f"{ZWSP3*2}{s.get_formatted_starship(compendium)}" for s in character.starships]) 
-
                 class_str = f"\n{ZWSP3*2}".join([f"{c.get_formatted_class()}" for c in character.classes])
                 class_str = f"\n{ZWSP3*2}{class_str}" if len(character.classes) > 1 else class_str
 
+                val_str = (f"{ZWSP3}**Classes{'es' if len(character.classes) > 1 else ''}**: {class_str}\n"
+                           f"{ZWSP3}**Faction**: {character.faction.value if character.faction else '*None*'}\n"
+                           f"{ZWSP3}**Species**: {character.species.value}\n"
+                           f"{ZWSP3}**Level**: {character.level}\n"
+                           f"{ZWSP3}**Credits**: {character.credits:,}\n")
+
+                if character.renown:
+                    val_str += f"{ZWSP3}**Renown**:\n" + "\n".join([f"{ZWSP3*2}{r.get_formatted_renown()}" for r in character.renown]) + "\n"
+
+                if character.starships:
+                    val_str += f"{ZWSP3}**Starships**:\n" + "\n".join([f"{ZWSP3*2}{s.get_formatted_starship(compendium)}" for s in character.starships])
+
+
                 self.add_field(name=f"Character: {character.name}",
-                               value=f"{ZWSP3}**Class{'es' if len(character.classes) > 1 else ''}**: {class_str}\n"
-                                     f"{ZWSP3}**Species**: {character.species.value}\n"
-                                     f"{ZWSP3}**Level**: {character.level}\n"
-                                     f"{ZWSP3}**Credits**: {character.credits:,}\n"
-                                     f"{starship_str}",
+                               value=val_str,
                                 inline=False)

@@ -51,15 +51,6 @@ async def get_market_request(bot: G0T0Bot, message: discord.Message) -> MarketTr
 
     return transaction
 
-async def get_market_log(bot: G0T0Bot, message: discord.Message) -> DBLog:
-    embed = message.embeds[0]
-    log_id = get_match(f"ID:\s*(\d+)", embed.footer.text)
-
-    log_entry = await get_log(bot, log_id)
-
-    return log_entry
-
-
 def get_match(pattern, text, group=1, default=None):
     match = re.search(pattern, text, re.DOTALL)
     return match.group(group) if match and match.group(group) != 'None' else default

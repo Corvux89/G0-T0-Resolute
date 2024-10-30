@@ -13,6 +13,7 @@ from sqlalchemy.dialects.postgresql import insert
 from Resolute.models.categories import Activity
 from Resolute.compendium import Compendium
 from Resolute.models import metadata
+from Resolute.models.categories.categories import Faction
 
 
 class DBLog(object):
@@ -27,6 +28,8 @@ class DBLog(object):
         self.activity: Activity = kwargs.get('activity')
         self.notes = kwargs.get('notes')
         self.adventure_id = kwargs.get('adventure_id')
+        self.renown = kwargs.get('renown', 0)
+        self.faction: Faction = kwargs.get('faction')
         self.invalid = kwargs.get('invalid', False)
         self.created_ts = kwargs.get('created_ts', datetime.now(timezone.utc))
 
@@ -49,6 +52,8 @@ log_table = sa.Table(
     Column("activity", Integer, nullable=False),  # ref: > c_activity.id
     Column("notes", String, nullable=True),
     Column("adventure_id", Integer, nullable=True),  # ref: > adventures.id
+    Column("renown", Integer, nullable=True),
+    Column("faction", Integer, nullable=True),
     Column("invalid", BOOLEAN, nullable=False, default=False),
     Column("player_id", BigInteger, nullable=False),
     Column("guild_id", BigInteger, nullable=False)
@@ -65,6 +70,8 @@ class LogSchema(Schema):
     activity = fields.Method(None, "load_activity")
     notes = fields.String(required=False, allow_none=True)
     adventure_id = fields.Integer(required=False, allow_none=True)
+    renown = fields.Integer(required=True)
+    faction = fields.Method(None, "load_faction")
     invalid = fields.Boolean(required=True)
     player_id = fields.Integer(required=True)
     guild_id = fields.Integer(required=True)
@@ -76,6 +83,9 @@ class LogSchema(Schema):
     @post_load
     def make_log(self, data, **kwargs):
         return DBLog(**data)
+    
+    def load_faction(self, value):
+        return self.compendium.get_object(Faction, value)
 
     def load_activity(self, value):
         return self.compendium.get_object(Activity, value)
@@ -101,6 +111,7 @@ def upsert_log(log: DBLog):
             "notes": log.notes if hasattr(log, "notes") else None,
             "credits": log.credits,
             "cc": log.cc,
+            "renown": log.renown,
             "invalid": log.invalid
         }
 
@@ -119,6 +130,8 @@ def upsert_log(log: DBLog):
         activity=log.activity.id,
         notes=log.notes if hasattr(log, "notes") else None,
         adventure_id=None if not hasattr(log, "adventure_id") else log.adventure_id,
+        renown=log.renown,
+        Faction=None if not hasattr(log, "faction") and log.faction else log.faction.id,
         invalid=log.invalid
     ).returning(log_table)
 

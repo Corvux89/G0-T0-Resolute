@@ -57,9 +57,9 @@ class ShatterpointSettingsUI(ShatterpointSettings):
         conf = await confirm(interaction, "Are you sure you want to log this global? (Reply with yes/no)", True, self.bot)
 
         if conf is None:
-            await interaction.channel.send(embed=ErrorEmbed(description="Timed out waiting for a response or invalid response"), delete_after=5)
+            await interaction.channel.send(embed=ErrorEmbed("Timed out waiting for a response or invalid response"), delete_after=5)
         elif not conf:
-            await interaction.channel.send(embed=ErrorEmbed(description="Ok, cancelling"), delete_after=5)
+            await interaction.channel.send(embed=ErrorEmbed("Ok, cancelling"), delete_after=5)
         else:
             activity = self.bot.compendium.get_object(Activity, "GLOBAL")
             g = await get_guild(self.bot, interaction.guild.id)
@@ -79,9 +79,9 @@ class ShatterpointSettingsUI(ShatterpointSettings):
         conf = await confirm(interaction, "Are you sure you want to reset this global without logging? (Reply yes/no)", True, self.bot)
 
         if conf is None:
-            await interaction.channel.send(embed=ErrorEmbed(description="Timed out waiting for a response or invalid response"), delete_after=5)
+            await interaction.channel.send(embed=ErrorEmbed("Timed out waiting for a response or invalid response"), delete_after=5)
         elif not conf:
-            await interaction.channel.send(embed=ErrorEmbed(description="Ok, cancelling"), delete_after=5)
+            await interaction.channel.send(embed=ErrorEmbed("Ok, cancelling"), delete_after=5)
         else:
             self.shatterpoint = Shatterpoint(guild_id=interaction.guild.id)
             await delete_players(self.bot, interaction.guild.id)
@@ -105,7 +105,7 @@ class _ShatterpointManage(ShatterpointSettings):
     @discord.ui.button(label="Scrape Channel", style=discord.ButtonStyle.primary, row=2)
     async def channel_scrape(self, _: discord.ui.Select, interaction: discord.Interaction):
         if not self.channel:
-            await interaction.channel.send(embed=ErrorEmbed(description="Select a channel to scrape first"), delete_after=5)
+            await interaction.channel.send(embed=ErrorEmbed("Select a channel to scrape first"), delete_after=5)
         else:
             messages = await self.channel.history(oldest_first=True, limit=600).flatten()
             for message in messages:
@@ -171,7 +171,7 @@ class _ShatterpointPlayerManage(ShatterpointSettings):
     @discord.ui.button(label="Remove Player", style=discord.ButtonStyle.red, row=2)
     async def player_remove(self, _: discord.ui.Button, interaction: discord.Interaction):
         if not hasattr(self.player, "id") or not self.player.active:
-            return await interaction.channel.send(embed=ErrorEmbed(description="Player already isn't in the global"), delete_after=5)
+            return await interaction.channel.send(embed=ErrorEmbed("Player already isn't in the global"), delete_after=5)
         else:
             self.player.active = False
 
@@ -202,7 +202,7 @@ class ShatterpointSettingsModal(Modal):
         try:
             self.shatterpoint.base_cc = int(self.children[1].value)
         except:
-            await interaction.channel.send(embed=ErrorEmbed(description="CC Amount must be a number"), delete_after=5)
+            await interaction.channel.send(embed=ErrorEmbed("CC Amount must be a number"), delete_after=5)
         
         await interaction.response.defer()
         self.stop()
@@ -222,7 +222,7 @@ class ShatterpointPlayerSettingsModal(Modal):
         try:
             self.spPlayer.cc = int(self.children[0].value)
         except:
-            await interaction.channel.send(embed=ErrorEmbed(description="CC Amount must be a number"), delete_after=5)
+            await interaction.channel.send(embed=ErrorEmbed("CC Amount must be a number"), delete_after=5)
     
         await interaction.response.defer()
         self.stop()

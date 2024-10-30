@@ -143,7 +143,7 @@ class _ManageDashboardUI(DashboardSettings):
         channel: discord.TextChannel = chan.values[0]
 
         if hasattr(channel, "category_id") and channel.category_id != self.dashboard.category_channel_id:
-            await interaction.channel.send(embed=ErrorEmbed(description=f"Channel not in this dashbaords category"), delete_after=5)
+            await interaction.channel.send(embed=ErrorEmbed(f"Channel not in this dashbaords category"), delete_after=5)
         else:
             self.channel = channel
         await self.refresh_content(interaction)
@@ -151,9 +151,9 @@ class _ManageDashboardUI(DashboardSettings):
     @discord.ui.button(label="Add Exclusion", style=discord.ButtonStyle.primary, row=2)
     async def add_exclusion(self, _: discord.ui.Button, interaction: discord.Interaction):
         if not self.channel:
-            await interaction.channel.send(embed=ErrorEmbed(description=f"Select a channel to exclude"), delete_after=5)
+            await interaction.channel.send(embed=ErrorEmbed(f"Select a channel to exclude"), delete_after=5)
         elif self.channel.id in self.dashboard.excluded_channel_ids:
-            await interaction.channel.send(embed=ErrorEmbed(description=f"Channel already excluded"), delete_after=5)
+            await interaction.channel.send(embed=ErrorEmbed(f"Channel already excluded"), delete_after=5)
         else:
             self.dashboard.excluded_channel_ids.append(self.channel.id)
             await upsert_dashboard(self.bot, self.dashboard)
@@ -162,9 +162,9 @@ class _ManageDashboardUI(DashboardSettings):
     @discord.ui.button(label="Remove Exclusion", style=discord.ButtonStyle.primary, row=2)
     async def remove_exclusion(self, _: discord.ui.Button, interaction: discord.Interaction):
         if not self.channel:
-            await interaction.channel.send(embed=ErrorEmbed(description=f"Select a channel to exclude"), delete_after=5)
+            await interaction.channel.send(embed=ErrorEmbed(f"Select a channel to exclude"), delete_after=5)
         elif self.channel.id not in self.dashboard.excluded_channel_ids:
-            await interaction.channel.send(embed=ErrorEmbed(description=f"Channel not excluded"), delete_after=5)
+            await interaction.channel.send(embed=ErrorEmbed(f"Channel not excluded"), delete_after=5)
         else:
             self.dashboard.excluded_channel_ids.remove(self.channel.id)
             await upsert_dashboard(self.bot, self.dashboard)

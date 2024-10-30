@@ -364,3 +364,49 @@ class LevelCostSchema(Schema):
         return LevelCost(**data)
     
 level_cost = CompendiumObject("level_cost", LevelCost, c_level_cost_table, LevelCostSchema)
+
+# Factions
+c_factions = sa.Table(
+    "c_factions",
+    metadata,
+    Column("id", Integer, primary_key=True),
+    Column("value", String, nullable=False)
+)
+
+class Faction(object):
+    def __init__(self, id, value):
+        self.id = id
+        self.value = value
+
+class FactionSchema(Schema):
+    id = fields.Integer(data_key="id", required=True)
+    value = fields.String(data_key="value", required=True)
+
+    @post_load
+    def make_faction(self, data, **kwargs):
+        return Faction(**data)
+    
+faction = CompendiumObject("faction", Faction, c_factions, FactionSchema)
+
+# Activity Points
+c_activity_points = sa.Table(
+    "c_activity_points",
+    metadata,
+    Column("id", Integer, primary_key=True),
+    Column("points", Integer, nullable=False)
+)
+
+class ActivityPoints(object):
+    def __init__(self, id, points):
+        self.id = id
+        self.points = points
+
+class ActivityPointsSchema(Schema):
+    id = fields.Integer(data_key="id", required=True)
+    points = fields.Integer(data_key="points", required=True)
+
+    @post_load
+    def make_activity_points(self, data, **kwargs):
+        return ActivityPoints(**data)
+    
+activity_points = CompendiumObject("activity_points", ActivityPoints, c_activity_points, ActivityPointsSchema)

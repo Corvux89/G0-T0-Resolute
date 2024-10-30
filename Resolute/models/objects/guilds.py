@@ -42,6 +42,7 @@ class PlayerGuild(object):
         self.citizen_role: discord.Role = None
         self.acolyte_role: discord.Role = None
         self.senate_role: discord.Role = None
+        
         self.help_channel: discord.TextChannel = None
         self.character_application_channel: discord.TextChannel = None
         self.market_channel: discord.TextChannel = None

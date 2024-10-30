@@ -44,12 +44,12 @@ class ChannelAdminUI(ChannelAdmin):
                         managed = True
             
             if not managed:
-                await interaction.channel.send(embed=ErrorEmbed(description="This doesn't look to be a player managed channel"), delete_after=5)
+                await interaction.channel.send(embed=ErrorEmbed("This doesn't look to be a player managed channel"), delete_after=5)
                 await self.refresh_content(interaction)
             else:
                 await self.defer_to(_EditPlayerChannel, interaction)
         else:
-            await interaction.channel.send(embed=ErrorEmbed(description="Select a channel to edit first."), delete_after=5)
+            await interaction.channel.send(embed=ErrorEmbed("Select a channel to edit first."), delete_after=5)
             await self.refresh_content(interaction)
 
     # @discord.ui.button(label="Archive Channel", style=discord.ButtonStyle.primary, row=3)
@@ -77,7 +77,7 @@ class _EditPlayerChannel(ChannelAdmin):
     @discord.ui.button(label="Add Owner", style=discord.ButtonStyle.primary, row=2)
     async def add_owner(self, _: discord.ui.Button, interaction: discord.Interaction):
         if self.member in self.channel.overwrites.keys() and self.channel.overwrites_for(self.member).manage_messages == True:
-            await interaction.channel.send(embed=ErrorEmbed(description=f"{self.member.mention} is already a channel owner."), delete_after=5)
+            await interaction.channel.send(embed=ErrorEmbed(f"{self.member.mention} is already a channel owner."), delete_after=5)
         else:
             log.info(f"CHANNEL ADMIN: {self.member} [ {self.member.id} ] added to {self.channel.name} [ {self.channel.id} ] by {interaction.user} [ {interaction.user.id} ]")
             await add_owner(self.channel, self.member)
@@ -89,7 +89,7 @@ class _EditPlayerChannel(ChannelAdmin):
             log.info(f"CHANNEL ADMIN: {self.member} [ {self.member.id} ] removed from {self.channel.name} [ {self.channel.id} ] by {interaction.user} [ {interaction.user.id} ]")
             await remove_owner(self.channel, self.member)
         else:
-            await interaction.channel.send(embed=ErrorEmbed(description=f"{self.member.mention} is not a channel owner."), delete_after=5)
+            await interaction.channel.send(embed=ErrorEmbed(f"{self.member.mention} is not a channel owner."), delete_after=5)
         await self.refresh_content(interaction)
 
     @discord.ui.button(label="Back", style=discord.ButtonStyle.grey, row=3)

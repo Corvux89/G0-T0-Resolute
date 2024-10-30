@@ -19,6 +19,9 @@ def setup(bot: commands.Bot):
     bot.add_cog(Adventures(bot))
 
 class Adventures(commands.Cog):
+    # TODO: Add renown on adventure close
+    # TODO: Replace Rodbot but better (key, name, portrait)
+    # TODO: Generic GM Settings for guild
     bot: G0T0Bot  # Typing annotation for my IDE's sake
     adventure_commands = SlashCommandGroup("adventure", "Adventure commands", guild_only=True)
 
@@ -44,7 +47,7 @@ class Adventures(commands.Cog):
         player = await get_player(self.bot, member.id, ctx.guild.id if ctx.guild else None)
         
         if not player.characters:
-            return await ctx.respond(embed=ErrorEmbed(description=f"No character information found for {member.mention}"),
+            return await ctx.respond(embed=ErrorEmbed(f"No character information found for {member.mention}"),
                                         ephemeral=True)
         
         adventures = await get_player_adventures(self.bot, player)
@@ -71,7 +74,7 @@ class Adventures(commands.Cog):
 
         # Create the role
         if discord.utils.get(ctx.guild.roles, name=role_name):
-            return await ctx.respond(embed=ErrorEmbed(description=f"Role `@{role_name}` already exists"),
+            return await ctx.respond(embed=ErrorEmbed(f"Role `@{role_name}` already exists"),
                                      ephemeral=True)
         else:
             adventure_role = await ctx.guild.create_role(name=role_name, mentionable=True,
@@ -157,12 +160,12 @@ class Adventures(commands.Cog):
     @adventure_create.error
     async def create_error(self, ctx, error):
         if isinstance(error, discord.Forbidden):
-            await ctx.send(embed=ErrorEmbed(description='Error: Bot isn\'t allowed to do that (for some reason)'))
+            await ctx.send(embed=ErrorEmbed('Error: Bot isn\'t allowed to do that (for some reason)'))
         elif isinstance(error, discord.HTTPException):
-            await ctx.send(embed=ErrorEmbed(description='Error: Creating new role failed, please try again. '
+            await ctx.send(embed=ErrorEmbed('Error: Creating new role failed, please try again. '
                                                         'If the problem persists, contact the Senate'))
         elif isinstance(error, discord.InvalidArgument):
-            await ctx.send(embed=ErrorEmbed(description=f'Error: Invalid Argument {error}'))
+            await ctx.send(embed=ErrorEmbed(f'Error: Invalid Argument {error}'))
 
     @adventure_commands.command(
         name="manage",
@@ -179,7 +182,7 @@ class Adventures(commands.Cog):
             adventure = await get_adventure_from_category(self.bot, ctx.channel.category.id)
 
         if adventure is None:
-            return await ctx.respond(embed=ErrorEmbed(description=f"No adventure found"))
+            return await ctx.respond(embed=ErrorEmbed(f"No adventure found"))
         
         ui = AdventureSettingsUI.new(self.bot, ctx.author, adventure)
         await ui.send_to(ctx)

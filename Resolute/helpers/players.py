@@ -17,10 +17,10 @@ async def get_player(bot: G0T0Bot, player_id: int, guild_id: int, inactive: bool
             player = Player(id=player_id, guild_id=guild_id)
             results = await conn.execute(upsert_player_query(player))
             row = await results.first()
-        elif guild_id:
-            row = rows[0]
-        else:
+        elif len(rows) == 0 and not guild_id:
             raise Exception("Unable to create player from DM's")
+        else:
+            row = rows[0]
         
 
     player: Player = PlayerSchema().load(row)

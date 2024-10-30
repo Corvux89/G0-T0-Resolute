@@ -1,5 +1,6 @@
 import discord
 import re
+import urllib.request as re
 from discord import ApplicationContext, Member, Guild, Interaction
 from sqlalchemy.util import asyncio
 
@@ -30,6 +31,7 @@ def is_admin(ctx: ApplicationContext | Interaction) -> bool:
     :param ctx: Context
     :return: True if user is a bot owner, can manage the guild, or has a listed role, otherwise False
     """
+
     r_list = [discord.utils.get(ctx.guild.roles, name="The Senate")]
 
     if hasattr(ctx, 'author'):
@@ -43,6 +45,24 @@ def is_admin(ctx: ApplicationContext | Interaction) -> bool:
         return True
     else:
         return False
+    
+def is_staff(ctx: ApplicationContext | Interaction) -> bool:
+    
+    r_list = [discord.utils.get(ctx.guild.roles, name="The Senate"),
+              discord.utils.get(ctx.guild.roles, name="Archivist")]
+
+    if hasattr(ctx, 'author'):
+        author = ctx.author
+    else:
+        author = ctx.user
+
+    if is_owner(ctx):
+        return True
+    elif any(r in r_list for r in author.roles):
+        return True
+    else:
+        return False
+
 
 
 def get_positivity(string) -> bool:
@@ -126,4 +146,13 @@ async def get_webhook(channel: discord.TextChannel) -> discord.Webhook:
     return hook
 
 
-    
+def isImageURL(url: str) -> bool:
+    try:
+        with re.urlopen(url) as response:
+            if response.status == 200:
+                content_type = response.getheader("Content-Type")
+                return content_type.startswith("image/")
+    except:
+        pass
+
+    return False

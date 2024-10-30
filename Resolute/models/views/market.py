@@ -101,7 +101,6 @@ class TransactionPromptUI(MarketPrompt):
         guild = await get_guild(self.bot, self.player.guild_id)
         if self.transaction.message:
             await self.transaction.message.edit(embed=TransactionEmbed(self.transaction))
-            await self.transaction.message.thread.delete()
             await self.transaction.message.clear_reactions()
         elif guild.market_channel:
             await guild.market_channel.send(embed=TransactionEmbed(self.transaction))           
@@ -178,7 +177,7 @@ class TransactionDetails(discord.ui.Modal):
             err_str.append("Cost must be a number")
 
         if len(err_str) > 0:
-            await interaction.channel.send(embed=ErrorEmbed(description="\n".join(err_str)), delete_after=5)
+            await interaction.channel.send(embed=ErrorEmbed("\n".join(err_str)), delete_after=5)
 
         await interaction.response.defer()
         self.stop()

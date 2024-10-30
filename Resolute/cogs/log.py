@@ -7,7 +7,7 @@ from discord.ext import commands
 
 from Resolute.bot import G0T0Bot
 from Resolute.constants import ZWSP3
-from Resolute.helpers.general_helpers import confirm, is_admin
+from Resolute.helpers.general_helpers import confirm, is_admin, is_staff
 from Resolute.helpers.guilds import get_guild
 from Resolute.helpers.logs import create_log, get_character_stats, get_log, get_n_player_logs, get_player_stats
 from Resolute.helpers.players import get_player
@@ -35,28 +35,32 @@ class Log(commands.Cog):
         name="rp",
         description="Logs a completed RP"
     )
+    @commands.check(is_staff)
+    #TODO: RP Host Parameter with new activity
     async def rp_log(self, ctx: ApplicationContext,
                      member: Option(discord.SlashCommandOptionType(6),description="Player who participated in the RP", required=True)):
         if activity := self.bot.compendium.get_activity("RP"):
             await self.prompt_log(ctx, member, activity)
         else:
-            return await ctx.respond(embed=ErrorEmbed(description="Activity not found"), ephemeral=True)
+            return await ctx.respond(embed=ErrorEmbed("Activity not found"), ephemeral=True)
         
     @log_commands.command(
         name="snapshot",
         description="Logs a completed snapshot"
     )
+    @commands.check(is_staff)
     async def rp_log(self, ctx: ApplicationContext,
                      member: Option(discord.SlashCommandOptionType(6),description="Player who participated in the snapshot", required=True)):
         if activity := self.bot.compendium.get_activity("SNAPSHOT"):
             await self.prompt_log(ctx, member, activity)
         else:
-            return await ctx.respond(embed=ErrorEmbed(description="Activity not found"), ephemeral=True)
+            return await ctx.respond(embed=ErrorEmbed("Activity not found"), ephemeral=True)
 
     @log_commands.command(
         name="bonus",
         description="Give bonus gold and/or xp to a player"
     )
+    @commands.check(is_staff)
     async def bonus_log(self, ctx: ApplicationContext,
                         member: Option(discord.SlashCommandOptionType(6), description="Player receiving the bonus", required=True),
                         reason: Option(str, description="The reason for the bonus", required=True),
@@ -66,12 +70,13 @@ class Log(commands.Cog):
         if (activity := self.bot.compendium.get_activity("BONUS")) and (credits > 0 or cc > 0):
             await self.prompt_log(ctx, member, activity, reason, cc, credits, False, False, True)
         else:
-            return await ctx.respond(embed=ErrorEmbed(description="Activity not found"), ephemeral=True)
+            return await ctx.respond(embed=ErrorEmbed("Activity not found"), ephemeral=True)
         
     @log_commands.command(
         name="buy",
         description="Logs the sale of an item to a player"
     )
+    @commands.check(is_staff)
     async def buy_log(self, ctx: ApplicationContext,
                       member: Option(discord.SlashCommandOptionType(6), description="Player who bought the item", required=True),
                       item: Option(str, description="The item being bought", required=True),
@@ -89,7 +94,7 @@ class Log(commands.Cog):
                 player = await get_player(self.bot, member.id, ctx.guild.id)
 
                 if (player.cc - cost ) < 0:
-                    return await ctx.respond(embed=ErrorEmbed(description=f"{player.member.mention} cannot afford the {cost} CC cost."))
+                    return await ctx.respond(embed=ErrorEmbed(f"{player.member.mention} cannot afford the {cost} CC cost."))
                 
                 log_entry = await create_log(self.bot, ctx.author, g, activity, player,
                                              notes=item,
@@ -97,13 +102,14 @@ class Log(commands.Cog):
                                               ignore_handicap=True)
                 return await ctx.respond(embed=LogEmbed(log_entry, ctx.author, member, None, True))
             else:
-                return await ctx.respond(embed=ErrorEmbed(description="Invalid currency selection"),
+                return await ctx.respond(embed=ErrorEmbed("Invalid currency selection"),
                                          ephemeral=True)
             
     @log_commands.command(
         name="sell",
         description="Logs the sale of an item from a player. Not for player establishment sales"
     )
+    @commands.check(is_staff)
     async def sell_log(self, ctx: ApplicationContext,
                        member: Option(discord.SlashCommandOptionType(6), description="Player who bought the item", required=True),
                        item: Option(str, description="The item being sold", required=True),
@@ -125,7 +131,7 @@ class Log(commands.Cog):
                                              ignore_handicap=True)
                 return await ctx.respond(embed=LogEmbed(log_entry, ctx.author, member, None, True))
             else:
-                return await ctx.respond(embed=ErrorEmbed(description="Invalid currency selection"),
+                return await ctx.respond(embed=ErrorEmbed("Invalid currency selection"),
                                          ephemeral=True)
 
 
@@ -142,10 +148,10 @@ class Log(commands.Cog):
         log_entry = await get_log(self.bot, log_id)
 
         if log_entry is None:
-            return await ctx.respond(embed=ErrorEmbed(description=f"No log found with id [ {log_id} ]"),
+            return await ctx.respond(embed=ErrorEmbed(f"No log found with id [ {log_id} ]"),
                                      ephemeral=True)
         elif log_entry.invalid:
-            return await ctx.respond(embed=ErrorEmbed(description=f"Log [ {log_entry} ] has already been invalidated.",
+            return await ctx.respond(embed=ErrorEmbed(f"Log [ {log_entry} ] has already been invalidated.",
                                                       ephemeral=True))
         
         player = await get_player(self.bot, log_entry.player_id, ctx.guild.id)
@@ -169,7 +175,7 @@ class Log(commands.Cog):
         
         if activity := self.bot.compendium.get_activity("MOD"):
             if log_entry.created_ts > g._last_reset and log_entry.activity.diversion:
-                player.div_cc -= log_entry.cc
+                player.div_cc = max(player.div_cc - log_entry.cc, 0)
 
             note = f"{log_entry.activity.value} log # {log_entry.id} nulled by "\
                    f"{ctx.author} for reason: {reason}"
@@ -258,11 +264,11 @@ class Log(commands.Cog):
         g = await get_guild(self.bot, ctx.guild.id)
 
         if not player.characters:
-            return await ctx.respond(embed=ErrorEmbed(description=f"No character information found for {member.mention}"),
+            return await ctx.respond(embed=ErrorEmbed(f"No character information found for {member.mention}"),
                                         ephemeral=True)
         
         if (player.cc + cc) < 0:
-            return await ctx.respond(embed=ErrorEmbed(description=f"{member.mention} cannot afford the {cc} CC cost."))
+            return await ctx.respond(embed=ErrorEmbed(f"{member.mention} cannot afford the {cc} CC cost."))
 
         if len(player.characters) == 1:
             character = player.characters[0]
@@ -274,7 +280,7 @@ class Log(commands.Cog):
             if (character.credits + credits) < 0:
                 convertedCC = math.ceil((abs(credits) - character.credits) / rate.value)
                 if player.cc < convertedCC:
-                    return await ctx.respond(embed=ErrorEmbed(description=f"{character.name} cannot afford the {credits} credit cost or to convert the {convertedCC} needed."))
+                    return await ctx.respond(embed=ErrorEmbed(f"{character.name} cannot afford the {credits} credit cost or to convert the {convertedCC} needed."))
 
                 convert_activity = self.bot.compendium.get_activity("CONVERSION")
                 converted_entry = await create_log(self.bot, ctx.author, g, convert_activity, player, 

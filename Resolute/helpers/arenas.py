@@ -48,7 +48,7 @@ async def upsert_arena(bot: G0T0Bot, arena: Arena) -> Arena:
 
 async def add_player_to_arena(bot: G0T0Bot, interaction: discord.Interaction, player: Player, character: PlayerCharacter, arena: Arena) -> None:
     if character.id in arena.characters:
-        return await interaction.response.send_message(embed=ErrorEmbed(description="Character already in the arena"), ephemeral=True)    
+        return await interaction.response.send_message(embed=ErrorEmbed("Character already in the arena"), ephemeral=True)    
     if player.id in {c.player_id for c in arena.player_characters}:
         remove_char = next((c for c in arena.player_characters if c.player_id == player.id), None)
         arena.player_characters.remove(remove_char)

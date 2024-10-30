@@ -43,7 +43,7 @@ class Room(commands.Cog):
             elif guild.citizen_role and guild.acolyte_role:
                 roles+=[guild.citizen_role, guild.acolyte_role]
             else:
-                return await ctx.respond(embed=ErrorEmbed(description=f"Problem finding roles to manage"), ephemeral=True)
+                return await ctx.respond(embed=ErrorEmbed(f"Problem finding roles to manage"), ephemeral=True)
             if roles:
                 ui = RoomSettingsUI.new(self.bot, ctx.author, roles, adventure)
                 await ui.send_to(ctx)
@@ -51,4 +51,4 @@ class Room(commands.Cog):
             else:
                 return await ctx.respond("No roles to manage")
         else:
-            return await ctx.respond(embed=ErrorEmbed(description=f"There is nothing in this channel you can do"), ephemeral=True)
+            return await ctx.respond(embed=ErrorEmbed(f"There is nothing in this channel you can do"), ephemeral=True)

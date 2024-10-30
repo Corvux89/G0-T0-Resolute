@@ -62,11 +62,12 @@ class CharacterEmbed(Embed):
         class_str = f"\n{ZWSP3*2}".join([f"{c.get_formatted_class()}" for c in character.classes])
         class_str = f"\n{ZWSP3*2}{class_str}" if len(character.classes) > 1 else class_str
 
-        self.description = f"**Class{'es' if len(character.classes) > 1 else ''}**: {class_str}\n"\
-                           f"**Species**: {character.species.value}\n"\
-                           f"**Level**: {character.level}\n"\
-                           f"**Credits**: {character.credits}\n"\
-                           f"{starship_str}"
+        self.description = (f"**Class{'es' if len(character.classes) > 1 else ''}**: {class_str}\n"
+                            f"**Faction**: {character.faction.value if character.faction else '*None*'}\n"
+                            f"**Species**: {character.species.value}\n"
+                            f"**Level**: {character.level}\n"
+                            f"**Credits**: {character.credits}\n"
+                            f"{starship_str}")
 
 
 class StarshipEmbed(Embed):
@@ -90,3 +91,17 @@ class LevelUpEmbed(Embed):
                          color=Color.random())
         self.set_thumbnail(url=player.member.display_avatar.url)
         self.description=f"{character.name} ({player.member.mention}) is now level {character.level}"
+
+
+class CharacterSettingsEmbed(Embed):
+    def __init__(self, player: Player, character : PlayerCharacter):
+        super().__init__(title=f"Settings for {player.member.display_name}")
+        self.set_thumbnail(url=player.member.display_avatar.url if not character.avatar_url else character.avatar_url)
+        self.color = player.member.color
+
+        self.description= (f"**Character**: {character.name}\n"
+                           f"**Faction**: {character.faction.value if character.faction else '*None*'}\n"
+                           f"**Global Character**: {'True' if character.primary_character else 'False'}")
+
+        self.add_field(name="Active RP Channels",
+                       value="\n".join([player.member.guild.get_channel(c).mention if player.member.guild.get_channel(c) else '' for c in character.channels]))

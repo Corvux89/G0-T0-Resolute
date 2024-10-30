@@ -68,14 +68,14 @@ class CharacterSelectUI(CharacterSelect):
     @discord.ui.button(label="New Application", style=discord.ButtonStyle.primary, row=3)
     async def application_create(self, _: discord.ui.Button, interaction: discord.Interaction):
         if not self.character:
-            await interaction.channel.send(embed=ErrorEmbed(description="Select a character to level up"), delete_after=5)
+            await interaction.channel.send(embed=ErrorEmbed("Select a character to level up"), delete_after=5)
             await self.refresh_content()
         else:
             if self.levelUp:
                 g = await get_guild(self.bot, self.player.guild_id)
 
                 if self.character.level >= g.max_level:
-                    await interaction.channel.send(embed=ErrorEmbed(description="Character is already at max level for the server"), delete_after=5)
+                    await interaction.channel.send(embed=ErrorEmbed("Character is already at max level for the server"), delete_after=5)
                     await self.refresh_content(interaction)
                 else:    
                     modal = LevelUpRequestModal(g, self.character)

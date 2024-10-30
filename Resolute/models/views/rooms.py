@@ -91,7 +91,7 @@ class RoomSettingsUI(RoomSettings):
 
     async def _before_send(self, interaction: discord.Interaction):
         if not self.roles:
-            await interaction.channel.send(embed=ErrorEmbed(description="No roles found to manage"), delete_after=5)
+            await interaction.channel.send(embed=ErrorEmbed("No roles found to manage"), delete_after=5)
             await self.on_timeout()
 
         if not self.adventure:
@@ -130,7 +130,7 @@ class _RoomMoveUI(RoomSettings):
     @discord.ui.button(label="Up", style=discord.ButtonStyle.green, row=1, emoji="⬆")
     async def move_up(self, _: discord.ui.Button, interaction: discord.Interaction):
         if self.current_position == 0:
-            await interaction.channel.send(embed=ErrorEmbed(description=f"Channel is already in the top position"), delete_after=5)
+            await interaction.channel.send(embed=ErrorEmbed(f"Channel is already in the top position"), delete_after=5)
         else:
             await update_position(interaction.channel.category.channels, self.current_position, self.current_position-1)
         
@@ -139,7 +139,7 @@ class _RoomMoveUI(RoomSettings):
     @discord.ui.button(label="Top", style=discord.ButtonStyle.primary, row=1, emoji="🔝")
     async def move_top(self, _: discord.ui.Button, interaction: discord.Interaction):
         if self.current_position == 0:
-            await interaction.channel.send(embed=ErrorEmbed(description=f"Channel is already in the top position"), delete_after=5)
+            await interaction.channel.send(embed=ErrorEmbed(f"Channel is already in the top position"), delete_after=5)
         else:
             await update_position(interaction.channel.category.channels, self.current_position, 0)
         
@@ -148,7 +148,7 @@ class _RoomMoveUI(RoomSettings):
     @discord.ui.button(label="Down", style=discord.ButtonStyle.green, row=2, emoji="⬇")
     async def move_down(self, _: discord.ui.Button, interaction: discord.Interaction):
         if self.current_position == len(interaction.channel.category.channels)-1:
-            await interaction.channel.send(embed=ErrorEmbed(description=f"Channel is already in the lowest position"), delete_after=5)
+            await interaction.channel.send(embed=ErrorEmbed(f"Channel is already in the lowest position"), delete_after=5)
         else:
             await update_position(interaction.channel.category.channels, self.current_position, self.current_position+1)
         
@@ -157,7 +157,7 @@ class _RoomMoveUI(RoomSettings):
     @discord.ui.button(label="Bottom", style=discord.ButtonStyle.primary, row=2)
     async def move_bottom(self, _: discord.ui.Button, interaction: discord.Interaction):
         if self.current_position == len(interaction.channel.category.channels)-1:
-            await interaction.channel.send(embed=ErrorEmbed(description=f"Channel is already in the lowest position"), delete_after=5)
+            await interaction.channel.send(embed=ErrorEmbed(f"Channel is already in the lowest position"), delete_after=5)
         else:
             await update_position(interaction.channel.category.channels, self.current_position, len(interaction.channel.category.channels)-1)
         

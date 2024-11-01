@@ -215,58 +215,6 @@ class CodeConversionSchema(Schema):
 
 cc_conversion = CompendiumObject("cc_conversion", CodeConversion, c_code_conversion_table, CodeConversionSchema)
 
-# Starship Role
-c_starship_role_table = sa.Table(
-    "c_starship_role",
-    metadata,
-    Column("id", Integer, primary_key=True),
-    Column("value", String, nullable=False),
-    Column("size", Integer, )
-)
-
-class StarshipRole(object):
-    def __init__(self, id, value, size):
-        self.id = id
-        self.value = value
-        self.size = size
-
-    def get_size(self, compendium):
-        return compendium.get_object(StarshipSize, self.size)
-
-class StarshipRoleSchema(Schema):
-    id = fields.Integer(data_key="id", required=True)
-    value = fields.String(data_key="value", required=True)
-    size = fields.Integer(data_key="size", required=True)
-
-    @post_load
-    def make_starship_role(self, data, **kwargs):
-        return StarshipRole(**data)
-    
-starship_role = CompendiumObject("starship_role", StarshipRole, c_starship_role_table, StarshipRoleSchema)
-
-# Starship Size
-c_starship_size_table = sa.Table(
-    "c_starship_size",
-    metadata,
-    Column("id", Integer, primary_key=True),
-    Column("value", String, nullable=False)
-)
-
-class StarshipSize(object):
-    def __init__(self, id, value):
-        self.id = id
-        self.value = value
-
-class StarshipSizeSchema(Schema):
-    id = fields.Integer(data_key="id", required=True)
-    value = fields.String(data_key="value", required=True)
-
-    @post_load
-    def make_starship_size(self, data, **kwargs):
-        return StarshipSize(**data)
-    
-starship_size = CompendiumObject("starship_size", StarshipSize, c_starship_size_table, StarshipSizeSchema)
-
 # Arena Type
 c_arena_type_table = sa.Table(
     "c_arena_type",
@@ -410,3 +358,26 @@ class ActivityPointsSchema(Schema):
         return ActivityPoints(**data)
     
 activity_points = CompendiumObject("activity_points", ActivityPoints, c_activity_points, ActivityPointsSchema)
+
+# NPC Type
+c_npc_type = sa.Table(
+    "c_npc_type",
+    metadata,
+    Column("id", Integer, primary_key=True, autoincrement='auto'),
+    Column("value", String, nullable=False)
+)
+
+class NPCType(object):
+    def __init__(self, id, value):
+        self.id = id
+        self.value = value
+
+class NPCTypeSchema(Schema):
+    id = fields.Integer(data_key="id", required=True)
+    value = fields.String(data_key="value", required=True)
+
+    @post_load
+    def make_c_npc_type(self, data, **kwargs):
+        return NPCType(**data)
+    
+npc_type = CompendiumObject("npc_type", NPCType, c_npc_type, NPCTypeSchema)

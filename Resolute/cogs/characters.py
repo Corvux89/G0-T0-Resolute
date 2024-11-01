@@ -10,14 +10,12 @@ from Resolute.helpers.appliations import get_cached_application, get_level_up_ap
 from Resolute.helpers.characters import get_webhook_character
 from Resolute.helpers.general_helpers import get_webhook
 from Resolute.helpers.guilds import get_guild
-from Resolute.helpers.logs import create_log
+from Resolute.helpers.logs import update_activity_points
 from Resolute.helpers.players import get_player
 from Resolute.models.embeds import ErrorEmbed
-from Resolute.models.embeds.logs import LogEmbed
 from Resolute.models.embeds.players import PlayerOverviewEmbed
-from Resolute.models.objects.players import upsert_player_query
 from Resolute.models.views.applications import CharacterSelectUI, LevelUpRequestModal, NewCharacterRequestUI
-from Resolute.models.views.character_view import CharacterManageUI, CharacterSettingsUI
+from Resolute.models.views.character_view import CharacterGet, CharacterGetUI, CharacterManageUI, CharacterSettingsUI
 
 log = logging.getLogger(__name__)
 
@@ -27,7 +25,6 @@ def setup(bot: commands.Bot):
 
 
 class Character(commands.Cog):
-    # TODO: Renown in character Manage for admins
     bot: G0T0Bot
     character_admin_commands = SlashCommandGroup("character_admin", "Character administration commands", guild_only=True)
 
@@ -46,7 +43,7 @@ class Character(commands.Cog):
         content = content.replace(f">say ", "")
         await ctx.message.delete()
 
-        if content == "":
+        if content == "" or content == ">say":
             return
         
         player = await get_player(self.bot, ctx.author.id, ctx.guild.id)
@@ -61,26 +58,7 @@ class Character(commands.Cog):
                         avatar_url=ctx.author.display_avatar.url if not character.avatar_url else character.avatar_url,
                         content=f"{content}")
         await player.update_post_stats(self.bot, character, content)
-
-        # Activity Point Tracking
-        player.activity_points += 1
-        activity_point = None
-        for point in self.bot.compendium.activity_points[0].values():
-            if player.activity_points >= point.points:
-                activity_point = point
-            elif player.activity_points < point.points:
-                break
-        
-        if activity_point and player.activity_level < activity_point.id and (activity := self.bot.compendium.get_activity("ACTIVITY_REWARD")):
-            player.activity_level = activity_point.id
-            guild = await get_guild(self.bot, ctx.guild.id)
-            act_log = await create_log(self.bot, self.bot.user, guild, activity, player, 
-                                       notes=f"Activity level {player.activity_level}")
-            if guild.market_channel:
-                await guild.market_channel.send(embed=LogEmbed(act_log, self.bot.user, player.member), content=f"{ctx.author.mention}")
-        else:
-            async with self.bot.db.acquire() as conn:
-                await conn.execute(upsert_player_query(player))
+        await update_activity_points(self.bot, player, g)
 
                 
     @character_admin_commands.command(
@@ -111,7 +89,13 @@ class Character(commands.Cog):
         player = await get_player(self.bot, member.id, ctx.guild.id if ctx.guild else None)
         g = await get_guild(self.bot, player.guild_id)
 
-        return await ctx.respond(embed=PlayerOverviewEmbed(player, g, self.bot.compendium))
+        if len(player.characters) == 0:
+            return await ctx.respond(embed=PlayerOverviewEmbed(player, g, self.bot.compendium))
+
+
+        ui = CharacterGetUI.new(self.bot, ctx.author, player, g)
+        await ui.send_to(ctx)
+        await ctx.delete()
     
     @commands.slash_command(
             name="settings",

@@ -6,6 +6,9 @@ from discord.ext import commands
 
 from Resolute.bot import G0T0Bot
 from Resolute.helpers.adventures import get_adventure_from_category, get_adventure_from_role, get_player_adventures, update_dm
+from Resolute.helpers.general_helpers import get_webhook
+from Resolute.helpers.guilds import get_guild
+from Resolute.helpers.logs import update_activity_points
 from Resolute.helpers.players import get_player
 from Resolute.models.embeds import ErrorEmbed
 from Resolute.models.embeds.adventures import AdventuresEmbed
@@ -20,7 +23,7 @@ def setup(bot: commands.Bot):
 
 class Adventures(commands.Cog):
     # TODO: Add renown on adventure close
-    # TODO: Replace Rodbot but better (key, name, portrait)
+    # TODO: Setup adventure NPC's
     # TODO: Generic GM Settings for guild
     bot: G0T0Bot  # Typing annotation for my IDE's sake
     adventure_commands = SlashCommandGroup("adventure", "Adventure commands", guild_only=True)
@@ -30,6 +33,23 @@ class Adventures(commands.Cog):
         self.bot = bot
 
         log.info(f'Cog \'Adventures\' loaded')
+
+    @commands.Cog.listener()
+    async def on_command_error(self, ctx: commands.Context, error):
+        if hasattr(ctx, "bot") and hasattr(ctx.bot, "db") and ctx.guild:
+            if adventure := await get_adventure_from_category(self.bot, ctx.channel.category.id):
+                if ctx.author.id in adventure.dms and (npc := next((npc for npc in adventure.npcs if npc.key == ctx.invoked_with), None)):
+                    guild = await get_guild(self.bot, ctx.guild.id)
+                    player = await get_player(self.bot, ctx.author.id, ctx.guild.id)
+                    content = ctx.message.content.replace(f'>{npc.key}', '')
+                    await player.update_post_stats(self.bot, npc, content)
+                    await player.update_command_count(self.bot, "npc")
+                    webhook = await get_webhook(ctx.channel)
+                    await webhook.send(username=npc.name,
+                                    avatar_url=npc.avatar_url if npc.avatar_url else None,
+                                    content=content)
+                    await update_activity_points(self.bot, player, guild)
+                    await ctx.message.delete()
 
     @commands.slash_command(
         name="adventures",

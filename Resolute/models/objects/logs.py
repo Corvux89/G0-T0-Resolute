@@ -71,7 +71,7 @@ class LogSchema(Schema):
     notes = fields.String(required=False, allow_none=True)
     adventure_id = fields.Integer(required=False, allow_none=True)
     renown = fields.Integer(required=True)
-    faction = fields.Method(None, "load_faction")
+    faction = fields.Method(None, "load_faction", allow_none=True)
     invalid = fields.Boolean(required=True)
     player_id = fields.Integer(required=True)
     guild_id = fields.Integer(required=True)
@@ -96,6 +96,14 @@ class LogSchema(Schema):
 
 def get_log_by_id(log_id: int) -> FromClause:
     return log_table.select().where(log_table.c.id == log_id)
+
+def get_last_log_by_type(player_id: int, guild_id: int, activity_id: int) -> FromClause:
+    return log_table.select().where(
+        and_(log_table.c.player_id == player_id,
+             log_table.c.guild_id == guild_id,
+             log_table.c.activity == activity_id,
+             log_table.c.invalid == False)
+    ).order_by(log_table.c.id.desc()).limit(1)
 
 def get_log_count_by_player_and_activity(player_id: int, guild_id: int,  activity_id: int) -> FromClause:
     return select([func.count()]).select_from(log_table).where(
@@ -131,7 +139,7 @@ def upsert_log(log: DBLog):
         notes=log.notes if hasattr(log, "notes") else None,
         adventure_id=None if not hasattr(log, "adventure_id") else log.adventure_id,
         renown=log.renown,
-        Faction=None if not hasattr(log, "faction") and log.faction else log.faction.id,
+        faction=None if not hasattr(log, "faction") or not log.faction else log.faction.id,
         invalid=log.invalid
     ).returning(log_table)
 

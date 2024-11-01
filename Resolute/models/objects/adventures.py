@@ -10,6 +10,7 @@ from Resolute.models import metadata
 from Resolute.compendium import Compendium
 from Resolute.models.objects.characters import PlayerCharacter
 from Resolute.models.objects.characters import PlayerCharacter
+from Resolute.models.objects.npc import NPC
 
 
 class Adventure(object):
@@ -25,6 +26,9 @@ class Adventure(object):
         self.player_characters: list[PlayerCharacter] = []
         self.created_ts = kwargs.get('created_ts', datetime.now(timezone.utc))
         self.end_ts = kwargs.get('end_ts')
+
+        # Virtual attributes
+        self.npcs: list[NPC] = []
 
 adventures_table = sa.Table(
     "adventures",

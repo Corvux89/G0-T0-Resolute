@@ -26,9 +26,8 @@ class Compendium:
         self.categories = [
             rarity, char_class, char_archetype,
             char_species, arena_tier, activity, 
-            dashboard_type, cc_conversion, starship_role,
-            starship_size, arena_type, transaction_type, transaction_subtype,
-            level_cost, faction, activity_points
+            dashboard_type, cc_conversion, arena_type, transaction_type, transaction_subtype,
+            level_cost, faction, activity_points, npc_type
             ]
 
         for category in self.categories:

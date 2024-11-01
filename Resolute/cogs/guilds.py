@@ -11,7 +11,8 @@ from timeit import default_timer as timer
 import discord.ext.tasks
 
 from Resolute.bot import G0T0Bot
-from Resolute.helpers.general_helpers import confirm, get_webhook
+from Resolute.helpers.general_helpers import confirm, get_webhook, is_admin
+from Resolute.helpers.logs import update_activity_points
 from Resolute.models.categories import Activity
 from Resolute.helpers.guilds import get_guilds_with_reset, get_guild, update_guild
 from Resolute.helpers.guilds import delete_weekly_stipend, get_guild_stipends
@@ -44,19 +45,29 @@ class Guilds(commands.Cog):
             asyncio.ensure_future(self.schedule_weekly_reset.start())
 
     @commands.Cog.listener()
-    async def on_command_error(self, ctx: discord.ApplicationContext, error):
-        # TODO: Make this better with some validation and guild settings
-        if ctx.invoked_with == "gm":
-            webhook = await get_webhook(ctx.channel)
-            await webhook.send(username="GM",
-                               content=f"{ctx.message.content.replace('>gm','')}")
-            await ctx.message.delete()
+    async def on_command_error(self, ctx: commands.Context, error):
+        if hasattr(ctx, "bot") and hasattr(ctx.bot, "db") and ctx.guild:
+            guild = await get_guild(self.bot, ctx.guild.id)
+            if npc := next((npc for npc in guild.npcs if npc.key == ctx.invoked_with), None):
+                user_roles = [role.id for role in ctx.author.roles]
+                if bool(set(user_roles) & set(npc.roles)) or is_admin(ctx):
+                    player = await get_player(self.bot, ctx.author.id, ctx.guild.id)
+                    content = ctx.message.content.replace(f'>{npc.key}', '')
+                    await player.update_post_stats(self.bot, npc, content)
+                    await player.update_command_count(self.bot, "npc")
+                    webhook = await get_webhook(ctx.channel)
+                    await webhook.send(username=npc.name,
+                                    avatar_url=npc.avatar_url if npc.avatar_url else None,
+                                    content=content)
+                    await update_activity_points(self.bot, player, guild)
+                    await ctx.message.delete()
     
     @guilds_commands.command(
             name="settings",
             description="Modify the current guild/server settings"
     )
     async def guild_settings(self, ctx: ApplicationContext):
+        # TODO: Add NPC Modifications
         g = await get_guild(self.bot, ctx.guild.id)
 
         ui = GuildSettingsUI.new(self.bot, ctx.author, g)

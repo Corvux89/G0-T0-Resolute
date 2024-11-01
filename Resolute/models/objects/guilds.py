@@ -10,6 +10,7 @@ from sqlalchemy.dialects.postgresql import insert
 from datetime import datetime, timezone, timedelta
 
 from Resolute.models import metadata
+from Resolute.models.objects.npc import NPC
 from Resolute.models.objects.ref_objects import RefServerCalendar
 
 class PlayerGuild(object):
@@ -38,11 +39,15 @@ class PlayerGuild(object):
         # Virtual attributes
         self.calendar = None
         self.guild: discord.Guild = None
+        self.npcs: list[NPC] = []
+
+        # Roles
         self.archivist_role: discord.Role = None
         self.citizen_role: discord.Role = None
         self.acolyte_role: discord.Role = None
         self.senate_role: discord.Role = None
         
+        # Channels
         self.help_channel: discord.TextChannel = None
         self.character_application_channel: discord.TextChannel = None
         self.market_channel: discord.TextChannel = None

@@ -2,6 +2,7 @@ import asyncio
 import aiopg
 from Resolute.bot import G0T0Bot
 from Resolute.models.objects.guilds import *
+from Resolute.models.objects.npc import NPCSchema, get_guild_npcs_query
 from Resolute.models.objects.ref_objects import RefWeeklyStipend
 from Resolute.models.objects.ref_objects import RefServerCalendarSchema, RefWeeklyStipendSchema, get_guild_weekly_stipends_query, get_server_calendar, get_weekly_stipend_query, upsert_weekly_stipend, delete_weekly_stipend_query
 
@@ -23,6 +24,7 @@ async def get_guild(bot: G0T0Bot, guild_id: int) -> PlayerGuild:
 
 async def build_guild(bot: G0T0Bot, guild: PlayerGuild):
     await load_calendar(bot.db, guild)
+    await load_npcs(bot, guild)
     guild.guild = bot.get_guild(guild.id)
 
     guild.archivist_role = discord.utils.get(guild.guild.roles, name="Archivist")
@@ -43,6 +45,12 @@ async def load_calendar(db: aiopg.sa.Engine, guild: PlayerGuild):
             results = await conn.execute(get_server_calendar(guild.id))
             rows = await results.fetchall()
     guild.calendar = [RefServerCalendarSchema().load(row) for row in rows]
+
+async def load_npcs(bot: G0T0Bot, guild: PlayerGuild):
+    async with bot.db.acquire() as conn:
+        results = await conn.execute(get_guild_npcs_query(guild.id))
+        rows = await results.fetchall()
+    guild.npcs = [NPCSchema().load(row) for row in rows]
 
 
 async def update_guild(bot: G0T0Bot, guild: PlayerGuild) -> PlayerGuild:

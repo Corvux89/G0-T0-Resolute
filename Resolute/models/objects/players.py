@@ -10,6 +10,7 @@ from sqlalchemy.dialects.postgresql import insert
 from Resolute.bot import G0T0Bot
 from Resolute.models import metadata
 from Resolute.models.objects.characters import PlayerCharacter
+from Resolute.models.objects.npc import NPC
 
 class Player(object):
     characters: list[PlayerCharacter]
@@ -39,16 +40,6 @@ class Player(object):
             return max(self.characters, key=lambda char: char.level)
         return None
     
-    @property
-    def total_renown(self) -> int:
-        total = 0
-
-        if hasattr(self, "characters") and self.characters:
-            for character in self.characters:
-                if hasattr(character, "renown") and character.renown:
-                    total += sum(ren.renown for ren in character.renown)
-        return total
-    
     def get_channel_character(self, channel: discord.TextChannel) -> PlayerCharacter:
         for char in self.characters:
             if channel.id in char.channels:
@@ -74,38 +65,42 @@ class Player(object):
         async with bot.db.acquire() as conn:
             await conn.execute(upsert_player_query(self))
 
-    async def update_post_stats(self, bot: G0T0Bot, character: PlayerCharacter, post: str, retract: bool = False):
+    async def update_post_stats(self, bot: G0T0Bot, character: PlayerCharacter | NPC, post: str, retract: bool = False):
         stats = json.loads(self.statistics)
 
-        if "say" not in stats:
-            stats["say"] = {}
+        if isinstance(character, PlayerCharacter):
+            key="say"   
+        else:
+            key="npc"
+
+        if key not in stats:
+            stats[key] = {}
+
+        if f"{character.id}" not in stats[key]:
+            stats[key][f"{character.id}"] = {}
 
 
-        if f"{character.id}" not in stats["say"]:
-            stats["say"][f"{character.id}"] = {}
+        if "num_lines" not in stats[key][f"{character.id}"]:
+            stats[key][f"{character.id}"]["num_lines"] = 0
 
+        if "num_words" not in stats[key][f"{character.id}"]:
+            stats[key][f"{character.id}"]["num_words"] = 0
 
-        if "num_lines" not in stats["say"][f"{character.id}"]:
-            stats["say"][f"{character.id}"]["num_lines"] = 0
-
-        if "num_words" not in stats["say"][f"{character.id}"]:
-            stats["say"][f"{character.id}"]["num_words"] = 0
-
-        if "num_characters" not in stats["say"][f"{character.id}"]:
-            stats["say"][f"{character.id}"]["num_characters"] = 0
+        if "num_characters" not in stats[key][f"{character.id}"]:
+            stats[key][f"{character.id}"]["num_characters"] = 0
 
         lines = post.splitlines()
         words = post.split()
         characters = len(post)
 
         if retract:
-            stats["say"][f"{character.id}"]["num_lines"] -= len(lines)
-            stats["say"][f"{character.id}"]["num_words"] -= len(words)
-            stats["say"][f"{character.id}"]["num_characters"] -= characters
+            stats[key][f"{character.id}"]["num_lines"] -= len(lines)
+            stats[key][f"{character.id}"]["num_words"] -= len(words)
+            stats[key][f"{character.id}"]["num_characters"] -= characters
         else:
-            stats["say"][f"{character.id}"]["num_lines"] += len(lines)
-            stats["say"][f"{character.id}"]["num_words"] += len(words)
-            stats["say"][f"{character.id}"]["num_characters"] += characters
+            stats[key][f"{character.id}"]["num_lines"] += len(lines)
+            stats[key][f"{character.id}"]["num_words"] += len(words)
+            stats[key][f"{character.id}"]["num_characters"] += characters
 
         self.statistics = json.dumps(stats)
 

@@ -22,11 +22,15 @@ class LogEmbed(Embed):
 
         self.description += f"**Character**: {character.name}\n" if character else ''
 
+        self.description += f"**Faction**: {log_entry.faction.value}\n" if log_entry.faction else ''
+
         if show_values:
             if log_entry.cc:
                 self.description += f"**Chain Codes**: {log_entry.cc:,}\n"
             if log_entry.credits:
                 self.description += f"**Credits**: {log_entry.credits:,}\n"
+            if log_entry.renown:
+                self.description += f"**Renown**: {log_entry.renown}"
         
         if log_entry.notes:
             self.description += f"**Notes**: {log_entry.notes}\n"

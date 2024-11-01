@@ -4,11 +4,12 @@ import discord
 from Resolute.bot import G0T0Bot
 from Resolute.helpers.players import get_player
 from Resolute.models.categories import Activity
+from Resolute.models.categories.categories import Faction
 from Resolute.models.embeds.logs import LogEmbed
 from Resolute.models.objects.adventures import Adventure
 from Resolute.models.objects.characters import PlayerCharacter, upsert_character_query
 from Resolute.models.objects.guilds import PlayerGuild
-from Resolute.models.objects.logs import DBLog, LogSchema, character_stats_query, get_log_by_id, get_n_player_logs_query, player_stats_query, upsert_log
+from Resolute.models.objects.logs import DBLog, LogSchema, character_stats_query, get_last_log_by_type, get_log_by_id, get_n_player_logs_query, player_stats_query, upsert_log
 from Resolute.models.objects.players import Player, upsert_player_query
 
 
@@ -59,6 +60,8 @@ async def create_log(bot: G0T0Bot, author: Member | ClientUser, guild: PlayerGui
     cc: int = kwargs.get('cc', 0)
     credits: int = kwargs.get('credits', 0)
     adventure: Adventure = kwargs.get('adventure')
+    faction: Faction = kwargs.get('faction')
+    renown: int = kwargs.get('renown', 0)
     ignore_handicap: bool = kwargs.get('ignore_handicap', False)
 
     char_cc = get_activity_amount(player, guild, activity, cc)
@@ -67,7 +70,9 @@ async def create_log(bot: G0T0Bot, author: Member | ClientUser, guild: PlayerGui
 
     char_log = DBLog(author=author.id, cc=char_cc, credits=credits, player_id=player.id, character_id=character.id if character else None,
                      activity=activity, notes=notes, guild_id=guild.id,
-                     adventure_id=adventure.id if adventure else None)
+                     adventure_id=adventure.id if adventure else None,
+                     faction=faction,
+                     renown=renown)
 
     # Handicap Adjustment
     if not ignore_handicap and guild.handicap_cc and player.handicap_amount < guild.handicap_cc:
@@ -150,7 +155,48 @@ async def get_log_from_entry(bot: G0T0Bot, message: discord.Message) -> DBLog:
 
     return log_entry
 
+async def get_last_activity_log(bot: G0T0Bot, player: Player, guild: PlayerGuild, activity: Activity) -> DBLog:
+    async with bot.db.acquire() as conn:
+        results = await conn.execute(get_last_log_by_type(player.id, guild.id, activity.id))
+        row = await results.first()
+
+    if row is None:
+        return None
+    return LogSchema(bot.compendium).load(row)
+
 
 def get_match(pattern, text, group=1, default=None):
     match = re.search(pattern, text, re.DOTALL)
     return match.group(group) if match and match.group(group) != 'None' else default
+
+
+async def update_activity_points(bot: G0T0Bot, player: Player, guild: PlayerGuild, increment: bool = True):
+    if increment:
+        player.activity_points += 1
+    else:
+        player.activity_points -= 1
+
+    activity_point = None
+    for point in bot.compendium.activity_points[0].values():
+        if player.activity_points >= point.points:
+            activity_point = point
+        elif player.activity_points < point.points:
+            break
+
+    if activity_point and player.activity_level != activity_point.id and (activity := bot.compendium.get_activity("ACTIVITY_REWARD")):
+        revert = True if player.activity_level > activity_point.id else False
+        player.activity_level = activity_point.id
+        act_log = await create_log(bot, bot.user, guild, activity, player,
+                                   notes=f"Activity Level {player.activity_level}{' [REVERSION]' if revert else ''}",
+                                   cc=-1 if revert else 0
+                                   )
+
+        if guild.market_channel and not revert:
+            await guild.market_channel.send(embed=LogEmbed(act_log, bot.user, player.member), content=f"{player.member.mention}")
+
+        if guild.archivist_channel and revert:
+            await guild.archivist_channel.send(embed=LogEmbed(act_log, bot.user, player.member))
+            await player.member.send(embed=LogEmbed(act_log, bot.user, player.member))
+    else:
+        async with bot.db.acquire() as conn:
+            await conn.execute(upsert_player_query(player))

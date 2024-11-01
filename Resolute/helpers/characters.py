@@ -3,7 +3,7 @@ import logging
 import discord
 
 from Resolute.bot import G0T0Bot
-from Resolute.models.objects.characters import CharacterRenown, CharacterSchema, CharacterStarship, CharacterStarshipSchema, PlayerCharacter, PlayerCharacterClass, PlayerCharacterClassSchema, RenownSchema, get_active_characters, get_all_characters, get_character_class, get_character_from_id, get_character_renown, get_character_starships, upsert_character_query, upsert_character_renown, upsert_class_query, upsert_starship_query
+from Resolute.models.objects.characters import CharacterRenown, CharacterSchema, PlayerCharacter, PlayerCharacterClass, PlayerCharacterClassSchema, RenownSchema, get_active_characters, get_all_characters, get_character_class, get_character_from_id, get_character_renown, upsert_character_query, upsert_character_renown, upsert_class_query
 from Resolute.models.objects.players import Player
 from timeit import default_timer as timer
 
@@ -25,14 +25,10 @@ async def get_characters(bot: G0T0Bot, player_id: int, guild_id: int, inactive: 
             class_results = await conn.execute(get_character_class(character.id))
             class_rows = await class_results.fetchall()
 
-            starship_results = await conn.execute(get_character_starships(character.id))
-            starship_rows = await starship_results.fetchall()
-
             renown_results = await conn.execute(get_character_renown(character.id))
             renown_rows = await renown_results.fetchall()
 
         character.classes = [PlayerCharacterClassSchema(bot.compendium).load(row) for row in class_rows]
-        character.starships = [CharacterStarshipSchema(bot.compendium).load(row) for row in starship_rows]
         character.renown = [RenownSchema(bot.compendium).load(row) for row in renown_rows]
 
     return character_list
@@ -54,27 +50,14 @@ async def get_character(bot: G0T0Bot, char_id: int) -> PlayerCharacter:
         class_results = await conn.execute(get_character_class(char_id))
         class_rows = await class_results.fetchall()
 
-        starship_results = await conn.execute(get_character_starships(char_id))
-        starship_rows = await starship_results.fetchall()
-
         renown_results = await conn.execute(get_character_renown(char_id))
         renown_rows = await renown_results.fetchall()
 
     character = CharacterSchema(bot.compendium).load(row)
     character.classes = [PlayerCharacterClassSchema(bot.compendium).load(row) for row in class_rows]
-    character.starships = [CharacterStarshipSchema(bot.compendium).load(row) for row in starship_rows]
     character.renown = [RenownSchema(bot.compendium).load(row) for row in renown_rows]
 
     return character
-
-async def upsert_starship(bot: G0T0Bot, starship: CharacterStarship) -> CharacterStarship:
-    async with bot.db.acquire() as conn:
-        results = await conn.execute(upsert_starship_query(starship))
-        row = await results.first()
-
-    starship = CharacterStarshipSchema(bot.compendium).load(row)
-
-    return starship
 
 async def upsert_renown(bot: G0T0Bot, renown: CharacterRenown) -> CharacterRenown:
     async with bot.db.acquire() as conn:
@@ -96,11 +79,7 @@ async def upsert_character(bot: G0T0Bot, character: PlayerCharacter) -> PlayerCh
         class_results = await conn.execute(get_character_class(character.id))
         class_rows = await class_results.fetchall()
 
-        starship_results = await conn.execute(get_character_starships(character.id))
-        starship_rows = await starship_results.fetchall()
-
     character.classes = [PlayerCharacterClassSchema(bot.compendium).load(row) for row in class_rows]
-    character.starships = [CharacterStarshipSchema(bot.compendium).load(row) for row in starship_rows]
 
     return character
 
@@ -108,7 +87,6 @@ async def create_new_character(bot: G0T0Bot, type: str, player: Player, new_char
     start = timer()
 
     old_character: PlayerCharacter = kwargs.get('old_character')
-    transfer_ship: bool = kwargs.get('transfer_ship', False)
 
     new_character.player_id = player.id
     new_character.guild_id = player.guild_id        
@@ -131,16 +109,6 @@ async def create_new_character(bot: G0T0Bot, type: str, player: Player, new_char
 
     new_character.classes.append(new_class)
 
-    if old_character:
-        for ship in old_character.starships:
-            if transfer_ship:
-                ship.character_id.remove(old_character.id)
-                ship.character_id.append(new_character.id)
-                new_character.starships.append(ship)
-            elif len(ship.character_id) == 1:
-                ship.active = False
-            
-            await upsert_starship(bot, ship)
     end = timer()
 
     log.info(f"Time to create character {new_character.id}: [ {end-start:.2f} ]s")

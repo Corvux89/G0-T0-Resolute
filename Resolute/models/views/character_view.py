@@ -8,30 +8,29 @@ from discord import SelectOption
 
 from Resolute.bot import G0T0Bot
 from Resolute.compendium import Compendium
-from Resolute.helpers.characters import create_new_character, get_character, upsert_character, upsert_class, upsert_starship
-from Resolute.helpers.general_helpers import confirm, get_webhook, is_admin, isImageURL, process_message
+from Resolute.helpers.characters import create_new_character, get_character, upsert_character, upsert_class, upsert_renown
+from Resolute.helpers.general_helpers import get_webhook, is_admin, isImageURL, process_message
 from Resolute.helpers.logs import create_log
 from Resolute.helpers.players import get_player, manage_player_roles
 from Resolute.models.categories import CharacterClass, CharacterSpecies, Activity
-from Resolute.models.categories.categories import CharacterArchetype, Faction, StarshipSize
+from Resolute.models.categories.categories import CharacterArchetype, Faction
 from Resolute.models.embeds import ErrorEmbed
-from Resolute.models.embeds.characters import CharacterEmbed, CharacterSettingsEmbed, LevelUpEmbed, NewCharacterSetupEmbed, NewcharacterEmbed, StarshipEmbed
+from Resolute.models.embeds.characters import CharacterEmbed, CharacterSettingsEmbed, LevelUpEmbed, NewCharacterSetupEmbed, NewcharacterEmbed
 from Resolute.models.embeds.logs import LogEmbed
 from Resolute.models.embeds.players import PlayerOverviewEmbed
 from Resolute.models.objects.guilds import PlayerGuild
 from Resolute.models.objects.players import Player, PlayerCharacter
-from Resolute.models.objects.characters import CharacterRenown, CharacterStarship, PlayerCharacterClass
+from Resolute.models.objects.characters import CharacterRenown, PlayerCharacterClass
 from Resolute.models.views.base import InteractiveView
 
 # Character Manage Base setup
 class CharacterManage(InteractiveView):
-    __menu_copy_attrs__ = ("bot", "player", "guild", "active_character", "active_ship")
+    __menu_copy_attrs__ = ("bot", "player", "guild", "active_character")
     bot: G0T0Bot
     owner: discord.Member = None
     player: Player
     guild: PlayerGuild
     active_character: PlayerCharacter = None
-    active_ship: CharacterStarship = None
 
 
 # Main Character Manage UI
@@ -49,7 +48,7 @@ class CharacterManageUI(CharacterManage):
     
     @discord.ui.select(placeholder="Select a character to manage", row=1)
     async def character_select(self, char: discord.ui.Select, interaction: discord.Interaction):
-        self.active_character = self.player.characters[int(char.values[0])]
+        self.active_character = next((c for c in self.player.characters if c.id == int(char.values[0])), None)
         await self.refresh_content(interaction)
 
     @discord.ui.button(label="Edit", style=discord.ButtonStyle.primary, row=2)
@@ -77,7 +76,7 @@ class CharacterManageUI(CharacterManage):
             # Build the Character List
             char_list  = []
             for char in self.player.characters:
-                char_list.append(SelectOption(label=f"{char.name}", value=f"{self.player.characters.index(char)}", default=True if self.player.characters.index(char) == self.player.characters.index(self.active_character) else False))
+                char_list.append(SelectOption(label=f"{char.name}", value=f"{char.id}", default=True if self.active_character and char.id == self.active_character.id else False))
             self.character_select.options = char_list
 
         if not is_admin or len(self.player.characters) == 0:
@@ -93,7 +92,6 @@ class _NewCharacter(CharacterManage):
     def __init__(self, owner: discord.Member, *args, **kwargs):
         super().__init__(owner, *args, **kwargs)
         self.new_type = None
-        self.transfer_ship = False
         self.new_character = PlayerCharacter()
         self.new_class = PlayerCharacterClass()
         self.new_cc = 0
@@ -102,19 +100,16 @@ class _NewCharacter(CharacterManage):
     @discord.ui.select(placeholder="Select new type", row=1)
     async def new_character_type(self, type: discord.ui.Select, interaction: discord.Interaction):
         self.new_type = type.values[0]
-        if self.new_type == "new":
-            self.transfer_ship = False
         await self.refresh_content(interaction)
 
     @discord.ui.button(label="Basic Information", style=discord.ButtonStyle.primary, row=2)
     async def new_character_information(self, _: discord.ui.Button, interaction: discord.Interaction):
-        modal = NewCharacterInformationModal(self.new_character, self.active_character, self.new_cc, self.new_credits, self.new_type, self.transfer_ship)
+        modal = NewCharacterInformationModal(self.new_character, self.active_character, self.new_cc, self.new_credits, self.new_type)
         response = await self.prompt_modal(interaction, modal)
 
         self.new_character = response.character
         self.new_cc = response.new_cc
         self.new_credits = response.new_credits
-        self.transfer_ship = response.transfer_ship
 
         await self.refresh_content(interaction)
 
@@ -131,8 +126,7 @@ class _NewCharacter(CharacterManage):
     @discord.ui.button(label="Create Character", style=discord.ButtonStyle.green, row=3, disabled=True)
     async def new_character_create(self, _: discord.ui.Button, interaction: discord.Interaction):
         self.new_character = await create_new_character(self.bot, self.new_type, self.player, self.new_character, self.new_class,
-                                                        old_character=self.active_character,
-                                                        transfer_ship=self.transfer_ship)
+                                                        old_character=self.active_character)
 
         new_activity = self.bot.compendium.get_activity("new_character")
 
@@ -180,7 +174,7 @@ class _NewCharacter(CharacterManage):
         pass
 
     async def get_content(self) -> Mapping:
-        embed = NewCharacterSetupEmbed(self.player, self.guild, self.new_character, self.new_class, self.new_credits, self.new_cc, self.transfer_ship)
+        embed = NewCharacterSetupEmbed(self.player, self.guild, self.new_character, self.new_class, self.new_credits, self.new_cc)
         return {"embed": embed, "content": ""}
 
 # Character Manage - Inactivate Character
@@ -205,7 +199,7 @@ class _InactivateCharacter(CharacterManage):
         
 
     async def get_content(self) -> Mapping:
-        return {"embed": CharacterEmbed(self.player, self.active_character, self.bot.compendium), "content": "Are you sure you want to inactivate this character?"}
+        return {"embed": CharacterEmbed(self.player, self.active_character), "content": "Are you sure you want to inactivate this character?"}
 
 # Character Manage - Edit Character
 class _EditCharacter(CharacterManage):
@@ -213,14 +207,9 @@ class _EditCharacter(CharacterManage):
     async def manage_class(self, _: discord.ui.Button, interaction: discord.Interaction):
         await self.defer_to(_EditCharacterClass, interaction)
 
-    @discord.ui.button(label="Manage Ships", style=discord.ButtonStyle.primary, row=1)
-    async def manage_ship(self, _: discord.ui.Button, interaction: discord.Interaction):
-        await self.defer_to(_EditCharacterShips, interaction)
-
     @discord.ui.button(label="Manage Renown", style=discord.ButtonStyle.primary, row=1)
     async def manage_renown(self, _: discord.ui.Button, interaction: discord.Interaction):
-        # TODO: Update this to route to the new view
-        await self.refresh_content(interaction)
+        await self.defer_to(_EditCharacterRenown, interaction)
 
     @discord.ui.button(label="Edit Information", style=discord.ButtonStyle.primary, row=2)
     async def edit_character_information(self, _: discord.ui.Button, interaction: discord.Interaction):
@@ -263,8 +252,12 @@ class _EditCharacter(CharacterManage):
             self.level_character.disabled = False
         pass
 
+    async def _before_send(self):
+        if not is_admin:
+            self.remove_item(self.manage_renown)
+
     async def get_content(self) -> Mapping:
-        return {"embed": CharacterEmbed(self.player, self.active_character, self.bot.compendium), "content": ""}
+        return {"embed": CharacterEmbed(self.player, self.active_character), "content": ""}
 
 # Character Manage - Edit Character Class
 class _EditCharacterClass(CharacterManage):
@@ -323,189 +316,48 @@ class _EditCharacterClass(CharacterManage):
         self.select_class.options = class_list
 
     async def get_content(self) -> Mapping:
-        return {"embed": CharacterEmbed(self.player, self.active_character, self.bot.compendium), "content": ""}
+        return {"embed": CharacterEmbed(self.player, self.active_character), "content": ""}
     
 # Character Manage - Edit Renown
 class _EditCharacterRenown(CharacterManage):
-    active_renown: CharacterRenown = None
+    faction: Faction = None
+
+    async def _before_send(self):
+        faction_list = []
+
+        for faction in self.bot.compendium.faction[0].values():
+            faction_list.append(SelectOption(label=f"{faction.value}", value=f"{faction.id}", default=True if self.faction and self.faction.id == faction.id else False))
+
+        self.select_faction.options = faction_list
 
     @discord.ui.select(placeholder="Select a faction", row=1)
     async def select_faction(self, fac: discord.ui.Select, interaction: discord.Interaction):
-        faction = self.bot.compendium.get_object(Faction, int(fac.values[0]))
+        self.faction = self.bot.compendium.get_object(Faction, int(fac.values[0]))
+        await self.refresh_content(interaction)
+
+    @discord.ui.button(label="Add/Remove Renown", style=discord.ButtonStyle.primary, row=2)
+    async def modify_renown(self, _: discord.ui.Button, interaction: discord.Interaction):
+        renown = next((r for r in self.active_character.renown if r.faction.id == self.faction.id), CharacterRenown(faction=self.faction, character_id=self.active_character.id))
+        activity = self.bot.compendium.get_activity("RENOWN")
+        modal = CharacterRenownModal(renown)
+        response = await self.prompt_modal(interaction, modal)
+
+        if response.amount != 0:
+            log_entry = await create_log(self.bot, interaction.user, self.guild, activity, self.player, 
+                                        character=self.active_character,
+                                        renown=response.amount,
+                                        faction=self.faction)
+
+            renown = await upsert_renown(self.bot, renown)
+            self.active_character = await get_character(self.bot, self.active_character.id)
+            await interaction.channel.send(embed=LogEmbed(log_entry, interaction.user, self.player.member, self.active_character, True))
+            await self.on_timeout()
+        else:
+            self.refresh_content(interaction)
       
     @discord.ui.button(label="Back", style=discord.ButtonStyle.grey, row=2)
     async def back(self, _: discord.ui.Button, interaction: discord.Interaction):
         await self.defer_to(_EditCharacter, interaction)
-
-# Character Manage - Edit Starships
-class _EditCharacterShips(CharacterManage):
-
-    @discord.ui.select(placeholder="Select a ship", row=1, options=[SelectOption(label="Placeholder")])
-    async def select_ship(self, ship: discord.ui.Select, interaction: discord.Interaction):
-        self.active_ship = self.active_character.starships[int(ship.values[0])]
-        await self.refresh_content(interaction)
-
-    @discord.ui.button(label="Add Ship", style=discord.ButtonStyle.grey, row=2)
-    async def add_ship(self, _: discord.ui.Button, interaction: discord.Interaction):
-        modal = StarshipModal(self.active_character, self.bot.compendium)
-        response = await self.prompt_modal(interaction, modal)
-
-        if response.starship and response.starship is not None:
-            starship = await upsert_starship(self.bot, response.starship)
-            self.active_character.starships.append(starship)
-            
-        await self.refresh_content(interaction)
-
-
-    @discord.ui.button(label="Edit Ship", style=discord.ButtonStyle.grey, row=2)
-    async def edit_ship(self, _: discord.ui.Button, interaction: discord.Interaction):
-        await self.defer_to(_EditStarship, interaction)
-
-    @discord.ui.button(label="Delete Ship", style=discord.ButtonStyle.red, row=2)
-    async def delete_ship(self, _: discord.ui.Button, interaction: discord.Interaction):
-        owners = ", ".join([f"{char.name} ( {self.guild.guild.get_member(char.player_id).mention} )" for char in self.active_ship.owners])
-        conf = await confirm(interaction, f"Are you sure you want to inactivate `{self.active_ship.get_formatted_starship(self.bot.compendium)}` for {owners}? (Reply with yes/no)", True)
-
-        if conf is None:
-            await interaction.channel.send(embed=ErrorEmbed(f"Timed out waiting for a response or invalid response."), delete_after=5)
-            await self.refresh_content(interaction)
-        elif not conf:
-            await interaction.channel.send(embed=ErrorEmbed(f"Ok, cancelling"), delete_after=5)
-            await self.refresh_content(interaction)
-        else:
-            self.active_ship.active = False
-            self.active_character.starships.remove(self.active_ship)
-            await upsert_starship(self.bot, self.active_ship)
-            await self.defer_to(_EditCharacter, interaction)
-
-    @discord.ui.button(label="Back", style=discord.ButtonStyle.grey, row=3)
-    async def back(self, _: discord.ui.Button, interaction: discord.Interaction):
-        await self.defer_to(_EditCharacter, interaction)
-
-    async def _before_send(self):
-        if not self.active_character.starships:
-            self.remove_item(self.select_ship)
-        else:
-            if not self.active_ship:
-                self.active_ship = self.active_character.starships[0]
-                
-            self.active_ship.owners = []
-            for char_id in self.active_ship.character_id:
-                character = await get_character(self.bot, char_id)
-                self.active_ship.owners.append(character)
-
-
-            ship_options = []
-            for ship in self.active_character.starships:
-                ship_options.append(SelectOption(label=f"{ship.name}", value=f"{self.active_character.starships.index(ship)}", default=True if self.active_ship and self.active_character.starships.index(ship) == self.active_character.starships.index(self.active_ship) else False))
-            self.select_ship.options = ship_options
-
-    async def get_content(self) -> Mapping:
-        return {"embed": CharacterEmbed(self.player, self.active_character, self.bot.compendium), "content": ""}
-
-# Character Manage - Edit Starship
-class _EditStarship(CharacterManage):
-    @discord.ui.button(label="Edit Information", style=discord.ButtonStyle.grey, row=1)
-    async def edit_ship_information(self, _: discord.ui.Button, interaction: discord.Interaction):
-        modal = StarshipModal(self.active_character, self.bot.compendium, self.active_ship)
-
-        response = await self.prompt_modal(interaction, modal)
-
-        if response.starship:
-            await upsert_starship(self.bot, self.active_ship)
-
-        await self.refresh_content(interaction)
-
-    @discord.ui.button(label="Edit Owners", style=discord.ButtonStyle.grey, row=1)
-    async def edit_ship_owners(self, _: discord.ui.Button, interaction: discord.Interaction):
-        await self.defer_to(_EditStarshipOwners, interaction)
-
-    @discord.ui.button(label="Back", style=discord.ButtonStyle.grey, row=2)
-    async def back(self, _: discord.ui.Button, interaction: discord.Interaction):
-        await self.defer_to(_EditCharacterShips, interaction)
-
-    async def get_content(self) -> Mapping:
-        return {"embed": StarshipEmbed(self.bot, self.player, self.active_ship), "content": ""}
-    
-class _EditStarshipOwners(CharacterManage):
-    owner_member: discord.Member = None
-    owner_player: Player = None
-    owner_character: PlayerCharacter = None
-
-    @discord.ui.user_select(placeholder="Select a Player", row=1)
-    async def member_select(self, user: discord.ui.Select, interaction: discord.Interaction):
-        member: discord.Member = user.values[0]
-        self.owner_member = member
-        self.owner_player = await get_player(self.bot, member.id, interaction.guild.id)
-        self.owner_character = None
-
-        if self.get_item("ship_char_select") is None:
-            self.add_item(self.character_select)
-
-        await self.refresh_content(interaction)
-
-    @discord.ui.select(placeholder="Select a character", options=[SelectOption(label="You should never see me")], row=2, custom_id="ship_char_select")
-    async def character_select(self, char: discord.ui.Select, interaction: discord.Interaction):
-        self.owner_character = self.owner_player.characters[int(char.values[0])]
-        await self.refresh_content(interaction)
-
-    @discord.ui.button(label="Add Player", row=3)
-    async def add_owner(self, _: discord.ui.Button, interaction: discord.Interaction):
-        if self.owner_member is None:
-            await interaction.channel.send(embed=ErrorEmbed(f"Select someone to add"), delete_after=5)
-        elif self.owner_character is None:
-            await interaction.channel.send(embed=ErrorEmbed(f"Select a character to add"), delete_after=5)
-        elif self.owner_character.id in self.active_ship.character_id:
-            await interaction.channel.send(embed=ErrorEmbed(f"Character is already an owner of this ship"), delete_after=5)
-        else:
-            self.active_ship.character_id.append(self.owner_character.id)
-            self.active_ship.owners.append(self.owner_character)
-            await upsert_starship(self.bot, self.active_ship)
-        
-        await self.refresh_content(interaction)
-
-    @discord.ui.button(label="Remove Player", row=3)
-    async def remove_owner(self, _: discord.ui.Button, interaction: discord.Interaction):
-        if len(self.active_ship.character_id) == 1:
-            await interaction.channel.send(embed=ErrorEmbed(f"Can't remove the last owner. Either add someone first or delete the ship"), delete_after=5)
-        elif self.owner_member is None:
-            await interaction.channel.send(embed=ErrorEmbed(f"Select someone to remove"), delete_after=5)
-        elif self.owner_character is None:
-            self.owner_character = next((ch for ch in self.owner_player.characters if ch.id in self.active_ship.character_id), None)
-
-        if self.owner_character is None:
-            await interaction.channel.send(embed=ErrorEmbed(f"Select a character to remove"), delete_after=5)
-        else:
-            self.active_ship.character_id.remove(self.owner_character.id)
-            self.active_ship.owners = [owner for owner in self.active_ship.owners if owner.id != self.owner_character.id]
-            if self.owner_member == self.player.member:
-                self.active_character.starships.remove(self.active_ship)
-
-            await upsert_starship(self.bot, self.active_ship)
-            
-        await self.refresh_content(interaction)
-
-    @discord.ui.button(label="Back", style=discord.ButtonStyle.grey, row=4)
-    async def back(self, _: discord.ui.Button, interaction: discord.Interaction):
-        await self.defer_to(_EditStarship, interaction)
-
-    async def _before_send(self):
-        if self.owner_member is None:
-            self.remove_item(self.character_select)
-        else:
-            if self.owner_player.characters:
-                char_list = []
-                if self.owner_character is None:
-                    self.owner_character = self.owner_player.characters[0]
-
-                for char in self.owner_player.characters:
-                    char_list.append(SelectOption(label=f"{char.name}", value=f"{self.owner_player.characters.index(char)}", default=True if self.owner_character and  self.owner_player.characters.index(char) == self.owner_player.characters.index(self.owner_character) else False))
-                self.character_select.options = char_list
-            else:
-                self.remove_item(self.character_select)
-
-    async def get_content(self) -> Mapping:
-        return {"embed": StarshipEmbed(self.bot, self.player, self.active_ship), "content": ""}
 
 # Character Manage Modals    
 class NewCharacterInformationModal(Modal):
@@ -514,30 +366,24 @@ class NewCharacterInformationModal(Modal):
     new_cc: int
     new_credits: int
     new_type: str
-    transfer_ship: bool
 
-    def __init__(self, character, active_character, new_cc: int = 0, new_credits: int = 0, new_type: str = None, transfer_ship: bool = False):
+    def __init__(self, character, active_character, new_cc: int = 0, new_credits: int = 0, new_type: str = None):
         super().__init__(title=f"{character.name if character.name else 'New Character'} Setup")
         self.character = character
         self.active_character = active_character
         self.new_cc = new_cc
         self.new_credits = new_credits
         self.new_type=new_type
-        self.transfer_ship = transfer_ship
 
         self.add_item(InputText(label="Character Name", style=discord.InputTextStyle.short, required=True, placeholder="Character Name", max_length=2000, value=self.character.name if self.character.name else ''))
         self.add_item(InputText(label="Level", style=discord.InputTextStyle.short, required=True, placeholder="Level", max_length=2, value=str(self.character.level)))
         self.add_item(InputText(label="Credits", style=discord.InputTextStyle.short, required=True, placeholder="Credits", max_length=7, value=str(self.new_credits)))
         self.add_item(InputText(label="CC Refund/Adjustment", style=discord.InputTextStyle.short, required=False, placeholder="Chain Codes", max_length=7, value=str(self.new_cc)))
 
-        if self.new_type in ['freeroll', 'death'] and len(self.active_character.starships) > 0:
-            self.add_item(InputText(label="Transfer Ship to new character?", style=discord.InputTextStyle.short, required=False, placeholder="Transfer Ship?", max_length=5, value=self.transfer_ship))
-
     
     async def callback(self, interaction: discord.Interaction):        
         err_str = []
         self.character.name = self.children[0].value
-        self.transfer_ship = self.children[4].value if len(self.children) >= 5 and self.children[4] else False
         int_values = [
             (self.children[2].value, "new_credits", "Credits must be a number!"),
             (self.children[3].value, "new_cc", "Chain codes must be a number!")
@@ -669,50 +515,29 @@ class CharacterInformationModal(Modal):
         await interaction.response.defer()
         self.stop()
 
-class StarshipModal(Modal):
-    character: PlayerCharacter
-    compendium: Compendium
-    starship: CharacterStarship
+class CharacterRenownModal(Modal):
+    renown: CharacterRenown
+    amount: int = 0
 
-    def __init__(self, character: PlayerCharacter, compendium: Compendium, starship: CharacterStarship = None):
-        super().__init__(title=f"Starship for {character.name}")
+    def __init__(self, renown):
+        super().__init__(title=f"Modify Renown")
+        self.renown = renown
 
-        self.character = character
-        self.compendium = compendium
-        self.starship = starship or CharacterStarship(character_id=[self.character.id])
-        
-        self.add_item(InputText(label="Ship Name", placeholder="Ship Name", max_length=200, value=self.starship.name))
-        self.add_item(InputText(label="Ship Tier", placeholder="Ship Tier", max_length=2, value=f"{self.starship.tier}"))
-
-        if not starship:
-            self.add_item(InputText(label="Ship Size", placeholder="Ship Size", max_length=10))
-            self.add_item(InputText(label="Ship Role", placeholder="Ship Role", max_length=50))
-        
-
+        self.add_item(InputText(label="Renown Amount (+/-)", placeholder="Renown Amount (+/-)", max_length=4))
+    
     async def callback(self, interaction: discord.Interaction):
-        err_str = []
         try:
-            self.starship.tier = int(self.children[1].value)
-            self.starship.name = self.children[0].value
-        except:
-            self.starship = None
-            err_str.append("Tier must be a number")
-
-        if self.starship and (not hasattr(self.starship, "id") or self.starship.id is None):
-            if ship_size := get_ship_size(self.children[2].value, self.compendium, err_str):
-                if ship_role := get_ship_role(self.children[3].value, ship_size, self.compendium, err_str):
-                    self.starship.starship = ship_role
-                else:
-                    self.starship = None
+            amount = max(0, self.renown.renown + int(self.children[0].value))
+            if amount == 0:
+                await interaction.channel.send(embed=ErrorEmbed(f"Renown cannot go below `0`"))
             else:
-                self.starship = None
-
-        if len(err_str) > 0:
-            await interaction.channel.send(embed=ErrorEmbed("\n".join(err_str)), delete_after=5)
+                self.renown.renown = amount
+                self.amount = amount
+        except:
+            await interaction.channel.send(embed=ErrorEmbed(f"Renown must be a number!"))
 
         await interaction.response.defer()
         self.stop()
-        
 
 # Character Manage View specific helpers
 def get_primary_class(class_value: str, compendium: Compendium, err_str: list = []):
@@ -737,26 +562,6 @@ def get_archetype(archetype_value: str, primary_class: CharacterClass, compendiu
         return archetype
     else:
         err_str.append(f"`{archetype_value}` is not a valid archetype for {primary_class.value}")
-        return None
-    
-def get_ship_size(size_value: str, compendium: Compendium, err_str: list = []):
-    ship_size = compendium.get_object(StarshipSize, size_value)
-
-    if ship_size:
-        return ship_size
-    else:
-        err_str.append(f"`{size_value}` is not a valid ship size")
-        return None
-
-def get_ship_role(role_value: str, ship_size: StarshipSize, compendium: Compendium, err_str: list = []):
-    valid_roles = [x for x in compendium.starship_role[0].values() if x.size == ship_size.id]
-
-    ship_role = next((r for r in valid_roles if role_value.lower() in r.value.lower()), None)
-
-    if ship_role:
-        return ship_role
-    else:
-        err_str.append(f"`{role_value}` is not a valid role for a {ship_size.value} ship")
         return None
 
 # Say Edit
@@ -932,3 +737,54 @@ class CharacterAvatarModal(Modal):
 
         await interaction.response.defer()
         self.stop()
+
+# Character Get View
+class CharacterGet(InteractiveView):
+    __menu_copy_attrs__ = ("bot", "player", "active_character", "guild")
+
+    bot: G0T0Bot
+    player: Player
+    guild: PlayerGuild
+    active_character: PlayerCharacter = None
+
+    async def get_content(self) -> Mapping:
+        if self.active_character:
+            embed = CharacterEmbed(self.player, self.active_character)
+        else:
+            embed = PlayerOverviewEmbed(self.player, self.guild, self.bot.compendium)
+
+        return {"content": "", "embed": embed}
+    
+    async def on_timeout(self) -> None:
+        if self.message is None:
+            return
+        
+        try:
+            await self.message.edit(view=None, embed=PlayerOverviewEmbed(self.player, self.guild, self.bot.compendium))
+        except discord.HTTPException:
+            pass
+
+class CharacterGetUI(CharacterGet):
+    @classmethod
+    def new(cls, bot, owner, player: Player, guild: PlayerGuild):
+        inst = cls(owner = owner)
+        inst.bot = bot
+        inst.player = player
+        inst.guild = guild
+        return inst
+
+    async def _before_send(self):
+        char_list = [SelectOption(label="Player Overview", default=False if self.active_character else True, value="def")]
+
+        for char in self.player.characters:
+                char_list.append(SelectOption(label=f"{char.name}", value=f"{char.id}", default=True if self.active_character and char.id == self.active_character.id else False))
+        self.character_select.options = char_list
+
+    @discord.ui.select(placeholder="Select a character", row=1)
+    async def character_select(self, char: discord.ui.Select, interaction: discord.Interaction):
+        try:
+            self.active_character = next((c for c in self.player.characters if c.id == int(char.values[0])), None)
+        except:
+            self.active_character = None
+
+        await self.refresh_content(interaction)

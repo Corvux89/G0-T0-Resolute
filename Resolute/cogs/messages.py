@@ -6,18 +6,17 @@ from discord.ext import commands
 
 from Resolute.bot import G0T0Bot
 from Resolute.constants import APPROVAL_EMOJI, DENIED_EMOJI, EDIT_EMOJI, NULL_EMOJI
-from Resolute.helpers.general_helpers import confirm, get_webhook, is_admin, is_staff
+from Resolute.helpers.general_helpers import confirm, is_admin, is_staff
 from Resolute.helpers.guilds import get_guild
-from Resolute.helpers.logs import create_log, get_log_from_entry
+from Resolute.helpers.logs import create_log, get_log_from_entry, update_activity_points
 from Resolute.helpers.market import get_market_request
-from Resolute.helpers.messages import is_player_say_message
+from Resolute.helpers.messages import is_guild_npc_message, is_player_say_message
 from Resolute.helpers.players import get_player
 from Resolute.models.categories.categories import CodeConversion
 from Resolute.models.embeds import ErrorEmbed
 from Resolute.models.embeds.logs import LogEmbed
 from Resolute.models.objects.arenas import ArenaPost
 from Resolute.models.objects.logs import upsert_log
-from Resolute.models.objects.players import Player
 from Resolute.models.views.arena_view import ArenaRequestCharacterSelect
 from Resolute.models.views.character_view import SayEditModal
 from Resolute.models.views.market import TransactionPromptUI
@@ -87,6 +86,7 @@ class Messages(commands.Cog):
         name="Delete"
     )
     async def message_delete(self, ctx: discord.ApplicationContext, message: discord.Message):
+        # TODO: Setup for adventure NPC commands as well
         guild = await get_guild(self.bot, ctx.guild.id)
         player = await get_player(self.bot, ctx.author.id, guild.id)
 
@@ -98,7 +98,8 @@ class Messages(commands.Cog):
             await message.delete()
 
         # Character Say
-        if is_player_say_message(player, message):
+        if is_player_say_message(player, message) or is_guild_npc_message(guild, message):
+            await update_activity_points(self.bot, player, guild, False)
             await message.delete()
 
         await ctx.delete()

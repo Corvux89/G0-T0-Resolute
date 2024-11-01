@@ -89,6 +89,9 @@ class Player(object):
         if "num_characters" not in stats[key][f"{character.id}"]:
             stats[key][f"{character.id}"]["num_characters"] = 0
 
+        if "count" not in stats[key][f"{character.id}"]:
+            stats[key][f"{character.id}"]["count"] = 0
+
         lines = post.splitlines()
         words = post.split()
         characters = len(post)
@@ -97,10 +100,12 @@ class Player(object):
             stats[key][f"{character.id}"]["num_lines"] -= len(lines)
             stats[key][f"{character.id}"]["num_words"] -= len(words)
             stats[key][f"{character.id}"]["num_characters"] -= characters
+            stats[key][f"{character.id}"]["count"] -= 1
         else:
             stats[key][f"{character.id}"]["num_lines"] += len(lines)
             stats[key][f"{character.id}"]["num_words"] += len(words)
             stats[key][f"{character.id}"]["num_characters"] += characters
+            stats[key][f"{character.id}"]["count"] += 1
 
         self.statistics = json.dumps(stats)
 

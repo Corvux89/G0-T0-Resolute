@@ -23,7 +23,6 @@ def setup(bot: commands.Bot):
 
 class Adventures(commands.Cog):
     # TODO: Add renown on adventure close
-    # TODO: Setup adventure NPC's
     # TODO: Generic GM Settings for guild
     bot: G0T0Bot  # Typing annotation for my IDE's sake
     adventure_commands = SlashCommandGroup("adventure", "Adventure commands", guild_only=True)

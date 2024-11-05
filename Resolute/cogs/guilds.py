@@ -66,6 +66,7 @@ class Guilds(commands.Cog):
             name="settings",
             description="Modify the current guild/server settings"
     )
+    @commands.check(is_admin)
     async def guild_settings(self, ctx: ApplicationContext):
         # TODO: Add NPC Modifications
         g = await get_guild(self.bot, ctx.guild.id)
@@ -80,6 +81,7 @@ class Guilds(commands.Cog):
         name="weekly_reset",
         description="Performs a weekly reset for the server"
     )
+    @commands.check(is_admin)
     async def guild_weekly_reset(self, ctx: ApplicationContext):
         """
         Manually trigger the weekly reset for a server.

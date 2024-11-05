@@ -68,7 +68,7 @@ def upsert_npc_query(npc: NPC):
         adventure_id=npc.adventure_id
     ).returning(npc_table)
 
-def get_npc(guild_id: int, key: str) -> FromClause:
+def get_npc_query(guild_id: int, key: str) -> FromClause:
     return npc_table.select().where(
         and_(npc_table.c.guild_id == guild_id, npc_table.c.key == key)
     )

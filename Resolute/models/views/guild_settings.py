@@ -11,6 +11,7 @@ from Resolute.helpers.general_helpers import get_positivity
 from Resolute.helpers.guilds import delete_weekly_stipend, get_guild_internal_date, get_guild_stipends, get_weekly_stipend, update_guild, update_weekly_stipend
 from Resolute.models.embeds.guilds import GuildEmbed, ResetEmbed
 from Resolute.models.objects.guilds import PlayerGuild
+from Resolute.models.objects.npc import NPC
 from Resolute.models.objects.ref_objects import RefWeeklyStipend
 from Resolute.models.embeds import ErrorEmbed
 from Resolute.models.views.base import InteractiveView
@@ -78,6 +79,10 @@ class _GuildSettings2(GuildSettings):
     async def new_player_messages(self, _: discord.ui.Button, interaction: discord.Interaction):
         modal = NewPlayerMessageModal(self.guild)
         await self.prompt_modal(interaction, modal)
+        await self.refresh_content(interaction)
+
+    @discord.ui.button(label="NPCs", style=discord.ButtonStyle.primary, row=1)
+    async def npcs(self, _: discord.ui.Button, interaction: discord.Interaction):
         await self.refresh_content(interaction)
 
     @discord.ui.button(label="Back", style=discord.ButtonStyle.grey, row=3)

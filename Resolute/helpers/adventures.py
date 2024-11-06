@@ -53,6 +53,7 @@ async def get_adventure_from_role(bot: G0T0Bot, role_id: int) -> Adventure:
     adventure = AdventureSchema(bot.compendium).load(row)
 
     await get_adventure_characters(bot, adventure)
+    await get_adventure_npcs(bot, adventure)
 
     return adventure
 

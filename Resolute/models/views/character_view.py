@@ -94,6 +94,7 @@ class _NewCharacter(CharacterManage):
         self.new_type = None
         self.new_character = PlayerCharacter()
         self.new_class = PlayerCharacterClass()
+        self.transfer_renown: bool = False
         self.new_cc = 0
         self.new_credits = 0
 
@@ -102,7 +103,12 @@ class _NewCharacter(CharacterManage):
         self.new_type = type.values[0]
         await self.refresh_content(interaction)
 
-    @discord.ui.button(label="Basic Information", style=discord.ButtonStyle.primary, row=2)
+    @discord.ui.select(placeholder="Transfer Renown", row=2)
+    async def renown_option(self, bool: discord.ui.Select, interaction: discord.Interaction):
+        self.transfer_renown = True if int(bool.values[0]) == 1 else False
+        await self.refresh_content(interaction)
+
+    @discord.ui.button(label="Basic Information", style=discord.ButtonStyle.primary, row=3)
     async def new_character_information(self, _: discord.ui.Button, interaction: discord.Interaction):
         modal = NewCharacterInformationModal(self.new_character, self.active_character, self.new_cc, self.new_credits, self.new_type)
         response = await self.prompt_modal(interaction, modal)
@@ -113,7 +119,7 @@ class _NewCharacter(CharacterManage):
 
         await self.refresh_content(interaction)
 
-    @discord.ui.button(label="Species/Class Information", style=discord.ButtonStyle.primary, row=2)
+    @discord.ui.button(label="Species/Class Information", style=discord.ButtonStyle.primary, row=3)
     async def new_character_species(self, _: discord.ui.Button, interaction: discord.Interaction):
         modal = NewCharacterClassSpeciesModal(self.new_character, self.new_class, self.bot.compendium)
         response = await self.prompt_modal(interaction, modal)
@@ -123,7 +129,7 @@ class _NewCharacter(CharacterManage):
 
         await self.refresh_content(interaction)
 
-    @discord.ui.button(label="Create Character", style=discord.ButtonStyle.green, row=3, disabled=True)
+    @discord.ui.button(label="Create Character", style=discord.ButtonStyle.green, row=4, disabled=True)
     async def new_character_create(self, _: discord.ui.Button, interaction: discord.Interaction):
         self.new_character = await create_new_character(self.bot, self.new_type, self.player, self.new_character, self.new_class,
                                                         old_character=self.active_character)
@@ -150,12 +156,19 @@ class _NewCharacter(CharacterManage):
 
         await self.on_timeout()
 
-    @discord.ui.button(label="Back", style=discord.ButtonStyle.grey, row=3)
+    @discord.ui.button(label="Back", style=discord.ButtonStyle.grey, row=4)
     async def back(self, _: discord.ui.Button, interaction: discord.Interaction):
         await self.defer_to(CharacterManageUI, interaction)
 
     async def _before_send(self):
         new_character_type_options = []
+        renown_options = [
+            SelectOption(label="Transfer Renown", value="1", default=True if self.transfer_renown else False),
+            SelectOption(label="Don't Transfer Renown", value="0", default=False if self.transfer_renown else True)
+        ]
+
+        self.renown_option.options = renown_options
+
         if len(self.player.characters) == 0 or len(self.player.characters) < self.guild.max_characters:
             self.new_type = 'new' if len(self.player.characters) == 0 else self.new_type
             new_character_type_options.append(SelectOption(label="New Character", value="new", default= True if self.new_type == "new" else False))
@@ -163,6 +176,9 @@ class _NewCharacter(CharacterManage):
         if len(self.player.characters) > 0:
             new_character_type_options.append(SelectOption(label="Death Reroll", value="death", default=True if self.new_type == "death" else False))
             new_character_type_options.append(SelectOption(label="Free Reroll", value="freeroll", default=True if self.new_type == "freeroll" else False))
+
+        else:
+            self.remove_item(self.renown_option)
 
         self.new_character_type.options = new_character_type_options
 
@@ -343,6 +359,7 @@ class _EditCharacterRenown(CharacterManage):
         response = await self.prompt_modal(interaction, modal)
 
         if response.amount != 0:
+            renown.renown += response.amount
             log_entry = await create_log(self.bot, interaction.user, self.guild, activity, self.player, 
                                         character=self.active_character,
                                         renown=response.amount,
@@ -723,17 +740,17 @@ class CharacterAvatarModal(Modal):
         self.bot = bot
         self.character = character
 
-        self.add_item(InputText(label="Avatar Image URL", placeholder="", value=character.avatar_url))
+        self.add_item(InputText(label="Avatar Image URL", placeholder="", value=character.avatar_url, required=False))
 
     async def callback(self, interaction: discord.Interaction):
         url = self.children[0].value
 
-        if isImageURL(url):
-            self.character.avatar_url = self.children[0].value
-            await upsert_character(self.bot, self.character)
-        else:
+        if url and not isImageURL(url):
             await interaction.response.send_message(embed=ErrorEmbed("Not a valid image url"), ephemeral=True)
             return self.stop()
+        else:
+            self.character.avatar_url = self.children[0].value
+            await upsert_character(self.bot, self.character)
 
         await interaction.response.defer()
         self.stop()

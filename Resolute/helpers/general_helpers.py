@@ -1,6 +1,7 @@
 import discord
 import re
-import urllib.request as re
+import requests
+import urllib.request as req
 from discord import ApplicationContext, Member, Guild, Interaction
 from sqlalchemy.util import asyncio
 
@@ -148,10 +149,12 @@ async def get_webhook(channel: discord.TextChannel) -> discord.Webhook:
 
 def isImageURL(url: str) -> bool:
     try:
-        with re.urlopen(url) as response:
-            if response.status == 200:
-                content_type = response.getheader("Content-Type")
-                return content_type.startswith("image/")
+       response = requests.head(url, allow_redirects=True)
+
+       if response.status_code == 200:
+           content_type = response.headers.get('Content-Type', '').lower()
+
+           return content_type.startswith('image/')
     except:
         pass
 

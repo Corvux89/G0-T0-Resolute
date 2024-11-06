@@ -68,7 +68,6 @@ class Guilds(commands.Cog):
     )
     @commands.check(is_admin)
     async def guild_settings(self, ctx: ApplicationContext):
-        # TODO: Add NPC Modifications
         g = await get_guild(self.bot, ctx.guild.id)
 
         ui = GuildSettingsUI.new(self.bot, ctx.author, g)

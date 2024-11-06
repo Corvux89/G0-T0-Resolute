@@ -7,7 +7,7 @@ from Resolute.models.categories import Activity
 from Resolute.models.categories.categories import Faction
 from Resolute.models.embeds.logs import LogEmbed
 from Resolute.models.objects.adventures import Adventure
-from Resolute.models.objects.characters import PlayerCharacter, upsert_character_query
+from Resolute.models.objects.characters import CharacterRenown, PlayerCharacter, upsert_character_query, upsert_character_renown
 from Resolute.models.objects.guilds import PlayerGuild
 from Resolute.models.objects.logs import DBLog, LogSchema, character_stats_query, get_last_log_by_type, get_log_by_id, get_n_player_logs_query, player_stats_query, upsert_log
 from Resolute.models.objects.players import Player, upsert_player_query
@@ -67,12 +67,17 @@ async def create_log(bot: G0T0Bot, author: Member | ClientUser, guild: PlayerGui
     char_cc = get_activity_amount(player, guild, activity, cc)
 
     player.div_cc += char_cc if activity.diversion else 0
-
     char_log = DBLog(author=author.id, cc=char_cc, credits=credits, player_id=player.id, character_id=character.id if character else None,
                      activity=activity, notes=notes, guild_id=guild.id,
                      adventure_id=adventure.id if adventure else None,
                      faction=faction,
                      renown=renown)
+    # Handle Renown
+    char_renown = None
+    if faction:
+        char_renown = next((r for r in character.renown if r.faction.id == faction.id), CharacterRenown(faction=faction, 
+                                                                                                        character_id=character.id))
+        char_renown.renown += renown
 
     # Handicap Adjustment
     if not ignore_handicap and guild.handicap_cc and player.handicap_amount < guild.handicap_cc:
@@ -94,6 +99,10 @@ async def create_log(bot: G0T0Bot, author: Member | ClientUser, guild: PlayerGui
 
         if character:
             await conn.execute(upsert_character_query(character))
+
+        if char_renown:
+            await conn.execute(upsert_character_renown(char_renown))
+
 
     log_entry = LogSchema(bot.compendium).load(row)
 

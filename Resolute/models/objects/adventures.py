@@ -8,6 +8,7 @@ from marshmallow import Schema, fields, post_load
 
 from Resolute.models import metadata
 from Resolute.compendium import Compendium
+from Resolute.models.categories.categories import Faction
 from Resolute.models.objects.characters import PlayerCharacter
 from Resolute.models.objects.characters import PlayerCharacter
 from Resolute.models.objects.npc import NPC
@@ -26,9 +27,11 @@ class Adventure(object):
         self.player_characters: list[PlayerCharacter] = []
         self.created_ts = kwargs.get('created_ts', datetime.now(timezone.utc))
         self.end_ts = kwargs.get('end_ts')
+        self.factions: list[Faction] = kwargs.get('factions', [])
 
         # Virtual attributes
         self.npcs: list[NPC] = []
+
 
 adventures_table = sa.Table(
     "adventures",
@@ -42,7 +45,8 @@ adventures_table = sa.Table(
     Column("cc", Integer, nullable=False, default=0),
     Column("created_ts", TIMESTAMP(timezone=timezone.utc)),
     Column("end_ts", TIMESTAMP(timezone=timezone.utc), nullable=True, default=null()),
-    Column("characters", ARRAY(Integer), nullable=False)
+    Column("characters", ARRAY(Integer), nullable=False),
+    Column("factions", ARRAY(Integer), nullable=False)
 )
 
 class AdventureSchema(Schema):
@@ -57,6 +61,7 @@ class AdventureSchema(Schema):
     created_ts = fields.Method(None, "load_timestamp")
     end_ts = fields.Method(None, "load_timestamp", allow_none=True)
     characters = fields.List(fields.Integer, required=False, allow_none=True, default=[])
+    factions = fields.Method(None, "load_factions")
 
     def __init__(self, compendium, **kwargs):
         super().__init__(**kwargs)
@@ -68,6 +73,12 @@ class AdventureSchema(Schema):
 
     def load_timestamp(self, value):  # Marshmallow doesn't like loading DateTime for some reason. This is a workaround
         return datetime(value.year, value.month, value.day, value.hour, value.minute, value.second, tzinfo=timezone.utc)
+    
+    def load_factions(self, value):
+        factions = []
+        for f in value:
+            factions.append(self.compendium.get_object(Faction, f))
+        return factions
     
 
 def upsert_adventure_query(adventure: Adventure):
@@ -81,7 +92,8 @@ def upsert_adventure_query(adventure: Adventure):
             "cc": adventure.cc,
             "created_ts": adventure.created_ts,
             "end_ts": adventure.end_ts,
-            "characters": adventure.characters
+            "characters": adventure.characters,
+            "factions": [f.id for f in adventure.factions]
         }
 
         update_statment = adventures_table.update().where(adventures_table.c.id == adventure.id).values(**update_dict).returning(adventures_table)
@@ -95,7 +107,8 @@ def upsert_adventure_query(adventure: Adventure):
         category_channel_id=adventure.category_channel_id,
         cc=adventure.cc,
         created_ts=adventure.created_ts,
-        characters=adventure.characters
+        characters=adventure.characters,
+        factions = [f.id for f in adventure.factions]
     ).returning(adventures_table)
     
 def get_character_adventures_query(char_id: int) -> FromClause:

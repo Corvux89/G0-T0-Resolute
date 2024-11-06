@@ -14,7 +14,7 @@ async def get_market_request(bot: G0T0Bot, message: discord.Message) -> MarketTr
     
     player_id = get_match(r"\*\*Player\*\*:\s*<@(\d+)>\n", embed.description)
     char_id = get_match(r"\*\*Character\*\*:.*\[(\d+)\]", embed.description)
-    type = get_match(r"\*\*Type\*\*:\s*(.*)\n", embed.description)
+    type = get_match(f"(?<=\*\*Type\*\*:)\s(.*?)(?=\n)", embed.description)
 
     if player_id is None or char_id is None or type is None:
         return None

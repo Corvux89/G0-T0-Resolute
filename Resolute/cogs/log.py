@@ -36,11 +36,18 @@ class Log(commands.Cog):
         description="Logs a completed RP"
     )
     @commands.check(is_staff)
-    #TODO: RP Host Parameter with new activity
     async def rp_log(self, ctx: ApplicationContext,
-                     member: Option(discord.SlashCommandOptionType(6),description="Player who participated in the RP", required=True)):
-        if activity := self.bot.compendium.get_activity("RP"):
+                     member: Option(discord.SlashCommandOptionType(6),description="Player who participated in the RP", required=True),
+                     host: Option(bool, description="Host of the RP or not", required=True, default=False)):
+        if host and (activity := self.bot.compendium.get_activity("RP_HOST")):
+            guild = await get_guild(self.bot, ctx.guild.id)
+            player = await get_player(self.bot, member.id, guild.id)
+            log_entry = await create_log(self.bot, ctx.author, guild, activity, player)
+            return await ctx.respond(embed=LogEmbed(log_entry, ctx.author, member))
+        
+        elif activity := self.bot.compendium.get_activity("RP"):
             await self.prompt_log(ctx, member, activity)
+
         else:
             return await ctx.respond(embed=ErrorEmbed("Activity not found"), ephemeral=True)
         

@@ -6,6 +6,7 @@ from discord.ext import commands
 
 from Resolute.bot import G0T0Bot
 from Resolute.helpers.adventures import get_adventure_from_category, get_adventure_from_role, get_player_adventures, update_dm
+from Resolute.helpers.autocomplete import get_faction_autocomplete
 from Resolute.helpers.general_helpers import get_webhook
 from Resolute.helpers.guilds import get_guild
 from Resolute.helpers.logs import update_activity_points
@@ -22,8 +23,6 @@ def setup(bot: commands.Bot):
     bot.add_cog(Adventures(bot))
 
 class Adventures(commands.Cog):
-    # TODO: Add renown on adventure close
-    # TODO: Generic GM Settings for guild
     bot: G0T0Bot  # Typing annotation for my IDE's sake
     adventure_commands = SlashCommandGroup("adventure", "Adventure commands", guild_only=True)
 
@@ -86,9 +85,9 @@ class Adventures(commands.Cog):
                                                       required=True),
                                role_name: Option(str, description="The name of the Role to be created for adventure"
                                                                   "participants", required=True),
-                               dm: Option(discord.SlashCommandOptionType(6), description="The DM of the adventure. "
-                                                                      "Multiple DM's can be added via the add_dm "
-                                                                      "command", required=True)):
+                               dm: Option(discord.SlashCommandOptionType(6), description="The DM of the adventure.", required=True),
+                               faction1: Option(str, description="First faction this adventure is for", autocomplete=get_faction_autocomplete, required=True),
+                               faction2: Option(str, description="Second faction this adventure is for", autocomplete=get_faction_autocomplete, required=True)):
         await ctx.defer()
 
         # Create the role

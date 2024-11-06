@@ -25,6 +25,7 @@ def setup(bot: commands.Bot):
 
 
 class Character(commands.Cog):
+    # TODO: Character Reroll Renown Conversion
     bot: G0T0Bot
     character_admin_commands = SlashCommandGroup("character_admin", "Character administration commands", guild_only=True)
 

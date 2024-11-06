@@ -6,11 +6,12 @@ from discord.ext import commands
 
 from Resolute.bot import G0T0Bot
 from Resolute.constants import APPROVAL_EMOJI, DENIED_EMOJI, EDIT_EMOJI, NULL_EMOJI
+from Resolute.helpers.adventures import get_adventure_from_category
 from Resolute.helpers.general_helpers import confirm, is_admin, is_staff
 from Resolute.helpers.guilds import get_guild
 from Resolute.helpers.logs import create_log, get_log_from_entry, update_activity_points
 from Resolute.helpers.market import get_market_request
-from Resolute.helpers.messages import is_guild_npc_message, is_player_say_message
+from Resolute.helpers.messages import is_adventure_npc_message, is_guild_npc_message, is_player_say_message
 from Resolute.helpers.players import get_player
 from Resolute.models.categories.categories import CodeConversion
 from Resolute.models.embeds import ErrorEmbed
@@ -86,7 +87,6 @@ class Messages(commands.Cog):
         name="Delete"
     )
     async def message_delete(self, ctx: discord.ApplicationContext, message: discord.Message):
-        # TODO: Setup for adventure NPC commands as well
         guild = await get_guild(self.bot, ctx.guild.id)
         player = await get_player(self.bot, ctx.author.id, guild.id)
 
@@ -98,7 +98,12 @@ class Messages(commands.Cog):
             await message.delete()
 
         # Character Say
-        if is_player_say_message(player, message) or is_guild_npc_message(guild, message):
+        if is_player_say_message(player, message):
+            await update_activity_points(self.bot, player, guild, False)
+            await message.delete()
+
+        # Adventure NPC
+        if (adventure := await get_adventure_from_category(self.bot, ctx.channel.category.id)) and ctx.author.id in adventure.dms and is_adventure_npc_message(adventure, message):
             await update_activity_points(self.bot, player, guild, False)
             await message.delete()
 

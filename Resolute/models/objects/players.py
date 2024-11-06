@@ -69,43 +69,45 @@ class Player(object):
         stats = json.loads(self.statistics)
 
         if isinstance(character, PlayerCharacter):
-            key="say"   
+            key="say"
+            id=character.id   
         else:
             key="npc"
+            id=character.key
 
         if key not in stats:
             stats[key] = {}
 
-        if f"{character.id}" not in stats[key]:
-            stats[key][f"{character.id}"] = {}
+        if f"{id}" not in stats[key]:
+            stats[key][f"{id}"] = {}
 
 
-        if "num_lines" not in stats[key][f"{character.id}"]:
-            stats[key][f"{character.id}"]["num_lines"] = 0
+        if "num_lines" not in stats[key][f"{id}"]:
+            stats[key][f"{id}"]["num_lines"] = 0
 
-        if "num_words" not in stats[key][f"{character.id}"]:
-            stats[key][f"{character.id}"]["num_words"] = 0
+        if "num_words" not in stats[key][f"{id}"]:
+            stats[key][f"{id}"]["num_words"] = 0
 
-        if "num_characters" not in stats[key][f"{character.id}"]:
-            stats[key][f"{character.id}"]["num_characters"] = 0
+        if "num_characters" not in stats[key][f"{id}"]:
+            stats[key][f"{id}"]["num_characters"] = 0
 
-        if "count" not in stats[key][f"{character.id}"]:
-            stats[key][f"{character.id}"]["count"] = 0
+        if "count" not in stats[key][f"{id}"]:
+            stats[key][f"{id}"]["count"] = 0
 
         lines = post.splitlines()
         words = post.split()
         characters = len(post)
 
         if retract:
-            stats[key][f"{character.id}"]["num_lines"] -= len(lines)
-            stats[key][f"{character.id}"]["num_words"] -= len(words)
-            stats[key][f"{character.id}"]["num_characters"] -= characters
-            stats[key][f"{character.id}"]["count"] -= 1
+            stats[key][f"{id}"]["num_lines"] -= len(lines)
+            stats[key][f"{id}"]["num_words"] -= len(words)
+            stats[key][f"{id}"]["num_characters"] -= characters
+            stats[key][f"{id}"]["count"] -= 1
         else:
-            stats[key][f"{character.id}"]["num_lines"] += len(lines)
-            stats[key][f"{character.id}"]["num_words"] += len(words)
-            stats[key][f"{character.id}"]["num_characters"] += characters
-            stats[key][f"{character.id}"]["count"] += 1
+            stats[key][f"{id}"]["num_lines"] += len(lines)
+            stats[key][f"{id}"]["num_words"] += len(words)
+            stats[key][f"{id}"]["num_characters"] += characters
+            stats[key][f"{id}"]["count"] += 1
 
         self.statistics = json.dumps(stats)
 

@@ -80,8 +80,13 @@ class LogHxEmbed(Embed):
                     f"**Character**: {character.name if character else 'None'}{' (*inactive*)' if character and not character.active else ''}\n"\
                     f"**Activity:** {log.activity.value}\n"\
                     f"**Chain Codes**: {log.cc:,}\n"\
-                    f"**Credits**: {log.credits:,}\n"\
-                    f"**Invalidated?**: {log.invalid}\n"\
-                    f"{f'**Notes**: {log.notes}' if log.notes else ''}"
+                    f"**Credits**: {log.credits:,}\n"
+            
+            if log.faction:
+                value += (f"**Renown**: {log.renown}\n"
+                          f"**Faction**: {log.faction.value}\n")
+                
+            value += (f"**Invalidated?**: {log.invalid}\n"\
+                      f"{f'**Notes**: {log.notes}' if log.notes else ''}")
             
             self.add_field(name=f"Log # {log.id} - <t:{log.epoch_time}>", value=value, inline=False)

@@ -108,6 +108,7 @@ class _ShatterpointManage(ShatterpointSettings):
             await interaction.channel.send(embed=ErrorEmbed("Select a channel to scrape first"), delete_after=5)
         else:
             messages = await self.channel.history(oldest_first=True, limit=600).flatten()
+
             for message in messages:
                 player: ShatterpointPlayer = None
                 if not message.author.bot:
@@ -123,6 +124,7 @@ class _ShatterpointManage(ShatterpointSettings):
                         self.shatterpoint.players.remove(next((p for p in self.shatterpoint.players if p.player_id == player.player_id), None))
                     
                     self.shatterpoint.players.append(player)
+                
                     
 
             

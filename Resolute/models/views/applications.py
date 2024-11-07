@@ -1,19 +1,21 @@
-import discord
-
 from typing import Mapping
+
+import discord
 from discord import Embed, SelectOption
-from discord.ui import Modal, InputText
+from discord.ui import InputText, Modal
 
 from Resolute.bot import G0T0Bot
-from Resolute.helpers.appliations import get_cached_application, upsert_application
-from Resolute.helpers.guilds import get_guild
-from Resolute.models.embeds import ErrorEmbed
+from Resolute.helpers import (get_cached_application, get_guild,
+                              upsert_application)
 from Resolute.models.embeds.applications import NewCharacterRequestEmbed
-from Resolute.models.objects.applications import LevelUpApplication, NewCharacterApplication
+from Resolute.models.objects.applications import (LevelUpApplication,
+                                                  NewCharacterApplication)
 from Resolute.models.objects.characters import PlayerCharacter
+from Resolute.models.objects.exceptions import G0T0Error
 from Resolute.models.objects.guilds import PlayerGuild
 from Resolute.models.objects.players import Player
 from Resolute.models.views.base import InteractiveView
+
 
 class CharacterSelect(InteractiveView):
     __menu_copy_attrs__ = ("bot", "player", "character", "levelUp", "application", "editOnly", "guild")
@@ -67,23 +69,18 @@ class CharacterSelectUI(CharacterSelect):
 
     @discord.ui.button(label="New Application", style=discord.ButtonStyle.primary, row=3)
     async def application_create(self, _: discord.ui.Button, interaction: discord.Interaction):
-        if not self.character:
-            await interaction.channel.send(embed=ErrorEmbed("Select a character to level up"), delete_after=5)
-            await self.refresh_content()
-        else:
-            if self.levelUp:
-                g = await get_guild(self.bot, self.player.guild_id)
+        if self.levelUp:
+            g = await get_guild(self.bot, self.player.guild_id)
 
-                if self.character.level >= g.max_level:
-                    await interaction.channel.send(embed=ErrorEmbed("Character is already at max level for the server"), delete_after=5)
-                    await self.refresh_content(interaction)
-                else:    
-                    modal = LevelUpRequestModal(g, self.character)
-                    await self.prompt_modal(interaction, modal)
-                    await self.on_timeout()
-            else:
-                self.application = NewCharacterApplication(type=self.application.type, character=self.character if self.application.type in ["Reroll", "Free Reroll"] else None)
-                await self.defer_to(NewCharacterRequestUI, interaction)
+            if self.character.level >= g.max_level:
+                raise G0T0Error("Character is already at max level for the server")
+            else:    
+                modal = LevelUpRequestModal(g, self.character)
+                await self.prompt_modal(interaction, modal)
+                await self.on_timeout()
+        else:
+            self.application = NewCharacterApplication(type=self.application.type, character=self.character if self.application.type in ["Reroll", "Free Reroll"] else None)
+            await self.defer_to(NewCharacterRequestUI, interaction)
 
     @discord.ui.button(label="Exit", style=discord.ButtonStyle.danger, row=3)
     async def exit(self, *_):

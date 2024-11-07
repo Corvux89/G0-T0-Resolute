@@ -1,11 +1,25 @@
 import logging
+from timeit import default_timer as timer
 
 import discord
 
 from Resolute.bot import G0T0Bot
-from Resolute.models.objects.characters import CharacterRenown, CharacterSchema, PlayerCharacter, PlayerCharacterClass, PlayerCharacterClassSchema, RenownSchema, get_active_player_characters, get_all_player_characters, get_character_class, get_character_from_id, get_character_renown, get_guild_characters_query, upsert_character_query, upsert_character_renown, upsert_class_query
+from Resolute.models.objects.characters import (CharacterRenown,
+                                                CharacterSchema,
+                                                PlayerCharacter,
+                                                PlayerCharacterClass,
+                                                PlayerCharacterClassSchema,
+                                                RenownSchema,
+                                                get_active_player_characters,
+                                                get_all_player_characters,
+                                                get_character_class,
+                                                get_character_from_id,
+                                                get_character_renown,
+                                                get_guild_characters_query,
+                                                upsert_character_query,
+                                                upsert_character_renown,
+                                                upsert_class_query)
 from Resolute.models.objects.players import Player
-from timeit import default_timer as timer
 
 log = logging.getLogger(__name__)
 

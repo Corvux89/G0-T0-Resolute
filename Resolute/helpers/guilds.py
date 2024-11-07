@@ -1,10 +1,15 @@
 import asyncio
+
 import aiopg
+
 from Resolute.bot import G0T0Bot
 from Resolute.models.objects.guilds import *
-from Resolute.models.objects.ref_objects import get_guild_npcs_query
-from Resolute.models.objects.ref_objects import NPCSchema, RefWeeklyStipend
-from Resolute.models.objects.ref_objects import RefServerCalendarSchema, RefWeeklyStipendSchema, get_guild_weekly_stipends_query, get_server_calendar, get_weekly_stipend_query, upsert_weekly_stipend, delete_weekly_stipend_query
+from Resolute.models.objects.ref_objects import (
+    NPCSchema, RefServerCalendarSchema, RefWeeklyStipend,
+    RefWeeklyStipendSchema, delete_weekly_stipend_query, get_guild_npcs_query,
+    get_guild_weekly_stipends_query, get_server_calendar,
+    get_weekly_stipend_query, upsert_weekly_stipend)
+
 
 async def get_guild(bot: G0T0Bot, guild_id: int) -> PlayerGuild:
     async with bot.db.acquire() as conn:
@@ -31,6 +36,7 @@ async def build_guild(bot: G0T0Bot, guild: PlayerGuild):
     guild.citizen_role = discord.utils.get(guild.guild.roles, name="Citizen")
     guild.acolyte_role = discord.utils.get(guild.guild.roles, name="Acolyte")
     guild.senate_role = discord.utils.get(guild.guild.roles, name="The Senate")
+    guild.quester_role = discord.utils.get(guild.guild.roles, name="Quester")
 
     guild.help_channel = discord.utils.get(guild.guild.channels, name="aliasing-and-snippet-help")
     guild.character_application_channel = discord.utils.get(guild.guild.channels, name="character-apps")
@@ -39,6 +45,8 @@ async def build_guild(bot: G0T0Bot, guild: PlayerGuild):
     guild.archivist_channel = discord.utils.get(guild.guild.channels, name="archivist-roundtable")
     guild.automation_channel = discord.utils.get(guild.guild.channels, name="aliasing-and-snippet-help")
     guild.arena_board = discord.utils.get(guild.guild.channels, name="arena-board")
+    guild.exit_channel = discord.utils.get(guild.guild.channels, name="exit")
+    guild.entrance_channel = discord.utils.get(guild.guild.channels, name="entrance")
 
 async def load_calendar(db: aiopg.sa.Engine, guild: PlayerGuild):
     async with db.acquire() as conn:

@@ -2,6 +2,7 @@ import logging
 from timeit import default_timer as timer
 
 from Resolute.models.categories import *
+from Resolute.models.objects.exceptions import ActivityNotFound, ObjectNotFound
 
 log = logging.getLogger(__name__)
 
@@ -63,8 +64,12 @@ class Compendium:
                             if cat_value.lower().startswith(value.lower()):
                                 return getattr(self, category.key)[0 if isinstance(value, int) else 1][cat_value]
         except:
-            pass
+            raise ObjectNotFound()
         return None
     
     def get_activity(self, activity: str | int = None):
-        return self.get_object(Activity, activity)
+        # TODO: Convert a lot of get_objects to this
+        if act := self.get_object(Activity, activity):
+            return act
+        
+        raise ActivityNotFound(activity)

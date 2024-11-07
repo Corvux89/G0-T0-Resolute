@@ -1,11 +1,12 @@
 import re
+
 import discord
+
 from Resolute.bot import G0T0Bot
 from Resolute.helpers.characters import get_character
-from Resolute.helpers.logs import get_log
 from Resolute.helpers.players import get_player
-from Resolute.models.categories.categories import TransactionSubType, TransactionType
-from Resolute.models.objects.logs import DBLog
+from Resolute.models.categories.categories import (TransactionSubType,
+                                                   TransactionType)
 from Resolute.models.objects.market import MarketTransaction
 
 

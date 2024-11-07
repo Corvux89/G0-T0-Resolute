@@ -1,10 +1,12 @@
 import discord
 
+from Resolute.bot import G0T0Bot
+from Resolute.helpers.characters import get_characters
 from Resolute.models.categories import Activity
 from Resolute.models.objects.logs import get_log_count_by_player_and_activity
-from Resolute.models.objects.players import Player, get_player_query, upsert_player_query, PlayerSchema
-from Resolute.helpers import get_characters
-from Resolute.bot import G0T0Bot
+from Resolute.models.objects.players import (Player, PlayerSchema,
+                                             get_player_query,
+                                             upsert_player_query)
 
 
 async def get_player(bot: G0T0Bot, player_id: int, guild_id: int, inactive: bool = False) -> Player:

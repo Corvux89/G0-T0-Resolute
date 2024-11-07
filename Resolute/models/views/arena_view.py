@@ -1,14 +1,16 @@
+from typing import Type
+
 import discord
 
-from typing import Mapping, Type
 from Resolute.bot import G0T0Bot
-from Resolute.helpers.arenas import add_player_to_arena, build_arena_post, get_arena, get_player_arenas
-from Resolute.helpers.characters import get_character
-from Resolute.helpers.players import get_player
-from Resolute.models.embeds import ErrorEmbed
+from Resolute.helpers import (add_player_to_arena, build_arena_post, get_arena,
+                              get_character, get_player, get_player_arenas)
 from Resolute.models.embeds.arenas import ArenaPostEmbed
 from Resolute.models.objects.arenas import ArenaPost
 from Resolute.models.objects.characters import PlayerCharacter
+from Resolute.models.objects.exceptions import (ArenaNotFound,
+                                                CharacterNotFound, G0T0Error,
+                                                RoleNotFound)
 from Resolute.models.objects.players import Player
 from Resolute.models.views.base import InteractiveView
 
@@ -73,25 +75,23 @@ class CharacterArenaViewUI(ArenaView):
         arena = await get_arena(self.bot, interaction.channel.id)
 
         if arena is None or arena.type.value != "CHARACTER":
-            return await interaction.response.send_message(embed=ErrorEmbed("No active arena present in this channel"),
-                                                  ephemeral=True)
+            raise ArenaNotFound()
         elif channel_role := interaction.guild.get_role(arena.role_id):
             if interaction.user.id == arena.host_id:
-                return await interaction.response.send_message(embed=ErrorEmbed(f"You're the host..."), ephemeral=True)
+                raise G0T0Error("You're already hosting this arena.")
             
             self.player = await get_player(self.bot, interaction.user.id, interaction.guild.id)
 
             if not self.player.characters:
-                return await interaction.response.send_message(embed=ErrorEmbed(f"You don't have any characters to join"), ephemeral=True)
+                raise CharacterNotFound(self.player.member)
             elif len(self.player.characters) == 1:
                 await add_player_to_arena(self.bot, interaction, self.player, self.player.characters[0], arena)
             else:
                 await self.defer_to(ArenaCharacterSelect, interaction)
 
         else:
-            return await interaction.response.send_message(embed=ErrorEmbed(f"Role @{interaction.channel.name} doesn't exist"),
-                                                  ephemeral=True)
-        return
+            raise RoleNotFound(interaction.channel.name)
+        await self.refresh_content(interaction)
     
 class ArenaCharacterSelect(ArenaView):
     owner_id: int = None
@@ -122,7 +122,7 @@ class ArenaCharacterSelect(ArenaView):
             self.player = await get_player(self.bot, character.player_id, interaction.guild.id)
 
         if character.player_id != interaction.user.id and interaction.user.id != arena.host_id and interaction.user.id != self.owner_id:
-            return await interaction.response.send_message(embed=ErrorEmbed("That's not your character"), ephemeral=True)
+            raise G0T0Error("Thats not your character")
 
         await add_player_to_arena(self.bot, interaction, self.player, character, arena)
 
@@ -133,24 +133,22 @@ class ArenaCharacterSelect(ArenaView):
         arena = await get_arena(self.bot, interaction.channel.id)
 
         if arena is None or arena.type.value != "CHARACTER":
-            return await interaction.response.send_message(embed=ErrorEmbed("No active arena present in this channel"),
-                                                  ephemeral=True)
+            raise ArenaNotFound()
         elif channel_role := interaction.guild.get_role(arena.role_id):
             if interaction.user.id == arena.host_id:
-                return await interaction.response.send_message(embed=ErrorEmbed(f"You're the host..."), ephemeral=True)
+                raise G0T0Error("You're already hosting this arena.")
             
             self.player = await get_player(self.bot, interaction.user.id, interaction.guild.id)
 
             if not self.player.characters:
-                return await interaction.response.send_message(embed=ErrorEmbed(f"You don't have any characters to join"), ephemeral=True)
+                raise CharacterNotFound(self.player.member)
             elif len(self.player.characters) == 1:
                 await add_player_to_arena(self.bot, interaction, self.player, self.player.characters[0], arena)
             else:
                 await self.defer_to(ArenaCharacterSelect, interaction)
 
         else:
-            return await interaction.response.send_message(embed=ErrorEmbed(f"Role @{interaction.channel.name} doesn't exist"),
-                                                  ephemeral=True)
+            raise RoleNotFound(interaction.channel.name)
         await self.on_timeout()
 
     async def _before_send(self):
@@ -196,7 +194,7 @@ class ArenaRequestCharacterSelect(ArenaRequest):
         character = await get_character(self.bot, char.values[0])
  
         if character.player_id != interaction.user.id and interaction.user.id != self.owner.id:
-            return await interaction.response.send_message(embed=ErrorEmbed("That's not your character"), ephemeral=True)
+            raise G0T0Error("Thats not your character")
         
         self.character = character
         

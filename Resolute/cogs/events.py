@@ -30,7 +30,8 @@ class Events(commands.Cog):
 
     @commands.Cog.listener()
     async def on_raw_member_remove(self, payload: discord.RawMemberRemoveEvent):
-        guild = self.bot.get_guild(payload.guild_id)
+        guild = await get_guild(self.bot, payload.guild_id)
+
         # Reference Table Cleanup
         await upsert_application(self.bot.db, payload.user.id)
 
@@ -38,27 +39,27 @@ class Events(commands.Cog):
         def predicate(message):
             return message.author == payload.user
         
-        if arena_board := discord.utils.get(guild.channels, name="arena-board"):
+        if guild.arena_board:
             try:
-                await arena_board.purge(check=predicate)
+                await guild.arena_board.purge(check=predicate)
             except Exception as error:
                 if isinstance(error, discord.errors.HTTPException):
                     pass
                 else:
                     log.error(error)
                     
-        if exit_channel := discord.utils.get(guild.channels, name="exit"):
+        if guild.exit_channel:
             player = await get_player(self.bot, payload.user.id, payload.guild_id)
             player.member = payload.user
             adventures = await get_player_adventures(self.bot, player)
             arenas = await get_player_arenas(self.bot, player)
 
             try:
-                await exit_channel.send(embed=MemberLeaveEmbed(player, adventures, arenas))
+                await guild.exit_channel.send(embed=MemberLeaveEmbed(player, adventures, arenas))
             except Exception as error:
                 if isinstance(error, discord.errors.HTTPException):
                     log.error(f"ON_MEMBER_REMOVE: Error sending message to exit channel in "
-                            f"{guild.name} [ {guild.id} ] for {payload.user.display_name} [ {payload.user.id} ]")
+                            f"{guild.guild.name} [ {guild.id} ] for {payload.user.display_name} [ {payload.user.id} ]")
         
             
 
@@ -66,9 +67,9 @@ class Events(commands.Cog):
     async def on_member_join(self, member: discord.Member):
         g = await get_guild(self.bot, member.guild.id)
 
-        if (entrance_channel := discord.utils.get(member.guild.channels, name="entrance")) and g.greeting != None and g.greeting != "":
+        if g.entrance_channel and g.greeting != None and g.greeting != "":
             message = process_message(g.greeting, member.guild, member)
-            await entrance_channel.send(message)
+            await g.entrance_channel.send(message)
 
     @commands.Cog.listener()
     async def on_command(self, ctx: discord.ApplicationContext):
@@ -87,6 +88,7 @@ class Events(commands.Cog):
 
             log.info(f"cmd: chan {ctx.channel} [{ctx.channel.id}], serv: {ctx.guild.name} [{ctx.guild.id}], "
                      f"auth: {ctx.user} [{ctx.user.id}]: {ctx.command} {params}")
+            
         except AttributeError:
             params = "".join([f" [{p['name']}: {p['value']}]" for p in (ctx.selected_options or [])])
             if hasattr(ctx, "bot") and hasattr(ctx.bot, "db"):
@@ -103,7 +105,7 @@ class Events(commands.Cog):
         if isinstance(error, discord.errors.CheckFailure):
             return await ctx.respond(f'You do not have required permissions for `{ctx.command}`', ephemeral=True)
         elif isinstance(error, G0T0Error):
-            return await ctx.respond(embed=ErrorEmbed(error))
+            return await ctx.respond(embed=ErrorEmbed(error), ephemeral=True)
     
         if hasattr(ctx, "bot") and hasattr(ctx.bot, "db"):
             params = "".join([f" [{p['name']}: {p['value']}]" for p in (ctx.selected_options or [])])

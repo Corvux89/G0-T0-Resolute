@@ -1,18 +1,19 @@
-import sqlalchemy as sa
 import discord
-
+import sqlalchemy as sa
 from discord import ApplicationContext
 from marshmallow import Schema, fields, post_load
-from sqlalchemy import Column, Integer, BigInteger, String, BOOLEAN, and_
+from sqlalchemy import BOOLEAN, BigInteger, Column, Integer, String, and_
+from sqlalchemy.dialects.postgresql import ARRAY, insert
 from sqlalchemy.sql import FromClause
-from sqlalchemy.dialects.postgresql import insert, ARRAY
 
 from Resolute.compendium import Compendium
 from Resolute.constants import ZWSP3
-from Resolute.models.categories import CharacterArchetype, CharacterClass, CharacterSpecies
+from Resolute.models import metadata
+from Resolute.models.categories import (CharacterArchetype, CharacterClass,
+                                        CharacterSpecies)
 from Resolute.models.categories.categories import Faction
 from Resolute.models.objects.guilds import PlayerGuild
-from Resolute.models import metadata
+
 
 class PlayerCharacter(object): 
     def __init__(self, **kwargs):

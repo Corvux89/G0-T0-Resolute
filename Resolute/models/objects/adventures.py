@@ -1,15 +1,15 @@
-import sqlalchemy as sa
-
 from datetime import datetime, timezone
-from sqlalchemy import Column, Integer, BigInteger, String, null, TIMESTAMP, and_
+
+import sqlalchemy as sa
+from marshmallow import Schema, fields, post_load
+from sqlalchemy import (TIMESTAMP, BigInteger, Column, Integer, String, and_,
+                        null)
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.sql import FromClause
-from marshmallow import Schema, fields, post_load
 
-from Resolute.models import metadata
 from Resolute.compendium import Compendium
+from Resolute.models import metadata
 from Resolute.models.categories.categories import Faction
-from Resolute.models.objects.characters import PlayerCharacter
 from Resolute.models.objects.characters import PlayerCharacter
 from Resolute.models.objects.ref_objects import NPC
 

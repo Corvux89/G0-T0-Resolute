@@ -1,18 +1,19 @@
 import re
+
 import discord
-
-
-from discord.ui import Modal, InputText
 from discord import SelectOption
+from discord.ui import InputText, Modal
 
 from Resolute.bot import G0T0Bot
 from Resolute.constants import DAYS_OF_WEEK
-from Resolute.helpers.general_helpers import get_positivity
-from Resolute.helpers.guilds import delete_weekly_stipend, get_guild_internal_date, get_guild_stipends, get_weekly_stipend, update_guild, update_weekly_stipend
+from Resolute.helpers import (delete_weekly_stipend, get_guild_internal_date,
+                              get_guild_stipends, get_positivity,
+                              get_weekly_stipend, update_guild,
+                              update_weekly_stipend)
+from Resolute.models.embeds import ErrorEmbed
 from Resolute.models.embeds.guilds import GuildEmbed, ResetEmbed
 from Resolute.models.objects.guilds import PlayerGuild
 from Resolute.models.objects.ref_objects import RefWeeklyStipend
-from Resolute.models.embeds import ErrorEmbed
 from Resolute.models.views.base import InteractiveView
 from Resolute.models.views.npc import NPCSettingsUI
 

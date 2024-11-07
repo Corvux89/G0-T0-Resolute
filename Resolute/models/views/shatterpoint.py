@@ -1,20 +1,20 @@
-import discord
-
-from discord.ui import Modal, InputText
 from typing import Mapping
 
+import discord
+from discord.ui import InputText, Modal
+
 from Resolute.bot import G0T0Bot
-from Resolute.helpers.characters import get_all_guild_characters
-from Resolute.helpers.general_helpers import confirm
-from Resolute.helpers.guilds import get_guild
-from Resolute.helpers.logs import create_log
-from Resolute.helpers.messages import get_char_name_from_message
-from Resolute.helpers.players import get_player
-from Resolute.helpers.shatterpoint import delete_players, delete_shatterpoint, get_shatterpoint, upsert_shatterpoint, upsert_shatterpoint_player
+from Resolute.helpers import (confirm, create_log, delete_players,
+                              delete_shatterpoint, get_all_guild_characters,
+                              get_char_name_from_message, get_guild,
+                              get_player, get_shatterpoint,
+                              upsert_shatterpoint, upsert_shatterpoint_player)
 from Resolute.models.categories.categories import Activity
 from Resolute.models.embeds import ErrorEmbed
-from Resolute.models.embeds.shatterpoint import ShatterpointEmbed, ShatterpointLogEmbed
-from Resolute.models.objects.shatterpoint import ShatterpointPlayer, Shatterpoint
+from Resolute.models.embeds.shatterpoint import (ShatterpointEmbed,
+                                                 ShatterpointLogEmbed)
+from Resolute.models.objects.shatterpoint import (Shatterpoint,
+                                                  ShatterpointPlayer)
 from Resolute.models.views.base import InteractiveView
 
 
@@ -200,8 +200,11 @@ class _ShatterpointPlayerManage(ShatterpointSettings):
     async def back(self, _: discord.ui.Button, interaction: discord.Interaction):
         await self.defer_to(ShatterpointSettingsUI, interaction)
 
-    async def get_content(self) -> Mapping:
-        return {"embed": ShatterpointEmbed(self.bot, self.shatterpoint, True)}
+    
+class _ShatterpointRenownManage(ShatterpointSettings):
+    @discord.ui.button(label="Back", style=discord.ButtonStyle.grey, row=2)
+    async def back(self, _: discord.ui.Button, interaction: discord.Interaction):
+        await self.defer_to(ShatterpointSettingsUI, interaction)
 
 class ShatterpointSettingsModal(Modal):
     shatterpoint: Shatterpoint

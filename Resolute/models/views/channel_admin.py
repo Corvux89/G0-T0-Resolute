@@ -1,13 +1,14 @@
-import discord
 import logging
-
 from typing import Mapping
-from discord.ui import Modal, InputText
+
+import discord
+from discord.ui import InputText, Modal
 
 from Resolute.bot import G0T0Bot
-from Resolute.helpers.channel_admin import add_owner, create_channel, remove_owner
+from Resolute.helpers import add_owner, create_channel, remove_owner
 from Resolute.models.embeds import ErrorEmbed
 from Resolute.models.embeds.channel_admin import ChannelEmbed
+from Resolute.models.objects.exceptions import G0T0Error
 from Resolute.models.views.base import InteractiveView
 
 log = logging.getLogger(__name__)
@@ -24,6 +25,9 @@ class ChannelAdminUI(ChannelAdmin):
         inst = cls(owner=owner)
         inst.bot = bot
         return inst
+    
+    async def _before_send(self):
+        self.player_channel.disabled = False if self.channel else True
 
     @discord.ui.channel_select(placeholder="Channel to manage", channel_types=[discord.ChannelType(0)])
     async def channel_select(self, c : discord.ui.Select, interaction: discord.Interaction):
@@ -36,21 +40,16 @@ class ChannelAdminUI(ChannelAdmin):
 
     @discord.ui.button(label="Edit Player Channel", style=discord.ButtonStyle.primary, row=2)
     async def player_channel(self, _: discord.ui.Button, interaction: discord.Interaction):
-        if self.channel and self.channel is not None:
-            managed = False
-            for target in self.channel.overwrites:
-                if isinstance(target, discord.member.Member):
-                    if self.channel.overwrites[target].manage_messages == True:
-                        managed = True
-            
-            if not managed:
-                await interaction.channel.send(embed=ErrorEmbed("This doesn't look to be a player managed channel"), delete_after=5)
-                await self.refresh_content(interaction)
-            else:
-                await self.defer_to(_EditPlayerChannel, interaction)
+        managed = False
+        for target in self.channel.overwrites:
+            if isinstance(target, discord.member.Member):
+                if self.channel.overwrites[target].manage_messages == True:
+                    managed = True
+        
+        if not managed:
+            raise G0T0Error("This doesn't look to be a player managed channel")
         else:
-            await interaction.channel.send(embed=ErrorEmbed("Select a channel to edit first."), delete_after=5)
-            await self.refresh_content(interaction)
+            await self.defer_to(_EditPlayerChannel, interaction)
 
     # @discord.ui.button(label="Archive Channel", style=discord.ButtonStyle.primary, row=3)
     # async def archive_channel(self, _: discord.ui.Button, interaction: discord.Interaction):

@@ -76,6 +76,7 @@ class Admin(commands.Cog):
         :param cog: cog to reload, SHEET to reload sheets, ALL to reload all
         """
         await ctx.defer()
+        test = self.bot.compendium.get_activity("TESTING")
 
         if str(cog).upper() == 'ALL':
             for file_name in listdir('./Resolute/cogs'):

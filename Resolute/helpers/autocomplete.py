@@ -1,6 +1,6 @@
 import discord
 
-from Resolute.helpers.players import get_player
+from Resolute.helpers import get_player
 
 
 async def get_characters_autocomplete(ctx: discord.AutocompleteContext):

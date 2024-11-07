@@ -1,8 +1,9 @@
 
-import discord
 import logging
-
 from typing import Mapping
+
+import discord
+
 from Resolute.bot import G0T0Bot
 from Resolute.models.views.base import InteractiveView
 

@@ -1,13 +1,15 @@
-import discord
-
 from typing import Mapping, Type
+
+import discord
 from discord import SelectOption
-from discord.ui import Modal, InputText
+from discord.ui import InputText, Modal
 
 from Resolute.bot import G0T0Bot
 from Resolute.models.embeds import ErrorEmbed
 from Resolute.models.objects.adventures import Adventure
+from Resolute.models.objects.exceptions import G0T0Error
 from Resolute.models.views.base import InteractiveView
+
 
 class RoomSettings(InteractiveView):
     __menu_copy_attrs__ = ("bot", "adventure", "roles")
@@ -91,8 +93,7 @@ class RoomSettingsUI(RoomSettings):
 
     async def _before_send(self, interaction: discord.Interaction):
         if not self.roles:
-            await interaction.channel.send(embed=ErrorEmbed("No roles found to manage"), delete_after=5)
-            await self.on_timeout()
+            raise G0T0Error("No roles found to manage")
 
         if not self.adventure:
             self.remove_item(self.room_move)

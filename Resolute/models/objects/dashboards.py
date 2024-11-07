@@ -1,15 +1,15 @@
 import sqlalchemy as sa
-
 from discord import TextChannel
-from sqlalchemy import Column, Integer, BigInteger, String
 from marshmallow import Schema, fields, post_load
-from sqlalchemy.sql.selectable import FromClause, TableClause
+from sqlalchemy import BigInteger, Column, Integer, String
 from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.sql.selectable import FromClause, TableClause
 
 from Resolute.compendium import Compendium
 from Resolute.constants import ZWSP3
 from Resolute.models import metadata
 from Resolute.models.categories.categories import DashboardType
+
 
 class RPDashboardCategory(object):
     def __init__(self, **kwargs):

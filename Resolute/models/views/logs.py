@@ -1,16 +1,16 @@
 import math
-import discord
-
 from typing import Mapping
 
+import discord
+
 from Resolute.bot import G0T0Bot
-from Resolute.helpers.logs import create_log
-from Resolute.models.embeds import ErrorEmbed
+from Resolute.helpers import create_log
+from Resolute.models.categories import Activity, CodeConversion
 from Resolute.models.embeds.logs import LogEmbed
 from Resolute.models.objects.characters import PlayerCharacter
+from Resolute.models.objects.exceptions import TransactionError
 from Resolute.models.objects.guilds import PlayerGuild
 from Resolute.models.objects.players import Player
-from Resolute.models.categories import Activity, CodeConversion
 from Resolute.models.views.base import InteractiveView
 
 
@@ -60,9 +60,9 @@ class LogPromptUI(LogPrompt):
             rate: CodeConversion = self.bot.compendium.get_object(CodeConversion, self.character.level)
             convertedCC = math.ceil((self.credits - self.character.credits) / rate.value)
             if self.player.cc < convertedCC:
-                await interaction.channel.send(embed=ErrorEmbed(f"{self.character.name} cannot afford the {self.credits} credit cost or to convert the {convertedCC} needed."))
+                raise TransactionError(f"{self.character.name} cannot afford the {self.credits} credit cost or to convert the {convertedCC} needed.")
             else:
-                convert_activity = self.bot.compendium.get_object(Activity, "CONVERSION")
+                convert_activity = self.bot.compendium.get_activity("CONVERSION")
                 converted_entry = await create_log(self.bot, self.owner, self.guild, convert_activity, self.player, 
                                                    character=self.character, 
                                                    notes=self.notes, 

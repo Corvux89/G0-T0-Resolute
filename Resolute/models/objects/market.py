@@ -1,6 +1,7 @@
 import discord
 
-from Resolute.models.categories.categories import TransactionSubType, TransactionType
+from Resolute.models.categories.categories import (TransactionSubType,
+                                                   TransactionType)
 from Resolute.models.objects.characters import PlayerCharacter
 from Resolute.models.objects.players import Player
 

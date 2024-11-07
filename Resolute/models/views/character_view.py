@@ -1,27 +1,34 @@
-from typing import Mapping
-import discord
 import re
+from typing import Mapping
 
-from discord.ui.button import Button
-from discord.ui import Modal, InputText
+import discord
 from discord import SelectOption
+from discord.ui import InputText, Modal
+from discord.ui.button import Button
 
 from Resolute.bot import G0T0Bot
 from Resolute.compendium import Compendium
-from Resolute.helpers.characters import create_new_character, get_character, upsert_character, upsert_class, upsert_renown
-from Resolute.helpers.general_helpers import get_webhook, is_admin, isImageURL, process_message
-from Resolute.helpers.logs import create_log
-from Resolute.helpers.players import get_player, manage_player_roles
-from Resolute.models.categories import CharacterClass, CharacterSpecies, Activity
+from Resolute.helpers import (create_log, create_new_character, get_character,
+                              get_player, get_webhook, is_admin, isImageURL,
+                              manage_player_roles, process_message,
+                              upsert_character, upsert_class, upsert_renown)
+from Resolute.models.categories import (Activity, CharacterClass,
+                                        CharacterSpecies)
 from Resolute.models.categories.categories import CharacterArchetype, Faction
 from Resolute.models.embeds import ErrorEmbed
-from Resolute.models.embeds.characters import CharacterEmbed, CharacterSettingsEmbed, LevelUpEmbed, NewCharacterSetupEmbed, NewcharacterEmbed
+from Resolute.models.embeds.characters import (CharacterEmbed,
+                                               CharacterSettingsEmbed,
+                                               LevelUpEmbed, NewcharacterEmbed,
+                                               NewCharacterSetupEmbed)
 from Resolute.models.embeds.logs import LogEmbed
 from Resolute.models.embeds.players import PlayerOverviewEmbed
+from Resolute.models.objects.characters import (CharacterRenown,
+                                                PlayerCharacterClass)
+from Resolute.models.objects.exceptions import G0T0Error
 from Resolute.models.objects.guilds import PlayerGuild
 from Resolute.models.objects.players import Player, PlayerCharacter
-from Resolute.models.objects.characters import CharacterRenown, PlayerCharacterClass
 from Resolute.models.views.base import InteractiveView
+
 
 # Character Manage Base setup
 class CharacterManage(InteractiveView):
@@ -36,14 +43,16 @@ class CharacterManage(InteractiveView):
 # Main Character Manage UI
 class CharacterManageUI(CharacterManage):
     @classmethod
-    def new(cls, bot, owner, player, playerGuild):
+    def new(cls, bot: G0T0Bot, owner: discord.Member, player: Player, playerGuild: PlayerGuild):
         inst = cls(owner = owner)
         inst.bot = bot
         inst.player = player
         inst.guild = playerGuild
-        inst.new_character = PlayerCharacter(player_id=player.id, guild_id=playerGuild.id)
-        inst.new_class = PlayerCharacterClass()
         inst.active_character = player.characters[0] if len(player.characters) > 0 else None
+
+        inst.new_character: PlayerCharacter = PlayerCharacter(player_id=player.id, guild_id=playerGuild.id)
+        inst.new_class: PlayerCharacterClass = PlayerCharacterClass()
+
         return inst
     
     @discord.ui.select(placeholder="Select a character to manage", row=1)
@@ -229,18 +238,19 @@ class _EditCharacter(CharacterManage):
     @discord.ui.button(label="Level Up", style=discord.ButtonStyle.primary, row=2)
     async def level_character(self, _: discord.ui.Button, interaction: discord.Interaction):
         if self.player.highest_level_character.level < 3 and (self.player.needed_rps > self.player.completed_rps or self.player.needed_arenas > self.player.completed_arenas):
-            await interaction.channel.send(embed=ErrorEmbed(f"{self.player.member.mention} has not completed their requirements to level up.\n"
-                                                      f"Completed RPs: {min(self.player.completed_rps, self.player.needed_rps)}/{self.player.needed_rps}\n"
-                                                      f"Completed Arena Phases: {min(self.player.completed_arenas, self.player.needed_arenas)}/{self.player.needed_arenas}"),
-                                                      delete_after=5)
-        elif (activity := self.bot.compendium.get_object(Activity, "LEVEL")):
-            self.active_character.level += 1
-            await create_log(self.bot, self.owner, self.guild, activity, self.player,
-                             character=self.active_character,
-                             notes="Player level up")
-            await manage_player_roles(self.player, "Level up")
 
-            await interaction.channel.send(embed=LevelUpEmbed(self.player, self.active_character))
+            raise G0T0Error(f"{self.player.member.mention} has not completed their requirements to level up.\n"
+                            f"Completed RPs: {min(self.player.completed_rps, self.player.needed_rps)}/{self.player.needed_rps}\n"
+                            f"Completed Arena Phases: {min(self.player.completed_arenas, self.player.needed_arenas)}/{self.player.needed_arenas}")
+        
+        activity = self.bot.compendium.get_activity("LEVEL")
+        self.active_character.level += 1
+        await create_log(self.bot, self.owner, self.guild, activity, self.player,
+                            character=self.active_character,
+                            notes="Player level up")
+        await manage_player_roles(self.player, "Level up")
+
+        await interaction.channel.send(embed=LevelUpEmbed(self.player, self.active_character))
 
         await self.on_timeout()
 
@@ -298,7 +308,7 @@ class _EditCharacterClass(CharacterManage):
     @discord.ui.button(label="Delete Class", style=discord.ButtonStyle.red, row=2)
     async def delete_class(self, _: discord.ui.Button, interaction: discord.Interaction):
         if len(self.active_character.classes) == 1:
-            await interaction.channel.send(embed=ErrorEmbed(f"Character only has one class"), delete_after=5)
+            raise G0T0Error(f"Character only has one class")
         else:
             self.active_character.classes.pop(self.active_character.classes.index(self.active_class))
             self.active_class.active = False

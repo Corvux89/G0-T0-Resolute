@@ -1,18 +1,18 @@
 import calendar
-import sqlalchemy as sa
-import discord
+from datetime import datetime, timezone
 
+import discord
+import sqlalchemy as sa
 from discord import ApplicationContext
 from marshmallow import Schema, fields, post_load
-from datetime import timezone, datetime
-from sqlalchemy import Column, Integer, BigInteger, String, BOOLEAN, func, TIMESTAMP, and_, select, case
-from discord import ApplicationContext
-from sqlalchemy.sql import FromClause
+from sqlalchemy import (BOOLEAN, TIMESTAMP, BigInteger, Column, Integer,
+                        String, and_, case, func, select)
 from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.sql import FromClause
 
-from Resolute.models.categories import Activity
 from Resolute.compendium import Compendium
 from Resolute.models import metadata
+from Resolute.models.categories import Activity
 from Resolute.models.categories.categories import Faction
 
 

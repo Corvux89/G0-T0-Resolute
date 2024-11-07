@@ -1,12 +1,12 @@
 import sqlalchemy as sa
-
-from sqlalchemy import Column, BigInteger, Integer, String, BOOLEAN, and_, null
 from marshmallow import Schema, fields, post_load
-from sqlalchemy.sql import FromClause, TableClause
+from sqlalchemy import BOOLEAN, BigInteger, Column, Integer, String, and_, null
 from sqlalchemy.dialects.postgresql import ARRAY, insert
+from sqlalchemy.sql import FromClause, TableClause
 
 from Resolute.compendium import Compendium
 from Resolute.models import metadata
+
 
 class RefWeeklyStipend(object):
     def __init__(self, guild_id: int, role_id: int, amount: int = 1, reason: str = None, leadership: bool = False):

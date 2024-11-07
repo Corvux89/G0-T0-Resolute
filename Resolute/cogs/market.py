@@ -4,8 +4,8 @@ from discord import ApplicationContext, SlashCommandGroup
 from discord.ext import commands
 
 from Resolute.bot import G0T0Bot
-from Resolute.helpers.players import get_player
-from Resolute.models.embeds import ErrorEmbed
+from Resolute.helpers import get_player
+from Resolute.models.objects.exceptions import CharacterNotFound
 from Resolute.models.views.market import MarketPromptUI, TransactionPromptUI
 
 
@@ -33,8 +33,7 @@ class Market(commands.Cog):
         player = await get_player(self.bot, ctx.author.id, ctx.guild.id if ctx.guild else None)
 
         if not player.characters:
-            return await ctx.respond(embed=ErrorEmbed(f"No character information found for {ctx.author.mention}"),
-                                        ephemeral=True)
+            raise CharacterNotFound()
 
         if len(player.characters) == 1:
             ui = TransactionPromptUI.new(self.bot, ctx.author, player)

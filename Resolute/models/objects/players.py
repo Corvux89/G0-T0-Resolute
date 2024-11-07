@@ -1,16 +1,17 @@
-import discord
-import sqlalchemy as sa
 import json
 
+import discord
+import sqlalchemy as sa
 from marshmallow import Schema, fields, post_load
-from sqlalchemy import Column, Integer, BigInteger, and_, update, String
-from sqlalchemy.sql import FromClause
+from sqlalchemy import BigInteger, Column, Integer, String, and_, update
 from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.sql import FromClause
 
 from Resolute.bot import G0T0Bot
 from Resolute.models import metadata
 from Resolute.models.objects.characters import PlayerCharacter
 from Resolute.models.objects.ref_objects import NPC
+
 
 class Player(object):
     characters: list[PlayerCharacter]

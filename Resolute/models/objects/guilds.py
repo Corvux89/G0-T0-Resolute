@@ -1,17 +1,18 @@
 import calendar
+from datetime import datetime, timedelta, timezone
+from math import floor
+
 import discord
 import sqlalchemy as sa
-
-from math import floor
 from marshmallow import Schema, fields, post_load
-from sqlalchemy import Column, Integer, BigInteger, String, TIMESTAMP, and_, BOOLEAN
-from sqlalchemy.sql import FromClause
+from sqlalchemy import (BOOLEAN, TIMESTAMP, BigInteger, Column, Integer,
+                        String, and_)
 from sqlalchemy.dialects.postgresql import insert
-from datetime import datetime, timezone, timedelta
+from sqlalchemy.sql import FromClause
 
 from Resolute.models import metadata
-from Resolute.models.objects.ref_objects import NPC
-from Resolute.models.objects.ref_objects import RefServerCalendar
+from Resolute.models.objects.ref_objects import NPC, RefServerCalendar
+
 
 class PlayerGuild(object):
     calendar: list[RefServerCalendar]
@@ -46,6 +47,7 @@ class PlayerGuild(object):
         self.citizen_role: discord.Role = None
         self.acolyte_role: discord.Role = None
         self.senate_role: discord.Role = None
+        self.quester_role: discord.Role = None
         
         # Channels
         self.help_channel: discord.TextChannel = None
@@ -55,6 +57,8 @@ class PlayerGuild(object):
         self.archivist_channel: discord.TextChannel = None
         self.automation_channel: discord.TextChannel = None
         self.arena_board: discord.TextChannel = None
+        self.entrance_channel: discord.TextChannel = None
+        self.exit_channel: discord.TextChannel = None
 
     @property
     def get_reset_day(self):

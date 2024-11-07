@@ -1,11 +1,13 @@
 import sqlalchemy as sa
-
-from sqlalchemy import Column, Integer, BigInteger, String, BOOLEAN
 from marshmallow import Schema, fields, post_load
-from sqlalchemy.sql.selectable import FromClause, TableClause
+from sqlalchemy import BOOLEAN, BigInteger, Column, Integer, String, and_
 from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.sql.selectable import FromClause, TableClause
 
+from Resolute.compendium import Compendium
 from Resolute.models import metadata
+from Resolute.models.categories.categories import Faction
+
 
 class Shatterpoint(object):
     def __init__(self, **kwargs):
@@ -13,7 +15,10 @@ class Shatterpoint(object):
         self.name = kwargs.get('name', "New Shatterpoint")
         self.base_cc = kwargs.get('base_cc', 0)
         self.channels: list[int] = kwargs.get('channels', [])
+
         self.players: list[ShatterpointPlayer] = kwargs.get('players', [])
+        self.renown = list[ShatterpointRenown] = kwargs.get('renown', [])
+        
 
 ref_gb_staging_table = sa.Table(
     "ref_gb_staging",
@@ -142,3 +147,68 @@ def get_all_shatterpoint_players_query(guild_id: int) -> FromClause:
 
 def delete_shatterpoint_players(guild_id: int) -> TableClause:
     return ref_gb_staging_player_table.delete().where(ref_gb_staging_player_table.c.guild_id == guild_id)
+
+class ShatterpointRenown(object):
+    def __init__(self, **kwargs):
+        self.guild_id = kwargs.get('guild_id')
+        self.faction: Faction = kwargs.get('faction')
+        self.renown = kwargs.get('renown', 0)
+
+ref_gb_renown_table = sa.Table(
+    "ref_gb_renown",
+    metadata,
+    Column("guild_id", Integer, nullable=False),
+    Column("faction", Integer, nullable=False),
+    Column("renown", Integer, nullable=False, default=0),
+    sa.PrimaryKeyConstraint("guild_id", "faction")
+)
+
+class RefRenownSchema(Schema):
+    compendium: Compendium
+    shatterpoint_id = fields.Integer(required=True)
+    faction = fields.Method(None, "load_faction")
+    renown = fields.Integer(required=True)
+
+    def __init__(self, compendium: Compendium, **kwargs):
+        self.compendium = compendium
+        super().__init__(**kwargs)
+
+    def load_faction(self, value):
+        return self.compendium.get_object(Faction, value)
+
+    @post_load
+    def make_gbrenown(self, data, **kwargs):
+        return ShatterpointRenown(**data)
+
+def upsert_shatterpoint_renown_query(renown: ShatterpointRenown):
+    insert_dict = {
+        "guild_id": renown.guild_id,
+        "faction": renown.faction.id,
+        "renown": renown.renown
+    }
+
+    statement = insert(ref_gb_renown_table).values(insert_dict)
+
+    statement = statement.on_conflict_do_update(
+        index_elements=["guild_id", "faction"],
+        set_={
+            "renown": statement.excluded.renown
+        }
+    )
+
+    return statement.returning(ref_gb_renown_table)
+
+def get_shatterpoint_renown_query(guild_id: int) -> FromClause:
+    return ref_gb_renown_table.select().where(
+        ref_gb_renown_table.c.guild_id == guild_id
+    )
+
+def delete_specific_shatterpoint_renown_query(renown: ShatterpointRenown) -> TableClause:
+    return ref_gb_renown_table.delete().where(
+        and_(ref_gb_renown_table.c.guild_id == renown.guild_id, ref_gb_renown_table.c.faction == renown.faction.id)
+    )
+
+def delete_all_shatterpoint_renown_query(guild_id: int) -> TableClause:
+    return ref_gb_renown_table.delete().where(
+        ref_gb_renown_table.c.guild_id == guild_id
+    )

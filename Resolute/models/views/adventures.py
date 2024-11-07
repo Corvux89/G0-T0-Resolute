@@ -1,26 +1,26 @@
-import discord
-
+from datetime import datetime, timezone
 from math import ceil
 from typing import Mapping, Type
-from datetime import datetime, timezone
+
+import discord
 from discord import SelectOption
-from discord.ui import Modal, InputText
+from discord.ui import InputText, Modal
 
 from Resolute.bot import G0T0Bot
-from Resolute.helpers.adventures import update_dm, upsert_adventure
-from Resolute.helpers.general_helpers import confirm, is_admin
-from Resolute.helpers.guilds import get_guild
-from Resolute.helpers.logs import create_log
-from Resolute.helpers.npc import delete_npc
-from Resolute.helpers.players import get_player
+from Resolute.helpers import (confirm, create_log, delete_npc, get_guild,
+                              get_player, is_admin, update_dm,
+                              upsert_adventure)
 from Resolute.models.categories import Activity
 from Resolute.models.categories.categories import Faction
 from Resolute.models.embeds import ErrorEmbed
-from Resolute.models.embeds.adventures import AdventureRewardEmbed, AdventureSettingsEmbed
+from Resolute.models.embeds.adventures import (AdventureRewardEmbed,
+                                               AdventureSettingsEmbed)
 from Resolute.models.objects.adventures import Adventure
 from Resolute.models.objects.characters import PlayerCharacter
+from Resolute.models.objects.exceptions import G0T0Error
 from Resolute.models.views.base import InteractiveView
 from Resolute.models.views.npc import NPCSettingsUI
+
 
 class AdventureSettings(InteractiveView):
     __menu_copy_attrs__ = ("bot", "adventure", "dm_select")
@@ -89,29 +89,25 @@ class AdventureSettingsUI(AdventureSettings):
             g = await get_guild(self.bot, interaction.guild.id)
             self.adventure.cc += response.cc
 
-            if dm_activity := self.bot.compendium.get_object(Activity, "ADVENTURE_DM"):
-                dm_reward = response.cc + ceil(response.cc * .25)
-                for dm in self.adventure.dms:
-                    player = await get_player(self.bot, dm, interaction.guild.id)
-                    await create_log(self.bot, self.owner, g, dm_activity, player, 
-                                     notes=f"{self.adventure.name}",
-                                     cc=dm_reward, 
-                                     adventure=self.adventure)
-            else:
-                await interaction.channel.send(embed=ErrorEmbed(f"Error getting DM Activity"), delete_after=5)
+            dm_activity = self.bot.compendium.get_activity("ADVENTURE_DM")
+            dm_reward = response.cc + ceil(response.cc * .25)
+            for dm in self.adventure.dms:
+                player = await get_player(self.bot, dm, interaction.guild.id)
+                await create_log(self.bot, self.owner, g, dm_activity, player, 
+                                    notes=f"{self.adventure.name}",
+                                    cc=dm_reward, 
+                                    adventure=self.adventure)
             
-            if player_activity := self.bot.compendium.get_object(Activity, "ADVENTURE"):
-                player_reward = response.cc
+            player_activity = self.bot.compendium.get_activity("ADVENTURE")
+            player_reward = response.cc
 
-                for character in self.adventure.player_characters:
-                    player = await get_player(self.bot, character.player_id, interaction.guild.id)
-                    await create_log(self.bot, self.owner, g, player_activity, player, 
-                                     character=character, 
-                                     notes=f"{self.adventure.name}", 
-                                     cc=player_reward, 
-                                     adventure=self.adventure)
-            else:
-                await interaction.channel.send(embed=ErrorEmbed(f"Error getting Player Adventure Activity"), delete_after=5)
+            for character in self.adventure.player_characters:
+                player = await get_player(self.bot, character.player_id, interaction.guild.id)
+                await create_log(self.bot, self.owner, g, player_activity, player, 
+                                    character=character, 
+                                    notes=f"{self.adventure.name}", 
+                                    cc=player_reward, 
+                                    adventure=self.adventure)
             
             await interaction.channel.send(embed=AdventureRewardEmbed(interaction, self.adventure, response.cc))
         await self.refresh_content(interaction)
@@ -133,19 +129,16 @@ class AdventureSettingsUI(AdventureSettings):
             conf = await confirm(interaction, "Are you sure you want to end this adventure? (Reply with yes/no)", True, self.bot)
 
             if conf is None:
-                await interaction.channel.send(embed=ErrorEmbed(f"Timed out waiting for a response or invalid response."), delete_after=5)
-                await self.refresh_content(interaction)
+                raise TimeoutError()
             elif not conf:
-                await interaction.channel.send(embed=ErrorEmbed(f"Ok, cancelling"), delete_after=5)
-                await self.refresh_content(interaction)
+                raise G0T0Error("Ok, cancelling")
             else:
                 # Log Renown if applicable
                 if len(self.adventure.factions) > 0:
                     renown = await confirm(interaction, "Is this being closed due to inactivity? (Reply with yes/no)", True, self.bot)
 
                     if renown is None:
-                        await interaction.channel.send(embed=ErrorEmbed(f"Timed out waiting for a response or invalid response."), delete_after=5)
-                        await self.refresh_content(interaction)
+                        raise TimeoutError()
                     elif not renown and (activity := self.bot.compendium.get_activity("RENOWN")):
                         guild = await get_guild(self.bot, self.adventure.guild_id)
                         amount = 1 if len(self.adventure.factions) > 1 else 2
@@ -183,6 +176,10 @@ class AdventureSettingsUI(AdventureSettings):
             self.remove_item(self.adventure_close)
     
 class _AdventureMemberSelect(AdventureSettings):
+    async def _before_send(self):
+        self.add_member.disabled = False if self.character else True
+        self.remove_member.disabled = False if self.character else True
+
     @discord.ui.user_select(placeholder="Select a Player", row=1)
     async def member_select(self, user: discord.ui.Select, interaction: discord.Interaction):
         member: discord.Member = user.values[0]
@@ -202,8 +199,6 @@ class _AdventureMemberSelect(AdventureSettings):
     async def add_member(self, _: discord.ui.Button, interaction: discord.Interaction):
         adventure_role = interaction.guild.get_role(self.adventure.role_id)
 
-        if self.member is None:
-            await interaction.channel.send(embed=ErrorEmbed(f"Select someone to add"), delete_after=5)
         if self.dm_select:
             if self.member.id in self.adventure.dms:
                 await interaction.channel.send(embed=ErrorEmbed(f"{self.member.mention} is already a DM of this adventure"), delete_after=5)
@@ -220,26 +215,20 @@ class _AdventureMemberSelect(AdventureSettings):
                     channel_overwrites = await update_dm(self.member, channel.overwrites, adventure_role, self.adventure.name)
                     await channel.edit(overwrites=channel_overwrites)
         else:
-            if self.character is None:
-                if not self.player.characters:
-                    await interaction.channel.send(embed=ErrorEmbed(f"{self.member.mention} has no characters."), delete_after=5)
-                else:
-                    await interaction.channel.send(embed=ErrorEmbed(f"{self.member.mention} has no characters."), delete_after=5)
+            if self.adventure.characters and self.character.id in self.adventure.characters:
+                await interaction.channel.send(embed=ErrorEmbed(f"{self.character.name} is already in the adventure"), delete_after=5)
+            elif self.member.id in self.adventure.dms:
+                await interaction.channel.send(embed=ErrorEmbed(f"{self.character.name} is a DM for this adventure"), delete_after=5)
+            elif character := next((ch for ch in self.adventure.player_characters if ch.player_id == self.player.id), None):
+                await interaction.channel.send(embed=ErrorEmbed(f"{self.member.mention} already has a character in the adventure"), delete_after=5)
             else:
-                if self.adventure.characters and self.character.id in self.adventure.characters:
-                    await interaction.channel.send(embed=ErrorEmbed(f"{self.character.name} is already in the adventure"), delete_after=5)
-                elif self.member.id in self.adventure.dms:
-                    await interaction.channel.send(embed=ErrorEmbed(f"{self.character.name} is a DM for this adventure"), delete_after=5)
-                elif character := next((ch for ch in self.adventure.player_characters if ch.player_id == self.player.id), None):
-                    await interaction.channel.send(embed=ErrorEmbed(f"{self.member.mention} already has a character in the adventure"), delete_after=5)
-                else:
-                    self.adventure.player_characters.append(self.character)
-                    self.adventure.characters.append(self.character.id)
+                self.adventure.player_characters.append(self.character)
+                self.adventure.characters.append(self.character.id)
 
-                    if adventure_role not in self.member.roles:
-                        await self.member.add_roles(adventure_role, reason=f"{self.character.name} added to {self.adventure.name} by {self.owner.name}")
-                
-                    await interaction.channel.send(f"{self.character.name} ({self.member.mention}) added to {self.adventure.name}")
+                if adventure_role not in self.member.roles:
+                    await self.member.add_roles(adventure_role, reason=f"{self.character.name} added to {self.adventure.name} by {self.owner.name}")
+            
+                await interaction.channel.send(f"{self.character.name} ({self.member.mention}) added to {self.adventure.name}")
 
         await self.refresh_content(interaction)
         
@@ -284,7 +273,7 @@ class _AdventureMemberSelect(AdventureSettings):
         self.member = None
         await self.defer_to(AdventureSettingsUI, interaction)
 
-    async def _before_send(self, interaction: discord.Interaction):
+    async def _before_send(self):
         if self.member is None or self.dm_select:
             self.remove_item(self.character_select)
         else:

@@ -10,11 +10,11 @@ from Resolute.helpers import (get_adventure_from_category,
                               get_faction_autocomplete, get_guild, get_player,
                               get_player_adventures, get_webhook,
                               update_activity_points, update_dm)
-from Resolute.models.embeds import ErrorEmbed
 from Resolute.models.embeds.adventures import AdventuresEmbed
 from Resolute.models.objects.adventures import (Adventure,
                                                 upsert_adventure_query)
-from Resolute.models.objects.exceptions import AdventureNotFound, CharacterNotFound, G0T0Error
+from Resolute.models.objects.exceptions import (AdventureNotFound,
+                                                CharacterNotFound, G0T0Error)
 from Resolute.models.views.adventures import AdventureSettingsUI
 
 log = logging.getLogger(__name__)
@@ -177,12 +177,11 @@ class Adventures(commands.Cog):
     @adventure_create.error
     async def create_error(self, ctx, error):
         if isinstance(error, discord.Forbidden):
-            await ctx.send(embed=ErrorEmbed('Error: Bot isn\'t allowed to do that (for some reason)'))
+            raise G0T0Error(f"Bot isn't allowed to do that for some reason")
         elif isinstance(error, discord.HTTPException):
-            await ctx.send(embed=ErrorEmbed('Error: Creating new role failed, please try again. '
-                                                        'If the problem persists, contact the Senate'))
+            raise G0T0Error(f"Error createing new role")
         elif isinstance(error, discord.InvalidArgument):
-            await ctx.send(embed=ErrorEmbed(f'Error: Invalid Argument {error}'))
+            raise G0T0Error(f"Invalid Argument: {error}")
 
     @adventure_commands.command(
         name="manage",

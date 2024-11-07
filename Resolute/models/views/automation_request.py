@@ -1,9 +1,9 @@
 import discord
-
 from discord import ChannelType
-from discord.ui import Modal, InputText
+from discord.ui import InputText, Modal
 
 from Resolute.models.objects.guilds import PlayerGuild
+
 
 class AutomationRequestView(Modal):
     guild: PlayerGuild

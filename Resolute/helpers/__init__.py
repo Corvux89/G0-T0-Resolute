@@ -12,3 +12,5 @@ from .npc import *
 from .shatterpoint import *
 from .appliations import *
 from .dashboards import *
+from .guilds import *
+from .market import *

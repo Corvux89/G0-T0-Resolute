@@ -1,15 +1,25 @@
 import re
-from discord import Member, ClientUser
+
 import discord
+from discord import ClientUser, Member
+
 from Resolute.bot import G0T0Bot
 from Resolute.helpers.players import get_player
 from Resolute.models.categories import Activity
 from Resolute.models.categories.categories import Faction
 from Resolute.models.embeds.logs import LogEmbed
 from Resolute.models.objects.adventures import Adventure
-from Resolute.models.objects.characters import CharacterRenown, PlayerCharacter, upsert_character_query, upsert_character_renown
+from Resolute.models.objects.characters import (CharacterRenown,
+                                                PlayerCharacter,
+                                                upsert_character_query,
+                                                upsert_character_renown)
+from Resolute.models.objects.exceptions import LogNotFound
 from Resolute.models.objects.guilds import PlayerGuild
-from Resolute.models.objects.logs import DBLog, LogSchema, character_stats_query, get_last_log_by_type, get_log_by_id, get_n_player_logs_query, player_stats_query, upsert_log
+from Resolute.models.objects.logs import (DBLog, LogSchema,
+                                          character_stats_query,
+                                          get_last_log_by_type, get_log_by_id,
+                                          get_n_player_logs_query,
+                                          player_stats_query, upsert_log)
 from Resolute.models.objects.players import Player, upsert_player_query
 
 
@@ -157,10 +167,14 @@ async def get_character_stats(bot: G0T0Bot, character: PlayerCharacter) -> dict:
     return dict(row)
 
 async def get_log_from_entry(bot: G0T0Bot, message: discord.Message) -> DBLog:
-    embed = message.embeds[0]
-    log_id = get_match(f"ID:\s*(\d+)", embed.footer.text)
+    try:
+        embed = message.embeds[0]
+        log_id = get_match(f"ID:\s*(\d+)", embed.footer.text)
 
-    log_entry = await get_log(bot, log_id)
+        log_entry = await get_log(bot, log_id)
+
+    except:
+        raise LogNotFound()
 
     return log_entry
 

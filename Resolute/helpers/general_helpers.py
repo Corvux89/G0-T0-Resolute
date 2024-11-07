@@ -1,12 +1,12 @@
-import discord
 import re
+
+import discord
 import requests
-import urllib.request as req
-from discord import ApplicationContext, Member, Guild, Interaction
+from discord import ApplicationContext, Interaction, Member
 from sqlalchemy.util import asyncio
 
 from Resolute.bot import G0T0Bot
-from Resolute.constants import BOT_OWNERS, THUMBNAIL
+from Resolute.constants import BOT_OWNERS
 from Resolute.models.objects.guilds import PlayerGuild
 
 

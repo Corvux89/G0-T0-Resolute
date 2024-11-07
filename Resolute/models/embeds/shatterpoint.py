@@ -18,6 +18,11 @@ class ShatterpointEmbed(Embed):
         self.description = f"**Base Chain Codes**: {shatterpoint.base_cc}\n"\
                            f"**Total Participants**: {len(active_players)}"
         
+        if shatterpoint.renown:
+            self.add_field(name="Renown",
+                           value="\n".join([f"{ZWSP3}**{r.faction.value}**: {r.renown}" for r in shatterpoint.renown]),
+                           inline=False)
+        
 
         self.add_field(name="Scraped Channels",
                        value="\n".join([f"{ZWSP3}{c}" for c in scraped_channels]),

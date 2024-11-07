@@ -11,9 +11,10 @@ from Resolute.helpers import (get_cached_application, get_guild,
                               get_new_character_application, get_player,
                               get_webhook, get_webhook_character,
                               update_activity_points)
-from Resolute.models.embeds import ErrorEmbed
 from Resolute.models.embeds.players import PlayerOverviewEmbed
-from Resolute.models.objects.exceptions import ApplicationNotFound, G0T0CommandError, G0T0Error
+from Resolute.models.objects.exceptions import (ApplicationNotFound,
+                                                CharacterNotFound,
+                                                G0T0Error)
 from Resolute.models.views.applications import (CharacterSelectUI,
                                                 LevelUpRequestModal,
                                                 NewCharacterRequestUI)
@@ -55,7 +56,7 @@ class Character(commands.Cog):
         g = await get_guild(self.bot, ctx.guild.id)
 
         if not player.characters:
-            raise G0T0CommandError("You do not have any characters")
+            raise CharacterNotFound(player.member)
 
         character = await get_webhook_character(self.bot, player, ctx.channel)
         webhook = await get_webhook(ctx.channel)
@@ -112,7 +113,7 @@ class Character(commands.Cog):
         g = await get_guild(self.bot, player.guild_id)
 
         if not player.characters:
-            return await ctx.respond(embed=ErrorEmbed("You do not have any characters"), ephemeral=True)
+            raise CharacterNotFound(player.member)
         
         ui = CharacterSettingsUI.new(self.bot, ctx.author, player, g)
         await ui.send_to(ctx)
@@ -128,10 +129,10 @@ class Character(commands.Cog):
         g = await get_guild(self.bot, player.guild_id)
 
         if not player.characters:
-            return await ctx.respond(embed=ErrorEmbed("You do not have any characters to level up"), ephemeral=True)
+            raise CharacterNotFound(player.member)
         elif len(player.characters) == 1:
             if player.characters[0].level >= g.max_level:
-                return await ctx.respond(embed=ErrorEmbed("Character is already at max level for the server"), ephemeral=True)
+                raise G0T0Error("Character is already at max level for the server")
             modal = LevelUpRequestModal(g, player.characters[0])
             return await ctx.send_modal(modal)
         else:
@@ -184,9 +185,9 @@ class Character(commands.Cog):
 
         emoji = [x.emoji.name if hasattr(x.emoji, 'name') else x.emoji for x in message.reactions]
         if '✅' in emoji or 'greencheck' in emoji:
-            return await ctx.respond(embed=ErrorEmbed("Application is already approved. Cannot edit at this time"), ephemeral=True)
+            raise G0T0Error("Application is already approved. Cannot edit at this time")
         elif '❌' in emoji:
-            return await ctx.respond(embed=ErrorEmbed("Application marked as invalid and cannot me modified"), ephemeral=True)
+            raise G0T0Error("Application marked as invalid and cannot me modified")
         
         appliation_text = message.content
         player_match = re.search(r"^\*\*Player:\*\* (.+)", appliation_text, re.MULTILINE)
@@ -211,7 +212,7 @@ class Character(commands.Cog):
                 application = await get_level_up_application(self.bot, None, message)
 
                 if not player.characters:
-                    return await ctx.respond(embed=ErrorEmbed("You do not have any characters to level up"), ephemeral=True)
+                    raise CharacterNotFound(player.member)
                 elif len(player.characters) == 1:
                     modal = LevelUpRequestModal(g, player.characters[0], application)
                     return await ctx.send_modal(modal)
@@ -221,6 +222,6 @@ class Character(commands.Cog):
                     await ctx.delete()
             
             else:
-                return await ctx.respond(embed=ErrorEmbed("Unsure what type of application this is"), ephemeral=True)
+                raise G0T0Error("Unsure what type of application this is")
         else:
-            return await ctx.respond(embed=ErrorEmbed("Not your application"), ephemeral=True)
+            raise G0T0Error("Not your application")

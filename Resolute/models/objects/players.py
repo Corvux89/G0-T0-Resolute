@@ -10,7 +10,7 @@ from sqlalchemy.dialects.postgresql import insert
 from Resolute.bot import G0T0Bot
 from Resolute.models import metadata
 from Resolute.models.objects.characters import PlayerCharacter
-from Resolute.models.objects.npc import NPC
+from Resolute.models.objects.ref_objects import NPC
 
 class Player(object):
     characters: list[PlayerCharacter]

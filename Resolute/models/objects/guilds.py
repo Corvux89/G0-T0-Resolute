@@ -10,7 +10,7 @@ from sqlalchemy.dialects.postgresql import insert
 from datetime import datetime, timezone, timedelta
 
 from Resolute.models import metadata
-from Resolute.models.objects.npc import NPC
+from Resolute.models.objects.ref_objects import NPC
 from Resolute.models.objects.ref_objects import RefServerCalendar
 
 class PlayerGuild(object):

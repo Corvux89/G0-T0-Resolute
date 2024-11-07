@@ -77,6 +77,7 @@ class ShatterpointPlayer(object):
         self.active = kwargs.get('active', True)
         self.num_messages = kwargs.get('num_messages', 0)
         self.channels: list[int] = kwargs.get('channels', [])
+        self.characters: list[int] = kwargs.get('characters', [])
 
 ref_gb_staging_player_table = sa.Table(
     "ref_gb_staging_player",
@@ -88,7 +89,8 @@ ref_gb_staging_player_table = sa.Table(
     Column("update", BOOLEAN, nullable=False, default=True),
     Column("active", BOOLEAN, nullable=False, default=True),
     Column("num_messages", Integer, nullable=False, default=0),
-    Column("channels", sa.ARRAY(BigInteger), nullable=True, default=[])
+    Column("channels", sa.ARRAY(BigInteger), nullable=True, default=[]),
+    Column("characters", sa.ARRAY(Integer), nullable=False, default=[])
 )
 
 class ShatterPointPlayerSchema(Schema):
@@ -100,6 +102,7 @@ class ShatterPointPlayerSchema(Schema):
     active = fields.Boolean(required=True)
     num_messages = fields.Integer(required=True)
     channels = fields.List(fields.Integer, load_default=[], required=False)
+    characters = fields.List(fields.Integer, required=True)
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -115,7 +118,8 @@ def upsert_shatterpoint_player_query(spplayer: ShatterpointPlayer):
             "update": spplayer.update,
             "active": spplayer.active,
             "num_messages": spplayer.num_messages,
-            "channels": spplayer.channels
+            "channels": spplayer.channels,
+            "characters": spplayer.characters 
         }
         update_statement = ref_gb_staging_player_table.update().where(ref_gb_staging_player_table.c.id == spplayer.id).values(**update_dict).returning(ref_gb_staging_player_table)
         return update_statement
@@ -127,7 +131,8 @@ def upsert_shatterpoint_player_query(spplayer: ShatterpointPlayer):
         update=spplayer.update,
         active=spplayer.active,
         num_messages=spplayer.num_messages,
-        channels=spplayer.channels
+        channels=spplayer.channels,
+        characters=spplayer.characters
     ).returning(ref_gb_staging_player_table)
 
 def get_all_shatterpoint_players_query(guild_id: int) -> FromClause:

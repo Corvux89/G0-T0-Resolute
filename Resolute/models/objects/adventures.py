@@ -11,7 +11,7 @@ from Resolute.compendium import Compendium
 from Resolute.models.categories.categories import Faction
 from Resolute.models.objects.characters import PlayerCharacter
 from Resolute.models.objects.characters import PlayerCharacter
-from Resolute.models.objects.npc import NPC
+from Resolute.models.objects.ref_objects import NPC
 
 
 class Adventure(object):

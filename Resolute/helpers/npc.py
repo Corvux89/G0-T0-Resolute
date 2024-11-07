@@ -1,5 +1,6 @@
 from Resolute.bot import G0T0Bot
-from Resolute.models.objects.npc import NPC, delete_npc_query, get_npc_query, NPCSchema, upsert_npc_query
+from Resolute.models.objects.ref_objects import delete_npc_query
+from Resolute.models.objects.ref_objects import NPC, NPCSchema, get_npc_query, upsert_npc_query
 
 
 async def get_npc(bot: G0T0Bot, guild_id: int, key: str) -> NPC:

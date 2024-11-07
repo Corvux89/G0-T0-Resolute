@@ -2,8 +2,8 @@ import asyncio
 import aiopg
 from Resolute.bot import G0T0Bot
 from Resolute.models.objects.guilds import *
-from Resolute.models.objects.npc import NPCSchema, get_guild_npcs_query
-from Resolute.models.objects.ref_objects import RefWeeklyStipend
+from Resolute.models.objects.ref_objects import get_guild_npcs_query
+from Resolute.models.objects.ref_objects import NPCSchema, RefWeeklyStipend
 from Resolute.models.objects.ref_objects import RefServerCalendarSchema, RefWeeklyStipendSchema, get_guild_weekly_stipends_query, get_server_calendar, get_weekly_stipend_query, upsert_weekly_stipend, delete_weekly_stipend_query
 
 async def get_guild(bot: G0T0Bot, guild_id: int) -> PlayerGuild:

@@ -4,8 +4,9 @@ from discord import Member, Role
 from Resolute.bot import G0T0Bot
 from Resolute.helpers.characters import get_character
 from Resolute.models.objects.adventures import Adventure, AdventureSchema, get_adventure_by_category_channel_query, get_adventure_by_role_query, get_adventures_by_dm_query, get_character_adventures_query, upsert_adventure_query
-from Resolute.models.objects.npc import NPCSchema, get_adventure_npcs_query
+from Resolute.models.objects.ref_objects import get_adventure_npcs_query
 from Resolute.models.objects.players import Player
+from Resolute.models.objects.ref_objects import NPCSchema
 
 
 async def get_player_adventures(bot: G0T0Bot, player: Player) -> list[Adventure]:   

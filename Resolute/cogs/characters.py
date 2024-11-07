@@ -1,21 +1,25 @@
 import logging
 import re
-import discord
 
-from discord import SlashCommandGroup, Option, ApplicationContext
+import discord
+from discord import ApplicationContext, Option, SlashCommandGroup
 from discord.ext import commands
 
 from Resolute.bot import G0T0Bot
-from Resolute.helpers.appliations import get_cached_application, get_level_up_application, get_new_character_application
-from Resolute.helpers.characters import get_webhook_character
-from Resolute.helpers.general_helpers import get_webhook
-from Resolute.helpers.guilds import get_guild
-from Resolute.helpers.logs import update_activity_points
-from Resolute.helpers.players import get_player
+from Resolute.helpers import (get_cached_application, get_guild,
+                              get_level_up_application,
+                              get_new_character_application, get_player,
+                              get_webhook, get_webhook_character,
+                              update_activity_points)
 from Resolute.models.embeds import ErrorEmbed
 from Resolute.models.embeds.players import PlayerOverviewEmbed
-from Resolute.models.views.applications import CharacterSelectUI, LevelUpRequestModal, NewCharacterRequestUI
-from Resolute.models.views.character_view import CharacterGet, CharacterGetUI, CharacterManageUI, CharacterSettingsUI
+from Resolute.models.objects.exceptions import ApplicationNotFound, G0T0CommandError, G0T0Error
+from Resolute.models.views.applications import (CharacterSelectUI,
+                                                LevelUpRequestModal,
+                                                NewCharacterRequestUI)
+from Resolute.models.views.character_view import (CharacterGetUI,
+                                                  CharacterManageUI,
+                                                  CharacterSettingsUI)
 
 log = logging.getLogger(__name__)
 
@@ -51,7 +55,7 @@ class Character(commands.Cog):
         g = await get_guild(self.bot, ctx.guild.id)
 
         if not player.characters:
-            return await ctx.send(embed=ErrorEmbed("You do not have any characters"), ephemeral=True)
+            raise G0T0CommandError("You do not have any characters")
 
         character = await get_webhook_character(self.bot, player, ctx.channel)
         webhook = await get_webhook(ctx.channel)
@@ -168,14 +172,14 @@ class Character(commands.Cog):
                 try:
                     message = await guild.character_application_channel.fetch_message(int(application_id))
                 except ValueError:
-                    return await ctx.respond(embed=ErrorEmbed("Invalid application identifier"), ephemeral=True)
+                    raise G0T0Error("Invalid application identifier")
                 except discord.errors.NotFound:
-                    return await ctx.respond(embed=ErrorEmbed("Application not found"), ephemeral=True)
+                    raise ApplicationNotFound()
             else:
                 try:
                     message = await guild.character_application_channel.fetch_message(ctx.channel.id)
                 except:
-                    return await ctx.respond(embed=ErrorEmbed("Application not found"), ephemeral=True)
+                    raise ApplicationNotFound()
         
 
         emoji = [x.emoji.name if hasattr(x.emoji, 'name') else x.emoji for x in message.reactions]

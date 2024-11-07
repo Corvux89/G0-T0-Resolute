@@ -4,11 +4,13 @@ from discord.ui import Modal, InputText
 from typing import Mapping
 
 from Resolute.bot import G0T0Bot
+from Resolute.helpers.characters import get_all_guild_characters
 from Resolute.helpers.general_helpers import confirm
 from Resolute.helpers.guilds import get_guild
 from Resolute.helpers.logs import create_log
+from Resolute.helpers.messages import get_char_name_from_message
 from Resolute.helpers.players import get_player
-from Resolute.helpers.shatterpoint import delete_players, delete_shatterpoint, upsert_shatterpoint, upsert_shatterpoint_player
+from Resolute.helpers.shatterpoint import delete_players, delete_shatterpoint, get_shatterpoint, upsert_shatterpoint, upsert_shatterpoint_player
 from Resolute.models.categories.categories import Activity
 from Resolute.models.embeds import ErrorEmbed
 from Resolute.models.embeds.shatterpoint import ShatterpointEmbed, ShatterpointLogEmbed
@@ -17,6 +19,10 @@ from Resolute.models.views.base import InteractiveView
 
 
 class ShatterpointSettings(InteractiveView):
+    # TODO: Player settings to manage character participation
+    # TODO: Reward character credits based on conversion rates
+    # TODO: Reward Renown
+    # TODO: Update shatterpoint settings for multiple factions if needed
     __menu_copy_attrs__ = ("bot", "shatterpoint")
     bot: G0T0Bot
     shatterpoint: Shatterpoint
@@ -104,32 +110,42 @@ class _ShatterpointManage(ShatterpointSettings):
 
     @discord.ui.button(label="Scrape Channel", style=discord.ButtonStyle.primary, row=2)
     async def channel_scrape(self, _: discord.ui.Select, interaction: discord.Interaction):
+
+
         if not self.channel:
             await interaction.channel.send(embed=ErrorEmbed("Select a channel to scrape first"), delete_after=5)
         else:
             messages = await self.channel.history(oldest_first=True, limit=600).flatten()
+            characters = await get_all_guild_characters(self.bot, interaction.guild.id)
 
             for message in messages:
                 player: ShatterpointPlayer = None
                 if not message.author.bot:
-                    if player := next((p for p in self.shatterpoint.players if p.player_id == message.author.id), ShatterpointPlayer(guild_id=self.shatterpoint.guild_id,
-                                                                                                                                     player_id=message.author.id,
-                                                                                                                                     cc=self.shatterpoint.base_cc)):
-                        player.num_messages += 1
-                        if message.channel.id not in player.channels:
-                            player.channels.append(message.channel.id)
+                    player = next((p for p in self.shatterpoint.players if p.player_id == message.author.id), 
+                                  ShatterpointPlayer(guild_id=self.shatterpoint.guild_id,
+                                                     player_id=message.author.id,
+                                                     cc=self.shatterpoint.base_cc))
+                elif (char_name := get_char_name_from_message(message)) and (character := next((c for c in characters if c.name.lower() == char_name.lower()), None)):
+                    player = next((p for p in self.shatterpoint.players if p.player_id == character.player_id), 
+                                  ShatterpointPlayer(guild_id=self.shatterpoint.guild_id,
+                                                     player_id=character.player_id,
+                                                     cc=self.shatterpoint.base_cc))
+                    if character.id not in player.characters:
+                        player.characters.append(character.id)
+                        
+                if player:
+                    player.num_messages +=1 
 
+                    if message.channel.id not in player.channels:
+                        player.channels.append(message.channel.id)
+                    
                     player = await upsert_shatterpoint_player(self.bot, player)
-                    if player.player_id in [p.player_id for p in self.shatterpoint.players]:
-                        self.shatterpoint.players.remove(next((p for p in self.shatterpoint.players if p.player_id == player.player_id), None))
-                    
-                    self.shatterpoint.players.append(player)
-                
-                    
 
+                    self.shatterpoint = await get_shatterpoint(self.bot, self.shatterpoint.guild_id)
             
             if message.channel.id not in self.shatterpoint.channels:
                 self.shatterpoint.channels.append(message.channel.id)
+
         await self.refresh_content(interaction)
 
     @discord.ui.button(label="Players", style=discord.ButtonStyle.primary, row=2)

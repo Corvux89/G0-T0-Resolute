@@ -1,7 +1,7 @@
 import discord
 
 from Resolute.models.objects.guilds import PlayerGuild
-from Resolute.models.objects.npc import NPC
+from Resolute.models.objects.ref_objects import NPC
 
 class NPCEmbed(discord.Embed):
     def __init__(self, guild: PlayerGuild, npcs: list[NPC] = [], primary_npc: NPC = None):

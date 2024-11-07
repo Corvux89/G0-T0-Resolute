@@ -1,19 +1,20 @@
 import logging
 
-from discord import ApplicationContext, Option, SlashCommandGroup
 import discord
+from discord import ApplicationContext, Option, SlashCommandGroup
 from discord.ext import commands
 
 from Resolute.bot import G0T0Bot
-from Resolute.helpers.adventures import get_adventure_from_category, get_adventure_from_role, get_player_adventures, update_dm
-from Resolute.helpers.autocomplete import get_faction_autocomplete
-from Resolute.helpers.general_helpers import get_webhook
-from Resolute.helpers.guilds import get_guild
-from Resolute.helpers.logs import update_activity_points
-from Resolute.helpers.players import get_player
+from Resolute.helpers import (get_adventure_from_category,
+                              get_adventure_from_role,
+                              get_faction_autocomplete, get_guild, get_player,
+                              get_player_adventures, get_webhook,
+                              update_activity_points, update_dm)
 from Resolute.models.embeds import ErrorEmbed
 from Resolute.models.embeds.adventures import AdventuresEmbed
-from Resolute.models.objects.adventures import Adventure, upsert_adventure_query
+from Resolute.models.objects.adventures import (Adventure,
+                                                upsert_adventure_query)
+from Resolute.models.objects.exceptions import AdventureNotFound, CharacterNotFound, G0T0Error
 from Resolute.models.views.adventures import AdventureSettingsUI
 
 log = logging.getLogger(__name__)
@@ -65,8 +66,7 @@ class Adventures(commands.Cog):
         player = await get_player(self.bot, member.id, ctx.guild.id if ctx.guild else None)
         
         if not player.characters:
-            return await ctx.respond(embed=ErrorEmbed(f"No character information found for {member.mention}"),
-                                        ephemeral=True)
+            raise CharacterNotFound(member)
         
         adventures = await get_player_adventures(self.bot, player)
         
@@ -92,8 +92,7 @@ class Adventures(commands.Cog):
 
         # Create the role
         if discord.utils.get(ctx.guild.roles, name=role_name):
-            return await ctx.respond(embed=ErrorEmbed(f"Role `@{role_name}` already exists"),
-                                     ephemeral=True)
+            raise G0T0Error(f"Role `@{role_name}` already exists")
         else:
             adventure_role = await ctx.guild.create_role(name=role_name, mentionable=True,
                                                          reason=f"Created by {ctx.author.nick} for adventure"
@@ -200,7 +199,7 @@ class Adventures(commands.Cog):
             adventure = await get_adventure_from_category(self.bot, ctx.channel.category.id)
 
         if adventure is None:
-            return await ctx.respond(embed=ErrorEmbed(f"No adventure found"))
+            raise AdventureNotFound()
         
         ui = AdventureSettingsUI.new(self.bot, ctx.author, adventure)
         await ui.send_to(ctx)

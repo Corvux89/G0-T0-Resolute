@@ -3,7 +3,7 @@ import logging
 import discord
 
 from Resolute.bot import G0T0Bot
-from Resolute.models.objects.characters import CharacterRenown, CharacterSchema, PlayerCharacter, PlayerCharacterClass, PlayerCharacterClassSchema, RenownSchema, get_active_characters, get_all_characters, get_character_class, get_character_from_id, get_character_renown, upsert_character_query, upsert_character_renown, upsert_class_query
+from Resolute.models.objects.characters import CharacterRenown, CharacterSchema, PlayerCharacter, PlayerCharacterClass, PlayerCharacterClassSchema, RenownSchema, get_active_player_characters, get_all_player_characters, get_character_class, get_character_from_id, get_character_renown, get_guild_characters_query, upsert_character_query, upsert_character_renown, upsert_class_query
 from Resolute.models.objects.players import Player
 from timeit import default_timer as timer
 
@@ -13,9 +13,9 @@ log = logging.getLogger(__name__)
 async def get_characters(bot: G0T0Bot, player_id: int, guild_id: int, inactive: bool = False) -> list[PlayerCharacter]:
     async with bot.db.acquire() as conn:
         if inactive:
-            results = await conn.execute(get_all_characters(player_id, guild_id))
+            results = await conn.execute(get_all_player_characters(player_id, guild_id))
         else:
-            results = await conn.execute(get_active_characters(player_id, guild_id))
+            results = await conn.execute(get_active_player_characters(player_id, guild_id))
         rows = await results.fetchall()
 
     character_list = [CharacterSchema(bot.compendium).load(row) for row in rows]
@@ -128,3 +128,12 @@ async def get_webhook_character(bot: G0T0Bot, player: Player, channel: discord.T
     character.channels.append(channel.id)
     await upsert_character(bot, character)
     return character
+
+async def get_all_guild_characters(bot: G0T0Bot, gulid_id: int) -> list[PlayerCharacter]:
+    async with bot.db.acquire() as conn:
+        results = await conn.execute(get_guild_characters_query(gulid_id))
+        rows = await results.fetchall()
+
+    character_list = [CharacterSchema(bot.compendium).load(row) for row in rows]
+
+    return character_list

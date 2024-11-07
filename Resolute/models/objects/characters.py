@@ -125,13 +125,13 @@ class CharacterSchema(Schema):
     def load_faction(self, value):
         return self.compendium.get_object(Faction, value)
 
-def get_active_characters(player_id: int, guild_id: int) -> FromClause:
+def get_active_player_characters(player_id: int, guild_id: int) -> FromClause:
     return characters_table.select().where(
         and_(characters_table.c.player_id == player_id, characters_table.c.guild_id == guild_id,
              characters_table.c.active == True)
     )
 
-def get_all_characters(player_id: int, guild_id: int) -> FromClause:
+def get_all_player_characters(player_id: int, guild_id: int) -> FromClause:
     return characters_table.select().where(and_(characters_table.c.player_id == player_id, characters_table.c.guild_id == guild_id))
 
 def get_player_character_history(player_id: int, guild_id: int) -> FromClause:

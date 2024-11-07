@@ -2,20 +2,18 @@ import logging
 import traceback
 
 import discord
-from discord.ext import commands
+import discord.ext
 import discord.ext.commands
+from discord.ext import commands
 
 from Resolute.bot import G0T0Bot
 from Resolute.constants import ERROR_CHANNEL
-from Resolute.helpers.adventures import get_player_adventures
-from Resolute.helpers.appliations import upsert_application
-from Resolute.helpers.arenas import get_player_arenas
-from Resolute.helpers.general_helpers import process_message
-from Resolute.helpers.guilds import get_guild
-from Resolute.helpers.players import get_player
+from Resolute.helpers import (get_guild, get_player, get_player_adventures,
+                              get_player_arenas, process_message,
+                              upsert_application)
+from Resolute.models.embeds import ErrorEmbed
 from Resolute.models.embeds.events import MemberLeaveEmbed
-from Resolute.models.objects.players import upsert_player_query
-import discord.ext
+from Resolute.models.objects.exceptions import G0T0CommandError, G0T0Error
 
 log = logging.getLogger(__name__)
 
@@ -100,10 +98,12 @@ class Events(commands.Cog):
     @commands.Cog.listener()
     async def on_application_command_error(self, ctx: discord.ApplicationContext, error):
         if hasattr(ctx.command, 'on_error'):
-            return
+            return                
 
         if isinstance(error, discord.errors.CheckFailure):
             return await ctx.respond(f'You do not have required permissions for `{ctx.command}`', ephemeral=True)
+        elif isinstance(error, G0T0Error):
+            return await ctx.respond(embed=ErrorEmbed(error))
     
         if hasattr(ctx, "bot") and hasattr(ctx.bot, "db"):
             params = "".join([f" [{p['name']}: {p['value']}]" for p in (ctx.selected_options or [])])
@@ -135,11 +135,14 @@ class Events(commands.Cog):
     
     @commands.Cog.listener()
     async def on_command_error(self, ctx: discord.ApplicationContext, error):
+        time = 5
         if hasattr(ctx.command, 'on_error') or isinstance(error, discord.ext.commands.CommandNotFound):
             return
 
         if isinstance(error, discord.errors.CheckFailure):
-            return await ctx.message.respond(f'You do not have required permissions for `{ctx.command}`', ephemeral=True)
+            return await ctx.send(f'You do not have required permissions for `{ctx.command}`', delete_after=time)
+        elif isinstance(error, G0T0CommandError):
+            return await ctx.send(embed=ErrorEmbed(error), delete_after=time)
     
         if hasattr(ctx, "bot") and hasattr(ctx.bot, "db"):
             out_str = f"Error in command: cmd: chan {ctx.channel} [{ctx.channel.id}], {f'serv: {ctx.guild} [{ctx.guild.id}]' if ctx.guild else ''} auth: {ctx.author} [{ctx.author.id}]: {ctx.command}\n```"\
@@ -157,11 +160,11 @@ class Events(commands.Cog):
 
         try:
             if hasattr(ctx, "bot") and not hasattr(ctx.bot, "db"):
-                return await ctx.message.respond(f"Try again in a few seconds. I'm not fully awake yet.", ephemeral=True)
+                return await ctx.send(f"Try again in a few seconds. I'm not fully awake yet.", delete_after=time)
             
             if not ctx.guild:
-                return await ctx.message.respond(f"This command isn't supported in direct messages.", ephemeral=True)    
+                return await ctx.send(f"This command isn't supported in direct messages.", delete_after=time)    
 
-            return await ctx.message.respond(f'Something went wrong. Let us know if it keeps up!', ephemeral=True)
+            return await ctx.send(f'Something went wrong. Let us know if it keeps up!', delete_after=time)
         except:
             log.warning('Unable to respond')

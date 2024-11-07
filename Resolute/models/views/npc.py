@@ -10,7 +10,8 @@ from Resolute.models.embeds import ErrorEmbed
 from Resolute.models.embeds.npc import NPCEmbed
 from Resolute.models.objects.adventures import Adventure
 from Resolute.models.objects.guilds import PlayerGuild
-from Resolute.models.objects.npc import NPC, delete_npc_query
+from Resolute.models.objects.ref_objects import delete_npc_query
+from Resolute.models.objects.ref_objects import NPC
 from Resolute.models.views.base import InteractiveView
 
 

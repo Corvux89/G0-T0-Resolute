@@ -14,7 +14,6 @@ def setup(bot):
     bot.add_cog(Shatterpoints(bot))
 
 class Shatterpoints(commands.Cog):
-    # TODO: Scrape channel update to scrape character (based on say), then reward characers credits based on conversion as well, and apply renown
     bot: G0T0Bot  # Typing annotation for my IDE's sake
     shatterpoint_commands = SlashCommandGroup("shatterpoint", "Commands related to Shatterpoint event management.", guild_only=True)
 

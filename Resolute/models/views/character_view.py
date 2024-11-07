@@ -103,11 +103,6 @@ class _NewCharacter(CharacterManage):
         self.new_type = type.values[0]
         await self.refresh_content(interaction)
 
-    @discord.ui.select(placeholder="Transfer Renown", row=2)
-    async def renown_option(self, bool: discord.ui.Select, interaction: discord.Interaction):
-        self.transfer_renown = True if int(bool.values[0]) == 1 else False
-        await self.refresh_content(interaction)
-
     @discord.ui.button(label="Basic Information", style=discord.ButtonStyle.primary, row=3)
     async def new_character_information(self, _: discord.ui.Button, interaction: discord.Interaction):
         modal = NewCharacterInformationModal(self.new_character, self.active_character, self.new_cc, self.new_credits, self.new_type)
@@ -162,12 +157,6 @@ class _NewCharacter(CharacterManage):
 
     async def _before_send(self):
         new_character_type_options = []
-        renown_options = [
-            SelectOption(label="Transfer Renown", value="1", default=True if self.transfer_renown else False),
-            SelectOption(label="Don't Transfer Renown", value="0", default=False if self.transfer_renown else True)
-        ]
-
-        self.renown_option.options = renown_options
 
         if len(self.player.characters) == 0 or len(self.player.characters) < self.guild.max_characters:
             self.new_type = 'new' if len(self.player.characters) == 0 else self.new_type
@@ -177,8 +166,6 @@ class _NewCharacter(CharacterManage):
             new_character_type_options.append(SelectOption(label="Death Reroll", value="death", default=True if self.new_type == "death" else False))
             new_character_type_options.append(SelectOption(label="Free Reroll", value="freeroll", default=True if self.new_type == "freeroll" else False))
 
-        else:
-            self.remove_item(self.renown_option)
 
         self.new_character_type.options = new_character_type_options
 

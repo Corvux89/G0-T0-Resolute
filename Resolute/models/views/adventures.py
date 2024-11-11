@@ -89,21 +89,19 @@ class AdventureSettingsUI(AdventureSettings):
             g = await get_guild(self.bot, interaction.guild.id)
             self.adventure.cc += response.cc
 
-            dm_activity = self.bot.compendium.get_activity("ADVENTURE_DM")
             dm_reward = response.cc + ceil(response.cc * .25)
             for dm in self.adventure.dms:
                 player = await get_player(self.bot, dm, interaction.guild.id)
-                await create_log(self.bot, self.owner, g, dm_activity, player, 
+                await create_log(self.bot, self.owner, "ADVENTURE_DM", player, 
                                     notes=f"{self.adventure.name}",
                                     cc=dm_reward, 
                                     adventure=self.adventure)
             
-            player_activity = self.bot.compendium.get_activity("ADVENTURE")
             player_reward = response.cc
 
             for character in self.adventure.player_characters:
                 player = await get_player(self.bot, character.player_id, interaction.guild.id)
-                await create_log(self.bot, self.owner, g, player_activity, player, 
+                await create_log(self.bot, self.owner, "ADVENTURE", player, 
                                     character=character, 
                                     notes=f"{self.adventure.name}", 
                                     cc=player_reward, 
@@ -139,14 +137,14 @@ class AdventureSettingsUI(AdventureSettings):
 
                     if renown is None:
                         raise TimeoutError()
-                    elif not renown and (activity := self.bot.compendium.get_activity("RENOWN")):
+                    elif not renown:
                         guild = await get_guild(self.bot, self.adventure.guild_id)
                         amount = 1 if len(self.adventure.factions) > 1 else 2
 
                         for char in self.adventure.player_characters:
                             player = await get_player(self.bot, char.player_id, guild.id)
                             for faction in self.adventure.factions:
-                                await create_log(self.bot, self.owner, guild, activity, player,
+                                await create_log(self.bot, self.owner, "RENOWN", player,
                                                             character=char,
                                                             notes=f"{self.adventure.name}",
                                                             renown=amount,

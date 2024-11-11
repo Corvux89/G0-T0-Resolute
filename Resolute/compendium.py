@@ -68,7 +68,6 @@ class Compendium:
         return None
     
     def get_activity(self, activity: str | int = None):
-        # TODO: Convert a lot of get_objects to this
         if act := self.get_object(Activity, activity):
             return act
         

@@ -149,7 +149,7 @@ def get_n_player_logs_query(player_id: int, guild_id: int, n : int) -> FromClaus
     return log_table.select().where(and_(log_table.c.player_id == player_id, log_table.c.guild_id == guild_id)).order_by(log_table.c.id.desc()).limit(n)
 
 def player_stats_query(compendium: Compendium, player_id: int, guild_id: int):
-    new_character_activity = compendium.get_object(Activity, "NEW_CHARACTER")
+    new_character_activity = compendium.get_activity("NEW_CHARACTER")
     activities = [x.id for x in compendium.activity[0].values() if x.value in ["RP", "ARENA", "ARENA_HOST", "GLOBAL", "SNAPSHOT"]]
     activity_columns = [func.sum(case([(log_table.c.activity == act, 1)], else_=0)).label(f"Activity {act}") for act in activities]
 
@@ -167,8 +167,8 @@ def player_stats_query(compendium: Compendium, player_id: int, guild_id: int):
     return query
 
 def character_stats_query(compendium: Compendium, character_id: int):
-    new_character_activity = compendium.get_object(Activity, "NEW_CHARACTER")
-    conversion_activity = compendium.get_object(Activity, "CONVERSION")
+    new_character_activity = compendium.get_activity("NEW_CHARACTER")
+    conversion_activity = compendium.get_activity("CONVERSION")
 
     query = select(log_table.c.character_id,
                    func.count(log_table.c.id).label("#"),

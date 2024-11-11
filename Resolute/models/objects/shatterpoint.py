@@ -7,6 +7,7 @@ from sqlalchemy.sql.selectable import FromClause, TableClause
 from Resolute.compendium import Compendium
 from Resolute.models import metadata
 from Resolute.models.categories.categories import Faction
+from Resolute.models.objects.characters import PlayerCharacter
 
 
 class Shatterpoint(object):
@@ -17,7 +18,7 @@ class Shatterpoint(object):
         self.channels: list[int] = kwargs.get('channels', [])
 
         self.players: list[ShatterpointPlayer] = kwargs.get('players', [])
-        self.renown = list[ShatterpointRenown] = kwargs.get('renown', [])
+        self.renown: list[ShatterpointRenown] = kwargs.get('renown', [])
         
 
 ref_gb_staging_table = sa.Table(
@@ -83,6 +84,8 @@ class ShatterpointPlayer(object):
         self.num_messages = kwargs.get('num_messages', 0)
         self.channels: list[int] = kwargs.get('channels', [])
         self.characters: list[int] = kwargs.get('characters', [])
+
+        self.player_characters: list[PlayerCharacter] = []
 
 ref_gb_staging_player_table = sa.Table(
     "ref_gb_staging_player",
@@ -165,7 +168,7 @@ ref_gb_renown_table = sa.Table(
 
 class RefRenownSchema(Schema):
     compendium: Compendium
-    shatterpoint_id = fields.Integer(required=True)
+    guild_id = fields.Integer(required=True)
     faction = fields.Method(None, "load_faction")
     renown = fields.Integer(required=True)
 

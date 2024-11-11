@@ -1,6 +1,7 @@
 
 
 from Resolute.bot import G0T0Bot
+from Resolute.helpers.characters import get_character
 from Resolute.models.objects.shatterpoint import (
     RefRenownSchema, Shatterpoint, ShatterpointPlayer, ShatterPointPlayerSchema,
     ShatterPointSchema, ShatterpointRenown, delete_all_shatterpoint_renown_query, delete_shatterpoint_players, delete_shatterpoint_query, delete_specific_shatterpoint_renown_query,
@@ -53,7 +54,10 @@ async def get_shatterpoint_players(bot: G0T0Bot, guild_id: int) -> list[Shatterp
         results = await conn.execute(get_all_shatterpoint_players_query(guild_id))
         rows = await results.fetchall()
 
-    player_list = [ShatterPointPlayerSchema().load(row) for row in rows]
+    player_list: list[ShatterpointPlayer] = [ShatterPointPlayerSchema().load(row) for row in rows]
+
+    for player in player_list:
+        player.player_characters.extend([await get_character(bot, c) for c in player.characters])
 
     return player_list
 
@@ -65,7 +69,9 @@ async def upsert_shatterpoint_player(bot: G0T0Bot, spplayer: ShatterpointPlayer)
     if row is None:
         return None
     
-    player = ShatterPointPlayerSchema().load(row)
+    player: ShatterpointPlayer = ShatterPointPlayerSchema().load(row)
+
+    player.player_characters.extend([await get_character(bot, c) for c in player.characters])
 
     return player
 

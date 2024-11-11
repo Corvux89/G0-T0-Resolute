@@ -12,6 +12,7 @@ from Resolute.helpers import (confirm, create_log, get_adventure_from_category,
                               get_market_request, get_player, is_admin,
                               is_adventure_npc_message, is_player_say_message,
                               is_staff, update_activity_points)
+from Resolute.helpers.logs import null_log
 from Resolute.models.categories.categories import CodeConversion
 from Resolute.models.embeds.logs import LogEmbed
 from Resolute.models.objects.arenas import ArenaPost
@@ -129,11 +130,9 @@ class Messages(commands.Cog):
         
                 # Selling items
                 if transaction.type.value == "Sell Items":
-                    activity = self.bot.compendium.get_activity("SELL")
-
                     await message.add_reaction(APPROVAL_EMOJI[0])
                     
-                    log_entry = await create_log(self.bot, ctx.author, guild, activity, transaction.player,
+                    log_entry = await create_log(self.bot, ctx.author, "SELL", transaction.player,
                                                  character=transaction.character,
                                                  notes=transaction.log_notes,
                                                  cc=transaction.cc,
@@ -147,8 +146,6 @@ class Messages(commands.Cog):
                         await message.clear_reactions()
                         await message.add_reaction(DENIED_EMOJI[0])
                         raise TransactionError(f"{transaction.player.member.mention} cannot afford the {transaction.cc:,} CC cost.")
-                    
-                    activity = self.bot.compendium.get_activity("BUY")
                         
                     if transaction.credits > 0 and transaction.character.credits - transaction.credits < 0:
                         rate: CodeConversion = self.bot.compendium.get_object(CodeConversion, transaction.character.level)
@@ -158,8 +155,7 @@ class Messages(commands.Cog):
                             raise TransactionError(f"{transaction.character.name} cannot afford the {transaction.credits:,} credit cost or to convert the {convertedCC:,} needed.")
     
                         else: 
-                            covnerted_activity = self.bot.compendium.get_activity("CONVERSION")
-                            converted_entry = await create_log(self.bot, ctx.author, guild, covnerted_activity, transaction.player,
+                            converted_entry = await create_log(self.bot, ctx.author, "CONVERSION", transaction.player,
                                                                 character=transaction.character,
                                                                 notes=transaction.log_notes,
                                                                 cc=-convertedCC,
@@ -170,7 +166,7 @@ class Messages(commands.Cog):
 
                     await message.add_reaction(APPROVAL_EMOJI[0])
 
-                    log_entry = await create_log(self.bot, ctx.author, guild, activity, transaction.player,
+                    log_entry = await create_log(self.bot, ctx.author, "BUY", transaction.player,
                                                     character=transaction.character,
                                                     notes=transaction.log_notes,
                                                     cc=-transaction.cc,
@@ -186,51 +182,16 @@ class Messages(commands.Cog):
     )
     @commands.check(is_admin)
     async def message_null(self, ctx: discord.ApplicationContext, message: discord.Message):
-        guild = await get_guild(self.bot, ctx.guild.id)
-
         log_entry = await get_log_from_entry(self.bot, message)
-
-        if log_entry.invalid:
-            raise G0T0Error(f"Log [ {log_entry.id} ] has already been invalidated.")
-        
-        player = await get_player(self.bot, log_entry.player_id, guild.id)
-        character = next((c for c in player.characters if c.id == log_entry.character_id), None) if log_entry.character_id else None
         await ctx.defer()
-
-        conf = await confirm(ctx,
-                                f"Are you sure you want to nullify the `{log_entry.activity.value}` log"
-                                f" for {player.member.display_name} {f'[Character: {character.name} ]' if character else ''} "
-                                f" for {log_entry.cc} chain codes, {log_entry.credits} credits\n"
-                                f"(Reply with yes/no)", True, self.bot)
-        
-        if conf is None:
-            return await ctx.respond(f"Timed out waiting for a response or invalid response.", ephemeral=True)
-        elif not conf:
-            return await ctx.respond(f"Ok, cancelling.", ephemeral=True)
         
         reason = await confirm(ctx, f"What is the reason for nulling the log?", True, self.bot, response_check=None)
 
-        if activity := self.bot.compendium.get_activity("MOD"):
-            if log_entry.created_ts > guild._last_reset and log_entry.activity.diversion:
-                player.div_cc = max(player.div_cc - log_entry.cc, 0)
-
-            note = (f"{log_entry.activity.value} log # {log_entry.id} nulled by "
-                    f"{ctx.author} for reason: {reason}")
-            
-            mod_log = await create_log(self.bot, ctx.author, guild, activity, player,
-                                        character=character,
-                                        notes=note,
-                                        cc=-log_entry.cc,
-                                        credits=-log_entry.credits,
-                                        ignore_handicap=True)
-            
-            log_entry.invalid = True
-
-            await message.add_reaction(NULL_EMOJI[0])
-
-            async with self.bot.db.acquire() as conn:
-                await conn.execute(upsert_log(log_entry))
-
-            return await ctx.respond(content=None, embed=LogEmbed(mod_log, ctx.author, player.member, character))
+        player = await get_player(self.bot, log_entry.player_id, log_entry.guild_id, True)
+        character = next((c for c in player.characters if c.id == log_entry.character_id), None) if log_entry.character_id else None
+        mod_log = await null_log(self.bot, ctx, log_entry, reason)
         
-        await ctx.delete()
+
+        await message.add_reaction(NULL_EMOJI[0])
+
+        return await ctx.respond(content=None, embed=LogEmbed(mod_log, ctx.author, player.member, character))

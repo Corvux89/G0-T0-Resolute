@@ -120,25 +120,24 @@ class Guilds(commands.Cog):
             await conn.execute(reset_div_cc(g.id))
         
         # Stipends
-        if activity := self.bot.compendium.get_object(Activity, "STIPEND"):
-            leadership_stipend_players = set()
+        leadership_stipend_players = set()
 
-            for stipend in stipends:
-                if stipend_role := self.bot.get_guild(g.id).get_role(stipend.role_id):
-                    members = stipend_role.members
-                    if stipend.leadership:
-                        members = list(filter(lambda m: m.id not in leadership_stipend_players, members))
-                        leadership_stipend_players.update(m.id for m in stipend_role.members)
+        for stipend in stipends:
+            if stipend_role := self.bot.get_guild(g.id).get_role(stipend.role_id):
+                members = stipend_role.members
+                if stipend.leadership:
+                    members = list(filter(lambda m: m.id not in leadership_stipend_players, members))
+                    leadership_stipend_players.update(m.id for m in stipend_role.members)
 
-                    player_list = await asyncio.gather(*(get_player(self.bot, m.id, g.id) for m in members))
-                    
-                    for player in player_list:
-                        stipend_task.append(create_log(self.bot, self.bot.user, g, activity, player,
-                                                       notes=stipend.reason or "Weekly Stipend",
-                                                       cc=stipend.amount))
-                    
-                else:
-                    await delete_weekly_stipend(self.bot.db, stipend)
+                player_list = await asyncio.gather(*(get_player(self.bot, m.id, g.id) for m in members))
+                
+                for player in player_list:
+                    stipend_task.append(create_log(self.bot, self.bot.user, "STIPEND", player,
+                                                    notes=stipend.reason or "Weekly Stipend",
+                                                    cc=stipend.amount))
+                
+            else:
+                await delete_weekly_stipend(self.bot.db, stipend)
 
         await asyncio.gather(*stipend_task)                 
 

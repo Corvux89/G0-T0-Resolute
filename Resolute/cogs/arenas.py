@@ -12,7 +12,7 @@ from Resolute.helpers import (add_player_to_arena, build_arena_post,
                               get_guild, get_player, get_player_arenas,
                               update_arena_tier, update_arena_view_embed,
                               upsert_arena)
-from Resolute.models.categories import Activity, ArenaTier, ArenaType
+from Resolute.models.categories import ArenaTier, ArenaType
 from Resolute.models.embeds.arenas import ArenaPhaseEmbed, ArenaStatusEmbed
 from Resolute.models.objects.arenas import Arena, ArenaPost
 from Resolute.models.objects.exceptions import (ArenaNotFound,
@@ -193,29 +193,23 @@ class Arenas(commands.Cog):
         if arena is None:
             raise ArenaNotFound()
         elif channel_role := discord.utils.get(ctx.guild.roles, name=ctx.channel.name):
-            arena_activity = self.bot.compendium.get_object(Activity, "ARENA")
-            host_activity = self.bot.compendium.get_object(Activity, "ARENA_HOST")
-            bonus_activity = self.bot.compendium.get_object(Activity, "ARENA_BONUS")
-            g = await get_guild(self.bot, ctx.guild.id)
-
-
             arena.completed_phases += 1
             await upsert_arena(self.bot, arena)
 
             # Host Log
             host = await get_player(self.bot, arena.host_id, ctx.guild.id)
-            await create_log(self.bot, ctx.author, g, host_activity, host)
+            await create_log(self.bot, ctx.author, "ARENA_HOST", host)
             arena.players.append(host)
 
             # Rewards
             for character in arena.player_characters:
                 player = await get_player(self.bot, character.player_id, ctx.guild.id)
-                await create_log(self.bot, ctx.author, g, arena_activity, player,
+                await create_log(self.bot, ctx.author, "ARENA", player,
                                  character=character, notes=result)
                 arena.players.append(player)
 
                 if arena.completed_phases - 1 >= (arena.tier.max_phases / 2) and result == "WIN":
-                    await create_log(self.bot, ctx.author, g, bonus_activity, player,
+                    await create_log(self.bot, ctx.author, "ARENA_BONUS", player,
                                      character=character)
                 
             await update_arena_view_embed(ctx, arena)

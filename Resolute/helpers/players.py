@@ -47,9 +47,9 @@ async def manage_player_roles(player: Player, reason: str = None) -> None:
                 await player.member.add_roles(citizen_role, reason=reason)
 
 async def get_player_quests(bot: G0T0Bot, player: Player) -> Player:
-    rp_activity = bot.compendium.get_object(Activity, "RP")
-    arena_activity = bot.compendium.get_object(Activity, "ARENA")
-    arena_host_activity = bot.compendium.get_object(Activity,  "ARENA_HOST")
+    rp_activity = bot.compendium.get_activity("RP")
+    arena_activity = bot.compendium.get_activity("ARENA")
+    arena_host_activity = bot.compendium.get_activity("ARENA_HOST")
 
     async with bot.db.acquire() as conn:
         rp_result = await conn.execute(get_log_count_by_player_and_activity(player.id, player.guild_id, rp_activity.id))

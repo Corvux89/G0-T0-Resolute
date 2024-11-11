@@ -87,7 +87,7 @@ class Events(commands.Cog):
                 await player.update_command_count(self.bot, str(ctx.command))
 
             log.info(f"cmd: chan {ctx.channel} [{ctx.channel.id}], serv: {ctx.guild.name} [{ctx.guild.id}], "
-                     f"auth: {ctx.user} [{ctx.user.id}]: {ctx.command} {params}")
+                     f"auth: {ctx.user} [{ctx.user.id}]: {ctx.command}  {params}")
             
         except AttributeError:
             params = "".join([f" [{p['name']}: {p['value']}]" for p in (ctx.selected_options or [])])

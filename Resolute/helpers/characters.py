@@ -4,6 +4,7 @@ from timeit import default_timer as timer
 import discord
 
 from Resolute.bot import G0T0Bot
+from Resolute.models.categories.categories import Faction
 from Resolute.models.objects.characters import (CharacterRenown,
                                                 CharacterSchema,
                                                 PlayerCharacter,
@@ -17,7 +18,7 @@ from Resolute.models.objects.characters import (CharacterRenown,
                                                 get_character_renown,
                                                 get_guild_characters_query,
                                                 upsert_character_query,
-                                                upsert_character_renown,
+                                                upsert_character_renown_query,
                                                 upsert_class_query)
 from Resolute.models.objects.players import Player
 
@@ -75,7 +76,7 @@ async def get_character(bot: G0T0Bot, char_id: int) -> PlayerCharacter:
 
 async def upsert_renown(bot: G0T0Bot, renown: CharacterRenown) -> CharacterRenown:
     async with bot.db.acquire() as conn:
-        results = await conn.execute(upsert_character_renown(renown))
+        results = await conn.execute(upsert_character_renown_query(renown))
         row = await results.first()
 
     renown = RenownSchema(bot.compendium).load(row)
@@ -151,3 +152,12 @@ async def get_all_guild_characters(bot: G0T0Bot, gulid_id: int) -> list[PlayerCh
     character_list = [CharacterSchema(bot.compendium).load(row) for row in rows]
 
     return character_list
+
+async def update_character_renown(bot: G0T0Bot, character: PlayerCharacter, faction: Faction, renown: int) -> CharacterRenown:
+    character_renown = next((r for r in character.renown if r.faction.id == faction.id),
+                            CharacterRenown(faction=faction,
+                                            character_id=character.id))
+    
+    character_renown.renown += renown
+
+    return await upsert_renown(bot, character_renown)

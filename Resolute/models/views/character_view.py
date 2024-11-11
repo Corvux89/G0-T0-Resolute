@@ -11,9 +11,8 @@ from Resolute.compendium import Compendium
 from Resolute.helpers import (create_log, create_new_character, get_character,
                               get_player, get_webhook, is_admin, isImageURL,
                               manage_player_roles, process_message,
-                              upsert_character, upsert_class, upsert_renown)
-from Resolute.models.categories import (Activity, CharacterClass,
-                                        CharacterSpecies)
+                              upsert_character, upsert_class)
+from Resolute.models.categories import CharacterClass, CharacterSpecies
 from Resolute.models.categories.categories import CharacterArchetype, Faction
 from Resolute.models.embeds import ErrorEmbed
 from Resolute.models.embeds.characters import (CharacterEmbed,
@@ -138,9 +137,7 @@ class _NewCharacter(CharacterManage):
         self.new_character = await create_new_character(self.bot, self.new_type, self.player, self.new_character, self.new_class,
                                                         old_character=self.active_character)
 
-        new_activity = self.bot.compendium.get_activity("new_character")
-
-        log_entry = await create_log(self.bot, self.owner, self.guild, new_activity, self.player, 
+        log_entry = await create_log(self.bot, self.owner, "NEW_CHARACTER", self.player, 
                                      character=self.new_character, 
                                      notes="Initial Log",
                                      cc=self.new_cc, 
@@ -194,9 +191,8 @@ class _InactivateCharacter(CharacterManage):
     @discord.ui.button(label="Confirm", style=discord.ButtonStyle.red)
     async def inactivate_character_confirm(self, _: Button, interaction: discord.Interaction):
         self.active_character.active = False
-        activity = self.bot.compendium.get_activity("MOD_CHARACTER")
 
-        log_entry = await create_log(self.bot, self.owner, self.guild, activity, self.player, 
+        log_entry = await create_log(self.bot, self.owner, "MOD_CHARACTER", self.player, 
                                      character=self.active_character, 
                                      notes="Inactivating Character")
 
@@ -228,8 +224,8 @@ class _EditCharacter(CharacterManage):
         modal = CharacterInformationModal(self.active_character, self.bot.compendium)
         response: CharacterInformationModal = await self.prompt_modal(interaction, modal)
 
-        if response.update and (activity := self.bot.compendium.get_object(Activity, "MOD_CHARACTER")):
-            await create_log(self.bot, self.owner, self.guild, activity, self.player, 
+        if response.update:
+            await create_log(self.bot, self.owner, "MOD_CHARACTER", self.player, 
                              character=self.active_character,
                              notes="Character Modification")
 
@@ -243,9 +239,8 @@ class _EditCharacter(CharacterManage):
                             f"Completed RPs: {min(self.player.completed_rps, self.player.needed_rps)}/{self.player.needed_rps}\n"
                             f"Completed Arena Phases: {min(self.player.completed_arenas, self.player.needed_arenas)}/{self.player.needed_arenas}")
         
-        activity = self.bot.compendium.get_activity("LEVEL")
         self.active_character.level += 1
-        await create_log(self.bot, self.owner, self.guild, activity, self.player,
+        await create_log(self.bot, self.owner, "LEVEL", self.player,
                             character=self.active_character,
                             notes="Player level up")
         await manage_player_roles(self.player, "Level up")
@@ -351,18 +346,15 @@ class _EditCharacterRenown(CharacterManage):
     @discord.ui.button(label="Add/Remove Renown", style=discord.ButtonStyle.primary, row=2)
     async def modify_renown(self, _: discord.ui.Button, interaction: discord.Interaction):
         renown = next((r for r in self.active_character.renown if r.faction.id == self.faction.id), CharacterRenown(faction=self.faction, character_id=self.active_character.id))
-        activity = self.bot.compendium.get_activity("RENOWN")
         modal = CharacterRenownModal(renown)
         response = await self.prompt_modal(interaction, modal)
 
         if response.amount != 0:
-            renown.renown += response.amount
-            log_entry = await create_log(self.bot, interaction.user, self.guild, activity, self.player, 
+            log_entry = await create_log(self.bot, interaction.user, "RENOWN", self.player, 
                                         character=self.active_character,
                                         renown=response.amount,
                                         faction=self.faction)
 
-            renown = await upsert_renown(self.bot, renown)
             self.active_character = await get_character(self.bot, self.active_character.id)
             await interaction.channel.send(embed=LogEmbed(log_entry, interaction.user, self.player.member, self.active_character, True))
             await self.on_timeout()
@@ -545,8 +537,7 @@ class CharacterRenownModal(Modal):
             if amount == 0:
                 await interaction.channel.send(embed=ErrorEmbed(f"Renown cannot go below `0`"))
             else:
-                self.renown.renown = amount
-                self.amount = amount
+                self.amount = int(self.children[0].value)
         except:
             await interaction.channel.send(embed=ErrorEmbed(f"Renown must be a number!"))
 

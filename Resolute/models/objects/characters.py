@@ -317,7 +317,7 @@ def get_character_renown(char_id: int) -> FromClause:
         renown_table.c.character_id == char_id
     ).order_by(renown_table.c.id.asc())
 
-def upsert_character_renown(renown: CharacterRenown):
+def upsert_character_renown_query(renown: CharacterRenown):
     if hasattr(renown, "id") and renown.id is not None:
         update_dict = {
             "character_id": renown.character_id,

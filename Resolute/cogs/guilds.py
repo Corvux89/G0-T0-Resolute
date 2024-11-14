@@ -111,9 +111,7 @@ class Guilds(commands.Cog):
         g._last_reset = datetime.now(timezone.utc)
         if g.server_date and g.server_date is not None:
             g.server_date += random.randint(13, 16)
-
-        # Reset weekly stats
-        await update_guild(self.bot, g)
+        
 
         # Reset Player CC's and 
         async with self.bot.db.acquire() as conn:
@@ -156,6 +154,14 @@ class Guilds(commands.Cog):
                               f"{self.bot.get_guild(g.id).name} [ {g.id} ]")
                 else:
                     log.error(error)
+                    
+        # Cleanup
+        g.weekly_announcement = []
+        g.ping_announcement = False
+
+        await update_guild(self.bot, g)
+
+        
 
     # --------------------------- #
     # Task Helpers

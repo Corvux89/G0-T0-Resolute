@@ -146,7 +146,7 @@ class AdventureSettingsUI(AdventureSettings):
                             for faction in self.adventure.factions:
                                 await create_log(self.bot, self.owner, "RENOWN", player,
                                                             character=char,
-                                                            notes=f"{self.adventure.name}",
+                                                            notes=f"Adventure Reward: {self.adventure.name}",
                                                             renown=amount,
                                                             faction=faction)
                 

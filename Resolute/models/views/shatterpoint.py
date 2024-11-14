@@ -86,7 +86,7 @@ class ShatterpointSettingsUI(ShatterpointSettings):
                     for renown in self.shatterpoint.renown:
                         await create_log(self.bot, self.owner, "RENOWN", player,
                                          character=character,
-                                         notes=self.shatterpoint.name,
+                                         notes=f"Global Reward: {self.shatterpoint.name}",
                                          faction=renown.faction,
                                          renown=renown.renown)
 

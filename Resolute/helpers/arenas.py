@@ -93,8 +93,14 @@ async def remove_arena_board_post(ctx: discord.ApplicationContext | discord.Inte
 def update_arena_tier(bot: G0T0Bot, arena: Arena) -> None:
     if arena.player_characters:
         avg_level = mode(c.level for c in arena.player_characters)
-        tier = bisect.bisect([t.avg_level for t in list(bot.compendium.arena_tier[0].values())], avg_level)
-        arena.tier = bot.compendium.get_object(ArenaTier, tier)
+        tiers = list(bot.compendium.arena_tier[0].values())
+        levels = [t.avg_level for t in tiers]
+
+        if avg_level > levels[-1]:
+            arena.tier = tiers[-1]
+        else:
+            tier = bisect.bisect(levels, avg_level)
+            arena.tier = bot.compendium.get_object(ArenaTier, tier)
 
 async def close_arena(bot: G0T0Bot, arena: Arena, arena_role: discord.Role):
     for member in arena_role.members:

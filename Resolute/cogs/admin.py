@@ -8,8 +8,7 @@ from discord.ext import commands, tasks
 
 from Resolute.bot import G0T0Bot
 from Resolute.constants import ADMIN_GUILDS
-from Resolute.helpers import is_owner, get_guild, get_player, is_admin
-from Resolute.models.objects.exceptions import CharacterNotFound
+from Resolute.helpers import get_guild, get_player, is_admin, is_owner
 from Resolute.models.views.admin import AdminMenuUI
 from Resolute.models.views.automation_request import AutomationRequestView
 
@@ -76,7 +75,6 @@ class Admin(commands.Cog):
         :param cog: cog to reload, SHEET to reload sheets, ALL to reload all
         """
         await ctx.defer()
-        test = self.bot.compendium.get_activity("TESTING")
 
         if str(cog).upper() == 'ALL':
             for file_name in listdir('./Resolute/cogs'):

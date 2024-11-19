@@ -28,7 +28,7 @@ class Compendium:
             rarity, char_class, char_archetype,
             char_species, arena_tier, activity, 
             dashboard_type, cc_conversion, arena_type, transaction_type, transaction_subtype,
-            level_cost, faction, activity_points, npc_type
+            level_cost, faction, activity_points
             ]
 
         for category in self.categories:

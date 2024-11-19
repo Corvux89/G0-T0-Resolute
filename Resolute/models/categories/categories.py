@@ -358,26 +358,3 @@ class ActivityPointsSchema(Schema):
         return ActivityPoints(**data)
     
 activity_points = CompendiumObject("activity_points", ActivityPoints, c_activity_points, ActivityPointsSchema)
-
-# NPC Type
-c_npc_type = sa.Table(
-    "c_npc_type",
-    metadata,
-    Column("id", Integer, primary_key=True, autoincrement='auto'),
-    Column("value", String, nullable=False)
-)
-
-class NPCType(object):
-    def __init__(self, id, value):
-        self.id = id
-        self.value = value
-
-class NPCTypeSchema(Schema):
-    id = fields.Integer(data_key="id", required=True)
-    value = fields.String(data_key="value", required=True)
-
-    @post_load
-    def make_c_npc_type(self, data, **kwargs):
-        return NPCType(**data)
-    
-npc_type = CompendiumObject("npc_type", NPCType, c_npc_type, NPCTypeSchema)

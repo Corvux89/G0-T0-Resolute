@@ -46,7 +46,8 @@ class Admin(commands.Cog):
         Returns:
             Interaction: Modal interaction to gather information about the request
         """
-        player = await get_player(self.bot, ctx.author.id, ctx.guild.id if ctx.guild else None)
+
+        player = await get_player(self.bot, ctx.author.id, ctx.guild.id if ctx.guild else None, False, ctx)
         g = await get_guild(self.bot, player.guild_id)
         modal = AutomationRequestView(g)
         await ctx.send_modal(modal)

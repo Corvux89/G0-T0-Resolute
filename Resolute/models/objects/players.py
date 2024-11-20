@@ -52,7 +52,7 @@ class Player(object):
                 return char       
     
     async def update_command_count(self, bot: G0T0Bot, command: str):
-        stats = json.loads(self.statistics)
+        stats = json.loads(self.statistics or "{}")
         if "commands" not in stats:
             stats["commands"] = {}
 

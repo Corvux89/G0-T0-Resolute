@@ -7,6 +7,7 @@ from sqlalchemy.util import asyncio
 
 from Resolute.bot import G0T0Bot
 from Resolute.constants import BOT_OWNERS
+from Resolute.models.objects.exceptions import SelectionCancelled
 from Resolute.models.objects.guilds import PlayerGuild
 
 
@@ -159,3 +160,102 @@ def isImageURL(url: str) -> bool:
         pass
 
     return False
+
+def paginate(choices: list[str], per_page: int) -> list[list[str]]:
+    out = []
+    for idx in range(0, len(choices), per_page):
+        out.append(choices[idx:idx+per_page])
+    return out
+
+async def try_delete(message: discord.Message):
+    try:
+        await message.delete()
+    except:
+        pass
+
+async def get_selection(ctx: discord.ApplicationContext, choices: list[str], delete: bool = True, dm: bool=False, message: str = None, force_select: bool = False, query_message: str = None):
+    if len(choices) == 1 and not force_select:
+        return choices[0]
+    
+    page = 0
+    pages = paginate(choices, 10)
+    m = None
+    select_msg = None
+
+    def check(msg):
+        content = msg.content.lower()
+        valid = content in ("c", "n", "p")
+
+        try:
+            valid = valid or (1 <= int(content) <= len(choices))
+        except ValueError:
+            pass
+
+        return msg.author == ctx.author and msg.channel.id == ctx.channel.id and valid
+
+    for n in range(200):
+        _choices = pages[page]
+        embed = discord.Embed(title="Multiple Matches Found")
+        select_str = (
+            f"{query_message}\n"
+            f"Which one were you looking for? (Type the number or `c` to cancel)\n"
+        )
+
+        if len(pages) > 1:
+            select_str += "`n` to go to the next page, or `p` for the previous \n"
+            embed.set_footer(text=f"Page {page+1}/{len(pages)}")
+
+        for i, r in enumerate(_choices):
+            select_str += f"**[{i+1+page*10}]** - {r}\n"
+        
+        embed.description = select_str
+        embed.color = discord.Color.random()
+
+        if message:
+            embed.add_field(
+                name="Note",
+                value=message,
+                inline=False)
+
+        if select_msg:
+            await try_delete(select_msg)
+        
+        if not dm:
+            select_msg = await ctx.channel.send(embed=embed)
+        else:
+            select_msg = await ctx.author.send(embed=embed)
+
+        try:
+            m = await ctx.bot.wait_for("message", timeout=30, check=check)
+        except:
+            m = None
+
+        if m is None:
+            break
+
+        if m.content.lower() == 'n':
+            if page+1 < len(pages):
+                page += 1
+            else:
+                await ctx.channel.send("You are already on the last page")
+        elif m.content.lower() == 'p':
+            if page-1 >=0:
+                page -=1
+            else:
+                await ctx.channel.send("You are already on the first page")
+        else:
+            break
+
+    if delete and not dm:
+        await try_delete(select_msg)
+        if m is not None:
+            await try_delete(m)
+
+    if m is None or m.content.lower() == 'c':
+        raise SelectionCancelled()
+    
+    idx = int(m.content) - 1
+
+    return choices[idx]
+
+        

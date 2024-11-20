@@ -2,6 +2,7 @@ import discord
 
 from Resolute.bot import G0T0Bot
 from Resolute.helpers.characters import get_characters
+from Resolute.helpers.general_helpers import get_selection
 from Resolute.models.categories import Activity
 from Resolute.models.objects.logs import get_log_count_by_player_and_activity
 from Resolute.models.objects.players import (Player, PlayerSchema,
@@ -9,7 +10,7 @@ from Resolute.models.objects.players import (Player, PlayerSchema,
                                              upsert_player_query)
 
 
-async def get_player(bot: G0T0Bot, player_id: int, guild_id: int, inactive: bool = False) -> Player:
+async def get_player(bot: G0T0Bot, player_id: int, guild_id: int, inactive: bool = False, ctx = None) -> Player:
 
     async with bot.db.acquire() as conn:
         results = await conn.execute(get_player_query(player_id, guild_id))
@@ -22,7 +23,12 @@ async def get_player(bot: G0T0Bot, player_id: int, guild_id: int, inactive: bool
         elif len(rows) == 0 and not guild_id:
             raise Exception("Unable to create player from DM's")
         else:
-            row = rows[0]
+            if ctx:
+                guilds = [bot.get_guild(r["guild_id"]).name for r in rows]
+                guild = await get_selection(ctx, guilds, True, True, None, False, "Which guild is the command for?\n")
+                row = rows[guilds.index(guild)]
+            else:
+                row = rows[0]
         
 
     player: Player = PlayerSchema().load(row)

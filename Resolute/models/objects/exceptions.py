@@ -51,6 +51,10 @@ class TimeoutError(G0T0Error):
     def __init__(self):
         super().__init__("Timed out waiting for a response or invalid response.")
 
+class SelectionCancelled(G0T0Error):
+    def __init__(self):
+        super().__init__("Selection timed out or was cancelled.")
+
 # Command Errors
 class G0T0CommandError(CommandError):
     def __init__(self, message):

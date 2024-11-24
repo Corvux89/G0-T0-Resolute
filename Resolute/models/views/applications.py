@@ -7,6 +7,7 @@ from discord.ui import InputText, Modal
 from Resolute.bot import G0T0Bot
 from Resolute.helpers import (get_cached_application, get_guild,
                               upsert_application)
+from Resolute.helpers.general_helpers import get_webhook
 from Resolute.models.embeds.applications import NewCharacterRequestEmbed
 from Resolute.models.objects.applications import (LevelUpApplication,
                                                   NewCharacterApplication)
@@ -61,7 +62,8 @@ class CharacterSelectUI(CharacterSelect):
     @discord.ui.button(label="Edit Application", style=discord.ButtonStyle.primary, row=3)
     async def application_edit(self, _: discord.ui.Button, interaction: discord.Interaction):
         if self.levelUp:
-            modal = LevelUpRequestModal(self.guild, self.character, self.application)
+            guild = await get_guild(self.bot, self.player.guild_id)
+            modal = LevelUpRequestModal(guild, self.character, self.application)
             await self.prompt_modal(interaction, modal)
             await self.on_timeout()
         else:
@@ -155,13 +157,19 @@ class NewCharacterRequestUI(CharacterSelect):
         guild = await get_guild(self.bot, interaction.guild.id)
         if guild.archivist_role and guild.character_application_channel:
             message = self.application.format_app(self.owner, guild.archivist_role)
+            webhook = await get_webhook(guild.character_application_channel)
             
             if self.application.message:
-                await self.application.message.edit(content=message)
+                await webhook.edit_message(self.application.message.id, content=message)
+                # await self.application.message.edit(content=message)
                 await interaction.response.send_message("Request Updated", ephemeral=True)
                 await upsert_application(self.bot.db, self.owner.id)
             else:
-                msg = await guild.character_application_channel.send(content=message)
+                msg = await webhook.send(username=f"{self.owner.display_name}",
+                                         avatar_url=self.owner.avatar.url,
+                                         content=message,
+                                         wait=True)
+                # msg = await guild.character_application_channel.send(content=message)
                 thread = await msg.create_thread(name=f"{self.application.name}", auto_archive_duration=10080)
                 await thread.send(f'''Need to make an edit? Use: `/edit_application` in this thread''')
                 await interaction.response.send_message("Request submitted!", ephemeral=True)
@@ -475,12 +483,18 @@ class LevelUpRequestModal(Modal):
             self.application.link = self.children[4].value
 
             message = self.application.format_app(interaction.user, self.guild.archivist_role)
+            webhook = await get_webhook(self.guild.character_application_channel)
 
             if self.application.message:
-                await self.application.message.edit(content=message)
+                await webhook.edit_message(self.application.message.id, content=message)
+                # await self.application.message.edit(content=message)
                 return await interaction.response.send_message("Request updated!", ephemeral=True)
             else:
-                msg = await self.guild.character_application_channel.send(content=message)
+                msg = await webhook.send(username=interaction.user.display_name,
+                                         avatar_url=interaction.user.avatar.url,
+                                         content=message,
+                                         wait=True)
+                # msg = await self.guild.character_application_channel.send(content=message)
                 thread = await msg.create_thread(name=f"{self.application.character.name}", auto_archive_duration=10080)
                 await thread.send(f'''Need to make an edit? Use: `/edit_application` in this thread''')
                 await msg.edit(content=message)

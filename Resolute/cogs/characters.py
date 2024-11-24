@@ -214,7 +214,7 @@ class Character(commands.Cog):
                 if not player.characters:
                     raise CharacterNotFound(player.member)
                 elif len(player.characters) == 1:
-                    modal = LevelUpRequestModal(g, player.characters[0], application)
+                    modal = LevelUpRequestModal(guild, player.characters[0], application)
                     return await ctx.send_modal(modal)
                 else:
                     ui = CharacterSelectUI.new(self.bot, ctx.author, player, True, application, True)

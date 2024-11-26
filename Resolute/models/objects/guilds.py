@@ -50,7 +50,6 @@ class PlayerGuild(object):
         self.quester_role: discord.Role = None
         
         # Channels
-        self.help_channel: discord.TextChannel = None
         self.character_application_channel: discord.TextChannel = None
         self.market_channel: discord.TextChannel = None
         self.announcement_channel: discord.TextChannel = None

@@ -1,13 +1,14 @@
 import asyncio
 import logging
 from os import listdir
+import re
 
-from discord import (ApplicationContext, ExtensionNotFound, ExtensionNotLoaded,
+from discord import (ApplicationContext, ExtensionNotFound, ExtensionNotLoaded, Message,
                      Option, SlashCommandGroup)
 from discord.ext import commands, tasks
 
 from Resolute.bot import G0T0Bot
-from Resolute.constants import ADMIN_GUILDS
+from Resolute.constants import ADMIN_GUILDS, ERROR_CHANNEL
 from Resolute.helpers import get_guild, get_player, is_admin, is_owner
 from Resolute.models.views.admin import AdminMenuUI
 from Resolute.models.views.automation_request import AutomationRequestView
@@ -31,6 +32,17 @@ class Admin(commands.Cog):
     async def on_db_connected(self):
         if not self.reload_category_task.is_running():
             asyncio.ensure_future(self.reload_category_task.start())
+
+    @commands.Cog.listener()
+    async def on_message(self, message: Message):
+        if ERROR_CHANNEL and str(message.channel.id) == ERROR_CHANNEL and message.author.id == self.bot.user.id:
+            pattern =  pattern = r"^[\w\s]+ \[\d+\] - Update from website\. Reload compendium\.$"
+
+            if re.match(pattern, message.content):
+                self.bot.compendium.reload_categories(self.bot)
+                await self.bot.get_channel(int(ERROR_CHANNEL)).send("Compendium reloaded")
+
+
 
     @commands.slash_command(
         name="automation_request",

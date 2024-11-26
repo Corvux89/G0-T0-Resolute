@@ -38,7 +38,6 @@ async def build_guild(bot: G0T0Bot, guild: PlayerGuild):
     guild.senate_role = discord.utils.get(guild.guild.roles, name="The Senate")
     guild.quester_role = discord.utils.get(guild.guild.roles, name="Quester")
 
-    guild.help_channel = discord.utils.get(guild.guild.channels, name="aliasing-and-snippet-help")
     guild.character_application_channel = discord.utils.get(guild.guild.channels, name="character-apps")
     guild.market_channel = discord.utils.get(guild.guild.channels, name="galactic-market")
     guild.announcement_channel = discord.utils.get(guild.guild.channels, name="announcements")

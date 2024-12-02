@@ -6,9 +6,10 @@ import re
 from discord import (ApplicationContext, ExtensionNotFound, ExtensionNotLoaded, Message,
                      Option, SlashCommandGroup)
 from discord.ext import commands, tasks
+from quart import abort, jsonify, request
 
 from Resolute.bot import G0T0Bot
-from Resolute.constants import ADMIN_GUILDS, ERROR_CHANNEL
+from Resolute.constants import ADMIN_GUILDS, AUTH_TOKEN, ERROR_CHANNEL
 from Resolute.helpers import get_guild, get_player, is_admin, is_owner
 from Resolute.models.views.admin import AdminMenuUI
 from Resolute.models.views.automation_request import AutomationRequestView
@@ -28,21 +29,22 @@ class Admin(commands.Cog):
         self.bot = bot
         log.info(f'Cog \'Admin\' loaded')
 
+        @self.bot.web_app.route('/reload', methods=['POST'])
+        async def trigger():
+            try:
+                data = await request.json
+            except:
+                return abort(401)
+            if (auth_token := request.headers.get('auth-token')) and auth_token == AUTH_TOKEN:
+                await self.bot.compendium.reload_categories(self.bot)
+                await self.bot.get_channel(int(ERROR_CHANNEL)).send(data['text'])
+                return jsonify({'text': 'Compendium Reloaded!'}), 200
+            return abort(403)
+
     @commands.Cog.listener()
     async def on_db_connected(self):
         if not self.reload_category_task.is_running():
             asyncio.ensure_future(self.reload_category_task.start())
-
-    @commands.Cog.listener()
-    async def on_message(self, message: Message):
-        if ERROR_CHANNEL and str(message.channel.id) == ERROR_CHANNEL and message.author.id == self.bot.user.id:
-            pattern =  pattern = r"^[\w\s]+ \[\d+\] - Update from website\. Reload compendium\.$"
-
-            if re.match(pattern, message.content):
-                self.bot.compendium.reload_categories(self.bot)
-                await self.bot.get_channel(int(ERROR_CHANNEL)).send("Compendium reloaded")
-
-
 
     @commands.slash_command(
         name="automation_request",

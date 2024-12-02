@@ -29,6 +29,7 @@ def setup(bot: commands.Bot):
 
 
 class Messages(commands.Cog):
+    # TODO: Setup approve to work with RP/Snapshots
     bot: G0T0Bot
 
     def __init__(self, bot):

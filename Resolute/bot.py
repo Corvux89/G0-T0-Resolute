@@ -70,5 +70,8 @@ class G0T0Bot(commands.Bot):
 
     def run(self, *args, **kwargs):
         for sig in (signal.SIGINT, signal.SIGTERM):
-            self.loop.add_signal_handler(sig, lambda: asyncio.create_task(self.close()))
+            try:
+                self.loop.add_signal_handler(sig, lambda: asyncio.create_task(self.close()))
+            except (NotImplementedError, RuntimeError):
+                pass
         super().run(*args, **kwargs)

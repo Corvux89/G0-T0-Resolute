@@ -1,14 +1,14 @@
+from datetime import datetime, timezone
+
 import discord
 import sqlalchemy as sa
-
-from sqlalchemy import Column, Integer, BigInteger, null, TIMESTAMP, and_, null
-from datetime import datetime, timezone
 from marshmallow import Schema, fields, post_load
-from sqlalchemy.sql.selectable import FromClause
+from sqlalchemy import TIMESTAMP, BigInteger, Column, Integer, and_, null
 from sqlalchemy.dialects.postgresql import ARRAY
+from sqlalchemy.sql.selectable import FromClause
 
-from Resolute.models import metadata
 from Resolute.compendium import Compendium
+from Resolute.models import metadata
 from Resolute.models.categories import ArenaTier, ArenaType
 from Resolute.models.objects.characters import PlayerCharacter
 from Resolute.models.objects.players import Player

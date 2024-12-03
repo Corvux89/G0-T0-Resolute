@@ -1,12 +1,12 @@
 import discord
 import sqlalchemy as sa
-
 from marshmallow import Schema, fields
-from sqlalchemy import Column, BigInteger, String
-from sqlalchemy.sql.selectable import TableClause, FromClause
+from sqlalchemy import BigInteger, Column, String
+from sqlalchemy.sql.selectable import FromClause, TableClause
 
-from Resolute.models.objects.characters import PlayerCharacter
 from Resolute.models import metadata
+from Resolute.models.objects.characters import PlayerCharacter
+
 
 class AppBaseScores(object):
     def __init__(self, **kwargs):

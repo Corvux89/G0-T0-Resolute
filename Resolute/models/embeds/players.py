@@ -11,15 +11,18 @@ class PlayerOverviewEmbed(Embed):
         self.set_thumbnail(url=player.member.display_avatar.url)
         self.color = player.member.color
 
-        self.description = f"**Chain Codes**: {player.cc:,}"
+        self.description = (f"**Chain Codes**: {player.cc:,}")
 
         # Guild Handicap
         if guild.handicap_cc > 0 and player.handicap_amount < guild.handicap_cc:
             self.description += f"\n**Booster enabled. All CC Rewards Doubled**"
+
+        activity_limit = max(compendium.activity_points[0].values(), key=lambda act: act.points)
         
         # Diversion Limits
         self.add_field(name="Weekly Limits: ",
-                       value=f"{ZWSP3}Diversion Chain Codes: {player.div_cc:,}/{guild.div_limit:,}",
+                       value=f"{ZWSP3}Diversion Chain Codes: {player.div_cc:,}/{guild.div_limit:,}\n"
+                             f"{ZWSP3}Weekly Activity: {player.activity_points}/{activity_limit.points}, Level {player.activity_level}",
                        inline=False)
         
         # Starter Quests
@@ -33,19 +36,11 @@ class PlayerOverviewEmbed(Embed):
         
         # Character List
         if player.characters:
+            val_str = ""
             for character in player.characters:
-                starship_str = ""
+                class_str = f", ".join([f"{c.get_formatted_class()}" for c in character.classes])
 
-                if character.starships:
-                    starship_str = f"{ZWSP3}**Starships**:\n" + "\n".join([f"{ZWSP3*2}{s.get_formatted_starship(compendium)}" for s in character.starships]) 
+                val_str += (f"[{character.level}] {character.name}{f' - {character.faction.value}' if character.faction else ''}\n"
+                            f"{ZWSP3}{character.species.value} // {class_str}\n\n")
 
-                class_str = f"\n{ZWSP3*2}".join([f"{c.get_formatted_class()}" for c in character.classes])
-                class_str = f"\n{ZWSP3*2}{class_str}" if len(character.classes) > 1 else class_str
-
-                self.add_field(name=f"Character: {character.name}",
-                               value=f"{ZWSP3}**Class{'es' if len(character.classes) > 1 else ''}**: {class_str}\n"
-                                     f"{ZWSP3}**Species**: {character.species.value}\n"
-                                     f"{ZWSP3}**Level**: {character.level}\n"
-                                     f"{ZWSP3}**Credits**: {character.credits:,}\n"
-                                     f"{starship_str}",
-                                inline=False)
+            self.add_field(name=f"Character Information",value=val_str,inline=False)

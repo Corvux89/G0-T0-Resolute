@@ -1,19 +1,26 @@
 import logging
 import re
-import discord
 
-from discord import SlashCommandGroup, Option, ApplicationContext, Member
+import discord
+from discord import ApplicationContext, Option, SlashCommandGroup
 from discord.ext import commands
 
 from Resolute.bot import G0T0Bot
-from Resolute.helpers.appliations import get_cached_application, get_level_up_application, get_new_character_application
-from Resolute.helpers.general_helpers import is_admin
-from Resolute.helpers.guilds import get_guild
-from Resolute.helpers.players import get_player
-from Resolute.models.embeds import ErrorEmbed
+from Resolute.helpers import (get_cached_application, get_guild,
+                              get_level_up_application,
+                              get_new_character_application, get_player,
+                              get_webhook, get_webhook_character,
+                              update_activity_points)
 from Resolute.models.embeds.players import PlayerOverviewEmbed
-from Resolute.models.views.applications import CharacterSelectUI, LevelUpRequestModal, NewCharacterRequestUI
-from Resolute.models.views.character_view import CharacterSettingsUI
+from Resolute.models.objects.exceptions import (ApplicationNotFound,
+                                                CharacterNotFound,
+                                                G0T0Error)
+from Resolute.models.views.applications import (CharacterSelectUI,
+                                                LevelUpRequestModal,
+                                                NewCharacterRequestUI)
+from Resolute.models.views.character_view import (CharacterGetUI,
+                                                  CharacterManageUI,
+                                                  CharacterSettingsUI)
 
 log = logging.getLogger(__name__)
 
@@ -23,16 +30,43 @@ def setup(bot: commands.Bot):
 
 
 class Character(commands.Cog):
-    # TODO: Webhook for character chats
-    # TODO: Settings to set global character and auto-add channels to character for defaulting, and set factions
-    # TODO: Activity points
+    # TODO: Character Reroll Renown Conversion
     bot: G0T0Bot
     character_admin_commands = SlashCommandGroup("character_admin", "Character administration commands", guild_only=True)
 
     def __init__(self, bot):
         self.bot = bot
-        log.info(f'Cog \'Characters\' loaded')
+        log.info(f'Cog \'Characters\' loaded')    
 
+    @commands.command(
+        name="say",
+        guild_only=True
+    )
+    async def character_say(self, ctx: ApplicationContext, char_name: str = None):
+
+        content = ctx.message.content
+
+        content = content.replace(f">say ", "")
+        await ctx.message.delete()
+
+        if content == "" or content == ">say":
+            return
+        
+        player = await get_player(self.bot, ctx.author.id, ctx.guild.id)
+        g = await get_guild(self.bot, ctx.guild.id)
+
+        if not player.characters:
+            raise CharacterNotFound(player.member)
+
+        character = await get_webhook_character(self.bot, player, ctx.channel)
+        webhook = await get_webhook(ctx.channel)
+        await webhook.send(username=f"[{character.level}] {character.name} // {ctx.author.display_name}",
+                        avatar_url=ctx.author.display_avatar.url if not character.avatar_url else character.avatar_url,
+                        content=f"{content}")
+        await player.update_post_stats(self.bot, character, content)
+        await update_activity_points(self.bot, player, g)
+
+                
     @character_admin_commands.command(
         name="manage",
         description="Manage a players character(s)"
@@ -44,7 +78,7 @@ class Character(commands.Cog):
         g = await get_guild(self.bot, ctx.guild.id)
         
 
-        ui = CharacterSettingsUI.new(self.bot, ctx.author, player, g)
+        ui = CharacterManageUI.new(self.bot, ctx.author, player, g)
         await ui.send_to(ctx)
         await ctx.delete()
 
@@ -61,7 +95,30 @@ class Character(commands.Cog):
         player = await get_player(self.bot, member.id, ctx.guild.id if ctx.guild else None)
         g = await get_guild(self.bot, player.guild_id)
 
-        return await ctx.respond(embed=PlayerOverviewEmbed(player, g, self.bot.compendium))
+        if len(player.characters) == 0:
+            return await ctx.respond(embed=PlayerOverviewEmbed(player, g, self.bot.compendium))
+
+
+        ui = CharacterGetUI.new(self.bot, ctx.author, player, g)
+        await ui.send_to(ctx)
+        await ctx.delete()
+    
+    @commands.slash_command(
+            name="settings",
+            description="Character settings",
+            guild_only=True
+    )
+    async def character_settings(self, ctx: ApplicationContext):
+        player = await get_player(self.bot, ctx.author.id, ctx.guild.id if ctx.guild else None)
+        g = await get_guild(self.bot, player.guild_id)
+
+        if not player.characters:
+            raise CharacterNotFound(player.member)
+        
+        ui = CharacterSettingsUI.new(self.bot, ctx.author, player, g)
+        await ui.send_to(ctx)
+        await ctx.delete()
+        
 
     @commands.slash_command(
         name="level_request",
@@ -72,10 +129,10 @@ class Character(commands.Cog):
         g = await get_guild(self.bot, player.guild_id)
 
         if not player.characters:
-            return await ctx.respond(embed=ErrorEmbed(description="You do not have any characters to level up"), ephemeral=True)
+            raise CharacterNotFound(player.member)
         elif len(player.characters) == 1:
             if player.characters[0].level >= g.max_level:
-                return await ctx.respond(embed=ErrorEmbed(description="Character is already at max level for the server"), ephemeral=True)
+                raise G0T0Error("Character is already at max level for the server")
             modal = LevelUpRequestModal(g, player.characters[0])
             return await ctx.send_modal(modal)
         else:
@@ -116,21 +173,21 @@ class Character(commands.Cog):
                 try:
                     message = await guild.character_application_channel.fetch_message(int(application_id))
                 except ValueError:
-                    return await ctx.respond(embed=ErrorEmbed(description="Invalid application identifier"), ephemeral=True)
+                    raise G0T0Error("Invalid application identifier")
                 except discord.errors.NotFound:
-                    return await ctx.respond(embed=ErrorEmbed(description="Application not found"), ephemeral=True)
+                    raise ApplicationNotFound()
             else:
                 try:
                     message = await guild.character_application_channel.fetch_message(ctx.channel.id)
                 except:
-                    return await ctx.respond(embed=ErrorEmbed(description="Application not found"), ephemeral=True)
+                    raise ApplicationNotFound()
         
 
         emoji = [x.emoji.name if hasattr(x.emoji, 'name') else x.emoji for x in message.reactions]
         if '✅' in emoji or 'greencheck' in emoji:
-            return await ctx.respond(embed=ErrorEmbed(description="Application is already approved. Cannot edit at this time"), ephemeral=True)
+            raise G0T0Error("Application is already approved. Cannot edit at this time")
         elif '❌' in emoji:
-            return await ctx.respond(embed=ErrorEmbed(description="Application marked as invalid and cannot me modified"), ephemeral=True)
+            raise G0T0Error("Application marked as invalid and cannot me modified")
         
         appliation_text = message.content
         player_match = re.search(r"^\*\*Player:\*\* (.+)", appliation_text, re.MULTILINE)
@@ -155,9 +212,9 @@ class Character(commands.Cog):
                 application = await get_level_up_application(self.bot, None, message)
 
                 if not player.characters:
-                    return await ctx.respond(embed=ErrorEmbed(description="You do not have any characters to level up"), ephemeral=True)
+                    raise CharacterNotFound(player.member)
                 elif len(player.characters) == 1:
-                    modal = LevelUpRequestModal(g, player.characters[0], application)
+                    modal = LevelUpRequestModal(guild, player.characters[0], application)
                     return await ctx.send_modal(modal)
                 else:
                     ui = CharacterSelectUI.new(self.bot, ctx.author, player, True, application, True)
@@ -165,7 +222,6 @@ class Character(commands.Cog):
                     await ctx.delete()
             
             else:
-                return await ctx.respond(embed=ErrorEmbed(description="Unsure what type of application this is"), ephemeral=True)
+                raise G0T0Error("Unsure what type of application this is")
         else:
-            return await ctx.respond(embed=ErrorEmbed(description="Not your application"), ephemeral=True)
-
+            raise G0T0Error("Not your application")

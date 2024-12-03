@@ -1,9 +1,9 @@
 from discord import *
-from discord.ext import commands
 from discord.commands import SlashCommandGroup
+from discord.ext import commands
 
 from Resolute.bot import G0T0Bot
-from Resolute.helpers.shatterpoint import get_shatterpoint
+from Resolute.helpers import get_shatterpoint, is_admin
 from Resolute.models.views.shatterpoint import ShatterpointSettingsUI
 
 log = logging.getLogger(__name__)
@@ -25,6 +25,7 @@ class Shatterpoints(commands.Cog):
         name="manage",
         description="Manage a shatterpoint"
     )
+    @commands.check(is_admin)
     async def shatterpoint_manage(self, ctx: ApplicationContext):
         shatterpoint = await get_shatterpoint(self.bot, ctx.guild.id)
 

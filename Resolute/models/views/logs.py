@@ -1,16 +1,16 @@
 import math
-import discord
-
 from typing import Mapping
 
+import discord
+
 from Resolute.bot import G0T0Bot
-from Resolute.helpers.logs import create_log
-from Resolute.models.embeds import ErrorEmbed
+from Resolute.helpers import create_log
+from Resolute.models.categories import CodeConversion
 from Resolute.models.embeds.logs import LogEmbed
 from Resolute.models.objects.characters import PlayerCharacter
+from Resolute.models.objects.exceptions import TransactionError
 from Resolute.models.objects.guilds import PlayerGuild
 from Resolute.models.objects.players import Player
-from Resolute.models.categories import Activity, CodeConversion
 from Resolute.models.views.base import InteractiveView
 
 
@@ -20,7 +20,7 @@ class LogPrompt(InteractiveView):
     member = discord.Member = None
     bot: G0T0Bot
     guild: PlayerGuild
-    activity: Activity
+    activity: str
     credits: int = 0
     cc: int = 0
     player: Player
@@ -33,7 +33,7 @@ class LogPrompt(InteractiveView):
     
 class LogPromptUI(LogPrompt):
     @classmethod
-    def new(cls, bot: G0T0Bot, owner: discord.Member, member: discord.Member, player: Player, guild: PlayerCharacter, activity: Activity, **kwargs):
+    def new(cls, bot: G0T0Bot, owner: discord.Member, member: discord.Member, player: Player, guild: PlayerCharacter, activity: str, **kwargs):
         inst = cls(owner=owner)
         inst.bot = bot
         inst.member = member
@@ -60,17 +60,16 @@ class LogPromptUI(LogPrompt):
             rate: CodeConversion = self.bot.compendium.get_object(CodeConversion, self.character.level)
             convertedCC = math.ceil((self.credits - self.character.credits) / rate.value)
             if self.player.cc < convertedCC:
-                await interaction.channel.send(embed=ErrorEmbed(description=f"{self.character.name} cannot afford the {self.credits} credit cost or to convert the {convertedCC} needed."))
+                raise TransactionError(f"{self.character.name} cannot afford the {self.credits} credit cost or to convert the {convertedCC} needed.")
             else:
-                convert_activity = self.bot.compendium.get_object(Activity, "CONVERSION")
-                converted_entry = await create_log(self.bot, self.owner, self.guild, convert_activity, self.player, 
+                converted_entry = await create_log(self.bot, self.owner, "CONVERSION", self.player, 
                                                    character=self.character, 
                                                    notes=self.notes, 
                                                    cc=-convertedCC, 
                                                    credits=convertedCC*rate.value, 
                                                    ignore_handicap=True)
                 await interaction.channel.send(embed=LogEmbed(converted_entry, self.owner, self.member, self.character, self.show_values))
-                log_entry = await create_log(self.bot, self.owner, self.guild, self.activity, self.player, 
+                log_entry = await create_log(self.bot, self.owner, self.activity, self.player, 
                                              character=self.character, 
                                              notes=self.notes, 
                                              cc=self.cc, 
@@ -78,7 +77,7 @@ class LogPromptUI(LogPrompt):
                                              ignore_handicap=self.ignore_handicap)
                 await interaction.channel.send(embed=LogEmbed(log_entry, self.owner, self.member, self.character, self.show_values))
         else:
-            log_entry = await create_log(self.bot, self.owner, self.guild, self.activity, self.player, 
+            log_entry = await create_log(self.bot, self.owner, self.activity, self.player, 
                                          character=self.character, 
                                          notes=self.notes, 
                                          cc=self.cc, 

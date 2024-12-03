@@ -1,27 +1,25 @@
-import random
-import discord
-import logging
 import asyncio
-
+import logging
+import random
 from datetime import datetime, timezone
-from discord.ext import commands, tasks
-from discord import SlashCommandGroup, ApplicationContext
 from timeit import default_timer as timer
 
+import discord
+import discord.ext
 import discord.ext.tasks
+from discord import ApplicationContext, SlashCommandGroup
+from discord.ext import commands, tasks
 
 from Resolute.bot import G0T0Bot
-from Resolute.helpers.general_helpers import confirm
+from Resolute.helpers import (confirm, create_log, delete_weekly_stipend,
+                              get_guild, get_guild_stipends,
+                              get_guilds_with_reset, get_player, get_webhook,
+                              is_admin, update_activity_points, update_guild)
 from Resolute.models.categories import Activity
-from Resolute.helpers.guilds import get_guilds_with_reset, get_guild, update_guild
-from Resolute.helpers.guilds import delete_weekly_stipend, get_guild_stipends
-from Resolute.helpers.logs import create_log
-from Resolute.helpers.players import get_player
 from Resolute.models.embeds.guilds import ResetEmbed
 from Resolute.models.objects.guilds import PlayerGuild
 from Resolute.models.objects.players import reset_div_cc
 from Resolute.models.views.guild_settings import GuildSettingsUI
-import discord.ext
 
 log = logging.getLogger(__name__)
 
@@ -42,11 +40,30 @@ class Guilds(commands.Cog):
     async def on_compendium_loaded(self):
         if not self.schedule_weekly_reset.is_running():
             asyncio.ensure_future(self.schedule_weekly_reset.start())
+
+    @commands.Cog.listener()
+    async def on_command_error(self, ctx: commands.Context, error):
+        if hasattr(ctx, "bot") and hasattr(ctx.bot, "db") and ctx.guild:
+            guild = await get_guild(self.bot, ctx.guild.id)
+            if npc := next((npc for npc in guild.npcs if npc.key == ctx.invoked_with), None):
+                user_roles = [role.id for role in ctx.author.roles]
+                if bool(set(user_roles) & set(npc.roles)) or is_admin(ctx):
+                    player = await get_player(self.bot, ctx.author.id, ctx.guild.id)
+                    content = ctx.message.content.replace(f'>{npc.key}', '')
+                    await player.update_post_stats(self.bot, npc, content)
+                    await player.update_command_count(self.bot, "npc")
+                    webhook = await get_webhook(ctx.channel)
+                    await webhook.send(username=npc.name,
+                                    avatar_url=npc.avatar_url if npc.avatar_url else None,
+                                    content=content)
+                    await update_activity_points(self.bot, player, guild)
+                    await ctx.message.delete()
     
     @guilds_commands.command(
             name="settings",
             description="Modify the current guild/server settings"
     )
+    @commands.check(is_admin)
     async def guild_settings(self, ctx: ApplicationContext):
         g = await get_guild(self.bot, ctx.guild.id)
 
@@ -60,6 +77,7 @@ class Guilds(commands.Cog):
         name="weekly_reset",
         description="Performs a weekly reset for the server"
     )
+    @commands.check(is_admin)
     async def guild_weekly_reset(self, ctx: ApplicationContext):
         """
         Manually trigger the weekly reset for a server.
@@ -93,34 +111,31 @@ class Guilds(commands.Cog):
         g._last_reset = datetime.now(timezone.utc)
         if g.server_date and g.server_date is not None:
             g.server_date += random.randint(13, 16)
+        
 
-        # Reset weekly stats
-        await update_guild(self.bot, g)
-
-        # Reset Player CC's     
+        # Reset Player CC's and 
         async with self.bot.db.acquire() as conn:
             await conn.execute(reset_div_cc(g.id))
         
         # Stipends
-        if activity := self.bot.compendium.get_object(Activity, "STIPEND"):
-            leadership_stipend_players = set()
+        leadership_stipend_players = set()
 
-            for stipend in stipends:
-                if stipend_role := self.bot.get_guild(g.id).get_role(stipend.role_id):
-                    members = stipend_role.members
-                    if stipend.leadership:
-                        members = list(filter(lambda m: m.id not in leadership_stipend_players, members))
-                        leadership_stipend_players.update(m.id for m in stipend_role.members)
+        for stipend in stipends:
+            if stipend_role := self.bot.get_guild(g.id).get_role(stipend.role_id):
+                members = stipend_role.members
+                if stipend.leadership:
+                    members = list(filter(lambda m: m.id not in leadership_stipend_players, members))
+                    leadership_stipend_players.update(m.id for m in stipend_role.members)
 
-                    player_list = await asyncio.gather(*(get_player(self.bot, m.id, g.id) for m in members))
-                    
-                    for player in player_list:
-                        stipend_task.append(create_log(self.bot, self.bot.user, g, activity, player,
-                                                       notes=stipend.reason or "Weekly Stipend",
-                                                       cc=stipend.amount))
-                    
-                else:
-                    await delete_weekly_stipend(self.bot.db, stipend)
+                player_list = await asyncio.gather(*(get_player(self.bot, m.id, g.id) for m in members))
+                
+                for player in player_list:
+                    stipend_task.append(create_log(self.bot, self.bot.user, "STIPEND", player,
+                                                    notes=stipend.reason or "Weekly Stipend",
+                                                    cc=stipend.amount))
+                
+            else:
+                await delete_weekly_stipend(self.bot.db, stipend)
 
         await asyncio.gather(*stipend_task)                 
 
@@ -139,6 +154,14 @@ class Guilds(commands.Cog):
                               f"{self.bot.get_guild(g.id).name} [ {g.id} ]")
                 else:
                     log.error(error)
+                    
+        # Cleanup
+        g.weekly_announcement = []
+        g.ping_announcement = False
+
+        await update_guild(self.bot, g)
+
+        
 
     # --------------------------- #
     # Task Helpers

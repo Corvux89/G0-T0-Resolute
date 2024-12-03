@@ -1,14 +1,11 @@
 import logging
-import discord
 
-from discord import SlashCommandGroup, ApplicationContext
+from discord import ApplicationContext, SlashCommandGroup
 from discord.ext import commands
 
 from Resolute.bot import G0T0Bot
-from Resolute.helpers.adventures import get_adventure_from_category
-from Resolute.helpers.general_helpers import is_admin
-from Resolute.helpers.guilds import get_guild
-from Resolute.models.embeds import ErrorEmbed
+from Resolute.helpers import get_adventure_from_category, get_guild, is_admin
+from Resolute.models.objects.exceptions import G0T0Error
 from Resolute.models.views.rooms import RoomSettingsUI
 
 log = logging.getLogger(__name__)
@@ -38,17 +35,17 @@ class Room(commands.Cog):
             roles = []
             guild = await get_guild(self.bot, ctx.guild.id)
 
-            if (adventure := await get_adventure_from_category(self.bot, ctx.channel.category.id)) and (questor_role := discord.utils.get(ctx.guild.roles, name="Quester")):
-                roles.append(questor_role)    
+            if (adventure := await get_adventure_from_category(self.bot, ctx.channel.category.id)) and guild.quester_role:
+                roles.append(guild.quester_role)    
             elif guild.citizen_role and guild.acolyte_role:
                 roles+=[guild.citizen_role, guild.acolyte_role]
             else:
-                return await ctx.respond(embed=ErrorEmbed(description=f"Problem finding roles to manage"), ephemeral=True)
+                raise G0T0Error("Something went wrong")
             if roles:
                 ui = RoomSettingsUI.new(self.bot, ctx.author, roles, adventure)
                 await ui.send_to(ctx)
                 await ctx.delete()
             else:
-                return await ctx.respond("No roles to manage")
+                raise G0T0Error("No roles to manage")
         else:
-            return await ctx.respond(embed=ErrorEmbed(description=f"There is nothing in this channel you can do"), ephemeral=True)
+            raise G0T0Error("This is not the channel you're searching for")

@@ -1,13 +1,15 @@
 import discord
 
-from Resolute.models.categories import Activity
-from Resolute.models.objects.logs import get_log_count_by_player_and_activity
-from Resolute.models.objects.players import Player, get_player_query, upsert_player_query, PlayerSchema
-from Resolute.helpers import get_characters
 from Resolute.bot import G0T0Bot
+from Resolute.helpers.characters import get_characters
+from Resolute.helpers.general_helpers import get_selection
+from Resolute.models.objects.logs import get_log_count_by_player_and_activity
+from Resolute.models.objects.players import (Player, PlayerSchema,
+                                             get_player_query,
+                                             upsert_player_query)
 
 
-async def get_player(bot: G0T0Bot, player_id: int, guild_id: int, inactive: bool = False) -> Player:
+async def get_player(bot: G0T0Bot, player_id: int, guild_id: int, inactive: bool = False, ctx = None) -> Player:
 
     async with bot.db.acquire() as conn:
         results = await conn.execute(get_player_query(player_id, guild_id))
@@ -17,10 +19,15 @@ async def get_player(bot: G0T0Bot, player_id: int, guild_id: int, inactive: bool
             player = Player(id=player_id, guild_id=guild_id)
             results = await conn.execute(upsert_player_query(player))
             row = await results.first()
-        elif guild_id:
-            row = rows[0]
-        else:
+        elif len(rows) == 0 and not guild_id:
             raise Exception("Unable to create player from DM's")
+        else:
+            if ctx:
+                guilds = [bot.get_guild(r["guild_id"]).name for r in rows]
+                guild = await get_selection(ctx, guilds, True, True, None, False, "Which guild is the command for?\n")
+                row = rows[guilds.index(guild)]
+            else:
+                row = rows[0]
         
 
     player: Player = PlayerSchema().load(row)
@@ -45,9 +52,9 @@ async def manage_player_roles(player: Player, reason: str = None) -> None:
                 await player.member.add_roles(citizen_role, reason=reason)
 
 async def get_player_quests(bot: G0T0Bot, player: Player) -> Player:
-    rp_activity = bot.compendium.get_object(Activity, "RP")
-    arena_activity = bot.compendium.get_object(Activity, "ARENA")
-    arena_host_activity = bot.compendium.get_object(Activity,  "ARENA_HOST")
+    rp_activity = bot.compendium.get_activity("RP")
+    arena_activity = bot.compendium.get_activity("ARENA")
+    arena_host_activity = bot.compendium.get_activity("ARENA_HOST")
 
     async with bot.db.acquire() as conn:
         rp_result = await conn.execute(get_log_count_by_player_and_activity(player.id, player.guild_id, rp_activity.id))

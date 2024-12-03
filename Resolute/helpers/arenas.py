@@ -1,19 +1,23 @@
 import asyncio
 import bisect
-import discord
 import logging
-
-from statistics import mode
 from datetime import datetime, timezone
+from statistics import mode
+
+import discord
 
 from Resolute.bot import G0T0Bot
 from Resolute.helpers.characters import get_character
-from Resolute.helpers.general_helpers import confirm, get_positivity, get_webhook
 from Resolute.helpers.guilds import get_guild
+from Resolute.helpers.general_helpers import get_webhook
 from Resolute.models.categories import ArenaTier
 from Resolute.models.embeds import ErrorEmbed
 from Resolute.models.embeds.arenas import ArenaPostEmbed, ArenaStatusEmbed
-from Resolute.models.objects.arenas import Arena, ArenaPost, ArenaSchema, get_arena_by_channel_query, get_arena_by_host_query, get_character_arena_query, upsert_arena_query
+from Resolute.models.objects.arenas import (Arena, ArenaPost, ArenaSchema,
+                                            get_arena_by_channel_query,
+                                            get_arena_by_host_query,
+                                            get_character_arena_query,
+                                            upsert_arena_query)
 from Resolute.models.objects.characters import PlayerCharacter
 from Resolute.models.objects.players import Player
 
@@ -48,7 +52,7 @@ async def upsert_arena(bot: G0T0Bot, arena: Arena) -> Arena:
 
 async def add_player_to_arena(bot: G0T0Bot, interaction: discord.Interaction, player: Player, character: PlayerCharacter, arena: Arena) -> None:
     if character.id in arena.characters:
-        return await interaction.response.send_message(embed=ErrorEmbed(description="Character already in the arena"), ephemeral=True)    
+        return await interaction.response.send_message(embed=ErrorEmbed("Character already in the arena"), ephemeral=True)    
     if player.id in {c.player_id for c in arena.player_characters}:
         remove_char = next((c for c in arena.player_characters if c.player_id == player.id), None)
         arena.player_characters.remove(remove_char)

@@ -1,6 +1,7 @@
+from typing import Mapping, Optional, Type
+
 import discord
 
-from typing import Mapping, Optional, Type
 
 class InteractiveView(discord.ui.View):
     def __init__(self, owner: discord.Member, *args, **kwargs):
@@ -39,7 +40,8 @@ class InteractiveView(discord.ui.View):
         try:
             await self.message.edit(view=None)
             await self.message.delete()
-        except discord.HTTPException:
+        except discord.HTTPException as e:
+            print(e)
             pass
 
     async def send_to(self, destination, *args, **kwargs):

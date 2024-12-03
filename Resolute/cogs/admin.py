@@ -1,16 +1,13 @@
 import asyncio
 import logging
-
-from discord import SlashCommandGroup, Option, ExtensionAlreadyLoaded, ExtensionNotFound, ExtensionNotLoaded, \
-    ApplicationContext
-from discord.ext import commands, tasks
 from os import listdir
 
-from Resolute.constants import ADMIN_GUILDS
-from Resolute.helpers import is_owner
+from discord import (ApplicationContext, ExtensionNotFound, ExtensionNotLoaded, Option, SlashCommandGroup)
+from discord.ext import commands, tasks
+
 from Resolute.bot import G0T0Bot
-from Resolute.helpers import *
-from Resolute.helpers.guilds import get_guild
+from Resolute.constants import ADMIN_GUILDS
+from Resolute.helpers import get_guild, get_player, is_admin, is_owner
 from Resolute.models.views.admin import AdminMenuUI
 from Resolute.models.views.automation_request import AutomationRequestView
 
@@ -48,7 +45,8 @@ class Admin(commands.Cog):
         Returns:
             Interaction: Modal interaction to gather information about the request
         """
-        player = await get_player(self.bot, ctx.author.id, ctx.guild.id if ctx.guild else None)
+
+        player = await get_player(self.bot, ctx.author.id, ctx.guild.id if ctx.guild else None, False, ctx)
         g = await get_guild(self.bot, player.guild_id)
         modal = AutomationRequestView(g)
         await ctx.send_modal(modal)
@@ -85,7 +83,6 @@ class Admin(commands.Cog):
                     self.bot.unload_extension(f'Resolute.cogs.{ext}')
                     self.bot.load_extension(f'Resolute.cogs.{ext}')
             await ctx.respond("All cogs reloaded")
-            await self._reload_sheets(ctx)
         elif str(cog).upper() in ['DB', 'COMPENDIUM']:
             await self._reload_DB(ctx)
             await ctx.respond(f'Done')

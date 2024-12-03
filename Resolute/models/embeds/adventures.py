@@ -44,6 +44,9 @@ class AdventureSettingsEmbed(Embed):
         self.description = f"**Adventure Role**: {ctx.guild.get_role(adventure.role_id).mention}\n"\
                            f"**CC Earned to date**: {adventure.cc}"
         
+        if len(adventure.factions) > 0:
+            self.description += f"\n**Factions**:\n" + "\n".join([f"{ZWSP3}{f.value}" for f in adventure.factions])
+        
         self.add_field(name=f"DM{'s' if len(adventure.dms) > 1 else ''}",
                        value="\n".join([f"{ZWSP3}- {ctx.guild.get_member(dm).mention}" for dm in adventure.dms]),
                        inline=False)

@@ -1,18 +1,19 @@
 import calendar
-import sqlalchemy as sa
-import discord
+from datetime import datetime, timezone
 
+import discord
+import sqlalchemy as sa
 from discord import ApplicationContext
 from marshmallow import Schema, fields, post_load
-from datetime import timezone, datetime
-from sqlalchemy import Column, Integer, BigInteger, String, BOOLEAN, func, TIMESTAMP, and_, select, case
-from discord import ApplicationContext
-from sqlalchemy.sql import FromClause
+from sqlalchemy import (BOOLEAN, TIMESTAMP, BigInteger, Column, Integer,
+                        String, and_, case, func, select)
 from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.sql import FromClause
 
-from Resolute.models.categories import Activity
 from Resolute.compendium import Compendium
 from Resolute.models import metadata
+from Resolute.models.categories import Activity
+from Resolute.models.categories.categories import Faction
 
 
 class DBLog(object):
@@ -27,6 +28,8 @@ class DBLog(object):
         self.activity: Activity = kwargs.get('activity')
         self.notes = kwargs.get('notes')
         self.adventure_id = kwargs.get('adventure_id')
+        self.renown = kwargs.get('renown', 0)
+        self.faction: Faction = kwargs.get('faction')
         self.invalid = kwargs.get('invalid', False)
         self.created_ts = kwargs.get('created_ts', datetime.now(timezone.utc))
 
@@ -49,6 +52,8 @@ log_table = sa.Table(
     Column("activity", Integer, nullable=False),  # ref: > c_activity.id
     Column("notes", String, nullable=True),
     Column("adventure_id", Integer, nullable=True),  # ref: > adventures.id
+    Column("renown", Integer, nullable=True),
+    Column("faction", Integer, nullable=True),
     Column("invalid", BOOLEAN, nullable=False, default=False),
     Column("player_id", BigInteger, nullable=False),
     Column("guild_id", BigInteger, nullable=False)
@@ -65,6 +70,8 @@ class LogSchema(Schema):
     activity = fields.Method(None, "load_activity")
     notes = fields.String(required=False, allow_none=True)
     adventure_id = fields.Integer(required=False, allow_none=True)
+    renown = fields.Integer(required=True)
+    faction = fields.Method(None, "load_faction", allow_none=True)
     invalid = fields.Boolean(required=True)
     player_id = fields.Integer(required=True)
     guild_id = fields.Integer(required=True)
@@ -76,6 +83,9 @@ class LogSchema(Schema):
     @post_load
     def make_log(self, data, **kwargs):
         return DBLog(**data)
+    
+    def load_faction(self, value):
+        return self.compendium.get_object(Faction, value)
 
     def load_activity(self, value):
         return self.compendium.get_object(Activity, value)
@@ -86,6 +96,14 @@ class LogSchema(Schema):
 
 def get_log_by_id(log_id: int) -> FromClause:
     return log_table.select().where(log_table.c.id == log_id)
+
+def get_last_log_by_type(player_id: int, guild_id: int, activity_id: int) -> FromClause:
+    return log_table.select().where(
+        and_(log_table.c.player_id == player_id,
+             log_table.c.guild_id == guild_id,
+             log_table.c.activity == activity_id,
+             log_table.c.invalid == False)
+    ).order_by(log_table.c.id.desc()).limit(1)
 
 def get_log_count_by_player_and_activity(player_id: int, guild_id: int,  activity_id: int) -> FromClause:
     return select([func.count()]).select_from(log_table).where(
@@ -101,6 +119,7 @@ def upsert_log(log: DBLog):
             "notes": log.notes if hasattr(log, "notes") else None,
             "credits": log.credits,
             "cc": log.cc,
+            "renown": log.renown,
             "invalid": log.invalid
         }
 
@@ -119,6 +138,8 @@ def upsert_log(log: DBLog):
         activity=log.activity.id,
         notes=log.notes if hasattr(log, "notes") else None,
         adventure_id=None if not hasattr(log, "adventure_id") else log.adventure_id,
+        renown=log.renown,
+        faction=None if not hasattr(log, "faction") or not log.faction else log.faction.id,
         invalid=log.invalid
     ).returning(log_table)
 
@@ -128,7 +149,7 @@ def get_n_player_logs_query(player_id: int, guild_id: int, n : int) -> FromClaus
     return log_table.select().where(and_(log_table.c.player_id == player_id, log_table.c.guild_id == guild_id)).order_by(log_table.c.id.desc()).limit(n)
 
 def player_stats_query(compendium: Compendium, player_id: int, guild_id: int):
-    new_character_activity = compendium.get_object(Activity, "NEW_CHARACTER")
+    new_character_activity = compendium.get_activity("NEW_CHARACTER")
     activities = [x.id for x in compendium.activity[0].values() if x.value in ["RP", "ARENA", "ARENA_HOST", "GLOBAL", "SNAPSHOT"]]
     activity_columns = [func.sum(case([(log_table.c.activity == act, 1)], else_=0)).label(f"Activity {act}") for act in activities]
 
@@ -146,8 +167,8 @@ def player_stats_query(compendium: Compendium, player_id: int, guild_id: int):
     return query
 
 def character_stats_query(compendium: Compendium, character_id: int):
-    new_character_activity = compendium.get_object(Activity, "NEW_CHARACTER")
-    conversion_activity = compendium.get_object(Activity, "CONVERSION")
+    new_character_activity = compendium.get_activity("NEW_CHARACTER")
+    conversion_activity = compendium.get_activity("CONVERSION")
 
     query = select(log_table.c.character_id,
                    func.count(log_table.c.id).label("#"),

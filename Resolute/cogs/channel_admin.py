@@ -1,6 +1,6 @@
 import logging
 
-from discord import SlashCommandGroup, ApplicationContext
+from discord import ApplicationContext, SlashCommandGroup
 from discord.ext import commands
 
 from Resolute.bot import G0T0Bot

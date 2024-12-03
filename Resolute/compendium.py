@@ -2,6 +2,7 @@ import logging
 from timeit import default_timer as timer
 
 from Resolute.models.categories import *
+from Resolute.models.objects.exceptions import ActivityNotFound, ObjectNotFound
 
 log = logging.getLogger(__name__)
 
@@ -13,7 +14,8 @@ async def get_table_values(conn, comp: CompendiumObject) -> list:
         val = comp.schema().load(row)
 
         d1[val.id] = val
-        key = getattr(val, "value", getattr(val, "avg_level", getattr(val, "name", getattr(val, "cc", None))))
+        attr_list = ["value", "avg_level", "name", "cc", "points"]
+        key = next((getattr(val, attr) for attr in attr_list if hasattr(val, attr)), None)
 
         if key is not None:
             d2[key] = val
@@ -25,9 +27,8 @@ class Compendium:
         self.categories = [
             rarity, char_class, char_archetype,
             char_species, arena_tier, activity, 
-            dashboard_type, cc_conversion, starship_role,
-            starship_size, arena_type, transaction_type, transaction_subtype,
-            level_cost
+            dashboard_type, cc_conversion, arena_type, transaction_type, transaction_subtype,
+            level_cost, faction, activity_points
             ]
 
         for category in self.categories:
@@ -63,8 +64,11 @@ class Compendium:
                             if cat_value.lower().startswith(value.lower()):
                                 return getattr(self, category.key)[0 if isinstance(value, int) else 1][cat_value]
         except:
-            pass
+            raise ObjectNotFound()
         return None
     
     def get_activity(self, activity: str | int = None):
-        return self.get_object(Activity, activity)
+        if act := self.get_object(Activity, activity):
+            return act
+        
+        raise ActivityNotFound(activity)

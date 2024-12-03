@@ -1,12 +1,17 @@
 import calendar
-import discord
-
 from datetime import datetime, timezone
-from Resolute.bot import G0T0Bot
-from Resolute.helpers.guilds import get_guild
-from Resolute.models.embeds.dashboards import RPDashboardEmbed
-from Resolute.models.objects.dashboards import RPDashboardCategory, RefDashboard, RefDashboardSchema, delete_dashboard_query, get_class_census, get_dashboard_by_category_channel_query, get_dashboard_by_post_id, get_dashboards, get_level_distribution, upsert_dashboard_query
+
+import discord
 from texttable import Texttable
+
+from Resolute.bot import G0T0Bot
+from Resolute.helpers import get_guild
+from Resolute.models.embeds.dashboards import RPDashboardEmbed
+from Resolute.models.objects.dashboards import (
+    RefDashboard, RefDashboardSchema, RPDashboardCategory,
+    delete_dashboard_query, get_class_census,
+    get_dashboard_by_category_channel_query, get_dashboard_by_post_id,
+    get_dashboards, get_level_distribution, upsert_dashboard_query)
 
 
 async def get_pinned_post(bot: G0T0Bot, dashboard: RefDashboard) -> discord.Message:

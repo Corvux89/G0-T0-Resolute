@@ -1,15 +1,20 @@
 import logging
 
-from discord import ApplicationContext, Option, SlashCommandGroup
 import discord
+from discord import ApplicationContext, Option, SlashCommandGroup
 from discord.ext import commands
 
 from Resolute.bot import G0T0Bot
-from Resolute.helpers.adventures import get_adventure_from_category, get_adventure_from_role, get_player_adventures, update_dm
-from Resolute.helpers.players import get_player
-from Resolute.models.embeds import ErrorEmbed
+from Resolute.helpers import (get_adventure_from_category,
+                              get_adventure_from_role,
+                              get_faction_autocomplete, get_guild, get_player,
+                              get_player_adventures, get_webhook,
+                              update_activity_points, update_dm)
 from Resolute.models.embeds.adventures import AdventuresEmbed
-from Resolute.models.objects.adventures import Adventure, upsert_adventure_query
+from Resolute.models.objects.adventures import (Adventure,
+                                                upsert_adventure_query)
+from Resolute.models.objects.exceptions import (AdventureNotFound,
+                                                CharacterNotFound, G0T0Error)
 from Resolute.models.views.adventures import AdventureSettingsUI
 
 log = logging.getLogger(__name__)
@@ -28,6 +33,23 @@ class Adventures(commands.Cog):
 
         log.info(f'Cog \'Adventures\' loaded')
 
+    @commands.Cog.listener()
+    async def on_command_error(self, ctx: commands.Context, error):
+        if hasattr(ctx, "bot") and hasattr(ctx.bot, "db") and ctx.guild:
+            if adventure := await get_adventure_from_category(self.bot, ctx.channel.category.id):
+                if ctx.author.id in adventure.dms and (npc := next((npc for npc in adventure.npcs if npc.key == ctx.invoked_with), None)):
+                    guild = await get_guild(self.bot, ctx.guild.id)
+                    player = await get_player(self.bot, ctx.author.id, ctx.guild.id)
+                    content = ctx.message.content.replace(f'>{npc.key}', '')
+                    await player.update_post_stats(self.bot, npc, content)
+                    await player.update_command_count(self.bot, "npc")
+                    webhook = await get_webhook(ctx.channel)
+                    await webhook.send(username=npc.name,
+                                    avatar_url=npc.avatar_url if npc.avatar_url else None,
+                                    content=content)
+                    await update_activity_points(self.bot, player, guild)
+                    await ctx.message.delete()
+
     @commands.slash_command(
         name="adventures",
         description="Shows active adventures for a player"
@@ -44,8 +66,7 @@ class Adventures(commands.Cog):
         player = await get_player(self.bot, member.id, ctx.guild.id if ctx.guild else None)
         
         if not player.characters:
-            return await ctx.respond(embed=ErrorEmbed(description=f"No character information found for {member.mention}"),
-                                        ephemeral=True)
+            raise CharacterNotFound(member)
         
         adventures = await get_player_adventures(self.bot, player)
         
@@ -64,15 +85,14 @@ class Adventures(commands.Cog):
                                                       required=True),
                                role_name: Option(str, description="The name of the Role to be created for adventure"
                                                                   "participants", required=True),
-                               dm: Option(discord.SlashCommandOptionType(6), description="The DM of the adventure. "
-                                                                      "Multiple DM's can be added via the add_dm "
-                                                                      "command", required=True)):
+                               dm: Option(discord.SlashCommandOptionType(6), description="The DM of the adventure.", required=True),
+                               faction1: Option(str, description="First faction this adventure is for", autocomplete=get_faction_autocomplete, required=True),
+                               faction2: Option(str, description="Second faction this adventure is for", autocomplete=get_faction_autocomplete, required=True)):
         await ctx.defer()
 
         # Create the role
         if discord.utils.get(ctx.guild.roles, name=role_name):
-            return await ctx.respond(embed=ErrorEmbed(description=f"Role `@{role_name}` already exists"),
-                                     ephemeral=True)
+            raise G0T0Error(f"Role `@{role_name}` already exists")
         else:
             adventure_role = await ctx.guild.create_role(name=role_name, mentionable=True,
                                                          reason=f"Created by {ctx.author.nick} for adventure"
@@ -157,12 +177,11 @@ class Adventures(commands.Cog):
     @adventure_create.error
     async def create_error(self, ctx, error):
         if isinstance(error, discord.Forbidden):
-            await ctx.send(embed=ErrorEmbed(description='Error: Bot isn\'t allowed to do that (for some reason)'))
+            raise G0T0Error(f"Bot isn't allowed to do that for some reason")
         elif isinstance(error, discord.HTTPException):
-            await ctx.send(embed=ErrorEmbed(description='Error: Creating new role failed, please try again. '
-                                                        'If the problem persists, contact the Senate'))
+            raise G0T0Error(f"Error createing new role")
         elif isinstance(error, discord.InvalidArgument):
-            await ctx.send(embed=ErrorEmbed(description=f'Error: Invalid Argument {error}'))
+            raise G0T0Error(f"Invalid Argument: {error}")
 
     @adventure_commands.command(
         name="manage",
@@ -179,7 +198,7 @@ class Adventures(commands.Cog):
             adventure = await get_adventure_from_category(self.bot, ctx.channel.category.id)
 
         if adventure is None:
-            return await ctx.respond(embed=ErrorEmbed(description=f"No adventure found"))
+            raise AdventureNotFound()
         
         ui = AdventureSettingsUI.new(self.bot, ctx.author, adventure)
         await ui.send_to(ctx)

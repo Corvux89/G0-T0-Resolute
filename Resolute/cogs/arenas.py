@@ -1,22 +1,26 @@
 import logging
-import discord
 
-from discord import ApplicationContext, Option, RawReactionActionEvent
+import discord
+from discord import ApplicationContext, Option
 from discord.commands import SlashCommandGroup
 from discord.ext import commands
 
 from Resolute.bot import G0T0Bot
-from Resolute.constants import CHANNEL_BREAK, DENIED_EMOJI, EDIT_EMOJI
-from Resolute.helpers.arenas import add_player_to_arena, build_arena_post, close_arena, get_arena, get_player_arenas, update_arena_tier, update_arena_view_embed, upsert_arena
-from Resolute.helpers.general_helpers import confirm, get_positivity
-from Resolute.helpers.guilds import get_guild
-from Resolute.helpers.logs import create_log
-from Resolute.helpers.players import get_player
-from Resolute.models.categories.categories import Activity, ArenaTier, ArenaType
-from Resolute.models.embeds import ErrorEmbed
+from Resolute.constants import CHANNEL_BREAK
+from Resolute.helpers import (add_player_to_arena, build_arena_post,
+                              close_arena, confirm, create_log, get_arena,
+                              get_guild, get_player, get_player_arenas,
+                              update_arena_tier, update_arena_view_embed,
+                              upsert_arena)
+from Resolute.models.categories import ArenaTier, ArenaType
 from Resolute.models.embeds.arenas import ArenaPhaseEmbed, ArenaStatusEmbed
 from Resolute.models.objects.arenas import Arena, ArenaPost
-from Resolute.models.views.arena_view import ArenaCharacterSelect, ArenaRequestCharacterSelect, CharacterArenaViewUI
+from Resolute.models.objects.exceptions import (ArenaNotFound,
+                                                CharacterNotFound, G0T0Error,
+                                                RoleNotFound)
+from Resolute.models.views.arena_view import (ArenaCharacterSelect,
+                                              ArenaRequestCharacterSelect,
+                                              CharacterArenaViewUI)
 
 log = logging.getLogger(__name__)
 
@@ -37,48 +41,6 @@ class Arenas(commands.Cog):
         self.bot.add_view(CharacterArenaViewUI.new(self.bot))
         self.bot.add_view(ArenaCharacterSelect(self.bot))
 
-    @commands.Cog.listener()
-    async def on_raw_reaction_add(self, payload: RawReactionActionEvent):
-        if not hasattr(self.bot, "db") or not hasattr(self.bot, "compendium"):
-            return
-
-        guild = await get_guild(self.bot, payload.guild_id)
-
-        if guild.arena_board and payload.channel_id == guild.arena_board.id:
-            user = guild.guild.get_member(payload.user_id)
-            player = await get_player(self.bot, user.id, guild.id)
-
-            if payload.emoji.name in [*EDIT_EMOJI, *DENIED_EMOJI]:
-                message = None
-                try:
-                    message = await guild.guild.get_channel(payload.channel_id).fetch_message(payload.message_id)
-                except:
-                    pass
-
-                if not message or not message.author.bot:
-                    return
-                
-                if message.embeds[0].footer.text != f"{user.id}":
-                    return
-                
-                if payload.emoji.name in EDIT_EMOJI and len(player.characters) <= 1:
-                    return
-                
-                if payload.emoji.name in DENIED_EMOJI:
-                    return await message.delete()
-                    
-                
-                
-                post = ArenaPost(player)
-
-                post.message = message
-
-                ui = ArenaRequestCharacterSelect.new(self.bot, user, player, post)
-                await ui.send_to(user)
-                await message.clear_reactions()
-
-
-
 
     @commands.slash_command(
             name="arena_request",
@@ -89,7 +51,7 @@ class Arenas(commands.Cog):
         g = await get_guild(self.bot, player.guild_id)
 
         if len(player.characters) == 0:
-            return await ctx.respond(embed=ErrorEmbed(description="You need a character first in order to join an arena"))
+            raise CharacterNotFound(ctx.author)
         elif len(player.characters) == 1:
             await ctx.defer()
             arenas = await get_player_arenas(self.bot, player)
@@ -105,7 +67,8 @@ class Arenas(commands.Cog):
             ui = ArenaRequestCharacterSelect.new(self.bot, ctx.author, player)
             await ui.send_to(ctx)
             return await ctx.delete()
-        await ctx.respond(f"Something went wrong", ephemeral=True)
+        
+        raise G0T0Error("Something went wrong")
         
 
     @arena_commands.command(
@@ -118,9 +81,8 @@ class Arenas(commands.Cog):
         arena: Arena = await get_arena(self.bot, ctx.channel_id)
 
         if arena:
-            return await ctx.respond(embed=ErrorEmbed(description=f"{ctx.channel.mention} is already in use\n"
-                                                      "Use `/arena status` to check on the status of the current arena in this channel"),
-                                     ephemeral=True)
+            raise G0T0Error(f"{ctx.channel.mention} is already in use\n"
+                            "Use `/arena status` to check on the status of the current arena in this channel")
         
         if channel_role := discord.utils.get(ctx.guild.roles, name=ctx.channel.name):
             await ctx.author.add_roles(channel_role, reason=f"Claiming {ctx.channel.name}")
@@ -140,8 +102,7 @@ class Arenas(commands.Cog):
 
             await ctx.delete()
         else:
-            return await ctx.respond(embed=ErrorEmbed(description=f"Role @{ctx.channel.name} doesn't exist."),
-                                     ephemeral=True)
+            raise RoleNotFound(ctx.channel.name)
         
 
     @arena_commands.command(
@@ -153,15 +114,13 @@ class Arenas(commands.Cog):
         arena = await get_arena(self.bot, ctx.channel.id)
 
         if arena is None:
-            return await ctx.respond(embed=ErrorEmbed(title=f"{ctx.channel.name} is Free",
-                                                      description=f"There is no active arena in this channel. If you're a host, you can use `/arena claim` to start a new arena"))
+            raise ArenaNotFound()
         elif channel_role := discord.utils.get(ctx.guild.roles, name=ctx.channel.name):
             embed=ArenaStatusEmbed(ctx, arena)
             await update_arena_view_embed(ctx, arena)
             return await ctx.respond(embed=embed)
         else:
-            return await ctx.respond(embed=ErrorEmbed(description=f"Role @{ctx.channel.name} doesn't exist."),
-                                     ephemeral=True)
+            raise RoleNotFound(ctx.channel.name)
 
     @arena_commands.command(
         name="add",
@@ -172,16 +131,15 @@ class Arenas(commands.Cog):
         arena = await get_arena(self.bot, ctx.channel.id)
 
         if arena is None:
-            return await ctx.respond(embed=ErrorEmbed(title=f"{ctx.channel.name} is Free",
-                                                      description=f"There is no active arena in this channel. If you're a host, you can use `/arena claim` to start a new arena"))
+            raise ArenaNotFound()
         elif channel_role := discord.utils.get(ctx.guild.roles, name=ctx.channel.name):
             if member.id == arena.host_id:
-                return await ctx.respond(embed=ErrorEmbed(description=f"They're the host..."), ephemeral=True)
+                raise G0T0Error("Cannot add the host to an arena")
 
             player = await get_player(self.bot, member.id, ctx.guild.id)
 
             if not player.characters:
-                return await ctx.respond(embed=ErrorEmbed(description=f"{member.mention} doesn't have any characters to join"), ephemeral=True)
+                raise CharacterNotFound(member)
             elif len(player.characters) == 1:
                 await add_player_to_arena(self.bot, ctx, player, player.characters[0], arena)
             else:
@@ -189,8 +147,7 @@ class Arenas(commands.Cog):
                 await ui.send_to(ctx)
                 await ctx.delete()
         else:
-            return await ctx.respond(embed=ErrorEmbed(description=f"Role @{ctx.channel.name} doesn't exist."),
-                                     ephemeral=True)
+            raise RoleNotFound(ctx.channel.name)
 
     @arena_commands.command(
         name="remove",
@@ -201,11 +158,10 @@ class Arenas(commands.Cog):
         arena = await get_arena(self.bot, ctx.channel.id)
 
         if arena is None:
-            return await ctx.respond(embed=ErrorEmbed(title=f"{ctx.channel.name} is Free",
-                                                      description=f"There is no active arena in this channel. If you're a host, you can use `/arena claim` to start a new arena"))
+            raise ArenaNotFound()
         elif channel_role := discord.utils.get(ctx.guild.roles, name=ctx.channel.name):
             if member.id == arena.host_id:
-                return await ctx.respond(embed=ErrorEmbed(description=f"They're the host..."), ephemeral=True)
+                raise G0T0Error("Cannot add the host to an arena")
             
             remove_char = next((c for c in arena.player_characters if c.player_id == member.id), None)
             if remove_char:
@@ -220,11 +176,9 @@ class Arenas(commands.Cog):
                 await update_arena_view_embed(ctx, arena)                
                 return await ctx.respond(f"{member.mention} has been removed from the arena.")
             else:
-                return await ctx.respond(embed=ErrorEmbed(description=f"{member.mention} is not a participant in this arena"),
-                                         ephemeral=True) 
+                raise G0T0Error(f"{member.mention} is not an arena participant")
         else:
-            return await ctx.respond(embed=ErrorEmbed(description=f"Role @{ctx.channel.name} doesn't exist."),
-                                     ephemeral=True)
+            raise RoleNotFound(ctx.channel.name)
 
     @arena_commands.command(
         name="phase",
@@ -237,32 +191,25 @@ class Arenas(commands.Cog):
         arena = await get_arena(self.bot, ctx.channel.id)
 
         if arena is None:
-            return await ctx.respond(embed=ErrorEmbed(title=f"{ctx.channel.name} is Free",
-                                                      description=f"There is no active arena in this channel. If you're a host, you can use `/arena claim` to start a new arena"))
+            raise ArenaNotFound()
         elif channel_role := discord.utils.get(ctx.guild.roles, name=ctx.channel.name):
-            arena_activity = self.bot.compendium.get_object(Activity, "ARENA")
-            host_activity = self.bot.compendium.get_object(Activity, "ARENA_HOST")
-            bonus_activity = self.bot.compendium.get_object(Activity, "ARENA_BONUS")
-            g = await get_guild(self.bot, ctx.guild.id)
-
-
             arena.completed_phases += 1
             await upsert_arena(self.bot, arena)
 
             # Host Log
             host = await get_player(self.bot, arena.host_id, ctx.guild.id)
-            await create_log(self.bot, ctx.author, g, host_activity, host)
+            await create_log(self.bot, ctx.author, "ARENA_HOST", host)
             arena.players.append(host)
 
             # Rewards
             for character in arena.player_characters:
                 player = await get_player(self.bot, character.player_id, ctx.guild.id)
-                await create_log(self.bot, ctx.author, g, arena_activity, player,
+                await create_log(self.bot, ctx.author, "ARENA", player,
                                  character=character, notes=result)
                 arena.players.append(player)
 
                 if arena.completed_phases - 1 >= (arena.tier.max_phases / 2) and result == "WIN":
-                    await create_log(self.bot, ctx.author, g, bonus_activity, player,
+                    await create_log(self.bot, ctx.author, "ARENA_BONUS", player,
                                      character=character)
                 
             await update_arena_view_embed(ctx, arena)
@@ -274,8 +221,7 @@ class Arenas(commands.Cog):
                 await ctx.channel.send(CHANNEL_BREAK)
 
         else:
-            return await ctx.respond(embed=ErrorEmbed(description=f"Role @{ctx.channel.name} doesn't exist."),
-                                     ephemeral=True)
+            raise RoleNotFound(ctx.channel.name)
 
     @arena_commands.command(
         name="close",
@@ -286,8 +232,7 @@ class Arenas(commands.Cog):
         arena = await get_arena(self.bot, ctx.channel.id)
 
         if arena is None:
-            return await ctx.respond(embed=ErrorEmbed(title=f"{ctx.channel.name} is Free",
-                                                      description=f"There is no active arena in this channel. If you're a host, you can use `/arena claim` to start a new arena"))
+            raise ArenaNotFound()
         elif channel_role := discord.utils.get(ctx.guild.roles, name=ctx.channel.name):
            
             conf = await confirm(ctx, f"Are you sure you want to close this arena? (Reply with yes/no)", True)
@@ -301,6 +246,5 @@ class Arenas(commands.Cog):
             await ctx.respond(f"Arena closed. This channel is now free for use")
             await ctx.channel.send(CHANNEL_BREAK)
         else:
-            return await ctx.respond(embed=ErrorEmbed(description=f"Role @{ctx.channel.name} doesn't exist."),
-                                     ephemeral=True)
+           raise RoleNotFound(ctx.channel.name)
 

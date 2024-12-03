@@ -1,13 +1,17 @@
+import json
+
 import discord
 import sqlalchemy as sa
-
 from marshmallow import Schema, fields, post_load
-from sqlalchemy import Column, Integer, BigInteger, and_, update
-from sqlalchemy.sql import FromClause
+from sqlalchemy import BigInteger, Column, Integer, String, and_, update
 from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.sql import FromClause
 
+from Resolute.bot import G0T0Bot
 from Resolute.models import metadata
 from Resolute.models.objects.characters import PlayerCharacter
+from Resolute.models.objects.ref_objects import NPC
+
 
 class Player(object):
     characters: list[PlayerCharacter]
@@ -19,6 +23,9 @@ class Player(object):
         self.cc: int = kwargs.get('cc', 0)
         self.div_cc: int = kwargs.get('div_cc', 0)
         self.points: int = kwargs.get('points', 0)
+        self.activity_points: int = kwargs.get('activity_points', 0)
+        self.activity_level: int = kwargs.get('activity_level', 0)
+        self.statistics: str = kwargs.get('statistics', "")
 
         # Virtual Attributes
         self.characters: list[PlayerCharacter] = []
@@ -33,8 +40,82 @@ class Player(object):
         if hasattr(self, "characters") and self.characters:
             return max(self.characters, key=lambda char: char.level)
         return None
+    
+    def get_channel_character(self, channel: discord.TextChannel) -> PlayerCharacter:
+        for char in self.characters:
+            if channel.id in char.channels:
+                return char
             
+    def get_primary_character(self) -> PlayerCharacter:
+        for char in self.characters:
+            if char.primary_character:
+                return char       
+    
+    async def update_command_count(self, bot: G0T0Bot, command: str):
+        stats = json.loads(self.statistics or "{}")
+        if "commands" not in stats:
+            stats["commands"] = {}
 
+        if command not in stats["commands"]:
+            stats["commands"][command] = 0
+
+        stats["commands"][command] += 1
+
+        self.statistics = json.dumps(stats)
+
+        async with bot.db.acquire() as conn:
+            await conn.execute(upsert_player_query(self))
+
+    async def update_post_stats(self, bot: G0T0Bot, character: PlayerCharacter | NPC, post: str, retract: bool = False):
+        stats = json.loads(self.statistics)
+
+        if isinstance(character, PlayerCharacter):
+            key="say"
+            id=character.id   
+        else:
+            key="npc"
+            id=character.key
+
+        if key not in stats:
+            stats[key] = {}
+
+        if f"{id}" not in stats[key]:
+            stats[key][f"{id}"] = {}
+
+
+        if "num_lines" not in stats[key][f"{id}"]:
+            stats[key][f"{id}"]["num_lines"] = 0
+
+        if "num_words" not in stats[key][f"{id}"]:
+            stats[key][f"{id}"]["num_words"] = 0
+
+        if "num_characters" not in stats[key][f"{id}"]:
+            stats[key][f"{id}"]["num_characters"] = 0
+
+        if "count" not in stats[key][f"{id}"]:
+            stats[key][f"{id}"]["count"] = 0
+
+        lines = post.splitlines()
+        words = post.split()
+        characters = len(post)
+
+        if retract:
+            stats[key][f"{id}"]["num_lines"] -= len(lines)
+            stats[key][f"{id}"]["num_words"] -= len(words)
+            stats[key][f"{id}"]["num_characters"] -= characters
+            stats[key][f"{id}"]["count"] -= 1
+        else:
+            stats[key][f"{id}"]["num_lines"] += len(lines)
+            stats[key][f"{id}"]["num_words"] += len(words)
+            stats[key][f"{id}"]["num_characters"] += characters
+            stats[key][f"{id}"]["count"] += 1
+
+        self.statistics = json.dumps(stats)
+
+        async with bot.db.acquire() as conn:
+            await conn.execute(upsert_player_query(self))
+
+        
 
 player_table = sa.Table(
     "players",
@@ -44,7 +125,10 @@ player_table = sa.Table(
     Column("handicap_amount", Integer),
     Column("cc", Integer),
     Column("div_cc", Integer),
-    Column("points", Integer)
+    Column("points", Integer),
+    Column("activity_points", Integer),
+    Column("activity_level", Integer),
+    Column("statistics", String)
 )
 
 class PlayerSchema(Schema):
@@ -54,6 +138,9 @@ class PlayerSchema(Schema):
     cc = fields.Integer()
     div_cc = fields.Integer()
     points = fields.Integer()
+    activity_points = fields.Integer()
+    activity_level = fields.Integer()
+    statistics = fields.String()
 
     @post_load
     def make_discord_player(self, data, **kwargs):
@@ -72,7 +159,7 @@ def get_player_query(player_id: int, guild_id: int = None) -> FromClause:
     )
 
 def reset_div_cc(guild_id: int):
-    return update(player_table).where(player_table.c.guild_id == guild_id).values(div_cc=0)
+    return update(player_table).where(player_table.c.guild_id == guild_id).values(div_cc=0, activity_points=0, activity_level=0)
 
 def upsert_player_query(player: Player):
     insert_statement = insert(player_table).values(
@@ -81,7 +168,10 @@ def upsert_player_query(player: Player):
         handicap_amount=player.handicap_amount,
         cc=player.cc,
         div_cc=player.div_cc,
-        points=player.points
+        points=player.points,
+        activity_points=player.activity_points,
+        activity_level=player.activity_level,
+        statistics=player.statistics
     ).returning(player_table)
 
     update_dict = {
@@ -90,7 +180,10 @@ def upsert_player_query(player: Player):
         'handicap_amount': player.handicap_amount,
         'cc': player.cc,
         'div_cc': player.div_cc,
-        'points': player.points
+        'points': player.points,
+        'activity_points': player.activity_points,
+        'activity_level': player.activity_level,
+        'statistics': player.statistics
     }
 
     upsert_statement = insert_statement.on_conflict_do_update(

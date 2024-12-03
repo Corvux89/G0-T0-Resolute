@@ -13,13 +13,15 @@ ERROR_CHANNEL = os.environ.get("ERROR_CHANNEL")
 
 # Database Stuff
 DB_URL = os.environ.get("DATABASE_URL", "")
+AUTH_TOKEN = os.environ.get("AUTH_TOKEN", "")
+PORT = os.environ.get("PORT", 8080)
 
 # Misc
 THUMBNAIL = "https://cdn.discordapp.com/attachments/1069074273190285353/1070477277852340339/image.png"
 DAYS_OF_WEEK = [("None", "None"), ("Monday", "0"), ("Tuesday", "1"), ("Wednesday", "2"), ("Thursday", "3"), ("Friday", "4"), ("Saturday", "5"), ("Sunday", "6")]
 CHANNEL_BREAK = "```\n​\n```"
 ZWSP3 = "\u200b \u200b \u200b "
-APPROVAL_EMOJI = ['greencheck', '✅']
+APPROVAL_EMOJI = ['✅', 'greencheck']
 DENIED_EMOJI = ['❌']
 NULL_EMOJI = ['◀️', '⏪']
-EDIT_EMOJI = ['✏️', '📝']
+EDIT_EMOJI = ['📝', '✏️']

@@ -1,17 +1,19 @@
-import sqlalchemy as sa
 import discord
-
+import sqlalchemy as sa
 from discord import ApplicationContext
 from marshmallow import Schema, fields, post_load
-from sqlalchemy import Column, Integer, BigInteger, String, BOOLEAN, and_
+from sqlalchemy import BOOLEAN, BigInteger, Column, Integer, String, and_
+from sqlalchemy.dialects.postgresql import ARRAY, insert
 from sqlalchemy.sql import FromClause
-from sqlalchemy.dialects.postgresql import insert, ARRAY
 
 from Resolute.compendium import Compendium
 from Resolute.constants import ZWSP3
-from Resolute.models.categories import CharacterArchetype, CharacterClass, CharacterSpecies, StarshipRole
-from Resolute.models.objects.guilds import PlayerGuild
 from Resolute.models import metadata
+from Resolute.models.categories import (CharacterArchetype, CharacterClass,
+                                        CharacterSpecies)
+from Resolute.models.categories.categories import Faction
+from Resolute.models.objects.guilds import PlayerGuild
+
 
 class PlayerCharacter(object): 
     def __init__(self, **kwargs):
@@ -25,19 +27,26 @@ class PlayerCharacter(object):
         self.reroll = kwargs.get('reroll', False)
         self.active = kwargs.get('active', True)
         self.freeroll_from = kwargs.get('freeroll_from', None)
+        self.primary_character = kwargs.get('primary_character', False)
+        self.channels: list = kwargs.get('channels', [])
+        self.faction: Faction = kwargs.get('faction')
+        self.avatar_url = kwargs.get('avatar_url')
 
         # Virtual Attributes
         self.classes: list[PlayerCharacterClass] = []
-        self.starships: list[CharacterStarship] = []
+        self.renown: list[CharacterRenown] = []
 
+    @property
+    def total_renown(self):
+        total = 0
+
+        if hasattr(self, "renown") and self.renown:
+            total += sum(ren.renown for ren in self.renown)
+        return total
     
     def inline_description(self, compendium: Compendium):
         class_str = "".join([f" {c.get_formatted_class()}" for c in self.classes])
         str = f"**{self.name}** - Level {self.level} {self.species.value} [{class_str}] ({self.credits:,} credits)" 
-
-        if len(self.starships) > 0:
-            str += "\n"
-            str += f"\n".join([f"{ZWSP3}{s.get_formatted_starship(compendium)}" for s in self.starships])
 
         return str
     
@@ -79,7 +88,11 @@ characters_table = sa.Table(
     Column("guild_id", BigInteger, nullable=False),  # ref: > guilds.id
     Column("reroll", BOOLEAN, nullable=True),
     Column("active", BOOLEAN, nullable=False, default=True),
-    Column("freeroll_from", Integer, nullable=True, default=None)
+    Column("freeroll_from", Integer, nullable=True, default=None),
+    Column("primary_character", BOOLEAN, nullable=False, default=False),
+    Column("channels", ARRAY(BigInteger), nullable=False, default=[]),
+    Column("faction", Integer, nullable=True),
+    Column("avatar_url", String, nullable=True)
 )
 
 class CharacterSchema(Schema):
@@ -94,7 +107,10 @@ class CharacterSchema(Schema):
     reroll = fields.Boolean()
     active = fields.Boolean(required=True)
     freeroll_from = fields.Integer(allow_none=True)
-
+    primary_character = fields.Boolean(allow_none=True)
+    channels = fields.List(fields.Integer, allow_none=False)
+    faction = fields.Method(None, "load_faction", allow_none=True)
+    avatar_url = fields.String(required=False, allow_none=True)
 
     def __init__(self, compendium, **kwargs):
         super().__init__(**kwargs)
@@ -106,14 +122,17 @@ class CharacterSchema(Schema):
 
     def load_species(self, value):
         return self.compendium.get_object(CharacterSpecies, value)
+    
+    def load_faction(self, value):
+        return self.compendium.get_object(Faction, value)
 
-def get_active_characters(player_id: int, guild_id: int) -> FromClause:
+def get_active_player_characters(player_id: int, guild_id: int) -> FromClause:
     return characters_table.select().where(
         and_(characters_table.c.player_id == player_id, characters_table.c.guild_id == guild_id,
              characters_table.c.active == True)
     )
 
-def get_all_characters(player_id: int, guild_id: int) -> FromClause:
+def get_all_player_characters(player_id: int, guild_id: int) -> FromClause:
     return characters_table.select().where(and_(characters_table.c.player_id == player_id, characters_table.c.guild_id == guild_id))
 
 def get_player_character_history(player_id: int, guild_id: int) -> FromClause:
@@ -148,7 +167,11 @@ def upsert_character_query(character: PlayerCharacter):
         'guild_id': character.guild_id,
         'reroll': character.reroll,
         'active': character.active,
-        'freeroll_from': character.freeroll_from if hasattr(character, 'freeroll_from') else None
+        'freeroll_from': character.freeroll_from if hasattr(character, 'freeroll_from') else None,
+        "avatar_url": character.avatar_url,
+        "channels": character.channels,
+        "primary_character": character.primary_character,
+        "faction": character.faction.id if character.faction else None
         }
         
         update_statement = characters_table.update().where(characters_table.c.id == character.id).values(**update_dict).returning(characters_table)
@@ -164,7 +187,11 @@ def upsert_character_query(character: PlayerCharacter):
         guild_id=character.guild_id,
         reroll=character.reroll,
         active=character.active,
-        freeroll_from=character.freeroll_from if hasattr(character, "freeroll_from") else None
+        freeroll_from=character.freeroll_from if hasattr(character, "freeroll_from") else None,
+        avatar_url=character.avatar_url,
+        channels=character.channels,
+        primary_character=character.primary_character,
+        faction=character.faction.id if character.faction else None
     ).returning(characters_table)
 
     return insert_statement
@@ -247,79 +274,64 @@ def upsert_class_query(char_class: PlayerCharacterClass):
 
     return insert_statement
 
-class CharacterStarship(object):
+class CharacterRenown(object):
     def __init__(self, **kwargs):
-        self.id = kwargs.get('id')
-        self.character_id: list[int] = kwargs.get('character_id', [])
-        self.name = kwargs.get('name')
-        self.transponder = kwargs.get('transponder')
-        self.starship: StarshipRole = kwargs.get('starship')
-        self.tier = kwargs.get('tier', 0)
-        self.active = kwargs.get('active', True)
+        self.id = kwargs.get("id")
+        self.character_id = kwargs.get("character_id")
+        self.faction: Faction = kwargs.get("faction")
 
-        # Virtual
-        self.owners: list[PlayerCharacter] = []
+        self.renown = kwargs.get("renown", 0)
 
-    def get_formatted_starship(self, compendium):
-        return f"**{self.name}** *(Tier {self.tier} {self.starship.get_size(compendium).value} {self.starship.value})*"
-    
-character_starship_table = sa.Table(
-    "character_starship",
+    def get_formatted_renown(self):
+        return f"**{self.faction.value}**: {max(0, self.renown)}"
+
+renown_table = sa.Table(
+    "renown",
     metadata,
     Column("id", Integer, primary_key=True, autoincrement='auto'),
-    Column("character_id", ARRAY(BigInteger), nullable=False),
-    Column("name", String, nullable=False),
-    Column("transponder", String, nullable=True),
-    Column("starship", Integer, nullable=False),
-    Column("tier", Integer, nullable=True),
-    Column("active", BOOLEAN, nullable=False, default=True)
+    Column("character_id", Integer, nullable=False),  # ref: > characters.id
+    Column("faction", Integer, nullable=False),
+    Column("renown", Integer)
 )
 
-class CharacterStarshipSchema(Schema):
+class RenownSchema(Schema):
     compendium: Compendium
     id = fields.Integer(required=True)
-    character_id = fields.List(fields.Integer, required=True)
-    name = fields.String(required=True)
-    transponder = fields.String(allow_none=True, required=False)
-    starship = fields.Method(None, "load_starship")
-    tier = fields.Integer(required=False, default=None, allow_none=True)
-    active = fields.Boolean(required=True)
+    character_id = fields.Integer(required=True)
+    faction = fields.Method(None, "load_faction")
+    renown = fields.Integer()
 
     def __init__(self, compendium, **kwargs):
         super().__init__(**kwargs)
         self.compendium = compendium
 
     @post_load
-    def make_character_starship(self, data, **kwargs):
-        return CharacterStarship(**data)
+    def make_renown(self, data, **kwargs):
+        return CharacterRenown(**data)
 
-    def load_starship(self, value):
-        return self.compendium.get_object(StarshipRole, value)
+    def load_faction(self, value):
+        return self.compendium.get_object(Faction, value)
 
-def get_character_starships(char_id: int) -> FromClause:
-    return character_starship_table.select().where(
-        and_(character_starship_table.c.character_id.contains([char_id]), character_starship_table.c.active == True)
-    ).order_by(character_starship_table.c.id.asc())
+def get_character_renown(char_id: int) -> FromClause:
+    return renown_table.select().where(
+        renown_table.c.character_id == char_id
+    ).order_by(renown_table.c.id.asc())
 
-def upsert_starship_query(starship: CharacterStarship):
-    if hasattr(starship, "id") and starship.id is not None:
+def upsert_character_renown_query(renown: CharacterRenown):
+    if hasattr(renown, "id") and renown.id is not None:
         update_dict = {
-            "character_id": starship.character_id,
-            "name": starship.name,
-            "transponder": starship.transponder,
-            "active": starship.active,
-            "tier": starship.tier
+            "character_id": renown.character_id,
+            "faction": renown.faction.id,
+            "renown": renown.renown
         }
 
-        update_statement = character_starship_table.update().where(character_starship_table.c.id == starship.id).values(**update_dict).returning(character_starship_table)
+        update_statement = renown_table.update().where(renown_table.c.id == renown.id).values(**update_dict).returning(renown_table)
         return update_statement
-    
-    insert_statement = insert(character_starship_table).values(
-        character_id=starship.character_id,
-        name=starship.name,
-        starship=starship.starship.id,
-        active=starship.active,
-        tier=starship.tier
-    ).returning(character_starship_table)
+
+    insert_statement = insert(renown_table).values(
+        character_id=renown.character_id,
+        faction=renown.faction.id,
+        renown=renown.renown
+    ).returning(renown_table)
 
     return insert_statement

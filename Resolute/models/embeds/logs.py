@@ -10,7 +10,7 @@ from Resolute.models.objects.characters import PlayerCharacter
 
 
 class LogEmbed(Embed):
-    def __init__(self, log_entry: DBLog, author: Member, member: Member, character: PlayerCharacter = None, show_values: bool = False):
+    def __init__(self, bot: G0T0Bot, log_entry: DBLog, author: Member, member: Member, character: PlayerCharacter = None, show_values: bool = False):
         super().__init__(title=f"{log_entry.activity.value} Logged - {character.name if character else member.display_name}",
                          color=Color.random(),
                          timestamp=log_entry.created_ts)
@@ -22,11 +22,15 @@ class LogEmbed(Embed):
 
         self.description += f"**Character**: {character.name}\n" if character else ''
 
+        self.description += f"**Faction**: {log_entry.faction.value}\n" if log_entry.faction else ''
+
         if show_values:
             if log_entry.cc:
                 self.description += f"**Chain Codes**: {log_entry.cc:,}\n"
             if log_entry.credits:
                 self.description += f"**Credits**: {log_entry.credits:,}\n"
+            if log_entry.renown:
+                self.description += f"**Renown**: {log_entry.renown}"
         
         if log_entry.notes:
             self.description += f"**Notes**: {log_entry.notes}\n"
@@ -53,7 +57,7 @@ class LogStatsEmbed(Embed):
             
             self.add_field(
                 name="Activity Breakdown",
-                value="\n".join([f"{bot.compendium.get_object(Activity, int(a.replace('Activity ', ''))).value}: {v}" for a, v in player_stats.items() if "Activity" in a])
+                value="\n".join([f"{bot.compendium.get_activity(int(a.replace('Activity ', ''))).value}: {v}" for a, v in player_stats.items() if "Activity" in a])
             )
 
 class LogHxEmbed(Embed):
@@ -76,8 +80,13 @@ class LogHxEmbed(Embed):
                     f"**Character**: {character.name if character else 'None'}{' (*inactive*)' if character and not character.active else ''}\n"\
                     f"**Activity:** {log.activity.value}\n"\
                     f"**Chain Codes**: {log.cc:,}\n"\
-                    f"**Credits**: {log.credits:,}\n"\
-                    f"**Invalidated?**: {log.invalid}\n"\
-                    f"{f'**Notes**: {log.notes}' if log.notes else ''}"
+                    f"**Credits**: {log.credits:,}\n"
+            
+            if log.faction:
+                value += (f"**Renown**: {log.renown}\n"
+                          f"**Faction**: {log.faction.value}\n")
+                
+            value += (f"**Invalidated?**: {log.invalid}\n"\
+                      f"{f'**Notes**: {log.notes}' if log.notes else ''}")
             
             self.add_field(name=f"Log # {log.id} - <t:{log.epoch_time}>", value=value, inline=False)

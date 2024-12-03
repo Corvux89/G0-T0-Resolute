@@ -215,58 +215,6 @@ class CodeConversionSchema(Schema):
 
 cc_conversion = CompendiumObject("cc_conversion", CodeConversion, c_code_conversion_table, CodeConversionSchema)
 
-# Starship Role
-c_starship_role_table = sa.Table(
-    "c_starship_role",
-    metadata,
-    Column("id", Integer, primary_key=True),
-    Column("value", String, nullable=False),
-    Column("size", Integer, )
-)
-
-class StarshipRole(object):
-    def __init__(self, id, value, size):
-        self.id = id
-        self.value = value
-        self.size = size
-
-    def get_size(self, compendium):
-        return compendium.get_object(StarshipSize, self.size)
-
-class StarshipRoleSchema(Schema):
-    id = fields.Integer(data_key="id", required=True)
-    value = fields.String(data_key="value", required=True)
-    size = fields.Integer(data_key="size", required=True)
-
-    @post_load
-    def make_starship_role(self, data, **kwargs):
-        return StarshipRole(**data)
-    
-starship_role = CompendiumObject("starship_role", StarshipRole, c_starship_role_table, StarshipRoleSchema)
-
-# Starship Size
-c_starship_size_table = sa.Table(
-    "c_starship_size",
-    metadata,
-    Column("id", Integer, primary_key=True),
-    Column("value", String, nullable=False)
-)
-
-class StarshipSize(object):
-    def __init__(self, id, value):
-        self.id = id
-        self.value = value
-
-class StarshipSizeSchema(Schema):
-    id = fields.Integer(data_key="id", required=True)
-    value = fields.String(data_key="value", required=True)
-
-    @post_load
-    def make_starship_size(self, data, **kwargs):
-        return StarshipSize(**data)
-    
-starship_size = CompendiumObject("starship_size", StarshipSize, c_starship_size_table, StarshipSizeSchema)
-
 # Arena Type
 c_arena_type_table = sa.Table(
     "c_arena_type",
@@ -364,3 +312,49 @@ class LevelCostSchema(Schema):
         return LevelCost(**data)
     
 level_cost = CompendiumObject("level_cost", LevelCost, c_level_cost_table, LevelCostSchema)
+
+# Factions
+c_factions = sa.Table(
+    "c_factions",
+    metadata,
+    Column("id", Integer, primary_key=True),
+    Column("value", String, nullable=False)
+)
+
+class Faction(object):
+    def __init__(self, id, value):
+        self.id = id
+        self.value = value
+
+class FactionSchema(Schema):
+    id = fields.Integer(data_key="id", required=True)
+    value = fields.String(data_key="value", required=True)
+
+    @post_load
+    def make_faction(self, data, **kwargs):
+        return Faction(**data)
+    
+faction = CompendiumObject("faction", Faction, c_factions, FactionSchema)
+
+# Activity Points
+c_activity_points = sa.Table(
+    "c_activity_points",
+    metadata,
+    Column("id", Integer, primary_key=True),
+    Column("points", Integer, nullable=False)
+)
+
+class ActivityPoints(object):
+    def __init__(self, id, points):
+        self.id = id
+        self.points = points
+
+class ActivityPointsSchema(Schema):
+    id = fields.Integer(data_key="id", required=True)
+    points = fields.Integer(data_key="points", required=True)
+
+    @post_load
+    def make_activity_points(self, data, **kwargs):
+        return ActivityPoints(**data)
+    
+activity_points = CompendiumObject("activity_points", ActivityPoints, c_activity_points, ActivityPointsSchema)

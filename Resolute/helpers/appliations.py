@@ -1,10 +1,18 @@
 import re
+
 import aiopg
 import discord
 
 from Resolute.bot import G0T0Bot
 from Resolute.helpers.characters import get_character
-from Resolute.models.objects.applications import AppBackground, AppBaseScores, AppClass, AppSpecies, ApplicationSchema, LevelUpApplication, NewCharacterApplication, delete_player_application, get_player_application, insert_player_application
+from Resolute.models.objects.applications import (AppBackground, AppBaseScores,
+                                                  AppClass, ApplicationSchema,
+                                                  AppSpecies,
+                                                  LevelUpApplication,
+                                                  NewCharacterApplication,
+                                                  delete_player_application,
+                                                  get_player_application,
+                                                  insert_player_application)
 
 
 async def upsert_application(db: aiopg.sa.Engine, player_id: int, application: str = None) -> None:

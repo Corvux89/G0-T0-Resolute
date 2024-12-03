@@ -8,3 +8,5 @@ numpy
 d20
 pillow
 discord
+requests
+quart

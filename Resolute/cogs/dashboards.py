@@ -1,17 +1,20 @@
 import logging
-import discord.utils
-import discord
+from timeit import default_timer as timer
 
+import discord
+import discord.utils
 from discord import ApplicationContext, SlashCommandGroup
 from discord.ext import commands, tasks
-from timeit import default_timer as timer
 
 from Resolute.bot import G0T0Bot
 from Resolute.constants import DASHBOARD_REFRESH_INTERVAL, ZWSP3
-from Resolute.helpers.dashboards import delete_dashboard, get_dashboard_from_category, get_pinned_post, update_dashboard
-from Resolute.helpers.guilds import get_guild
+from Resolute.helpers import (delete_dashboard, get_dashboard_from_category,
+                              get_guild, get_pinned_post, update_dashboard)
 from Resolute.models.embeds.dashboards import RPDashboardEmbed
-from Resolute.models.objects.dashboards import RPDashboardCategory, RefDashboard, RefDashboardSchema, get_dashboards
+from Resolute.models.objects.dashboards import (RefDashboard,
+                                                RefDashboardSchema,
+                                                RPDashboardCategory,
+                                                get_dashboards)
 from Resolute.models.views.dashboards import DashboardSettingsUI
 
 log = logging.getLogger(__name__)
@@ -53,7 +56,6 @@ class Dashboards(commands.Cog):
             
             if dashboard.dashboard_type.value.upper() == "RP":
                 embed = post_message.embeds[0]
-                # pre_channels = [self.bot.get_channel(self.strip_field(x))  for x in [x.value if "Archivist" in x.name else "" for x in embed.fields][0].split('\n')]
 
                 archivist_field = RPDashboardCategory(title="Archivist",
                                                       name="<:pencil:989284061786808380> -- Awaiting Archivist",

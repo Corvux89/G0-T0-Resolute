@@ -1,11 +1,12 @@
-import discord
 import logging
-
-from discord import ChannelType, SelectOption
 from typing import Mapping
 
+import discord
+from discord import ChannelType, SelectOption
+
 from Resolute.bot import G0T0Bot
-from Resolute.helpers.dashboards import get_dashboard_from_post, get_guild_dashboards, update_dashboard, upsert_dashboard
+from Resolute.helpers import (get_dashboard_from_post, get_guild_dashboards,
+                              update_dashboard, upsert_dashboard)
 from Resolute.models.categories.categories import DashboardType
 from Resolute.models.embeds import ErrorEmbed
 from Resolute.models.embeds.dashboards import DashboardEditEmbed
@@ -62,7 +63,6 @@ class DashboardSettingsUI(DashboardSettings):
         else:
             self.remove_item(self.dashboard_select)
             self.remove_item(self.manage_dashboard)
-            # self.remove_item(self.delete_dashboard)
 
     async def get_content(self) -> Mapping:
         return {"embed": None, "content": "Select an Option:\n"}
@@ -143,7 +143,7 @@ class _ManageDashboardUI(DashboardSettings):
         channel: discord.TextChannel = chan.values[0]
 
         if hasattr(channel, "category_id") and channel.category_id != self.dashboard.category_channel_id:
-            await interaction.channel.send(embed=ErrorEmbed(description=f"Channel not in this dashbaords category"), delete_after=5)
+            await interaction.channel.send(embed=ErrorEmbed(f"Channel not in this dashbaords category"), delete_after=5)
         else:
             self.channel = channel
         await self.refresh_content(interaction)
@@ -151,9 +151,9 @@ class _ManageDashboardUI(DashboardSettings):
     @discord.ui.button(label="Add Exclusion", style=discord.ButtonStyle.primary, row=2)
     async def add_exclusion(self, _: discord.ui.Button, interaction: discord.Interaction):
         if not self.channel:
-            await interaction.channel.send(embed=ErrorEmbed(description=f"Select a channel to exclude"), delete_after=5)
+            await interaction.channel.send(embed=ErrorEmbed(f"Select a channel to exclude"), delete_after=5)
         elif self.channel.id in self.dashboard.excluded_channel_ids:
-            await interaction.channel.send(embed=ErrorEmbed(description=f"Channel already excluded"), delete_after=5)
+            await interaction.channel.send(embed=ErrorEmbed(f"Channel already excluded"), delete_after=5)
         else:
             self.dashboard.excluded_channel_ids.append(self.channel.id)
             await upsert_dashboard(self.bot, self.dashboard)
@@ -162,9 +162,9 @@ class _ManageDashboardUI(DashboardSettings):
     @discord.ui.button(label="Remove Exclusion", style=discord.ButtonStyle.primary, row=2)
     async def remove_exclusion(self, _: discord.ui.Button, interaction: discord.Interaction):
         if not self.channel:
-            await interaction.channel.send(embed=ErrorEmbed(description=f"Select a channel to exclude"), delete_after=5)
+            await interaction.channel.send(embed=ErrorEmbed(f"Select a channel to exclude"), delete_after=5)
         elif self.channel.id not in self.dashboard.excluded_channel_ids:
-            await interaction.channel.send(embed=ErrorEmbed(description=f"Channel not excluded"), delete_after=5)
+            await interaction.channel.send(embed=ErrorEmbed(f"Channel not excluded"), delete_after=5)
         else:
             self.dashboard.excluded_channel_ids.remove(self.channel.id)
             await upsert_dashboard(self.bot, self.dashboard)

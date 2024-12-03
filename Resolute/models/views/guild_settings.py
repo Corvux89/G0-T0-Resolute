@@ -1,19 +1,21 @@
 import re
+
 import discord
-
-
-from discord.ui import Modal, InputText
 from discord import SelectOption
+from discord.ui import InputText, Modal
 
 from Resolute.bot import G0T0Bot
 from Resolute.constants import DAYS_OF_WEEK
-from Resolute.helpers.general_helpers import get_positivity
-from Resolute.helpers.guilds import delete_weekly_stipend, get_guild_internal_date, get_guild_stipends, get_weekly_stipend, update_guild, update_weekly_stipend
+from Resolute.helpers import (delete_weekly_stipend, get_guild_internal_date,
+                              get_guild_stipends, get_positivity,
+                              get_weekly_stipend, update_guild,
+                              update_weekly_stipend)
+from Resolute.models.embeds import ErrorEmbed
 from Resolute.models.embeds.guilds import GuildEmbed, ResetEmbed
 from Resolute.models.objects.guilds import PlayerGuild
 from Resolute.models.objects.ref_objects import RefWeeklyStipend
-from Resolute.models.embeds import ErrorEmbed
 from Resolute.models.views.base import InteractiveView
+from Resolute.models.views.npc import NPCSettingsUI
 
 
 class GuildSettings(InteractiveView):
@@ -79,6 +81,11 @@ class _GuildSettings2(GuildSettings):
         modal = NewPlayerMessageModal(self.guild)
         await self.prompt_modal(interaction, modal)
         await self.refresh_content(interaction)
+
+    @discord.ui.button(label="NPCs", style=discord.ButtonStyle.primary, row=1)
+    async def npcs(self, _: discord.ui.Button, interaction: discord.Interaction):
+        view = NPCSettingsUI.new(self.bot, self.owner, self.guild, _GuildSettings2)
+        await view.send_to(interaction)
 
     @discord.ui.button(label="Back", style=discord.ButtonStyle.grey, row=3)
     async def back(self, _: discord.ui.Button, interaction: discord.Interaction):
@@ -225,7 +232,7 @@ class GuildLimitsModal(Modal):
         
 
         if len(err_str) > 0:
-            await interaction.channel.send(embed=ErrorEmbed(description="\n".join(err_str)), delete_after=5)
+            await interaction.channel.send(embed=ErrorEmbed("\n".join(err_str)), delete_after=5)
 
         await interaction.response.defer()
 
@@ -302,7 +309,7 @@ class ServerDateModal(Modal):
             try:
                 self.guild.server_date = get_guild_internal_date(self.guild, int(self.children[2].value), self.guild.calendar.index(month)+1, int(self.children[0].value))
             except:
-                await interaction.channel.send(embed=ErrorEmbed(description=f"Error setting server date"), delete_after=5)
+                await interaction.channel.send(embed=ErrorEmbed(f"Error setting server date"), delete_after=5)
     
         await interaction.response.defer()
         self.stop()

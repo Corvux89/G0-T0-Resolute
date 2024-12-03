@@ -44,7 +44,7 @@ class G0T0Bot(commands.Bot):
 
         web_start = timer()        
         loop = asyncio.get_event_loop()
-        loop.create_task(self.web_app.run_task(port=PORT))
+        loop.create_task(self.web_app.run_task(host="0.0.0.0", port=PORT))
         web_end = timer()
 
         log.info(f"Time to create web server: {web_end-web_start}")                

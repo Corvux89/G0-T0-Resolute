@@ -78,6 +78,7 @@ yarl==1.8.2
     # via aiohttp
 requests==2.32.3
 quart==0.19.9
+uvicorn
 
 # The following packages are considered to be unsafe in a requirements file:
 # pip

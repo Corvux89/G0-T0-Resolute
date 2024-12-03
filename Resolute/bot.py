@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import signal
 from threading import Thread
 import aiopg.sa
 from aiopg.sa import create_engine
@@ -51,3 +52,23 @@ class G0T0Bot(commands.Bot):
 
         log.info(f"Logged in as {self.user} (ID: {self.user.id})")
         log.info("------")
+
+    async def close(self):
+        log.info("Shutting down bot and web server...")
+        if hasattr(self, 'web_task'):
+            self.web_task.cancel()  
+            try:
+                await self.web_task
+            except asyncio.CancelledError:
+                pass
+
+        if hasattr(self, 'db'):
+            self.db.close()  
+            await self.db.wait_closed()
+
+        await super().close()  
+
+    def run(self, *args, **kwargs):
+        for sig in (signal.SIGINT, signal.SIGTERM):
+            self.loop.add_signal_handler(sig, lambda: asyncio.create_task(self.close()))
+        super().run(*args, **kwargs)

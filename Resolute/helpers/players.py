@@ -3,7 +3,6 @@ import discord
 from Resolute.bot import G0T0Bot
 from Resolute.helpers.characters import get_characters
 from Resolute.helpers.general_helpers import get_selection
-from Resolute.models.categories import Activity
 from Resolute.models.objects.logs import get_log_count_by_player_and_activity
 from Resolute.models.objects.players import (Player, PlayerSchema,
                                              get_player_query,

@@ -58,7 +58,7 @@ async def author_rewards(bot: G0T0Bot, author: discord.Member, guild: PlayerGuil
         player.points = max(0, player.points - (guild.reward_threshold * qty))
 
         if guild.archivist_channel:
-            await guild.archivist_channel.send(embed=LogEmbed(reward_log, bot.user, player.member, None, True))
+            await guild.archivist_channel.send(embed=LogEmbed(bot, reward_log, bot.user, player.member, None, True))
 
     async with bot.db.acquire() as conn:
             await conn.execute(upsert_player_query(player))

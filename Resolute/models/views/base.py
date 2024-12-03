@@ -40,7 +40,8 @@ class InteractiveView(discord.ui.View):
         try:
             await self.message.edit(view=None)
             await self.message.delete()
-        except discord.HTTPException:
+        except discord.HTTPException as e:
+            print(e)
             pass
 
     async def send_to(self, destination, *args, **kwargs):

@@ -31,7 +31,6 @@ class G0T0Bot(commands.Bot):
         self.compendium = Compendium()
         self.web_app = Quart(__name__)
 
-
     async def on_ready(self):
         db_start = timer()
         self.db = await create_engine(DB_URL)

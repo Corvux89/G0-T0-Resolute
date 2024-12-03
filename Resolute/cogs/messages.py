@@ -17,10 +17,10 @@ from Resolute.models.categories.categories import CodeConversion
 from Resolute.models.embeds.logs import LogEmbed
 from Resolute.models.objects.arenas import ArenaPost
 from Resolute.models.objects.exceptions import G0T0Error, TransactionError
-from Resolute.models.objects.logs import upsert_log
 from Resolute.models.views.arena_view import ArenaRequestCharacterSelect
 from Resolute.models.views.character_view import SayEditModal
 from Resolute.models.views.market import TransactionPromptUI
+from Resolute.models.views.messages import MessageLogUI
 
 log = logging.getLogger(__name__)
 
@@ -29,7 +29,6 @@ def setup(bot: commands.Bot):
 
 
 class Messages(commands.Cog):
-    # TODO: Setup approve to work with RP/Snapshots
     bot: G0T0Bot
 
     def __init__(self, bot):
@@ -175,6 +174,10 @@ class Messages(commands.Cog):
                                                     ignore_handicap=True)
                     
                     await message.edit(content="", embed=LogEmbed(log_entry, ctx.author, transaction.player.member, transaction.character, True))
+
+        elif guild.archivist_role and guild.archivist_role.mention in message.content and len(message.mentions) > 0:
+            ui = await MessageLogUI.new(self.bot, ctx.author, message)
+            await ui.send_to(ctx)
         
         await ctx.delete()
 

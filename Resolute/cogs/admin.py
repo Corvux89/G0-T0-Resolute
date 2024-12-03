@@ -1,15 +1,12 @@
 import asyncio
 import logging
 from os import listdir
-import re
 
-from discord import (ApplicationContext, ExtensionNotFound, ExtensionNotLoaded, Message,
-                     Option, SlashCommandGroup)
+from discord import (ApplicationContext, ExtensionNotFound, ExtensionNotLoaded, Option, SlashCommandGroup)
 from discord.ext import commands, tasks
-from quart import abort, jsonify, request
 
 from Resolute.bot import G0T0Bot
-from Resolute.constants import ADMIN_GUILDS, AUTH_TOKEN, ERROR_CHANNEL
+from Resolute.constants import ADMIN_GUILDS
 from Resolute.helpers import get_guild, get_player, is_admin, is_owner
 from Resolute.models.views.admin import AdminMenuUI
 from Resolute.models.views.automation_request import AutomationRequestView
@@ -28,18 +25,6 @@ class Admin(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         log.info(f'Cog \'Admin\' loaded')
-
-        @self.bot.web_app.route('/reload', methods=['POST'])
-        async def trigger():
-            try:
-                data = await request.json
-            except:
-                return abort(401)
-            if (auth_token := request.headers.get('auth-token')) and auth_token == AUTH_TOKEN:
-                await self.bot.compendium.reload_categories(self.bot)
-                await self.bot.get_channel(int(ERROR_CHANNEL)).send(data['text'])
-                return jsonify({'text': 'Compendium Reloaded!'}), 200
-            return abort(403)
 
     @commands.Cog.listener()
     async def on_db_connected(self):
@@ -98,7 +83,6 @@ class Admin(commands.Cog):
                     self.bot.unload_extension(f'Resolute.cogs.{ext}')
                     self.bot.load_extension(f'Resolute.cogs.{ext}')
             await ctx.respond("All cogs reloaded")
-            await self._reload_sheets(ctx)
         elif str(cog).upper() in ['DB', 'COMPENDIUM']:
             await self._reload_DB(ctx)
             await ctx.respond(f'Done')

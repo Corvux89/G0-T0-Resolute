@@ -13,6 +13,7 @@ from Resolute.models.views.automation_request import AutomationRequestView
 
 log = logging.getLogger(__name__)
 
+# TODO: Reset financials monthly
 
 def setup(bot: commands.Bot):
     bot.add_cog(Admin(bot))
@@ -98,6 +99,10 @@ class Admin(commands.Cog):
 
             self.bot.load_extension(f'Resolute.cogs.{cog}')
             await ctx.respond(f'Cog {cog} reloaded')
+
+    @commands.command(name="dev")
+    async def dev(self, ctx: ApplicationContext):        
+        await ctx.send("here")
 
     # --------------------------- #
     # Private Methods

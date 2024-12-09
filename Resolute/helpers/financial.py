@@ -7,7 +7,6 @@ async def get_financial_data(bot: G0T0Bot) -> Financial:
     async with bot.db.acquire() as conn:
         results = await conn.execute(get_financial_query())
         row = await results.first()
-
     
     fin = FinancialSchema().load(row)
 

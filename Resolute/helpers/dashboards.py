@@ -130,7 +130,13 @@ async def get_level_distribution_data(bot: G0T0Bot) -> []:
         async for row in conn.execute(get_level_distribution()):
             result = dict(row)
             data.append([result['level'], result['#']])
-    return data    
+    return data
+
+async def update_financial_dashboards(bot: G0T0Bot):
+    dashboards = await get_financial_dashboards(bot)
+
+    for d in dashboards:
+        await update_dashboard(bot, d)
 
 async def update_dashboard(bot: G0T0Bot, dashboard: RefDashboard):
     original_message = await get_pinned_post(bot, dashboard)
@@ -219,7 +225,7 @@ async def update_dashboard(bot: G0T0Bot, dashboard: RefDashboard):
         shadow_offset = 10
 
         # Calculate progress
-        progress = min(fin.monthly_total / fin.monthly_goal, 1)  # Cap progress at 100% for the main bar
+        progress = min(fin.adjusted_total / fin.monthly_goal, 1)  # Cap progress at 100% for the main bar
 
         shadow = Image.new("RGBA", background.size, (0, 0, 0, 0))
         shadow_draw = ImageDraw.Draw(shadow)
@@ -256,7 +262,7 @@ async def update_dashboard(bot: G0T0Bot, dashboard: RefDashboard):
         background.save("progress.png")
 
         embed = discord.Embed(title="G0-T0 Financial Progress",
-                              description=f"Current Monthly Progress: ${fin.monthly_total:.2f}\n"
+                              description=f"Current Monthly Progress: ${fin.adjusted_total:.2f}\n"
                                             f"Monthly Goal: ${fin.monthly_goal:.2f}\n"
                                             f"Reserve: ${fin.reserve:.2f}",
                               color=discord.Color.gold(),

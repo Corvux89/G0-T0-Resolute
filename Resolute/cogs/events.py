@@ -11,9 +11,7 @@ from Resolute.constants import ERROR_CHANNEL
 from Resolute.helpers import (get_guild, get_player, get_player_adventures,
                               get_player_arenas, process_message,
                               upsert_application)
-from Resolute.helpers.dashboards import get_financial_dashboards, update_dashboard
-from Resolute.helpers.financial import get_financial_data, update_financial_data
-from Resolute.helpers.store import get_store_items
+from Resolute.helpers.events import handle_entitlements
 from Resolute.models.embeds import ErrorEmbed
 from Resolute.models.embeds.events import MemberLeaveEmbed
 from Resolute.models.objects.exceptions import G0T0CommandError, G0T0Error
@@ -178,39 +176,11 @@ class Events(commands.Cog):
 
     @commands.Cog.listener()
     async def on_entitlement_create(self, entitlement: discord.Entitlement):
-        store_items = await get_store_items(self.bot)        
-        fin = await get_financial_data(self.bot)
-
-        if store := next((s for s in store_items if s.sku == entitlement.sku_id), None):
-            if fin.monthly_total + store.user_cost > fin.monthly_goal:
-                fin.reserve += min(store.user_cost, fin.monthly_goal - (fin.monthly_total + store.user_cost))
-
-            fin.monthly_total += store.user_cost
-        await update_financial_data(self.bot, fin)
-
-
-        dashboards = await get_financial_dashboards(self.bot)
-
-        for d in dashboards:
-            await update_dashboard(self.bot, d)
+       await handle_entitlements(self.bot, entitlement)
 
     @commands.Cog.listener()
     async def on_entitlement_update(self, entitlement: discord.Entitlement):
-        store_items = await get_store_items(self.bot)        
-        fin = await get_financial_data(self.bot)
-
-        if store := next((s for s in store_items if s.sku == entitlement.sku_id), None):
-            if fin.monthly_total + store.user_cost > fin.monthly_goal:
-                fin.reserve += min(store.user_cost, fin.monthly_goal - (fin.monthly_total + store.user_cost))
-
-            fin.monthly_total += store.user_cost
-        await update_financial_data(self.bot, fin)
-
-
-        dashboards = await get_financial_dashboards(self.bot)
-
-        for d in dashboards:
-            await update_dashboard(self.bot, d)
+        await handle_entitlements(self.bot, entitlement)
         
 
         

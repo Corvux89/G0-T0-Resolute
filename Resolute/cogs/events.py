@@ -20,7 +20,6 @@ from Resolute.models.objects.exceptions import G0T0CommandError, G0T0Error
 
 log = logging.getLogger(__name__)
 
-# TODO: Entitlement resub event
 # TODO: Entitlement Rewards
 
 
@@ -194,5 +193,24 @@ class Events(commands.Cog):
 
         for d in dashboards:
             await update_dashboard(self.bot, d)
+
+    @commands.Cog.listener()
+    async def on_entitlement_update(self, entitlement: discord.Entitlement):
+        store_items = await get_store_items(self.bot)        
+        fin = await get_financial_data(self.bot)
+
+        if store := next((s for s in store_items if s.sku == entitlement.sku_id), None):
+            if fin.monthly_total + store.user_cost > fin.monthly_goal:
+                fin.reserve += min(store.user_cost, fin.monthly_goal - (fin.monthly_total + store.user_cost))
+
+            fin.monthly_total += store.user_cost
+        await update_financial_data(self.bot, fin)
+
+
+        dashboards = await get_financial_dashboards(self.bot)
+
+        for d in dashboards:
+            await update_dashboard(self.bot, d)
+        
 
         

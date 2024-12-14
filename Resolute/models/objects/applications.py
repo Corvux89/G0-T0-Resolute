@@ -111,13 +111,14 @@ class NewCharacterApplication(object):
         self.background: AppBackground = kwargs.get('background', AppBackground())
         self.credits = kwargs.get('credits', "0")
         self.homeworld = kwargs.get('homeworld',"")
-        self.motivation = kwargs.get('motivation',"")
+        self.join_motivation = kwargs.get('join_motivation',"")
+        self.good_motivation = kwargs.get("good_motivation", "")
         self.link = kwargs.get('link',"")
         self.hp = kwargs.get('hp',"")
         self.level = kwargs.get('level', "1")
 
     def can_submit(self):
-        if 'Complete' in self.base_scores.status() and 'Complete' in self.species.status() and 'Complete' in self.char_class.status() and 'Complete' in self.background.status() and self.motivation != '' and self.name != '' and self.link != '' and self.homeworld != '':
+        if 'Complete' in self.base_scores.status() and 'Complete' in self.species.status() and 'Complete' in self.char_class.status() and 'Complete' in self.background.status() and self.join_motivation != '' and self.name != '' and self.link != '' and self.homeworld != '' and self.good_motivation != '':
             return True
         else:
             return False
@@ -156,7 +157,8 @@ class NewCharacterApplication(object):
             f"Background: {self.background.equipment}\n"
             f"Credits: {self.credits}\n\n"
             f"**Homeworld:** {self.homeworld}\n"
-            f"**Motivation for working with the New Republic:** {self.motivation}\n\n"
+            f"**Motivation for joining the Wardens of the Sky:** {self.join_motivation}\n\n"
+            f"**Motivation for doing good:** {self.good_motivation}\n\n"
             f"**Link:** {self.link}"
         )
     

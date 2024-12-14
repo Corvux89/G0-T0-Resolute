@@ -22,9 +22,12 @@ class NewCharacterRequestEmbed(Embed):
         self.add_field(name="__Background__",
                        value=f"{application.background.status()}")
         
-        self.add_field(name=f"__Motivation__",
-                       value=f"{status([application.motivation])}")
+        self.add_field(name=f"__Joining Motivation__",
+                       value=f"{status([application.join_motivation])}")
 
+        self.add_field(name=f"__Motivation for Good__",
+                       value=f"{status([application.good_motivation])}")
+        
         self.add_field(name=f"__Starting Credits__",
                        value=f"{application.credits}")
         

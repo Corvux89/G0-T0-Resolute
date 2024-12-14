@@ -99,6 +99,9 @@ def upsert_dashboard_query(dashboard: RefDashboard):
 def get_dashboards() -> FromClause:
     return ref_dashboard_table.select()
 
+def get_dashboard_by_type(type: int) -> FromClause:
+    return ref_dashboard_table.select().where(ref_dashboard_table.c.dashboard_type == type)
+
 def delete_dashboard_query(dashboard: RefDashboard) -> TableClause:
     return ref_dashboard_table.delete().where(
         ref_dashboard_table.c.post_id == dashboard.post_id

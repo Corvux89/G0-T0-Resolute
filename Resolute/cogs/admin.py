@@ -1,4 +1,5 @@
 import asyncio
+import datetime
 import logging
 from os import listdir
 
@@ -8,11 +9,12 @@ from discord.ext import commands, tasks
 from Resolute.bot import G0T0Bot
 from Resolute.constants import ADMIN_GUILDS
 from Resolute.helpers import get_guild, get_player, is_admin, is_owner
+from Resolute.helpers.dashboards import update_financial_dashboards
+from Resolute.helpers.financial import get_financial_data, update_financial_data
 from Resolute.models.views.admin import AdminMenuUI
 from Resolute.models.views.automation_request import AutomationRequestView
 
 log = logging.getLogger(__name__)
-
 
 def setup(bot: commands.Bot):
     bot.add_cog(Admin(bot))
@@ -30,6 +32,9 @@ class Admin(commands.Cog):
     async def on_db_connected(self):
         if not self.reload_category_task.is_running():
             asyncio.ensure_future(self.reload_category_task.start())
+
+        if not self.check_financials.is_running():
+            asyncio.ensure_future(self.check_financials.start())
 
     @commands.slash_command(
         name="automation_request",
@@ -99,6 +104,13 @@ class Admin(commands.Cog):
             self.bot.load_extension(f'Resolute.cogs.{cog}')
             await ctx.respond(f'Cog {cog} reloaded')
 
+    @commands.command(name="dev")
+    async def dev(self, ctx: ApplicationContext):
+        current_time = datetime.datetime.now(datetime.timezone.utc)       
+
+
+        await ctx.send("here")
+
     # --------------------------- #
     # Private Methods
     # --------------------------- #
@@ -113,3 +125,23 @@ class Admin(commands.Cog):
     @tasks.loop(minutes=30)
     async def reload_category_task(self):
         await self.bot.compendium.reload_categories(self.bot)
+
+    @tasks.loop(hours=24)
+    async def check_financials(self):
+        fin = await get_financial_data(self.bot)
+        current_time = datetime.datetime.now(datetime.timezone.utc)
+
+        if fin.last_reset is None or fin.last_reset.month != current_time.month:
+            fin.last_reset = current_time
+            goal = fin.monthly_goal
+
+            goal -= fin.adjusted_total
+
+            if goal > 0:
+                fin.reserve = max(fin.reserve - goal, 0)
+            fin.monthly_total = 0
+            fin.month_count += 1
+            await update_financial_data(self.bot, fin)
+            await update_financial_dashboards(self.bot)
+            log.info("Finanical month reset")
+

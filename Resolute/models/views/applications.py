@@ -195,9 +195,15 @@ class NewCharacterRequestUI(CharacterSelect):
         return {"embed": NewCharacterRequestEmbed(self.application), "content": ""}
 
 class _MiscuUI(CharacterSelect):
-    @discord.ui.button(label="Misc.", style=discord.ButtonStyle.primary, row=1)
+    @discord.ui.button(label="Misc. 1", style=discord.ButtonStyle.primary, row=1)
     async def misc(self, _: discord.ui.Button, interaction: discord.Interaction):
         modal = MiscModal(self.application)
+        await self.prompt_modal(interaction, modal)
+        await self.refresh_content(interaction)
+    
+    @discord.ui.button(label="Misc. 2", style=discord.ButtonStyle.primary, row=1)
+    async def misc2(self, _: discord.ui.Button, interaction: discord.Interaction):
+        modal = MiscModal2(self.application)
         await self.prompt_modal(interaction, modal)
         await self.refresh_content(interaction)
 
@@ -237,8 +243,11 @@ class _MiscuUI(CharacterSelect):
         embed.add_field(name="__Homeworld__",
                         value=self.application.homeworld,
                         inline=False)
-        embed.add_field(name="__Motivation__",
-                        value=self.application.motivation,
+        embed.add_field(name="__Motivation for Joining__",
+                        value=self.application.join_motivation,
+                        inline=False)
+        embed.add_field(name="__Motivation for Good__",
+                        value=self.application.good_motivation,
                         inline=False)
         embed.add_field(name="__Character Sheet Link__",
                         value=self.application.link,
@@ -341,19 +350,37 @@ class MiscModal(Modal):
         self.add_item(InputText(label="Character Name", placeholder="Character Name", value=self.application.name, max_length=2000))
         self.add_item(InputText(label="Starting Credits", placeholder="Starting Credits", value=self.application.credits, max_length=150))
         self.add_item(InputText(label="Homeworld", placeholder="Homeworld", value=self.application.homeworld, max_length=500))
-        self.add_item(InputText(label="Motivation for working with the New Republic", style=discord.InputTextStyle.long, placeholder="Motivation", 
-                                value=self.application.motivation, max_length=1000))
-        self.add_item(InputText(label="Character Sheet Link", placeholder="Character Sheet Link", value=self.application.link))
+        self.add_item(InputText(label="Motivation for joining the Sky Wardens", style=discord.InputTextStyle.long, placeholder="Motivation", 
+                                value=self.application.join_motivation, max_length=1000))
+        self.add_item(InputText(label="Motivation for doing good?", style=discord.InputTextStyle.long, placeholder="Motivation", 
+                                value=self.application.good_motivation, max_length=1000))
+        
 
     async def callback(self, interaction: discord.Interaction):
         self.application.name = self.children[0].value
         self.application.credits = self.children[1].value
         self.application.homeworld = self.children[2].value
-        self.application.motivation = self.children[3].value
-        self.application.link = self.children[4].value
+        self.application.join_motivation = self.children[3].value
+        self.application.good_motivation = self.children[4].value
 
         await interaction.response.defer()
         self.stop()
+
+class MiscModal2(Modal):
+    application: NewCharacterApplication
+
+    def __init__(self, application: NewCharacterApplication):
+        super().__init__(title="Misc. Information")
+        self.application = application
+
+        self.add_item(InputText(label="Character Sheet Link", placeholder="Character Sheet Link", value=self.application.link))
+
+    async def callback(self, interaction: discord.Interaction):
+        self.application.link = self.children[0].value
+
+        await interaction.response.defer()
+        self.stop()
+        
     
 class BackgroundModal(Modal):
     application: NewCharacterApplication

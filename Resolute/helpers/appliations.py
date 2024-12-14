@@ -117,7 +117,8 @@ async def get_new_character_application(bot: G0T0Bot, application_text: str = No
         ),
         credits=get_match(r"Credits: (.+?)\n", app_text, 1, "0"),
         homeworld=get_match(r"\*\*Homeworld:\*\* (.+?)\n", app_text),
-        motivation=get_match(r"\*\*Motivation for working with the New Republic:\*\* (.*?)(?=\n\n\*\*)", app_text),
+        join_motivation=get_match(r"\*\*Motivation for joining the Wardens of the Sky:\*\* (.*?)(?=\n\n\*\*)", app_text),
+        good_motivation=get_match(r"\*\*Motivation for doing good:\*\* (.*?)(?=\n\n\*\*)", app_text),
         link=get_match(r"\*\*Link:\*\* (.+)", app_text),
         level=get_match(r"\*\*Level:\*\* (.+?)\n", app_text),
         hp=get_match(r"\*\*HP:\*\* (.+?)\n", app_text)

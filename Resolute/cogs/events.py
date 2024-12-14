@@ -11,11 +11,14 @@ from Resolute.constants import ERROR_CHANNEL
 from Resolute.helpers import (get_guild, get_player, get_player_adventures,
                               get_player_arenas, process_message,
                               upsert_application)
+from Resolute.helpers.events import handle_entitlements
 from Resolute.models.embeds import ErrorEmbed
 from Resolute.models.embeds.events import MemberLeaveEmbed
 from Resolute.models.objects.exceptions import G0T0CommandError, G0T0Error
 
 log = logging.getLogger(__name__)
+
+# TODO: Entitlement Rewards
 
 
 def setup(bot: commands.Bot):
@@ -170,3 +173,14 @@ class Events(commands.Cog):
             return await ctx.send(f'Something went wrong. Let us know if it keeps up!', delete_after=time)
         except:
             log.warning('Unable to respond')
+
+    @commands.Cog.listener()
+    async def on_entitlement_create(self, entitlement: discord.Entitlement):
+       await handle_entitlements(self.bot, entitlement)
+
+    @commands.Cog.listener()
+    async def on_entitlement_update(self, entitlement: discord.Entitlement):
+        await handle_entitlements(self.bot, entitlement)
+        
+
+        

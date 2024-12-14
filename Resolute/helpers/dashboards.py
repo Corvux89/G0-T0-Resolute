@@ -1,17 +1,23 @@
 import calendar
 from datetime import datetime, timezone
+from io import BytesIO
 
 import discord
+import requests
 from texttable import Texttable
 
 from Resolute.bot import G0T0Bot
 from Resolute.helpers import get_guild
+from Resolute.helpers.financial import get_financial_data
+from Resolute.models.categories.categories import DashboardType
 from Resolute.models.embeds.dashboards import RPDashboardEmbed
 from Resolute.models.objects.dashboards import (
     RefDashboard, RefDashboardSchema, RPDashboardCategory,
     delete_dashboard_query, get_class_census,
-    get_dashboard_by_category_channel_query, get_dashboard_by_post_id,
+    get_dashboard_by_category_channel_query, get_dashboard_by_post_id, get_dashboard_by_type,
     get_dashboards, get_level_distribution, upsert_dashboard_query)
+from Resolute.models.objects.financial import Financial
+from PIL import Image, ImageDraw, ImageFilter
 
 
 async def get_pinned_post(bot: G0T0Bot, dashboard: RefDashboard) -> discord.Message:
@@ -96,6 +102,18 @@ async def get_guild_dashboards(bot: G0T0Bot, guild_id: int) -> list[RefDashboard
 
     return dashboards
 
+async def get_financial_dashboards(bot: G0T0Bot) -> list[RefDashboard]:
+    dashboards = []
+
+    d_type = bot.compendium.get_object(DashboardType, "FINANCIAL")
+
+    async with bot.db.acquire() as conn:
+        async for row in conn.execute(get_dashboard_by_type(d_type.id)):
+            dashboard: RefDashboard = RefDashboardSchema(bot.compendium).load(row)
+            dashboards.append(dashboard)
+
+    return dashboards
+
 async def get_class_census_data(bot: G0T0Bot) -> []:
     census = []
 
@@ -113,6 +131,12 @@ async def get_level_distribution_data(bot: G0T0Bot) -> []:
             result = dict(row)
             data.append([result['level'], result['#']])
     return data
+
+async def update_financial_dashboards(bot: G0T0Bot):
+    dashboards = await get_financial_dashboards(bot)
+
+    for d in dashboards:
+        await update_dashboard(bot, d)
 
 async def update_dashboard(bot: G0T0Bot, dashboard: RefDashboard):
     original_message = await get_pinned_post(bot, dashboard)
@@ -178,5 +202,79 @@ async def update_dashboard(bot: G0T0Bot, dashboard: RefDashboard):
         footer = f"Last Updated - <t:{calendar.timegm(datetime.now(timezone.utc).timetuple())}:F>"
 
         return await original_message.edit(content=f"```\n{dist_table.draw()}```{footer}", embed=None)
+    
+    elif dashboard.dashboard_type.value.upper() == "FINANCIAL":
+        fin: Financial = await get_financial_data(bot)
 
+        res = requests.get("https://res.cloudinary.com/jerrick/image/upload/d_642250b563292b35f27461a7.png,f_jpg,fl_progressive,q_auto,w_1024/y3mdgvccfyvmemabidd0.jpg")
+        if res.status_code != 200:
+            raise Exception("Failed to download image")
+        
+        background = Image.open(BytesIO(res.content)).convert("RGBA")
+        background = background.resize((800, 400))
+
+        background = Image.open(BytesIO(res.content)).convert("RGBA")
+        background = background.resize((800, 400))
+
+        # Progress bar properties   
+        bar_width = 700
+        bar_height = 50
+        bar_x = 50
+        bar_y = 300
+        corner_radius = 20
+        shadow_offset = 10
+
+        # Calculate progress
+        progress = min(fin.adjusted_total / fin.monthly_goal, 1)  # Cap progress at 100% for the main bar
+
+        shadow = Image.new("RGBA", background.size, (0, 0, 0, 0))
+        shadow_draw = ImageDraw.Draw(shadow)
+
+        shadow_color = (0, 0, 0, 100)  
+
+        shadow_rect = [
+            bar_x + shadow_offset,
+            bar_y + shadow_offset,
+            bar_x + bar_width + shadow_offset,
+            bar_y + bar_height + shadow_offset,
+        ]
+        shadow_draw.rounded_rectangle(shadow_rect, fill=shadow_color, radius=corner_radius)
+        shadow = shadow.filter(ImageFilter.GaussianBlur(10))  
+
+        background = Image.alpha_composite(background, shadow)
+
+        draw = ImageDraw.Draw(background)
+
+        draw.rounded_rectangle(
+            [bar_x, bar_y, bar_x + bar_width, bar_y + bar_height],
+            fill="gray",
+            outline="white",
+            width=2,
+            radius=corner_radius,
+        )
+
+        draw.rounded_rectangle(
+            [bar_x, bar_y, bar_x + int(bar_width * progress), bar_y + bar_height],
+            fill="green",
+            radius=corner_radius,
+        )
+
+        background.save("progress.png")
+
+        embed = discord.Embed(title="G0-T0 Financial Progress",
+                              description=f"Current Monthly Progress: ${fin.adjusted_total:.2f}\n"
+                                            f"Monthly Goal: ${fin.monthly_goal:.2f}\n"
+                                            f"Reserve: ${fin.reserve:.2f}",
+                              color=discord.Color.gold(),
+                              timestamp=discord.utils.utcnow())
+        
+        embed.add_field(name="Stretch Goals",
+                        value="If we can get enough reserves we will look at making a website as well and try for better integrations")
+        
+        embed.set_image(url="attachment://progress.png")
+        embed.set_footer(text="Last Updated")
+
+        file = discord.File("progress.png", filename="progress.png")
+        original_message.attachments.clear()
+        return await original_message.edit(file=file, embed=embed, content="")
 

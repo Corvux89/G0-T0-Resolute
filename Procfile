@@ -1,1 +1,1 @@
-web: hypercorn myapp:init --bind 0.0.0.0:$PORT
+web: hypercorn myapp:init.py --bind 0.0.0.0:$PORT

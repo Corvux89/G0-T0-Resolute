@@ -38,7 +38,7 @@ class G0T0Bot(commands.Bot):
         self.dispatch("db_connected")
         db_end = timer()
 
-        log.info(f"Time to create db engine: {db_end - db_start}")
+        log.info(f"Time to create db engine: {db_end - db_start:.2f}")
 
         async with self.db.acquire() as conn:
             await create_tables(conn)
@@ -48,7 +48,7 @@ class G0T0Bot(commands.Bot):
         loop.create_task(self.web_app.run_task(host="0.0.0.0", port=PORT))
         web_end = timer()
 
-        log.info(f"Time to create web server: {web_end-web_start}")                
+        log.info(f"Time to create web server: {web_end-web_start:.2f}")                
 
         log.info(f"Logged in as {self.user} (ID: {self.user.id})")
         log.info("------")

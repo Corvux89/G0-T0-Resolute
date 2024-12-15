@@ -14,7 +14,7 @@ ERROR_CHANNEL = os.environ.get("ERROR_CHANNEL")
 # Database Stuff
 DB_URL = os.environ.get("DATABASE_URL", "")
 AUTH_TOKEN = os.environ.get("AUTH_TOKEN", "")
-PORT = os.environ.get("PORT", 8080)
+PORT = int(os.environ.get("PORT", 8080))
 
 # Misc
 THUMBNAIL = "https://cdn.discordapp.com/attachments/1069074273190285353/1070477277852340339/image.png"

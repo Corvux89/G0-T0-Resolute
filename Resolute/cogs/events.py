@@ -20,7 +20,6 @@ log = logging.getLogger(__name__)
 
 # TODO: Entitlement Rewards
 
-
 def setup(bot: commands.Bot):
     bot.add_cog(Events(bot))
 

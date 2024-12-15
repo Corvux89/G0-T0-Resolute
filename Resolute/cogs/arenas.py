@@ -208,7 +208,7 @@ class Arenas(commands.Cog):
                                  character=character, notes=result)
                 arena.players.append(player)
 
-                if arena.completed_phases - 1 >= (arena.tier.max_phases / 2) and result == "WIN":
+                if (arena.completed_phases % 2 == 0 or arena.completed_phases == arena.tier.max_phases) and result == "WIN":
                     await create_log(self.bot, ctx.author, "ARENA_BONUS", player,
                                      character=character)
                 

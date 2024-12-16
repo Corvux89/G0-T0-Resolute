@@ -5,6 +5,7 @@ from quart import jsonify, request, abort
 
 from Resolute.bot import G0T0Bot
 from Resolute.constants import AUTH_TOKEN, ERROR_CHANNEL
+from Resolute.helpers.guilds import reload_guild_in_cache
 
 
 
@@ -44,5 +45,16 @@ class WebCog(commands.Cog):
             await bot.compendium.reload_categories(bot)
             await bot.get_channel(int(ERROR_CHANNEL)).send(data['text'])
             return jsonify({'text': 'Compendium Reloaded!'}), 200
+        
+        @bot.web_app.route('/guild_update', methods=['POST'])
+        async def reload_guild():
+            try:
+                data = await request.json
+            except:
+                return abort(401)
+            
+            await reload_guild_in_cache(bot, int(data['guild_id']))
+            await bot.get_channel(int(ERROR_CHANNEL)).send(data['text'])
+            return jsonify({'text': 'Guild Cache Reloaded!'}), 200
 
     

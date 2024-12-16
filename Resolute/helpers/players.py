@@ -47,16 +47,18 @@ async def manage_player_roles(bot: G0T0Bot, player: Player, reason: str = None) 
     high_char = player.highest_level_character
 
     # Primary Role handling
-    if high_char.level < 3 and g.entry_role and g.entry_role not in player.member.roles and g.member_role and g.member_role not in player.member.roles:
-        await player.member.add_roles(g.entry_role, reason=reason)
-    elif high_char >= 3:
-        if g.entry_role and g.entry_role in player.member.roles:
-            await player.member.remove_roles(g.entry_role, reason=reason)
-
+    if high_char >= 3:
         if g.member_role and g.member_role not in player.member.roles:
             await player.member.add_roles(g.member_role, reason=reason)
 
     # Character Tier Roles
+    if g.entry_role:
+        if player.has_character_in_tier(bot, 1):
+            if g.entry_role not in player.member.roles:
+                await player.member.add_roles(g.entry_role, reason=reason)
+        elif g.entry_role in player.member.roles:
+            await player.member.remove_roles(g.entry_role, reason=reason)
+
     if g.tier_2_role:
         if player.has_character_in_tier(bot, 2):
             if g.tier_2_role not in player.member.roles:

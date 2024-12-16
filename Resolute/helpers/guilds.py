@@ -31,6 +31,22 @@ async def get_guild(bot: G0T0Bot, guild_id: int) -> PlayerGuild:
     bot.player_guilds[str(guild_id)] = g
     return g
 
+async def reload_guild_in_cache(bot: G0T0Bot, guild_id: int):
+    async with bot.db.acquire() as conn:
+        async with conn.begin():
+            results = await conn.execute(get_guild_from_id(guild_id))
+            guild_row = await results.first()
+
+            if guild_row is None:
+                guild = PlayerGuild(id=guild_id)
+                results = await conn.execute(upsert_guild(guild))
+                guild_row = await results.first()
+
+            g: PlayerGuild = GuildSchema(bot.get_guild(guild_id)).load(guild_row)
+
+    await build_guild(bot, g)
+    bot.player_guilds[str(guild_id)] = g
+
 async def build_guild(bot: G0T0Bot, guild: PlayerGuild):
     await load_calendar(bot.db, guild)
     await load_npcs(bot, guild)

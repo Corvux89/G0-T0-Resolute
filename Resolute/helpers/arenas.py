@@ -59,7 +59,7 @@ async def add_player_to_arena(bot: G0T0Bot, interaction: discord.Interaction, pl
         arena.characters.remove(remove_char.id)
 
     await interaction.guild.get_member(player.id).add_roles(interaction.guild.get_role(arena.role_id))
-    await remove_arena_board_post(interaction, player)
+    await remove_arena_board_post(interaction, bot, player)
     await interaction.response.send_message(f"{interaction.guild.get_member(player.id).mention} has joined the arena with {character.name}!")
 
     arena.characters.append(character.id)
@@ -77,20 +77,22 @@ async def update_arena_view_embed(interaction: discord.Interaction | discord.App
         await message.edit(embed=embed)
 
 
-async def remove_arena_board_post(ctx: discord.ApplicationContext | discord.Interaction, player: Player) -> None:
+async def remove_arena_board_post(ctx: discord.ApplicationContext | discord.Interaction, bot: G0T0Bot, player: Player) -> None:
     def predicate(message):
         if message.author.bot:
             return message.embeds[0].footer.text == f"{player.id}"
         
         return message.author == ctx.guild.get_member(player.id)
     
-    if arena_board := discord.utils.get(ctx.guild.channels, name="arena-board"):
+    g = await get_guild(bot, ctx.guild_id)    
+
+    if g.arena_board_channel:
         try:
-            deleted_message = await arena_board.purge(check=predicate)
-            log.info(f"{len(deleted_message)} message{'s' if len(deleted_message)>1 else ''} by {ctx.guild.get_member(player.id).name} deleted from #{arena_board.name}")
+            deleted_message = await g.arena_board_channel.purge(check=predicate)
+            log.info(f"{len(deleted_message)} message{'s' if len(deleted_message)>1 else ''} by {ctx.guild.get_member(player.id).name} deleted from #{g.arena_board_channel.name}")
         except Exception as error:
             if isinstance(error, discord.errors.HTTPException):
-                await ctx.send(f'Warning: deleting users\'s post(s) from {arena_board.mention} failed')
+                await ctx.send(f'Warning: deleting users\'s post(s) from {g.arena_board_channel.mention} failed')
             else:
                 log.error(error)
 
@@ -141,9 +143,9 @@ async def get_player_arenas(bot: G0T0Bot, player: Player) -> list[Arena]:
 async def build_arena_post(ctx: discord.ApplicationContext | discord.Interaction, bot: G0T0Bot, post: ArenaPost) -> bool:
     g = await get_guild(bot, post.player.guild_id)
 
-    if g.arena_board:
+    if g.arena_board_channel:
         guild_member = g.guild.get_member(post.player.id)
-        webhook = await get_webhook(g.arena_board)
+        webhook = await get_webhook(g.arena_board_channel)
         if post.message:
             await webhook.edit_message(post.message.id, embed=ArenaPostEmbed(post))
         else:

@@ -41,9 +41,9 @@ class Events(commands.Cog):
         def predicate(message):
             return message.author == payload.user
         
-        if guild.arena_board:
+        if guild.arena_board_channel:
             try:
-                await guild.arena_board.purge(check=predicate)
+                await guild.arena_board_channel.purge(check=predicate)
             except Exception as error:
                 if isinstance(error, discord.errors.HTTPException):
                     pass

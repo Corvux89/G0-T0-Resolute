@@ -122,7 +122,7 @@ class _NewPlayerchannel(ChannelAdmin):
 
     @discord.ui.button(label="Create Channel", style=discord.ButtonStyle.green, row=3, disabled=True)
     async def channel_create(self, _: discord.ui.Button, interaction: discord.Interaction):
-        self.channel = await create_channel(self.name, self.category, self.member)
+        self.channel = await create_channel(self.bot, self.name, self.category, self.member)
         log.info(f"CHANNEL ADMIN: {self.channel.name} [ {self.channel.id} ] created for {self.member} [ {self.member.id} ] by {interaction.user} [ {interaction.user.id} ]")
         await self.defer_to(ChannelAdminUI, interaction)
 

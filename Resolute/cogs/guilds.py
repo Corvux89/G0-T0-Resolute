@@ -144,8 +144,8 @@ class Guilds(commands.Cog):
         # Announce we're all done!
         if g.announcement_channel:
             try:
-                if g.ping_announcement == True and g.citizen_role and g.acolyte_role:
-                    await g.announcement_channel.send(embed=ResetEmbed(g, end-start), content=f"{g.citizen_role.mention}{g.acolyte_role.mention}")
+                if g.ping_announcement == True and g.entry_role and g.member_role:
+                    await g.announcement_channel.send(embed=ResetEmbed(g, end-start), content=f"{g.entry_role.mention}{g.member_role.mention}")
                 else:
                     await g.announcement_channel.send(embed=ResetEmbed(g, end-start))
             except Exception as error:

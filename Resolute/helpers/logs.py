@@ -57,8 +57,8 @@ async def author_rewards(bot: G0T0Bot, author: discord.Member, guild: PlayerGuil
                                       notes=f"Rewards for {guild.reward_threshold * qty} points")
         player.points = max(0, player.points - (guild.reward_threshold * qty))
 
-        if guild.archivist_channel:
-            await guild.archivist_channel.send(embed=LogEmbed(bot, reward_log, bot.user, player.member, None, True))
+        if guild.staff_channel:
+            await guild.staff_channel.send(embed=LogEmbed(bot, reward_log, bot.user, player.member, None, True))
 
     async with bot.db.acquire() as conn:
             await conn.execute(upsert_player_query(player))
@@ -249,8 +249,8 @@ async def update_activity_points(bot: G0T0Bot, player: Player, guild: PlayerGuil
         if guild.market_channel and not revert:
             await guild.market_channel.send(embed=LogEmbed(act_log, bot.user, player.member), content=f"{player.member.mention}")
 
-        if guild.archivist_channel and revert:
-            await guild.archivist_channel.send(embed=LogEmbed(act_log, bot.user, player.member))
+        if guild.staff_channel and revert:
+            await guild.staff_channel.send(embed=LogEmbed(act_log, bot.user, player.member))
             await player.member.send(embed=LogEmbed(act_log, bot.user, player.member))
     else:
         async with bot.db.acquire() as conn:

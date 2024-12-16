@@ -9,6 +9,7 @@ from sqlalchemy.sql import FromClause
 
 from Resolute.bot import G0T0Bot
 from Resolute.models import metadata
+from Resolute.models.categories.categories import LevelTier
 from Resolute.models.objects.characters import PlayerCharacter
 from Resolute.models.objects.ref_objects import NPC
 
@@ -40,6 +41,14 @@ class Player(object):
         if hasattr(self, "characters") and self.characters:
             return max(self.characters, key=lambda char: char.level)
         return None
+    
+    def has_character_in_tier(self, bot: G0T0Bot, tier: int) -> bool:
+        if hasattr(self, "characters") and self.characters:
+            for character in self.characters:
+                level_tier: LevelTier = bot.compendium.get_object(LevelTier, character.level)
+                if level_tier.tier == tier:
+                    return True
+        return False
     
     def get_channel_character(self, channel: discord.TextChannel) -> PlayerCharacter:
         for char in self.characters:

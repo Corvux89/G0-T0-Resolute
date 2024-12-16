@@ -155,9 +155,9 @@ class NewCharacterRequestUI(CharacterSelect):
     @discord.ui.button(label="Submit", style=discord.ButtonStyle.green, row=2)
     async def submit(self, _: discord.ui.Button, interaction: discord.Interaction):
         guild = await get_guild(self.bot, interaction.guild.id)
-        if guild.archivist_role and guild.character_application_channel:
-            message = self.application.format_app(self.owner, guild.archivist_role)
-            webhook = await get_webhook(guild.character_application_channel)
+        if guild.staff_role and guild.application_channel:
+            message = self.application.format_app(self.owner, guild.staff_role)
+            webhook = await get_webhook(guild.application_channel)
             
             if self.application.message:
                 await webhook.edit_message(self.application.message.id, content=message)
@@ -169,7 +169,6 @@ class NewCharacterRequestUI(CharacterSelect):
                                          avatar_url=self.owner.avatar.url,
                                          content=message,
                                          wait=True)
-                # msg = await guild.character_application_channel.send(content=message)
                 thread = await msg.create_thread(name=f"{self.application.name}", auto_archive_duration=10080)
                 await thread.send(f'''Need to make an edit? Use: `/edit_application` in this thread''')
                 await interaction.response.send_message("Request submitted!", ephemeral=True)
@@ -502,26 +501,24 @@ class LevelUpRequestModal(Modal):
         self.add_item(InputText(label="Link", placeholder="Link to character sheet", max_length=500, value=self.application.link))
 
     async def callback(self, interaction: discord.Interaction):
-        if self.guild.archivist_role and self.guild.character_application_channel:
+        if self.guild.staff_role and self.guild.application_channel:
             self.application.level = self.children[0].value
             self.application.hp = self.children[1].value
             self.application.feats = self.children[2].value
             self.application.changes = self.children[3].value
             self.application.link = self.children[4].value
 
-            message = self.application.format_app(interaction.user, self.guild.archivist_role)
-            webhook = await get_webhook(self.guild.character_application_channel)
+            message = self.application.format_app(interaction.user, self.guild.staff_role)
+            webhook = await get_webhook(self.guild.application_channel)
 
             if self.application.message:
                 await webhook.edit_message(self.application.message.id, content=message)
-                # await self.application.message.edit(content=message)
                 return await interaction.response.send_message("Request updated!", ephemeral=True)
             else:
                 msg = await webhook.send(username=interaction.user.display_name,
                                          avatar_url=interaction.user.avatar.url,
                                          content=message,
                                          wait=True)
-                # msg = await self.guild.character_application_channel.send(content=message)
                 thread = await msg.create_thread(name=f"{self.application.character.name}", auto_archive_duration=10080)
                 await thread.send(f'''Need to make an edit? Use: `/edit_application` in this thread''')
                 await msg.edit(content=message)

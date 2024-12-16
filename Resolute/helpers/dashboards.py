@@ -163,7 +163,7 @@ async def update_dashboard(bot: G0T0Bot, dashboard: RefDashboard):
             if last_message := await get_last_message(c):
                 if last_message.content in ["```\n​\n```", "```\n \n```"]:
                     available_field.channels.append(c)
-                elif guild.archivist_role and guild.archivist_role.mention in last_message.content:
+                elif guild.staff_role and guild.staff_role.mention in last_message.content:
                     archivist_field.channels.append(c)
                 else:
                     unavailable_field.channels.append(c)

@@ -21,11 +21,11 @@ class AutomationRequestView(Modal):
                                 placeholder="Link to issue/reference material", max_length=200))
 
     async def callback(self, interaction: discord.Interaction):
-        if self.guild.automation_channel:
+        if self.guild.help_channel:
             title = f'''{interaction.user.display_name}: {self.children[0].value}'''
             message = f'''**Request Title**: {self.children[0].value}\n\n**Requestor**: {interaction.user.mention}\n**Notes**: {self.children[1].value}\n**Reference  URL**: {self.children[2].value} '''
 
-            thread = await self.guild.automation_channel.create_thread(auto_archive_duration=10080,
+            thread = await self.guild.help_channel.create_thread(auto_archive_duration=10080,
                                                        name=title, type=ChannelType.public_thread)
             await thread.send(content=message)
             return await interaction.response.send_message("Request submitted!", ephemeral=True)

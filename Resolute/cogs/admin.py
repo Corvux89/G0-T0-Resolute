@@ -107,9 +107,11 @@ class Admin(commands.Cog):
 
     @commands.command(name="dev")
     async def dev(self, ctx: ApplicationContext):
-        current_time = datetime.datetime.now(datetime.timezone.utc)       
+        player = await get_player(self.bot, ctx.author.id, ctx.guild.id if ctx.guild else None)
 
-
+        print(player.has_character_in_tier(self.bot, 3))
+        print(player.has_character_in_tier(self.bot, 6))
+        print(player.has_character_in_tier(self.bot, 1))
         await ctx.send("here")
 
     # --------------------------- #

@@ -63,7 +63,7 @@ class Messages(commands.Cog):
                 await ui.send_to(ctx.author)
 
         # Arena Board
-        if guild.arena_board and message.channel.id == guild.arena_board.id:
+        if guild.arena_board_channel and message.channel.id == guild.arena_board_channel.id:
             if not message.author.bot or message.embeds[0].footer.text != f"{ctx.author.id}":
                 raise G0T0Error("You cannot edit this arena board post")
             elif len(player.characters) <= 1:
@@ -90,7 +90,7 @@ class Messages(commands.Cog):
         player = await get_player(self.bot, ctx.author.id, guild.id)
 
         # Arena Board
-        if guild.arena_board and message.channel.id == guild.arena_board.id:
+        if guild.arena_board_channel and message.channel.id == guild.arena_board_channel.id:
             if not message.author.bot or message.embeds[0].footer.text != f"{ctx.author.id}":
                 raise G0T0Error("You cannot edit this arena board post")
 
@@ -175,7 +175,7 @@ class Messages(commands.Cog):
                     
                     await message.edit(content="", embed=LogEmbed(log_entry, ctx.author, transaction.player.member, transaction.character, True))
 
-        elif guild.archivist_role and guild.archivist_role.mention in message.content and len(message.mentions) > 0:
+        elif guild.staff_role and guild.staff_role.mention in message.content and len(message.mentions) > 0:
             ui = await MessageLogUI.new(self.bot, ctx.author, message)
             await ui.send_to(ctx)
         

@@ -124,12 +124,12 @@ class NewCharacterApplication(object):
             return False
 
 
-    def format_app(self, owner: discord.Member, archivist: discord.Role = None):
+    def format_app(self, owner: discord.Member, staff: discord.Role = None):
         hp_str = f"**HP:** {self.hp}\n\n" if self.hp != "" and self.hp != "None" and self.hp is not None else ""
         level_str=f"**Level:** {self.level}\n" if self.level != "" else "" 
         reroll_str=f"**Reroll From:** {self.character.name} [{self.character.id}]\n" if self.type in ["Reroll", "Free Reroll"] else ""
         return (
-            f"**{self.type}** | {archivist.mention if archivist else 'Archivist'}\n"
+            f"**{self.type}** | {staff.mention if staff else 'Archivist'}\n"
             f"{reroll_str}"
             f"**Name:** {self.name}\n"
             f"**Player:** {owner.mention}\n\n"
@@ -208,9 +208,9 @@ class LevelUpApplication(object):
         self.type="Level Up"
 
 
-    def format_app(self, owner: discord.Member, archivist: discord.Role = None):
+    def format_app(self, owner: discord.Member, staff: discord.Role = None):
         return (
-            f"**Level Up** | {archivist.mention if archivist else 'Archivist'}\n"
+            f"**Level Up** | {staff.mention if staff else 'Archivist'}\n"
             f"**Name:** {self.character.name} [{self.character.id}]\n"
             f"**Player:** {owner.mention}\n\n"
             f"**New Level:** {self.level}\n"

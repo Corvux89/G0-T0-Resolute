@@ -20,11 +20,11 @@ async def create_tables(conn: aiopg.sa.SAConnection):
     for table in metadata.sorted_tables:
         await conn.execute(CreateTable(table, if_not_exists=True))
 
-
 class G0T0Bot(commands.Bot):
     db: aiopg.sa.Engine
     compendium: Compendium
     web_app: Quart
+    player_guilds: dict = {}
 
     # Extending/overriding discord.ext.commands.Bot
     def __init__(self, **options):

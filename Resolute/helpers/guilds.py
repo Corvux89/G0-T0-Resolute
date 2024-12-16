@@ -12,6 +12,9 @@ from Resolute.models.objects.ref_objects import (
 
 
 async def get_guild(bot: G0T0Bot, guild_id: int) -> PlayerGuild:
+    if len(bot.player_guilds) > 0 and (g:= bot.player_guilds.get(str(guild_id))):
+        return g
+
     async with bot.db.acquire() as conn:
         async with conn.begin():
             results = await conn.execute(get_guild_from_id(guild_id))
@@ -22,9 +25,10 @@ async def get_guild(bot: G0T0Bot, guild_id: int) -> PlayerGuild:
                 results = await conn.execute(upsert_guild(guild))
                 guild_row = await results.first()
 
-            g: PlayerGuild = GuildSchema().load(guild_row)
+            g: PlayerGuild = GuildSchema(bot.get_guild(guild_id)).load(guild_row)
 
     await build_guild(bot, g)
+    bot.player_guilds[str(guild_id)] = g
     return g
 
 async def build_guild(bot: G0T0Bot, guild: PlayerGuild):
@@ -32,20 +36,6 @@ async def build_guild(bot: G0T0Bot, guild: PlayerGuild):
     await load_npcs(bot, guild)
     guild.guild = bot.get_guild(guild.id)
 
-    guild.archivist_role = discord.utils.get(guild.guild.roles, name="Archivist")
-    guild.citizen_role = discord.utils.get(guild.guild.roles, name="Citizen")
-    guild.acolyte_role = discord.utils.get(guild.guild.roles, name="Acolyte")
-    guild.senate_role = discord.utils.get(guild.guild.roles, name="The Senate")
-    guild.quester_role = discord.utils.get(guild.guild.roles, name="Quester")
-
-    guild.character_application_channel = discord.utils.get(guild.guild.channels, name="character-apps")
-    guild.market_channel = discord.utils.get(guild.guild.channels, name="galactic-market")
-    guild.announcement_channel = discord.utils.get(guild.guild.channels, name="announcements")
-    guild.archivist_channel = discord.utils.get(guild.guild.channels, name="archivist-roundtable")
-    guild.automation_channel = discord.utils.get(guild.guild.channels, name="aliasing-and-snippet-help")
-    guild.arena_board = discord.utils.get(guild.guild.channels, name="arena-board")
-    guild.exit_channel = discord.utils.get(guild.guild.channels, name="exit")
-    guild.entrance_channel = discord.utils.get(guild.guild.channels, name="entrance")
 
 async def load_calendar(db: aiopg.sa.Engine, guild: PlayerGuild):
     async with db.acquire() as conn:
@@ -68,7 +58,7 @@ async def update_guild(bot: G0T0Bot, guild: PlayerGuild) -> PlayerGuild:
     g = GuildSchema().load(row)
 
     await build_guild(bot, g)
-
+    bot.player_guilds[str(guild.id)] = g
     return g
 
 async def get_guilds_with_reset(bot: G0T0Bot, day: int, hour: int) -> list[PlayerGuild]:

@@ -146,7 +146,7 @@ class _NewCharacter(CharacterManage):
         
         self.player = await get_player(self.bot, self.player.id, self.guild.id)
 
-        await manage_player_roles(self.player, "Character Created!")
+        await manage_player_roles(self.bot, self.player, "Character Created!")
 
         await interaction.channel.send(embed=NewcharacterEmbed(self.owner, self.player, self.new_character, log_entry, self.bot.compendium))
 
@@ -243,7 +243,7 @@ class _EditCharacter(CharacterManage):
         await create_log(self.bot, self.owner, "LEVEL", self.player,
                             character=self.active_character,
                             notes="Player level up")
-        await manage_player_roles(self.player, "Level up")
+        await manage_player_roles(self.bot, self.player, "Level up")
 
         await interaction.channel.send(embed=LevelUpEmbed(self.player, self.active_character))
 

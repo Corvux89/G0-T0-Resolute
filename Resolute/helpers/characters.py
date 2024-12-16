@@ -24,7 +24,6 @@ from Resolute.models.objects.players import Player
 
 log = logging.getLogger(__name__)
 
-
 async def get_characters(bot: G0T0Bot, player_id: int, guild_id: int, inactive: bool = False) -> list[PlayerCharacter]:
     async with bot.db.acquire() as conn:
         if inactive:

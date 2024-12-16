@@ -94,6 +94,7 @@ class Adventures(commands.Cog):
         if discord.utils.get(ctx.guild.roles, name=role_name):
             raise G0T0Error(f"Role `@{role_name}` already exists")
         else:
+            g = await get_guild(self.bot, ctx.guild.id)
             adventure_role = await ctx.guild.create_role(name=role_name, mentionable=True,
                                                          reason=f"Created by {ctx.author.nick} for adventure"
                                                                 f"{adventure_name}")
@@ -127,12 +128,12 @@ class Adventures(commands.Cog):
             ooc_overwrites = category_permissions.copy()
 
             # Setup the questers
-            if quester_role := discord.utils.get(ctx.guild.roles, name="Quester"):
-                ic_overwrites[quester_role] = discord.PermissionOverwrite(
+            if g.quest_role:
+                ic_overwrites[g.quest_role] = discord.PermissionOverwrite(
                     view_channel=True
                 )
 
-                ooc_overwrites[quester_role] = discord.PermissionOverwrite(
+                ooc_overwrites[g.quest_role] = discord.PermissionOverwrite(
                     view_channel=True,
                     send_messages=True
                 )

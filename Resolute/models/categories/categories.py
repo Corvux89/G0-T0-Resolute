@@ -358,3 +358,26 @@ class ActivityPointsSchema(Schema):
         return ActivityPoints(**data)
     
 activity_points = CompendiumObject("activity_points", ActivityPoints, c_activity_points, ActivityPointsSchema)
+
+# Level Tiers
+c_level_tier = sa.Table(
+    "c_level_tier",
+    metadata,
+    Column("id", Integer, primary_key=True),
+    Column("tier", Integer, nullable=False)
+)
+
+class LevelTier(object):
+    def __init__(self, id, tier):
+        self.id = id
+        self.tier = tier
+
+class LevelTierSchema(Schema):
+    id = fields.Integer(data_key="id", required=True)
+    tier = fields.Integer(data_key="tier", required=True)
+
+    @post_load
+    def make_level_tier(self, data, **kwargs):
+        return LevelTier(**data)
+    
+level_tier = CompendiumObject("level_tier", LevelTier, c_level_tier, LevelTierSchema)

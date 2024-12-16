@@ -35,10 +35,10 @@ class Room(commands.Cog):
             roles = []
             guild = await get_guild(self.bot, ctx.guild.id)
 
-            if (adventure := await get_adventure_from_category(self.bot, ctx.channel.category.id)) and guild.quester_role:
-                roles.append(guild.quester_role)    
-            elif guild.citizen_role and guild.acolyte_role:
-                roles+=[guild.citizen_role, guild.acolyte_role]
+            if (adventure := await get_adventure_from_category(self.bot, ctx.channel.category.id)) and guild.quest_role:
+                roles.append(guild.quest_role)    
+            elif guild.entry_role and guild.member_role:
+                roles+=[guild.entry_role, guild.member_role]
             else:
                 raise G0T0Error("Something went wrong")
             if roles:

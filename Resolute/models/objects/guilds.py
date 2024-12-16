@@ -43,21 +43,28 @@ class PlayerGuild(object):
         self.npcs: list[NPC] = []
 
         # Roles
-        self.archivist_role: discord.Role = None
-        self.citizen_role: discord.Role = None
-        self.acolyte_role: discord.Role = None
-        self.senate_role: discord.Role = None
-        self.quester_role: discord.Role = None
+        self.entry_role: discord.Role = kwargs.get('entry_role')
+        self.member_role: discord.Role = kwargs.get('member_role')
+        self.tier_2_role: discord.Role = kwargs.get('tier_2_role')
+        self.tier_3_role: discord.Role = kwargs.get('tier_3_role')
+        self.tier_4_role: discord.Role = kwargs.get('tier_4_role')
+        self.tier_5_role: discord.Role = kwargs.get('tier_5_role')
+        self.tier_6_role: discord.Role = kwargs.get('tier_6_role')
+        self.admin_role: discord.Role = kwargs.get('admin_role')
+        self.staff_role: discord.Role = kwargs.get('staff_role')
+        self.bot_role: discord.Role = kwargs.get('bot_role')
+        self.quest_role: discord.Role = kwargs.get('quest_role')
         
         # Channels
-        self.character_application_channel: discord.TextChannel = None
-        self.market_channel: discord.TextChannel = None
-        self.announcement_channel: discord.TextChannel = None
-        self.archivist_channel: discord.TextChannel = None
-        self.automation_channel: discord.TextChannel = None
-        self.arena_board: discord.TextChannel = None
-        self.entrance_channel: discord.TextChannel = None
-        self.exit_channel: discord.TextChannel = None
+        self.application_channel: discord.TextChannel = kwargs.get('application_channel')
+        self.market_channel: discord.TextChannel = kwargs.get('market_channel')
+        self.announcement_channel: discord.TextChannel = kwargs.get('announcement_channel')
+        self.staff_channel: discord.TextChannel = kwargs.get('staff_channel')
+        self.help_channel: discord.TextChannel = kwargs.get('help_channel')
+        self.arena_board_channel: discord.TextChannel = kwargs.get('arena_board_channel')
+        self.exit_channel: discord.TextChannel = kwargs.get('exit_channel')
+        self.entrance_channel: discord.TextChannel = kwargs.get('entrance_channel')
+
 
     @property
     def get_reset_day(self):
@@ -142,10 +149,30 @@ guilds_table = sa.Table(
     Column("epoch_notation", String, nullable=True),
     Column("first_character_message", String, nullable=True),
     Column("ping_announcement", BOOLEAN, default=False, nullable=False),
-    Column("reward_threshold", Integer, nullable=True)
+    Column("reward_threshold", Integer, nullable=True),
+    Column("entry_role", BigInteger, nullable=True),
+    Column("member_role", BigInteger, nullable=True),
+    Column("tier_2_role", BigInteger, nullable=True),
+    Column("tier_3_role", BigInteger, nullable=True),
+    Column("tier_4_role", BigInteger, nullable=True),
+    Column("tier_5_role", BigInteger, nullable=True),
+    Column("tier_6_role", BigInteger, nullable=True),
+    Column("admin_role", BigInteger, nullable=True),
+    Column("staff_role", BigInteger, nullable=True),
+    Column("bot_role", BigInteger, nullable=True),
+    Column("quest_role", BigInteger, nullable=True),
+    Column("application_channel", BigInteger, nullable=True),
+    Column("market_channel", BigInteger, nullable=True),
+    Column("announcement_channel", BigInteger, nullable=True),
+    Column("staff_channel", BigInteger, nullable=True),
+    Column("help_channel", BigInteger, nullable=True),
+    Column("arena_board_channel", BigInteger, nullable=True),
+    Column("exit_channel", BigInteger, nullable=True),
+    Column("entrance_channel", BigInteger, nullable=True)
 )
 
 class GuildSchema(Schema):
+    guild: discord.Guild
     id = fields.Integer(required=True)
     max_level = fields.Integer()
     weeks = fields.Integer()
@@ -163,6 +190,29 @@ class GuildSchema(Schema):
     first_character_message = fields.String(allow_none=True)
     ping_announcement = fields.Boolean(allow_none=False)
     reward_threshold = fields.Integer(allow_none=True)
+    entry_role = fields.Method(None, "load_role", allow_none=True)
+    member_role = fields.Method(None, "load_role", allow_none=True)
+    tier_2_role = fields.Method(None, "load_role", allow_none=True)
+    tier_3_role = fields.Method(None, "load_role", allow_none=True)
+    tier_4_role = fields.Method(None, "load_role", allow_none=True)
+    tier_5_role = fields.Method(None, "load_role", allow_none=True)
+    tier_6_role = fields.Method(None, "load_role", allow_none=True)
+    admin_role = fields.Method(None, "load_role", allow_none=True)
+    staff_role = fields.Method(None, "load_role", allow_none=True)
+    bot_role = fields.Method(None, "load_role", allow_none=True)
+    quest_role = fields.Method(None, "load_role", allow_none=True)
+    application_channel = fields.Method(None, "load_channel", allow_none=True)
+    market_channel = fields.Method(None, "load_channel", allow_none=True)
+    announcement_channel = fields.Method(None, "load_channel", allow_none=True)
+    staff_channel = fields.Method(None, "load_channel", allow_none=True)
+    help_channel = fields.Method(None, "load_channel", allow_none=True)
+    arena_board_channel = fields.Method(None, "load_channel", allow_none=True)
+    exit_channel = fields.Method(None, "load_channel", allow_none=True)
+    entrance_channel = fields.Method(None, "load_channel", allow_none=True)
+
+    def __init__(self, guild, **kwargs):
+        super().__init__(**kwargs)
+        self.guild = guild
 
     @post_load
     def make_guild(self, data, **kwargs):
@@ -170,6 +220,12 @@ class GuildSchema(Schema):
 
     def load_timestamp(self, value):  # Marshmallow doesn't like loading DateTime for some reason. This is a workaround
         return datetime(value.year, value.month, value.day, value.hour, value.minute, value.second, tzinfo=timezone.utc)
+    
+    def load_role(self, value):
+        return self.guild.get_role(value)
+    
+    def load_channel(self, value):
+        return self.guild.get_channel(value)       
     
 
 def get_guild_from_id(guild_id: int) -> FromClause:

@@ -57,7 +57,7 @@ class Dashboards(commands.Cog):
             if dashboard.dashboard_type.value.upper() == "RP":
                 embed = post_message.embeds[0]
 
-                archivist_field = RPDashboardCategory(title="Archivist",
+                staff_field = RPDashboardCategory(title="Archivist",
                                                       name="<:pencil:989284061786808380> -- Awaiting Archivist",
                                                       channels=[self.bot.get_channel(self.strip_field(x))  for x in [x.value if "Archivist" in x.name else "" for x in embed.fields][0].split('\n')])
                 available_field = RPDashboardCategory(title="Available",
@@ -68,7 +68,7 @@ class Dashboards(commands.Cog):
                                                        name="<:x:983576786447245312> -- Unavailable",
                                                        channels=[self.bot.get_channel(self.strip_field(x)) for x in [x.value for x in embed.fields if "Unavailable" in x.name][0].split('\n')])
                 
-                all_fields = [archivist_field, available_field, unavailable_field]
+                all_fields = [staff_field, available_field, unavailable_field]
                 node = ""
                 update = False
 
@@ -80,9 +80,9 @@ class Dashboards(commands.Cog):
                 if not message.content or message.content in ["```\n​\n```", "```\n \n```"]:
                     available_field.channels.append(message.channel)                     
                     update = True if available_field.title != node else False
-                elif guild.archivist_role and guild.archivist_role.mention in message.content:
-                    archivist_field.channels.append(message.channel)
-                    update = True if archivist_field.title != node else False
+                elif guild.staff_role and guild.staff_role.mention in message.content:
+                    staff_field.channels.append(message.channel)
+                    update = True if staff_field.title != node else False
                 else:
                     unavailable_field.channels.append(message.channel)
                     update = True if unavailable_field.title != node else False

@@ -1,5 +1,8 @@
 import discord
 
+from Resolute.bot import G0T0Bot
+from Resolute.helpers.guilds import get_guild
+
 owner_overwrites = discord.PermissionOverwrite(view_channel=True,
                                                manage_messages=True,
                                                send_messages=True)
@@ -28,19 +31,21 @@ async def add_owner(channel: discord.TextChannel, member: discord.Member) -> Non
 async def remove_owner(channel: discord.TextChannel, member: discord.Member) -> None:
     await channel.set_permissions(member, overwrite=None)
 
-async def create_channel(name: str, category: discord.TextChannel, member: discord.Member) -> discord.TextChannel:
+
+async def create_channel(bot: G0T0Bot, name: str, category: discord.TextChannel, member: discord.Member) -> discord.TextChannel:
     channel_overwrites = category.overwrites
+    g = await get_guild(bot, category.guild.id)
 
     channel_overwrites[member] = owner_overwrites
     
-    if bot_role := discord.utils.get(member.guild.roles, name="Bots"):
-        channel_overwrites[bot_role] = bot_overwrites
+    if g.bot_role:
+        channel_overwrites[g.bot_role] = bot_overwrites
 
-    if citizen_role := discord.utils.get(member.guild.roles, name="Citizen"):
-        channel_overwrites[citizen_role] = general_overwrites
+    if g.member_role:
+        channel_overwrites[g.member_role] = general_overwrites
 
-    if acolyte_role := discord.utils.get(member.guild.roles, name="Acolyte"):
-        channel_overwrites[acolyte_role] = general_overwrites
+    if g.staff_role:
+        channel_overwrites[g.staff_role] = general_overwrites
 
     channel = await member.guild.create_text_channel(
         name=name,

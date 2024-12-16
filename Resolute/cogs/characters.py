@@ -168,17 +168,17 @@ class Character(commands.Cog):
                                application_id: Option(str, description="Application ID", required=False)):
         guild = await get_guild(self.bot, ctx.guild.id)
         
-        if guild.character_application_channel:
+        if guild.application_channel:
             if application_id:
                 try:
-                    message = await guild.character_application_channel.fetch_message(int(application_id))
+                    message = await guild.application_channel.fetch_message(int(application_id))
                 except ValueError:
                     raise G0T0Error("Invalid application identifier")
                 except discord.errors.NotFound:
                     raise ApplicationNotFound()
             else:
                 try:
-                    message = await guild.character_application_channel.fetch_message(ctx.channel.id)
+                    message = await guild.application_channel.fetch_message(ctx.channel.id)
                 except:
                     raise ApplicationNotFound()
         

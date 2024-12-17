@@ -50,8 +50,7 @@ class Events(commands.Cog):
                 else:
                     log.error(error)
                     
-        if guild.exit_channel:
-            player = await get_player(self.bot, payload.user.id, payload.guild_id)
+        if guild.exit_channel and (player := await get_player(self.bot, payload.user.id, payload.guild_id, False, None, True)):
             player.member = payload.user
             adventures = await get_player_adventures(self.bot, player)
             arenas = await get_player_arenas(self.bot, player)

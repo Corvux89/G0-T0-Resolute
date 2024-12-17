@@ -10,16 +10,18 @@ from Resolute.models.objects.players import (Player, PlayerSchema,
                                              upsert_player_query)
 
 
-async def get_player(bot: G0T0Bot, player_id: int, guild_id: int, inactive: bool = False, ctx = None) -> Player:
+async def get_player(bot: G0T0Bot, player_id: int, guild_id: int, inactive: bool = False, ctx = None, lookup_only: bool = False) -> Player:
 
     async with bot.db.acquire() as conn:
         results = await conn.execute(get_player_query(player_id, guild_id))
         rows = await results.fetchall()
 
-        if len(rows) == 0 and guild_id:
+        if len(rows) == 0 and guild_id and not lookup_only:
             player = Player(id=player_id, guild_id=guild_id)
             results = await conn.execute(upsert_player_query(player))
             row = await results.first()
+        elif lookup_only:
+            return None
         elif len(rows) == 0 and not guild_id:
             raise Exception("Unable to create player from DM's")
         else:

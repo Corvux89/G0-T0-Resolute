@@ -1,3 +1,4 @@
+import operator
 import re
 
 import discord
@@ -58,7 +59,7 @@ async def author_rewards(bot: G0T0Bot, author: discord.Member, guild: PlayerGuil
         player.points = max(0, player.points - (guild.reward_threshold * qty))
 
         if guild.staff_channel:
-            await guild.staff_channel.send(embed=LogEmbed(bot, reward_log, bot.user, player.member, None, True))
+            await guild.staff_channel.send(embed=LogEmbed(reward_log, bot.user, player.member, None, True))
 
     async with bot.db.acquire() as conn:
             await conn.execute(upsert_player_query(player))
@@ -232,7 +233,7 @@ async def update_activity_points(bot: G0T0Bot, player: Player, guild: PlayerGuil
         player.activity_points -= 1
 
     activity_point = None
-    for point in bot.compendium.activity_points[0].values():
+    for point in sorted(bot.compendium.activity_points[0].values(), key=operator.attrgetter('id')):
         if player.activity_points >= point.points:
             activity_point = point
         elif player.activity_points < point.points:

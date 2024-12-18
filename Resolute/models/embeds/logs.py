@@ -10,7 +10,7 @@ from Resolute.models.objects.characters import PlayerCharacter
 
 
 class LogEmbed(Embed):
-    def __init__(self, bot: G0T0Bot, log_entry: DBLog, author: Member, member: Member, character: PlayerCharacter = None, show_values: bool = False):
+    def __init__(self, log_entry: DBLog, author: Member, member: Member, character: PlayerCharacter = None, show_values: bool = False):
         super().__init__(title=f"{log_entry.activity.value} Logged - {character.name if character else member.display_name}",
                          color=Color.random(),
                          timestamp=log_entry.created_ts)

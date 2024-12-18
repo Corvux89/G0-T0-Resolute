@@ -98,7 +98,7 @@ class MessageLogUI(MessageLog):
             log_entry = await create_log(self.bot, self.owner, self.activity, member.player,
                                          character=member.character)
             
-            await interaction.channel.send(embed=LogEmbed(self.bot, log_entry, self.owner, member.player.member, member.character))
+            await interaction.channel.send(embed=LogEmbed(log_entry, self.owner, member.player.member, member.character))
 
         await self.msg.add_reaction(APPROVAL_EMOJI[0])
         await self.on_timeout()

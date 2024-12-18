@@ -1,6 +1,7 @@
 import asyncio
 import datetime
 import logging
+import operator
 from os import listdir
 
 from discord import (ApplicationContext, ExtensionNotFound, ExtensionNotLoaded, Option, SlashCommandGroup)
@@ -108,11 +109,10 @@ class Admin(commands.Cog):
     @commands.command(name="dev")
     async def dev(self, ctx: ApplicationContext):
         player = await get_player(self.bot, ctx.author.id, ctx.guild.id if ctx.guild else None)
-
-        print(player.has_character_in_tier(self.bot, 3))
-        print(player.has_character_in_tier(self.bot, 6))
-        print(player.has_character_in_tier(self.bot, 1))
-        await ctx.send("here")
+        points = sorted(self.bot.compendium.activity_points[0].values(), key=operator.attrgetter('id'))
+        for point in points:
+            print(point.id)
+        await ctx.send("Testing")
 
     # --------------------------- #
     # Private Methods

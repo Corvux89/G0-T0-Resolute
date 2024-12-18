@@ -625,6 +625,9 @@ class CharacterSettingsUI(CharacterSettings):
         for char in self.player.characters:
                 char_list.append(SelectOption(label=f"{char.name}", value=f"{char.id}", default=True if char.id == self.active_character.id else False))
         self.character_select.options = char_list
+
+        self.add_channel.disabled = False if self.active_channel else True
+        self.remove_channel.disabled = False if self.active_channel else True
     
     @discord.ui.select(placeholder="Select a character", row=1)
     async def character_select(self, char: discord.ui.Select, interaction: discord.Interaction):

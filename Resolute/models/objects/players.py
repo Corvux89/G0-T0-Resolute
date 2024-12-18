@@ -26,7 +26,7 @@ class Player(object):
         self.points: int = kwargs.get('points', 0)
         self.activity_points: int = kwargs.get('activity_points', 0)
         self.activity_level: int = kwargs.get('activity_level', 0)
-        self.statistics: str = kwargs.get('statistics', "")
+        self.statistics: str = kwargs.get('statistics', "{}")
 
         # Virtual Attributes
         self.characters: list[PlayerCharacter] = []
@@ -61,7 +61,7 @@ class Player(object):
                 return char       
     
     async def update_command_count(self, bot: G0T0Bot, command: str):
-        stats = json.loads(self.statistics or "{}")
+        stats = json.loads(self.statistics if self.statistics else "{}")
         if "commands" not in stats:
             stats["commands"] = {}
 
@@ -149,7 +149,7 @@ class PlayerSchema(Schema):
     points = fields.Integer()
     activity_points = fields.Integer()
     activity_level = fields.Integer()
-    statistics = fields.String()
+    statistics = fields.String(default="{}")
 
     @post_load
     def make_discord_player(self, data, **kwargs):

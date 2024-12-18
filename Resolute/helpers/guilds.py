@@ -71,7 +71,7 @@ async def update_guild(bot: G0T0Bot, guild: PlayerGuild) -> PlayerGuild:
         results = await conn.execute(upsert_guild(guild))
         row = await results.first()
 
-    g = GuildSchema().load(row)
+    g = GuildSchema(bot.get_guild(guild.id)).load(row)
 
     await build_guild(bot, g)
     bot.player_guilds[str(guild.id)] = g
@@ -82,7 +82,7 @@ async def get_guilds_with_reset(bot: G0T0Bot, day: int, hour: int) -> list[Playe
         results = await conn.execute(get_guilds_with_reset_query(day, hour))
         rows = await results.fetchall()
 
-    guild_list = [GuildSchema().load(row) for row in rows]
+    guild_list = [GuildSchema(bot.get_guild(row["id"])).load(row) for row in rows]
 
     await asyncio.gather(*(build_guild(bot, g) for g in guild_list))
 

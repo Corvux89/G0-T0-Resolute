@@ -46,10 +46,9 @@ async def get_player(bot: G0T0Bot, player_id: int, guild_id: int, inactive: bool
 
 async def manage_player_roles(bot: G0T0Bot, player: Player, reason: str = None) -> None:
     g = await get_guild(bot, player.guild_id)
-    high_char = player.highest_level_character
 
     # Primary Role handling
-    if high_char >= 3:
+    if player.highest_level_character and player.highest_level_character.level >= 3:
         if g.member_role and g.member_role not in player.member.roles:
             await player.member.add_roles(g.member_role, reason=reason)
 

@@ -63,7 +63,7 @@ class Messages(commands.Cog):
                 await ui.send_to(ctx.author)
 
         # Arena Board
-        if guild.arena_board_channel and message.channel.id == guild.arena_board_channel.id:
+        elif guild.arena_board_channel and message.channel.id == guild.arena_board_channel.id:
             if not message.author.bot or message.embeds[0].footer.text != f"{ctx.author.id}":
                 raise G0T0Error("You cannot edit this arena board post")
             elif len(player.characters) <= 1:
@@ -76,10 +76,12 @@ class Messages(commands.Cog):
             await ui.send_to(ctx.author)
 
         # Character Say 
-        if is_player_say_message(player, message):
+        elif is_player_say_message(player, message):
             modal = SayEditModal(message)
             return await ctx.send_modal(modal) 
-
+        else:
+            raise G0T0Error("This message cannot be edited")
+        
         await ctx.delete()
 
     @commands.message_command(
@@ -97,14 +99,17 @@ class Messages(commands.Cog):
             await message.delete()
 
         # Character Say
-        if is_player_say_message(player, message):
+        elif is_player_say_message(player, message):
             await update_activity_points(self.bot, player, guild, False)
             await message.delete()
 
         # Adventure NPC
-        if (adventure := await get_adventure_from_category(self.bot, ctx.channel.category.id)) and ctx.author.id in adventure.dms and is_adventure_npc_message(adventure, message):
+        elif (adventure := await get_adventure_from_category(self.bot, ctx.channel.category.id)) and ctx.author.id in adventure.dms and is_adventure_npc_message(adventure, message):
             await update_activity_points(self.bot, player, guild, False)
             await message.delete()
+        
+        else:
+            raise G0T0Error("This message cannot be deleted")
 
         await ctx.delete()
 
@@ -178,6 +183,9 @@ class Messages(commands.Cog):
         elif guild.staff_role and guild.staff_role.mention in message.content and len(message.mentions) > 0:
             ui = await MessageLogUI.new(self.bot, ctx.author, message)
             await ui.send_to(ctx)
+        
+        else:
+            raise G0T0Error("Nothing to approve here. Move along.")
         
         await ctx.delete()
 

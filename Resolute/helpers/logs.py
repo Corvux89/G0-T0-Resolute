@@ -247,8 +247,8 @@ async def update_activity_points(bot: G0T0Bot, player: Player, guild: PlayerGuil
                                    cc=-1 if revert else 0
                                    )
 
-        if guild.market_channel and not revert:
-            await guild.market_channel.send(embed=LogEmbed(act_log, bot.user, player.member), content=f"{player.member.mention}")
+        if guild.activity_points_channel and not revert:
+            await guild.activity_points_channel.send(embed=LogEmbed(act_log, bot.user, player.member), content=f"{player.member.mention}")
 
         if guild.staff_channel and revert:
             await guild.staff_channel.send(embed=LogEmbed(act_log, bot.user, player.member))

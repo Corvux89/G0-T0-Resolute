@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 import json
 
 import discord
@@ -77,6 +78,7 @@ class Player(object):
 
     async def update_post_stats(self, bot: G0T0Bot, character: PlayerCharacter | NPC, post: str, retract: bool = False):
         stats = json.loads(self.statistics)
+        current_date = datetime.now(timezone.utc).strftime('%Y-%m-%d')
 
         if isinstance(character, PlayerCharacter):
             key="say"
@@ -89,35 +91,32 @@ class Player(object):
             stats[key] = {}
 
         if f"{id}" not in stats[key]:
-            stats[key][f"{id}"] = {}
+            stats[key][str(id)] = {}
 
+        if current_date not in stats[key]:
+            stats[key][str(id)][current_date] = {
+                "num_lines": 0,
+                "num_words": 0,
+                "num_characters": 0,
+                "count": 0
+            }
 
-        if "num_lines" not in stats[key][f"{id}"]:
-            stats[key][f"{id}"]["num_lines"] = 0
-
-        if "num_words" not in stats[key][f"{id}"]:
-            stats[key][f"{id}"]["num_words"] = 0
-
-        if "num_characters" not in stats[key][f"{id}"]:
-            stats[key][f"{id}"]["num_characters"] = 0
-
-        if "count" not in stats[key][f"{id}"]:
-            stats[key][f"{id}"]["count"] = 0
+        daily_stats = stats[key][str(id)][current_date]
 
         lines = post.splitlines()
         words = post.split()
         characters = len(post)
 
         if retract:
-            stats[key][f"{id}"]["num_lines"] -= len(lines)
-            stats[key][f"{id}"]["num_words"] -= len(words)
-            stats[key][f"{id}"]["num_characters"] -= characters
-            stats[key][f"{id}"]["count"] -= 1
+            daily_stats["num_lines"] -= len(lines)
+            daily_stats["num_words"] -= len(words)
+            daily_stats["num_characters"] -= characters
+            daily_stats["count"] -= 1
         else:
-            stats[key][f"{id}"]["num_lines"] += len(lines)
-            stats[key][f"{id}"]["num_words"] += len(words)
-            stats[key][f"{id}"]["num_characters"] += characters
-            stats[key][f"{id}"]["count"] += 1
+            daily_stats["num_lines"] += len(lines)
+            daily_stats["num_words"] += len(words)
+            daily_stats["num_characters"] += characters
+            daily_stats["count"] += 1
 
         self.statistics = json.dumps(stats)
 

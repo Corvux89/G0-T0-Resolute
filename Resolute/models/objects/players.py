@@ -90,10 +90,10 @@ class Player(object):
         if key not in stats:
             stats[key] = {}
 
-        if f"{id}" not in stats[key]:
+        if str(id) not in stats[key]:
             stats[key][str(id)] = {}
 
-        if current_date not in stats[key]:
+        if current_date not in stats[key][str(id)]:
             stats[key][str(id)][current_date] = {
                 "num_lines": 0,
                 "num_words": 0,

@@ -42,7 +42,7 @@ class Character(commands.Cog):
         name="say",
         guild_only=True
     )
-    async def character_say(self, ctx: ApplicationContext, char_name: str = None):
+    async def character_say(self, ctx: ApplicationContext):
 
         content = ctx.message.content
 
@@ -54,11 +54,20 @@ class Character(commands.Cog):
         
         player = await get_player(self.bot, ctx.author.id, ctx.guild.id)
         g = await get_guild(self.bot, ctx.guild.id)
+        character = None
 
         if not player.characters:
             raise CharacterNotFound(player.member)
+        
+        if match := re.match(r"^(['\"])(.*?)\1", content):
+            search = match.group(2)
+            character = next((c for c in player.characters if search.lower() in c.name.lower()), None)
+            if character:
+                content = re.sub(r"^(['\"])(.*?)\1\s*", "", content, count=1)
+            
+        if not character:
+            character = await get_webhook_character(self.bot, player, ctx.channel)
 
-        character = await get_webhook_character(self.bot, player, ctx.channel)
         webhook = await get_webhook(ctx.channel)
         await webhook.send(username=f"[{character.level}] {character.name} // {ctx.author.display_name}",
                         avatar_url=ctx.author.display_avatar.url if not character.avatar_url else character.avatar_url,

@@ -58,7 +58,6 @@ async def add_player_to_arena(bot: G0T0Bot, interaction: discord.Interaction, pl
         arena.player_characters.remove(remove_char)
         arena.characters.remove(remove_char.id)
 
-    await interaction.guild.get_member(player.id).add_roles(interaction.guild.get_role(arena.role_id))
     await remove_arena_board_post(interaction, bot, player)
     await interaction.response.send_message(f"{interaction.guild.get_member(player.id).mention} has joined the arena with {character.name}!")
 
@@ -108,10 +107,7 @@ def update_arena_tier(bot: G0T0Bot, arena: Arena) -> None:
             tier = bisect.bisect(levels, avg_level)
             arena.tier = bot.compendium.get_object(ArenaTier, tier)
 
-async def close_arena(bot: G0T0Bot, arena: Arena, arena_role: discord.Role):
-    for member in arena_role.members:
-        await member.remove_roles(arena_role, reason="Arena Complete")
-
+async def close_arena(bot: G0T0Bot, arena: Arena):
     arena.end_ts = datetime.now(timezone.utc)
 
     await upsert_arena(bot, arena)

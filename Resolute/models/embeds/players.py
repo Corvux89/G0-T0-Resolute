@@ -1,9 +1,9 @@
-from discord import Embed, Member
+from discord import Embed, Color
 
 from Resolute.compendium import Compendium
 from Resolute.constants import ZWSP3
 from Resolute.models.objects.guilds import PlayerGuild
-from Resolute.models.objects.players import Player
+from Resolute.models.objects.players import Player, RPPost
 
 class PlayerOverviewEmbed(Embed):
     def __init__(self, player: Player, guild: PlayerGuild, compendium: Compendium):
@@ -44,3 +44,19 @@ class PlayerOverviewEmbed(Embed):
                             f"{ZWSP3}{character.species.value} // {class_str}\n\n")
 
             self.add_field(name=f"Character Information",value=val_str,inline=False)
+
+class RPPostEmbed(Embed):
+    def __init__(self, player: Player, posts: list[RPPost]):
+        super().__init__(
+            title="Roleplay Request",
+            color=Color.random()
+        )
+
+        self.set_thumbnail(url=player.member.avatar.url)
+
+        for post in posts:
+            self.add_field(name=f"{post.character.name}",
+                           value=f"{post.note}",
+                           inline=False)
+            
+        self.set_footer(text=f"{player.member.id}")

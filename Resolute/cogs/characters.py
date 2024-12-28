@@ -20,7 +20,7 @@ from Resolute.models.views.applications import (CharacterSelectUI,
                                                 NewCharacterRequestUI)
 from Resolute.models.views.character_view import (CharacterGetUI,
                                                   CharacterManageUI,
-                                                  CharacterSettingsUI)
+                                                  CharacterSettingsUI, RPPostUI)
 
 log = logging.getLogger(__name__)
 
@@ -125,6 +125,21 @@ class Character(commands.Cog):
             raise CharacterNotFound(player.member)
         
         ui = CharacterSettingsUI.new(self.bot, ctx.author, player, g)
+        await ui.send_to(ctx)
+        await ctx.delete()
+
+    @commands.slash_command(
+            name="rp_request",
+            description="RP Board Request",
+    )
+    async def rp_request(self, ctx: ApplicationContext):
+        player = await get_player(self.bot, ctx.author.id, ctx.guild.id if ctx.guild else None)
+        g = await get_guild(self.bot, player.guild_id)
+
+        if not player.characters:
+            raise CharacterNotFound(player.member)
+        
+        ui = RPPostUI.new(self.bot, ctx.author, player)
         await ui.send_to(ctx)
         await ctx.delete()
         

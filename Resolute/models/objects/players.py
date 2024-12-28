@@ -200,3 +200,9 @@ def upsert_player_query(player: Player):
     )
 
     return upsert_statement
+
+
+class RPPost(object):
+    def __init__(self, character: PlayerCharacter, *args, **kwargs):
+        self.character = character
+        self.note = kwargs.get('note')

@@ -12,6 +12,7 @@ from Resolute.helpers import (create_log, create_new_character, get_character,
                               get_player, get_webhook, is_admin, isImageURL,
                               manage_player_roles, process_message,
                               upsert_character, upsert_class)
+from Resolute.helpers.players import build_rp_post
 from Resolute.models.categories import CharacterClass, CharacterSpecies
 from Resolute.models.categories.categories import CharacterArchetype, Faction
 from Resolute.models.embeds import ErrorEmbed
@@ -20,12 +21,12 @@ from Resolute.models.embeds.characters import (CharacterEmbed,
                                                LevelUpEmbed, NewcharacterEmbed,
                                                NewCharacterSetupEmbed)
 from Resolute.models.embeds.logs import LogEmbed
-from Resolute.models.embeds.players import PlayerOverviewEmbed
+from Resolute.models.embeds.players import PlayerOverviewEmbed, RPPostEmbed
 from Resolute.models.objects.characters import (CharacterRenown,
                                                 PlayerCharacterClass)
 from Resolute.models.objects.exceptions import G0T0Error
 from Resolute.models.objects.guilds import PlayerGuild
-from Resolute.models.objects.players import Player, PlayerCharacter
+from Resolute.models.objects.players import Player, PlayerCharacter, RPPost
 from Resolute.models.views.base import InteractiveView
 
 
@@ -766,7 +767,6 @@ class CharacterGet(InteractiveView):
     async def on_timeout(self) -> None:
         if self.message is None:
             return
-        
         try:
             await self.message.edit(view=None, embed=PlayerOverviewEmbed(self.player, self.guild, self.bot.compendium))
         except discord.HTTPException:
@@ -796,3 +796,102 @@ class CharacterGetUI(CharacterGet):
             self.active_character = None
 
         await self.refresh_content(interaction)
+
+# Character RP Post Request View
+class RPPostView(InteractiveView):
+    __menu_copy_attrs__ = ("bot", "player", "posts", "message")
+
+    bot: G0T0Bot
+    player: Player
+    posts: list[RPPost] = []
+    orig_message: discord.Message = None
+
+    async def get_content(self):
+        return {"content": "", "embed": RPPostEmbed(self.player, self.posts)}
+    
+class RPPostUI(RPPostView):
+    character: PlayerCharacter = None
+
+    @classmethod
+    def new(cls, bot: G0T0Bot, owner: discord.Member, player: Player, orig_message: discord.Message = None):
+        inst = cls(owner=owner)
+        inst.bot = bot
+        inst.player = player
+        inst.orig_message = orig_message
+
+        if orig_message:
+            for field in orig_message.embeds[0].fields:
+                if (c := next((c for c in player.characters if c.name == field.name), None)):
+                    inst.posts.append(RPPost(c, note=field.value))
+        return inst
+    
+    async def _before_send(self):
+        char_list = []
+        for char in self.player.characters:
+            char_list.append(discord.SelectOption(label=f"{char.name}", value=f"{char.id}", default=True if self.character and char.id == self.character.id else False))
+        self.character_select.options = char_list
+
+        self.queue_character.disabled = False if self.character else True
+        self.character_select.disabled = False if len(self.posts) < 3 else True
+        self.remove_character.disabled = False if self.character and next((p for p in self.posts if p.character.id == self.character.id), None) else True
+
+    
+    @discord.ui.select(placeholder="Select a character", row=1, custom_id="character_select")
+    async def character_select(self, char: discord.ui.Select, interaction: discord.Interaction):
+        character = await get_character(self.bot, char.values[0])
+ 
+        if character.player_id != interaction.user.id and interaction.user.id != self.owner.id:
+            raise G0T0Error("Thats not your character")
+        
+        self.character = character
+        
+        await self.refresh_content(interaction)
+
+    @discord.ui.button(label="Setup Post", style=discord.ButtonStyle.primary, custom_id="add_character", row=2)
+    async def queue_character(self, _: discord.ui.Button, interaction: discord.Interaction):
+        post = next((p for p in self.posts if p.character.id == self.character.id), RPPost(self.character))
+        modal = RPPostNoteModal(post)
+        await self.prompt_modal(interaction, modal)
+
+        if post.character not in [p.character for p in self.posts]:
+            self.posts.append(post)
+
+        await self.refresh_content(interaction)
+
+    @discord.ui.button(label="Remove", style=discord.ButtonStyle.red, custom_id="remove_character", row=2)
+    async def remove_character(self, _: discord.ui.Button, interaction: discord.Interaction):
+        if post := next((p for p in self.posts if p.character.id == self.character.id), None):
+            self.posts.remove(post)
+        await self.refresh_content(interaction)
+        
+    @discord.ui.button(label="Accept", style=discord.ButtonStyle.primary, row=3)
+    async def next_application(self, _: discord.ui.Button, interaction: discord.Interaction):
+        if await build_rp_post(self.bot, self.player, self.posts, self.orig_message.id if self.orig_message else None):
+            await interaction.channel.send("Request Submitted!", delete_after=5)
+        else:
+            await interaction.channel.send("Something went wrong", delete_after=5)
+
+        await self.on_timeout()
+
+    @discord.ui.button(label="Exit", style=discord.ButtonStyle.red, row=3)
+    async def exit_application(self, _: discord.ui.Button, interaction: discord.Interaction):
+        await self.on_timeout()
+
+class RPPostNoteModal(Modal):
+    post: RPPost
+
+    def __init__(self, post: RPPost):
+        super().__init__(title="Post Note")
+        self.post = post
+
+        self.add_item(InputText(label="Note", placeholder="", value=self.post.note or "", required=False, style=discord.InputTextStyle.long, max_length=1000))
+
+    async def callback(self, interaction: discord.Interaction):
+        note = self.children[0].value
+
+        self.post.note = note
+
+        await interaction.response.defer()
+        self.stop()
+
+

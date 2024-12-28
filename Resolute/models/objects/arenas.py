@@ -17,10 +17,9 @@ from Resolute.models.objects.players import Player
 class Arena(object):
     players: list[Player] = []
     
-    def __init__(self, channel_id: int, role_id: int, host_id: int, tier: ArenaTier, type: ArenaType, **kwargs):
+    def __init__(self, channel_id: int, host_id: int, tier: ArenaTier, type: ArenaType, **kwargs):
         self.id = kwargs.get('id')
         self.channel_id = channel_id
-        self.role_id = role_id
         self.tier = tier
         self.type = type
         self.host_id = host_id
@@ -37,7 +36,6 @@ arenas_table = sa.Table(
     Column("id", Integer, primary_key=True, autoincrement='auto'),
     Column("channel_id", BigInteger, nullable=False),
     Column("pin_message_id", BigInteger, nullable=False),
-    Column("role_id", BigInteger, nullable=False),
     Column("host_id", BigInteger, nullable=False),  # ref: > characters.player_id
     Column("tier", Integer, nullable=False, default=1),  # ref: > c_arena_tier.id
     Column("type", Integer, nullable=False, default=1),  # ref: > c_arena_type.id
@@ -52,7 +50,6 @@ class ArenaSchema(Schema):
     id = fields.Integer(data_key="id", required=True)
     channel_id = fields.Integer(data_key="channel_id", required=True)
     pin_message_id = fields.Integer(data_key="pin_message_id", required=True)
-    role_id = fields.Integer(data_key="role_id", required=True)
     host_id = fields.Integer(data_key="host_id", required=True)
     tier = fields.Method(None, "load_tier")
     type = fields.Method(None, "load_type")
@@ -97,7 +94,6 @@ def upsert_arena_query(arena: Arena):
     if hasattr(arena, "id") and arena.id is not None:
         update_dict = {
             "pin_message_id": arena.pin_message_id,
-            "role_id": arena.role_id,
             "host_id": arena.host_id,
             "tier": arena.tier.id,
             "type": arena.type.id,
@@ -112,7 +108,6 @@ def upsert_arena_query(arena: Arena):
     return arenas_table.insert().values(
         channel_id=arena.channel_id,
         pin_message_id=arena.pin_message_id,
-        role_id=arena.role_id,
         host_id=arena.host_id,
         tier=arena.tier.id,
         type=arena.type.id,

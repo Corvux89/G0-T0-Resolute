@@ -18,7 +18,7 @@ from Resolute.models.embeds.logs import LogEmbed
 from Resolute.models.objects.arenas import ArenaPost
 from Resolute.models.objects.exceptions import G0T0Error, TransactionError
 from Resolute.models.views.arena_view import ArenaRequestCharacterSelect
-from Resolute.models.views.character_view import SayEditModal
+from Resolute.models.views.character_view import RPPostUI, SayEditModal
 from Resolute.models.views.market import TransactionPromptUI
 from Resolute.models.views.messages import MessageLogUI
 
@@ -75,6 +75,16 @@ class Messages(commands.Cog):
             ui = ArenaRequestCharacterSelect.new(self.bot, ctx.author, player, post)
             await ui.send_to(ctx.author)
 
+        # RP Post
+        elif guild.rp_post_channel and message.channel.id == guild.rp_post_channel.id:
+            if not message.author.bot or message.embeds[0].footer.text != f"{ctx.author.id}":
+                raise G0T0Error("You cannot edit this roleplay board post")
+            elif len(player.characters) <= 1:
+                raise G0T0Error(f"There is nothing to edit")
+            
+            ui = RPPostUI.new(self.bot, ctx.author, player, message)
+            await ui.send_to(ctx.author)            
+            
         # Character Say 
         elif is_player_say_message(player, message):
             modal = SayEditModal(message)
@@ -96,6 +106,13 @@ class Messages(commands.Cog):
             if not message.author.bot or message.embeds[0].footer.text != f"{ctx.author.id}":
                 raise G0T0Error("You cannot edit this arena board post")
 
+            await message.delete()
+
+        # RP Post
+        elif guild.rp_post_channel and message.channel.id == guild.rp_post_channel.id:
+            if not message.author.bot or message.embeds[0].footer.text != f"{ctx.author.id}":
+                raise G0T0Error("You cannot edit this roleplay board post")
+            
             await message.delete()
 
         # Character Say

@@ -2,10 +2,11 @@ import discord
 
 from Resolute.bot import G0T0Bot
 from Resolute.helpers.characters import get_characters
-from Resolute.helpers.general_helpers import get_selection
+from Resolute.helpers.general_helpers import get_selection, get_webhook
 from Resolute.helpers.guilds import get_guild
+from Resolute.models.embeds.players import RPPostEmbed
 from Resolute.models.objects.logs import get_log_count_by_player_and_activity
-from Resolute.models.objects.players import (Player, PlayerSchema,
+from Resolute.models.objects.players import (Player, PlayerSchema, RPPost,
                                              get_player_query,
                                              upsert_player_query)
 
@@ -113,3 +114,16 @@ async def get_player_quests(bot: G0T0Bot, player: Player) -> Player:
     player.needed_arenas = 1 if player.highest_level_character.level == 1 else 2
 
     return player
+
+async def build_rp_post(bot: G0T0Bot, player: Player, posts: list[RPPost], message_id: int = None) -> bool:
+    g = await get_guild(bot, player.guild_id)
+
+    if g.rp_post_channel:
+        webhook = await get_webhook(g.rp_post_channel)
+        if message_id:
+            await webhook.edit_message(message_id, embed=RPPostEmbed(player, posts))
+        else:
+            await webhook.send(username=player.member.display_name, avatar_url=player.member.display_avatar.url,
+                                embed=RPPostEmbed(player, posts))
+        return True
+    return False

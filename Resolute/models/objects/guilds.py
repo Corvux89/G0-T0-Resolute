@@ -65,6 +65,7 @@ class PlayerGuild(object):
         self.exit_channel: discord.TextChannel = kwargs.get('exit_channel')
         self.entrance_channel: discord.TextChannel = kwargs.get('entrance_channel')
         self.activity_points_channel: discord.TextChannel = kwargs.get('activity_points_channel')
+        self.rp_post_channel: discord.TextChannel = kwargs.get('rp_post_channel')
 
 
     @property
@@ -170,7 +171,8 @@ guilds_table = sa.Table(
     Column("arena_board_channel", BigInteger, nullable=True),
     Column("exit_channel", BigInteger, nullable=True),
     Column("entrance_channel", BigInteger, nullable=True),
-    Column("activity_points_channel", BigInteger, nullable=True)
+    Column("activity_points_channel", BigInteger, nullable=True),
+    Column("rp_post_channel", BigInteger, nullable=True)
 )
 
 class GuildSchema(Schema):
@@ -212,6 +214,7 @@ class GuildSchema(Schema):
     exit_channel = fields.Method(None, "load_channel", allow_none=True)
     entrance_channel = fields.Method(None, "load_channel", allow_none=True)
     activity_points_channel = fields.Method(None, "load_channel", allow_none=True)
+    rp_post_channel = fields.Method(None, "load_channel", allow_none=True)
 
     def __init__(self, guild, **kwargs):
         super().__init__(**kwargs)
@@ -290,4 +293,5 @@ def upsert_guild(guild: PlayerGuild):
     )
 
     return upsert_statement
+
 

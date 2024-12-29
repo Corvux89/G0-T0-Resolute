@@ -13,6 +13,7 @@ from Resolute.helpers import (confirm, create_log, get_adventure_from_category,
                               is_adventure_npc_message, is_player_say_message,
                               is_staff, update_activity_points)
 from Resolute.helpers.logs import null_log
+from Resolute.helpers.messages import admin_is_player_say_message
 from Resolute.models.categories.categories import CodeConversion
 from Resolute.models.embeds.logs import LogEmbed
 from Resolute.models.objects.arenas import ArenaPost
@@ -117,12 +118,20 @@ class Messages(commands.Cog):
 
         # Character Say
         elif is_player_say_message(player, message):
-            await update_activity_points(self.bot, player, guild, False)
+            if (guild.dev_channels and ctx.channel not in guild.dev_channels) or not guild.dev_channels:
+                await update_activity_points(self.bot, player, guild, False)
+            await message.delete()
+
+        # Staff Say Delete
+        elif message.author.bot and is_staff and (orig_player := await admin_is_player_say_message(self.bot, message)):
+            if (guild.dev_channels and ctx.channel not in guild.dev_channels) or not guild.dev_channels:
+                await update_activity_points(self.bot, orig_player, guild, False)
             await message.delete()
 
         # Adventure NPC
         elif (adventure := await get_adventure_from_category(self.bot, ctx.channel.category.id)) and ctx.author.id in adventure.dms and is_adventure_npc_message(adventure, message):
-            await update_activity_points(self.bot, player, guild, False)
+            if (guild.dev_channels and ctx.channel not in guild.dev_channels) or not guild.dev_channels:
+                await update_activity_points(self.bot, player, guild, False)
             await message.delete()
         
         else:

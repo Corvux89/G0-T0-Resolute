@@ -73,7 +73,8 @@ class Character(commands.Cog):
                         avatar_url=ctx.author.display_avatar.url if not character.avatar_url else character.avatar_url,
                         content=f"{content}")
         await player.update_post_stats(self.bot, character, content)
-        await update_activity_points(self.bot, player, g)
+        if (g.dev_channels and ctx.channel not in g.dev_channels) or not g.dev_channels:
+            await update_activity_points(self.bot, player, g)
 
                 
     @character_admin_commands.command(

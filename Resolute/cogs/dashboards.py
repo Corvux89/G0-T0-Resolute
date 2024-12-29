@@ -41,7 +41,7 @@ class Dashboards(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
-        if hasattr(self.bot, "db") and hasattr(message.channel, "category_id") and (category_channel_id := message.channel.category_id):
+        if hasattr(self.bot, "db") and hasattr(message.channel, "category_id") and (category_channel_id := message.channel.category_id) and message.channel.type == discord.ChannelType.text:
             dashboard = await get_dashboard_from_category(self.bot, category_channel_id)
 
             if not dashboard or message.channel.id in dashboard.excluded_channel_ids:

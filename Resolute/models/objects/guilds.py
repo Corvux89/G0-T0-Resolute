@@ -66,6 +66,7 @@ class PlayerGuild(object):
         self.entrance_channel: discord.TextChannel = kwargs.get('entrance_channel')
         self.activity_points_channel: discord.TextChannel = kwargs.get('activity_points_channel')
         self.rp_post_channel: discord.TextChannel = kwargs.get('rp_post_channel')
+        self.dev_channels: list[discord.TextChannel] = kwargs.get('dev_channels', [])
 
 
     @property
@@ -172,7 +173,8 @@ guilds_table = sa.Table(
     Column("exit_channel", BigInteger, nullable=True),
     Column("entrance_channel", BigInteger, nullable=True),
     Column("activity_points_channel", BigInteger, nullable=True),
-    Column("rp_post_channel", BigInteger, nullable=True)
+    Column("rp_post_channel", BigInteger, nullable=True),
+    Column("dev_channels", sa.ARRAY(BigInteger), nullable=True, default=[])
 )
 
 class GuildSchema(Schema):
@@ -215,6 +217,7 @@ class GuildSchema(Schema):
     entrance_channel = fields.Method(None, "load_channel", allow_none=True)
     activity_points_channel = fields.Method(None, "load_channel", allow_none=True)
     rp_post_channel = fields.Method(None, "load_channel", allow_none=True)
+    dev_channels = fields.Method(None, "load_channels", allow_none=True)
 
     def __init__(self, guild, **kwargs):
         super().__init__(**kwargs)
@@ -231,7 +234,14 @@ class GuildSchema(Schema):
         return self.guild.get_role(value)
     
     def load_channel(self, value):
-        return self.guild.get_channel(value)       
+        return self.guild.get_channel(value)
+
+    def load_channels(self, value):
+        channels = []
+        for c in value:
+            channels.append(self.guild.get_channel(c))
+
+        return channels
     
 
 def get_guild_from_id(guild_id: int) -> FromClause:

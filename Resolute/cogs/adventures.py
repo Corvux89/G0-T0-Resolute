@@ -47,7 +47,8 @@ class Adventures(commands.Cog):
                     await webhook.send(username=npc.name,
                                     avatar_url=npc.avatar_url if npc.avatar_url else None,
                                     content=content)
-                    await update_activity_points(self.bot, player, guild)
+                    if (guild.dev_channels and ctx.channel not in guild.dev_channels) or not guild.dev_channels:
+                        await update_activity_points(self.bot, player, guild)
                     await ctx.message.delete()
 
     @commands.slash_command(

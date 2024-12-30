@@ -12,6 +12,7 @@ from Resolute.helpers import (create_log, create_new_character, get_character,
                               get_player, get_webhook, is_admin, isImageURL,
                               manage_player_roles, process_message,
                               upsert_character, upsert_class)
+from Resolute.helpers.messages import get_char_name_from_message, get_player_from_say_message
 from Resolute.helpers.players import build_rp_post
 from Resolute.models.categories import CharacterClass, CharacterSpecies
 from Resolute.models.categories.categories import CharacterArchetype, Faction
@@ -573,18 +574,25 @@ def get_archetype(archetype_value: str, primary_class: CharacterClass, compendiu
 # Say Edit
 class SayEditModal(Modal):
     message: discord.Message
+    bot: G0T0Bot
 
-    def __init__(self, message: discord.Message = None):
+    def __init__(self, bot: G0T0Bot, message: discord.Message = None):
         super().__init__(title="Edit Message")
+        self.bot = bot
         self.message = message
 
         self.add_item(InputText(label="Message", placeholder="", value=message.content, style=discord.InputTextStyle.long))
 
     async def callback(self, interaction: discord.Interaction):
         webook = await get_webhook(interaction.channel)
+        content = self.children[0].value
 
         try:
-            await webook.edit_message(self.message.id, content=self.children[0].value)
+            if (player := await get_player_from_say_message(self.bot, self.message)) and (char_name := get_char_name_from_message(self.message)) and (char := next((c for c in player.characters if c.name == char_name), None)):
+                await player.update_post_stats(self.bot, char, self.message, retract=True)
+                await player.update_post_stats(self.bot, char, self.message, content=content)
+
+            await webook.edit_message(self.message.id, content=content)
         except:
             pass
 

@@ -50,7 +50,6 @@ class Guilds(commands.Cog):
                 if bool(set(user_roles) & set(npc.roles)) or is_admin(ctx):
                     player = await get_player(self.bot, ctx.author.id, ctx.guild.id)
                     content = ctx.message.content.replace(f'>{npc.key}', '')
-                    await player.update_post_stats(self.bot, npc, content)
                     await player.update_command_count(self.bot, "npc")
                     webhook = await get_webhook(ctx.channel)
                     await webhook.send(username=npc.name,
@@ -58,6 +57,7 @@ class Guilds(commands.Cog):
                                     content=content)
                     
                     if (guild.dev_channels and ctx.channel not in guild.dev_channels) or not guild.dev_channels:
+                        await player.update_post_stats(self.bot, npc, ctx.message, content=content)
                         await update_activity_points(self.bot, player, guild)
                     await ctx.message.delete()
     

@@ -75,10 +75,14 @@ class Player(object):
 
         async with bot.db.acquire() as conn:
             await conn.execute(upsert_player_query(self))
+    
+    async def update_post_stats(self, bot: G0T0Bot, character: PlayerCharacter | NPC, post: discord.Message, **kwargs):
+        content = kwargs.get('content', post.content)
+        retract = kwargs.get('retract', False)
 
-    async def update_post_stats(self, bot: G0T0Bot, character: PlayerCharacter | NPC, post: str, retract: bool = False):
         stats = json.loads(self.statistics)
-        current_date = datetime.now(timezone.utc).strftime('%Y-%m-%d')
+
+        current_date = post.created_at.strftime('%Y-%m-%d')
 
         if isinstance(character, PlayerCharacter):
             key="say"
@@ -103,9 +107,9 @@ class Player(object):
 
         daily_stats = stats[key][str(id)][current_date]
 
-        lines = post.splitlines()
-        words = post.split()
-        characters = len(post)
+        lines = content.splitlines()
+        words = content.split()
+        characters = len(content)
 
         if retract:
             daily_stats["num_lines"] -= len(lines)

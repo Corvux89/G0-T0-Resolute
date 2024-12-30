@@ -7,6 +7,7 @@ from sqlalchemy.util import asyncio
 
 from Resolute.bot import G0T0Bot
 from Resolute.constants import BOT_OWNERS
+from Resolute.helpers.guilds import get_guild
 from Resolute.models.objects.exceptions import SelectionCancelled
 from Resolute.models.objects.guilds import PlayerGuild
 
@@ -26,7 +27,7 @@ def is_owner(ctx: ApplicationContext) -> bool:
     return author.id in BOT_OWNERS
 
 
-def is_admin(ctx: ApplicationContext | Interaction) -> bool:
+async def is_admin(ctx: ApplicationContext | Interaction) -> bool:
     """
     User is a designated administrator
 
@@ -34,7 +35,10 @@ def is_admin(ctx: ApplicationContext | Interaction) -> bool:
     :return: True if user is a bot owner, can manage the guild, or has a listed role, otherwise False
     """
 
-    r_list = [discord.utils.get(ctx.guild.roles, name="The Senate")]
+    
+    g = await get_guild(ctx.bot, ctx.guild.id)
+
+    r_list = [g.admin_role] if g.admin_role else []
 
     if hasattr(ctx, 'author'):
         author = ctx.author
@@ -48,10 +52,16 @@ def is_admin(ctx: ApplicationContext | Interaction) -> bool:
     else:
         return False
     
-def is_staff(ctx: ApplicationContext | Interaction) -> bool:
+async def is_staff(ctx: ApplicationContext | Interaction) -> bool:
+    g = await get_guild(ctx.bot, ctx.guild.id)
     
-    r_list = [discord.utils.get(ctx.guild.roles, name="The Senate"),
-              discord.utils.get(ctx.guild.roles, name="Archivist")]
+    r_list = []
+    
+    if g.admin_role:
+        r_list.append(g.admin_role)
+    
+    if g.staff_role:
+        r_list.append(g.staff_role)
 
     if hasattr(ctx, 'author'):
         author = ctx.author

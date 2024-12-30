@@ -72,8 +72,8 @@ class Character(commands.Cog):
         await webhook.send(username=f"[{character.level}] {character.name} // {ctx.author.display_name}",
                         avatar_url=ctx.author.display_avatar.url if not character.avatar_url else character.avatar_url,
                         content=f"{content}")
-        await player.update_post_stats(self.bot, character, content)
         if (g.dev_channels and ctx.channel not in g.dev_channels) or not g.dev_channels:
+            await player.update_post_stats(self.bot, character, ctx.message, content=content)
             await update_activity_points(self.bot, player, g)
 
                 

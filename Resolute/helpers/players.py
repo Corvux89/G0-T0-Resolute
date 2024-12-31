@@ -1,10 +1,10 @@
-import discord
 
 from Resolute.bot import G0T0Bot
 from Resolute.helpers.characters import get_characters
 from Resolute.helpers.general_helpers import get_selection, get_webhook
 from Resolute.helpers.guilds import get_guild
 from Resolute.models.embeds.players import RPPostEmbed
+from Resolute.models.objects.exceptions import G0T0Error
 from Resolute.models.objects.logs import get_log_count_by_player_and_activity
 from Resolute.models.objects.players import (Player, PlayerSchema, RPPost,
                                              get_player_query,
@@ -24,7 +24,7 @@ async def get_player(bot: G0T0Bot, player_id: int, guild_id: int, inactive: bool
         elif lookup_only:
             return None
         elif len(rows) == 0 and not guild_id:
-            raise Exception("Unable to create player from DM's")
+            raise G0T0Error("Unable to create player from DM's")
         else:
             if ctx:
                 guilds = [bot.get_guild(r["guild_id"]).name for r in rows]

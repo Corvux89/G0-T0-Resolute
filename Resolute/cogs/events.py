@@ -87,7 +87,7 @@ class Events(commands.Cog):
                 if player := await get_player(self.bot, ctx.author.id, ctx.guild.id if ctx.guild else None, False, None, True):
                     await player.update_command_count(self.bot, str(ctx.command))
 
-            log.info(f"cmd: chan {ctx.channel} [{ctx.channel.id}], serv: {ctx.guild.name} [{ctx.guild.id}], "
+            log.info(f"cmd: chan {ctx.channel} [{ctx.channel.id}], serv: {f'{ctx.guild.name} [{ctx.guild.id}]' if ctx.guild_id else 'DC'}, "
                      f"auth: {ctx.user} [{ctx.user.id}]: {ctx.command}  {params}")
             
         except AttributeError:

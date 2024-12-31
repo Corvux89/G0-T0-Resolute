@@ -154,7 +154,7 @@ class NewCharacterRequestUI(CharacterSelect):
 
     @discord.ui.button(label="Submit", style=discord.ButtonStyle.green, row=2)
     async def submit(self, _: discord.ui.Button, interaction: discord.Interaction):
-        guild = await get_guild(self.bot, self.player.guild.id)
+        guild = await get_guild(self.bot, self.player.guild_id)
         if guild.staff_role and guild.application_channel:
             message = self.application.format_app(self.owner, guild.staff_role)
             webhook = await get_webhook(guild.application_channel)

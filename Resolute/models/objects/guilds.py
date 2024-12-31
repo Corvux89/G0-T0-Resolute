@@ -132,6 +132,11 @@ class PlayerGuild(object):
         if not self.calendar:
             return None
         return max(month.day_end for month in self.calendar)
+    
+    def is_dev_channel(self, channel: discord.TextChannel):
+        if not self.dev_channels:
+            return False
+        return channel in self.dev_channels
 
 guilds_table = sa.Table(
     "guilds",

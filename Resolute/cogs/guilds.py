@@ -56,7 +56,7 @@ class Guilds(commands.Cog):
                                     avatar_url=npc.avatar_url if npc.avatar_url else None,
                                     content=content)
                     
-                    if (guild.dev_channels and ctx.channel not in guild.dev_channels) or not guild.dev_channels:
+                    if not guild.is_dev_channel(ctx.channel):
                         await player.update_post_stats(self.bot, npc, ctx.message, content=content)
                         await update_activity_points(self.bot, player, guild)
                     await ctx.message.delete()

@@ -118,7 +118,7 @@ class Messages(commands.Cog):
 
         # Character Say
         elif is_player_say_message(player, message):
-            if (guild.dev_channels and ctx.channel not in guild.dev_channels) or not guild.dev_channels:
+            if not guild.is_dev_channel(ctx.channel):
                 if (player := await get_player_from_say_message(self.bot, message)) and (char := next((c for c in player.characters if c.name ==  get_char_name_from_message(message)), None)):
                     await player.update_post_stats(self.bot, char, message, retract=True)
                 await update_activity_points(self.bot, player, guild, False)
@@ -126,7 +126,7 @@ class Messages(commands.Cog):
 
         # Staff Say Delete
         elif message.author.bot and is_staff and (orig_player := await get_player_from_say_message(self.bot, message)):
-            if (guild.dev_channels and ctx.channel not in guild.dev_channels) or not guild.dev_channels:
+            if not guild.is_dev_channel(ctx.channel):
                 await update_activity_points(self.bot, orig_player, guild, False)
                 if (char := next((c for c in orig_player.characters if c.name == get_char_name_from_message(message)), None)):
                     await orig_player.update_post_stats(self.bot, char, message, retract=True)
@@ -134,7 +134,7 @@ class Messages(commands.Cog):
 
         # Adventure NPC
         elif (adventure := await get_adventure_from_category(self.bot, ctx.channel.category.id)) and ctx.author.id in adventure.dms and is_adventure_npc_message(adventure, message):
-            if (guild.dev_channels and ctx.channel not in guild.dev_channels) or not guild.dev_channels:
+            if not guild.is_dev_channel(ctx.channel):
                 await update_activity_points(self.bot, player, guild, False)
                 if npc := next((npc for npc in adventure.npcs if npc.name.lower() == message.author.name.lower()), None):
                     await player.update_post_stats(self.bot, npc, message, retract=True)

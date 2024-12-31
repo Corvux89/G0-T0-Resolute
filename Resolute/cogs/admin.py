@@ -27,7 +27,6 @@ class Admin(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
-        self.bot.add_check(is_admin)
         log.info(f'Cog \'Admin\' loaded')
 
     @commands.Cog.listener()

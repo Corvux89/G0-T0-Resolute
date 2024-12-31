@@ -110,7 +110,7 @@ class _GuildResetView(GuildSettings):
 
     @discord.ui.button(label="Preview Reset", style=discord.ButtonStyle.primary, row=1)
     async def preview_reset(self, _: discord.ui.Button, interaction: discord.Interaction):
-        await interaction.channel.send(embed=ResetEmbed(self.guild, 1.23), content=f"{'Citizen Acolyte' if self.guild.ping_announcement else ''}", delete_after=5)
+        await interaction.channel.send(embed=ResetEmbed(self.guild, 1.23), content=f"{f'{self.guild.entry_role.name} {self.guild.member_role.name}' if self.guild.ping_announcement else ''}", delete_after=5)
         await self.refresh_content(interaction)
 
     @discord.ui.select(placeholder="Reset Day", row=2)

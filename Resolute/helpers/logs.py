@@ -14,10 +14,8 @@ from Resolute.models.categories import Activity
 from Resolute.models.categories.categories import Faction
 from Resolute.models.embeds.logs import LogEmbed
 from Resolute.models.objects.adventures import Adventure
-from Resolute.models.objects.characters import (CharacterRenown,
-                                                PlayerCharacter,
-                                                upsert_character_query,
-                                                upsert_character_renown_query)
+from Resolute.models.objects.characters import (PlayerCharacter,
+                                                upsert_character_query)
 from Resolute.models.objects.exceptions import G0T0Error, LogNotFound, TransactionError
 from Resolute.models.objects.guilds import PlayerGuild
 from Resolute.models.objects.logs import (DBLog, LogSchema,

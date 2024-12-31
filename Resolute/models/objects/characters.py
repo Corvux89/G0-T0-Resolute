@@ -1,13 +1,10 @@
-import discord
 import sqlalchemy as sa
-from discord import ApplicationContext
 from marshmallow import Schema, fields, post_load
 from sqlalchemy import BOOLEAN, BigInteger, Column, Integer, String, and_
 from sqlalchemy.dialects.postgresql import ARRAY, insert
 from sqlalchemy.sql import FromClause
 
 from Resolute.compendium import Compendium
-from Resolute.constants import ZWSP3
 from Resolute.models import metadata
 from Resolute.models.categories import (CharacterArchetype, CharacterClass,
                                         CharacterSpecies)
@@ -58,23 +55,8 @@ class PlayerCharacter(object):
     def is_valid(self, guild: PlayerGuild):
         return (hasattr(self, "name") and self.name is not None and 
                 hasattr(self, "species") and self.species is not None and
-                hasattr(self, "level") and 0 < self.level <= guild.max_level)
-        
+                hasattr(self, "level") and 0 < self.level <= guild.max_level)        
 
-    def get_member(self, ctx: ApplicationContext) -> discord.Member:
-        return discord.utils.get(ctx.guild.members, id=self.player_id)
-
-    def get_member_mention(self, ctx: ApplicationContext):
-        try:
-            name = discord.utils.get(ctx.guild.members, id=self.player_id).mention
-            pass
-        except:
-            name = f"Player {self.player_id} not found on this server for character {self.name}"
-            pass
-        return name
-
-    def mention(self) -> str:
-        return f"<@{self.player_id}>"
 
 characters_table = sa.Table(
     "characters",

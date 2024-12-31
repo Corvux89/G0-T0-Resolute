@@ -1,4 +1,3 @@
-from datetime import datetime, timezone
 import json
 
 import discord
@@ -9,6 +8,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.sql import FromClause
 
 from Resolute.bot import G0T0Bot
+from Resolute.helpers.general_helpers import get_webhook
 from Resolute.models import metadata
 from Resolute.models.categories.categories import LevelTier
 from Resolute.models.objects.characters import PlayerCharacter
@@ -59,7 +59,17 @@ class Player(object):
     def get_primary_character(self) -> PlayerCharacter:
         for char in self.characters:
             if char.primary_character:
-                return char       
+                return char
+
+    async def send_webhook_message(self, bot: G0T0Bot, ctx: discord.ApplicationContext, character: PlayerCharacter, content: str):
+        webhook = await get_webhook(ctx.channel)
+        await webhook.send(username=f"[{character.level}] {character.name} // {self.member.display_name}",
+                           avatar_url=self.member.display_avatar.url if not character.avatar_url else character.avatar_url,
+                           content=content)
+
+
+
+
     
     async def update_command_count(self, bot: G0T0Bot, command: str):
         stats = json.loads(self.statistics if self.statistics else "{}")

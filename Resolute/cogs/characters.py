@@ -68,10 +68,8 @@ class Character(commands.Cog):
         if not character:
             character = await get_webhook_character(self.bot, player, ctx.channel)
 
-        webhook = await get_webhook(ctx.channel)
-        await webhook.send(username=f"[{character.level}] {character.name} // {ctx.author.display_name}",
-                        avatar_url=ctx.author.display_avatar.url if not character.avatar_url else character.avatar_url,
-                        content=f"{content}")
+        await player.send_webhook_message(self.bot, ctx, character, content)
+
         if not g.is_dev_channel(ctx.channel):
             await player.update_post_stats(self.bot, character, ctx.message, content=content)
             await update_activity_points(self.bot, player, g)

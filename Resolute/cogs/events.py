@@ -84,8 +84,8 @@ class Events(commands.Cog):
         try:
             params = "".join([f" [{p['name']}: {p['value']}]" for p in (ctx.selected_options or [])])
             if hasattr(ctx, "bot") and hasattr(ctx.bot, "db"):
-                player = await get_player(self.bot, ctx.author.id, ctx.guild.id if ctx.guild else None)
-                await player.update_command_count(self.bot, str(ctx.command))
+                if player := await get_player(self.bot, ctx.author.id, ctx.guild.id if ctx.guild else None, False, None, True):
+                    await player.update_command_count(self.bot, str(ctx.command))
 
             log.info(f"cmd: chan {ctx.channel} [{ctx.channel.id}], serv: {ctx.guild.name} [{ctx.guild.id}], "
                      f"auth: {ctx.user} [{ctx.user.id}]: {ctx.command}  {params}")

@@ -55,9 +55,15 @@ class Guilds(commands.Cog):
                     content = ctx.message.content.replace(f'>{npc.key}', '')
                     await player.update_command_count(self.bot, "npc")
                     webhook = await get_webhook(ctx.channel)
-                    await webhook.send(username=npc.name,
-                                    avatar_url=npc.avatar_url if npc.avatar_url else None,
-                                    content=content)
+                    if isinstance(ctx.channel, discord.Thread):
+                        await webhook.send(username=npc.name,
+                                            avatar_url=npc.avatar_url if npc.avatar_url else None,
+                                            content=content,
+                                            thread=ctx.channel)
+                    else:
+                        await webhook.send(username=npc.name,
+                                        avatar_url=npc.avatar_url if npc.avatar_url else None,
+                                        content=content)
                     
                     if not guild.is_dev_channel(ctx.channel):
                         await player.update_post_stats(self.bot, npc, ctx.message, content=content)

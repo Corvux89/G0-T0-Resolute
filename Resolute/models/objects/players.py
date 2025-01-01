@@ -63,9 +63,15 @@ class Player(object):
 
     async def send_webhook_message(self, bot: G0T0Bot, ctx: discord.ApplicationContext, character: PlayerCharacter, content: str):
         webhook = await get_webhook(ctx.channel)
-        await webhook.send(username=f"[{character.level}] {character.name} // {self.member.display_name}",
-                           avatar_url=self.member.display_avatar.url if not character.avatar_url else character.avatar_url,
-                           content=content)
+        if isinstance(ctx.channel, discord.Thread):
+            await webhook.send(username=f"[{character.level}] {character.name} // {self.member.display_name}",
+                            avatar_url=self.member.display_avatar.url if not character.avatar_url else character.avatar_url,
+                            content=content,
+                            thread=ctx.channel)
+        else:
+            await webhook.send(username=f"[{character.level}] {character.name} // {self.member.display_name}",
+                            avatar_url=self.member.display_avatar.url if not character.avatar_url else character.avatar_url,
+                            content=content)
 
 
 

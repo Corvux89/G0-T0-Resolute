@@ -66,7 +66,10 @@ class InteractiveView(discord.ui.View):
         content_kwargs = await self.get_content()
         await self._before_send()
         if interaction.response.is_done():
-            await interaction.edit_original_response(view=self, **content_kwargs, **kwargs)
+            try:
+                await interaction.edit_original_response(view=self, **content_kwargs, **kwargs)
+            except:
+                pass
         else:
             await interaction.response.edit_message(view=self, **content_kwargs, **kwargs)
 

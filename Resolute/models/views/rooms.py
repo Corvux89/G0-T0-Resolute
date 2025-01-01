@@ -40,7 +40,10 @@ class RoomSettings(InteractiveView):
         await self._before_send(interaction)
         await self.commit()
         if interaction.response.is_done():
-            await interaction.edit_original_response(view=self, **content_kwargs, **kwargs)
+            try:
+                await interaction.edit_original_response(view=self, **content_kwargs, **kwargs)
+            except:
+                pass
         else:
             await interaction.response.edit_message(view=self, **content_kwargs, **kwargs)
     

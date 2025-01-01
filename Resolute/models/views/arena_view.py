@@ -9,8 +9,7 @@ from Resolute.models.embeds.arenas import ArenaPostEmbed
 from Resolute.models.objects.arenas import ArenaPost
 from Resolute.models.objects.characters import PlayerCharacter
 from Resolute.models.objects.exceptions import (ArenaNotFound,
-                                                CharacterNotFound, G0T0Error,
-                                                RoleNotFound)
+                                                CharacterNotFound, G0T0Error)
 from Resolute.models.objects.players import Player
 from Resolute.models.views.base import InteractiveView
 
@@ -76,21 +75,19 @@ class CharacterArenaViewUI(ArenaView):
 
         if arena is None or arena.type.value != "CHARACTER":
             raise ArenaNotFound()
-        elif channel_role := interaction.guild.get_role(arena.role_id):
-            if interaction.user.id == arena.host_id:
-                raise G0T0Error("You're already hosting this arena.")
-            
-            self.player = await get_player(self.bot, interaction.user.id, interaction.guild.id)
+        
+        if interaction.user.id == arena.host_id:
+            raise G0T0Error("You're already hosting this arena.")
+        
+        self.player = await get_player(self.bot, interaction.user.id, interaction.guild.id)
 
-            if not self.player.characters:
-                raise CharacterNotFound(self.player.member)
-            elif len(self.player.characters) == 1:
-                await add_player_to_arena(self.bot, interaction, self.player, self.player.characters[0], arena)
-            else:
-                await self.defer_to(ArenaCharacterSelect, interaction)
-
+        if not self.player.characters:
+            raise CharacterNotFound(self.player.member)
+        elif len(self.player.characters) == 1:
+            await add_player_to_arena(self.bot, interaction, self.player, self.player.characters[0], arena)
         else:
-            raise RoleNotFound(interaction.channel.name)
+            await self.defer_to(ArenaCharacterSelect, interaction)
+
         await self.refresh_content(interaction)
     
 class ArenaCharacterSelect(ArenaView):
@@ -134,21 +131,19 @@ class ArenaCharacterSelect(ArenaView):
 
         if arena is None or arena.type.value != "CHARACTER":
             raise ArenaNotFound()
-        elif channel_role := interaction.guild.get_role(arena.role_id):
-            if interaction.user.id == arena.host_id:
-                raise G0T0Error("You're already hosting this arena.")
-            
-            self.player = await get_player(self.bot, interaction.user.id, interaction.guild.id)
 
-            if not self.player.characters:
-                raise CharacterNotFound(self.player.member)
-            elif len(self.player.characters) == 1:
-                await add_player_to_arena(self.bot, interaction, self.player, self.player.characters[0], arena)
-            else:
-                await self.defer_to(ArenaCharacterSelect, interaction)
+        if interaction.user.id == arena.host_id:
+            raise G0T0Error("You're already hosting this arena.")
+        
+        self.player = await get_player(self.bot, interaction.user.id, interaction.guild.id)
 
+        if not self.player.characters:
+            raise CharacterNotFound(self.player.member)
+        elif len(self.player.characters) == 1:
+            await add_player_to_arena(self.bot, interaction, self.player, self.player.characters[0], arena)
         else:
-            raise RoleNotFound(interaction.channel.name)
+            await self.defer_to(ArenaCharacterSelect, interaction)
+
         await self.on_timeout()
 
     async def _before_send(self):

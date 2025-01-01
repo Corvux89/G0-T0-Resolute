@@ -826,6 +826,7 @@ class RPPostUI(RPPostView):
         inst.bot = bot
         inst.player = player
         inst.orig_message = orig_message
+        inst.posts = []
 
         if orig_message:
             for field in orig_message.embeds[0].fields:

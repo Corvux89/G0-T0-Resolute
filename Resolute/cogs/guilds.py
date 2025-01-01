@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import random
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from timeit import default_timer as timer
 
 import discord
@@ -40,6 +40,9 @@ class Guilds(commands.Cog):
     async def on_compendium_loaded(self):
         if not self.schedule_weekly_reset.is_running():
             asyncio.ensure_future(self.schedule_weekly_reset.start())
+
+        if not self.cleanup_rp_posts.is_running():
+            asyncio.ensure_future(self.cleanup_rp_posts.start())
 
     @commands.Cog.listener()
     async def on_command_error(self, ctx: commands.Context, error):
@@ -176,3 +179,19 @@ class Guilds(commands.Cog):
         guild_list = await get_guilds_with_reset(self.bot, day, hour)
         for guild in guild_list:
             await self.perform_weekly_reset(guild)
+
+    @tasks.loop(minutes=60)
+    async def cleanup_rp_posts(self):
+        cutoff_time = datetime.now(timezone.utc) - timedelta(hours=72)
+
+        for guild in self.bot.guilds:
+            g: PlayerGuild = await get_guild(self.bot, guild.id)
+            if g.rp_post_channel:
+                try:
+                    await g.rp_post_channel.purge(limit=None, before=cutoff_time)
+                except Exception as error:
+                    if isinstance(error, discord.errors.HTTPException):
+                        log.error(f"RP BOARD: Error purging messages in {g.rp_board_channel.name}")
+                    else:
+                        log.error(error)
+

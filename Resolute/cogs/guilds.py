@@ -186,9 +186,13 @@ class Guilds(commands.Cog):
 
         for guild in self.bot.guilds:
             g: PlayerGuild = await get_guild(self.bot, guild.id)
+
+            def predicate(message: discord.Message):
+                return message.author.bot and message.webhook_id is not None
+
             if g.rp_post_channel:
                 try:
-                    await g.rp_post_channel.purge(limit=None, before=cutoff_time)
+                    await g.rp_post_channel.purge(limit=None, before=cutoff_time, check=predicate)
                 except Exception as error:
                     if isinstance(error, discord.errors.HTTPException):
                         log.error(f"RP BOARD: Error purging messages in {g.rp_board_channel.name}")

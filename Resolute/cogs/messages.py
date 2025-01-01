@@ -80,8 +80,6 @@ class Messages(commands.Cog):
         elif guild.rp_post_channel and message.channel.id == guild.rp_post_channel.id:
             if not message.author.bot or message.embeds[0].footer.text != f"{ctx.author.id}":
                 raise G0T0Error("You cannot edit this roleplay board post")
-            elif len(player.characters) <= 1:
-                raise G0T0Error(f"There is nothing to edit")
             
             ui = RPPostUI.new(self.bot, ctx.author, player, message)
             await ui.send_to(ctx.author)            
@@ -176,7 +174,7 @@ class Messages(commands.Cog):
                                                  credits=transaction.credits,
                                                  ignore_handicap=True) 
                     
-                    await message.edit(content=None, embed=LogEmbed(log_entry, user, transaction.player.member, transaction.character, True))
+                    await message.edit(content=None, embed=LogEmbed(log_entry, ctx.author, transaction.player.member, transaction.character, True))
 
                 else:
                     if transaction.player.cc - transaction.cc < 0:

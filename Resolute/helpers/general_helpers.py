@@ -147,15 +147,18 @@ def process_message(message: str, g: PlayerGuild,  member: Member = None, mappin
     return message
 
 async def get_webhook(channel: discord.TextChannel) -> discord.Webhook:
-    if isinstance(channel, discord.Thread):
-        webhooks = await channel.parent.webhooks()
+    if isinstance(channel, (discord.Thread, discord.ForumChannel)):
+        text_channel = channel.parent
     else:
-        webhooks = await channel.webhooks()
+        text_channel = channel
+
+    webhooks = await text_channel.webhooks()
+
     for hook in webhooks:
         if (hook.token):
             return hook
         
-    hook = await channel.create_webhook(name="G0T0 Hook",
+    hook = await text_channel.create_webhook(name="G0T0 Hook",
                                  reason="G0T0 Bot Webhook")
     
     return hook

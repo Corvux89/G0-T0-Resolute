@@ -885,9 +885,9 @@ class RPPostUI(RPPostView):
     @discord.ui.button(label="Accept", style=discord.ButtonStyle.primary, row=3)
     async def next_application(self, _: discord.ui.Button, interaction: discord.Interaction):
         if await build_rp_post(self.bot, self.player, self.posts, self.orig_message.id if self.orig_message else None):
-            await interaction.channel.send("Request Submitted!", delete_after=5)
+            await interaction.respond("Request Submitted!", ephemeral=True)
         else:
-            await interaction.channel.send("Something went wrong", delete_after=5)
+            await interaction.respond("Something went wrong", ephemeral=True)
 
         await self.on_timeout()
 

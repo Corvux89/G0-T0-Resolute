@@ -174,7 +174,7 @@ class Character(commands.Cog):
         description="New Character Request"
     )
     async def new_character_request(self, ctx: ApplicationContext):
-        player = await get_player(self.bot, ctx.author.id, ctx.guild.id if ctx.guild else None)
+        player = await get_player(self.bot, ctx.author.id, ctx.guild.id if ctx.guild else None, False, ctx)
         application_text = await get_cached_application(self.bot.db, player.id)
         application = None
 

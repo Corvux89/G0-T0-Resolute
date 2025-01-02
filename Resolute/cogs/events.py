@@ -15,6 +15,7 @@ from Resolute.helpers.events import handle_entitlements
 from Resolute.models.embeds import ErrorEmbed
 from Resolute.models.embeds.events import MemberLeaveEmbed
 from Resolute.models.objects.exceptions import G0T0CommandError, G0T0Error
+from Resolute.models.objects.players import Player
 
 log = logging.getLogger(__name__)
 
@@ -53,15 +54,22 @@ class Events(commands.Cog):
         if guild.exit_channel and (player := await get_player(self.bot, payload.user.id, payload.guild_id, False, None, True)):
             player.member = payload.user
             adventures = await get_player_adventures(self.bot, player)
-            arenas = await get_player_arenas(self.bot, player)
+            arenas = await get_player_arenas(self.bot, player)            
+        else:
+            player: Player = Player(payload.user.id, payload.guild_id, member=payload.user)
+            arenas = []
+            adventures = []
 
-            try:
-                await guild.exit_channel.send(embed=MemberLeaveEmbed(player, adventures, arenas))
-            except Exception as error:
-                if isinstance(error, discord.errors.HTTPException):
-                    log.error(f"ON_MEMBER_REMOVE: Error sending message to exit channel in "
-                            f"{guild.guild.name} [ {guild.id} ] for {payload.user.display_name} [ {payload.user.id} ]")
         
+        try:
+            await guild.exit_channel.send(embed=MemberLeaveEmbed(player, adventures, arenas))
+        except Exception as error:
+            if isinstance(error, discord.errors.HTTPException):
+                log.error(f"ON_MEMBER_REMOVE: Error sending message to exit channel in "
+                        f"{guild.guild.name} [ {guild.id} ] for {payload.user.display_name} [ {payload.user.id} ]")
+
+
+            
             
 
     @commands.Cog.listener()

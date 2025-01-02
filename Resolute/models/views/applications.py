@@ -351,7 +351,7 @@ class MiscModal(Modal):
         self.add_item(InputText(label="Character Name", placeholder="Character Name", value=self.application.name, max_length=2000))
         self.add_item(InputText(label="Starting Credits", placeholder="Starting Credits", value=self.application.credits, max_length=150))
         self.add_item(InputText(label="Homeworld", placeholder="Homeworld", value=self.application.homeworld, max_length=500))
-        self.add_item(InputText(label="Motivation for joining the Sky Wardens", style=discord.InputTextStyle.long, placeholder="Motivation", 
+        self.add_item(InputText(label="Motivation for joining the Wardens of the Sky", style=discord.InputTextStyle.long, placeholder="Motivation", 
                                 value=self.application.join_motivation, max_length=1000))
         self.add_item(InputText(label="Motivation for doing good?", style=discord.InputTextStyle.long, placeholder="Motivation", 
                                 value=self.application.good_motivation, max_length=1000))

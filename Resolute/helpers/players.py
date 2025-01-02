@@ -24,7 +24,25 @@ async def get_player(bot: G0T0Bot, player_id: int, guild_id: int, inactive: bool
         elif lookup_only:
             return None
         elif len(rows) == 0 and not guild_id:
-            raise G0T0Error("Unable to create player from DM's")
+            if ctx:
+                guilds = [g for g in bot.guilds if g.get_member(player_id)]
+
+                if len(guilds) == 1:
+                    row = None
+                    player = Player(id=player_id, guild_id=guilds[0].id)
+                    results = await conn.execute(upsert_player_query(player))
+                    row = await results.first()
+                elif len(guilds) > 1:
+                    guild = await get_selection(ctx, guilds, True, True, None, False, "Which guild is the command for?\n")
+
+                    if guild:
+                        player = Player(id=player_id, guild_id=guild.id)
+                        results = await conn.execute(upsert_player_query(player))
+                        row = await results.first()
+                    else:
+                        raise G0T0Error("No guild selected.")
+            else:
+                raise G0T0Error("Unable to find player")
         else:
             if ctx:
                 guilds = [bot.get_guild(r["guild_id"]).name for r in rows]

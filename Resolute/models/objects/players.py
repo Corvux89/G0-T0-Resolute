@@ -31,7 +31,7 @@ class Player(object):
 
         # Virtual Attributes
         self.characters: list[PlayerCharacter] = []
-        self.member: discord.Member = None
+        self.member: discord.Member = kwargs.get('member', None)
         self.completed_rps: int = None
         self.completed_arenas: int = None
         self.needed_rps: int = None

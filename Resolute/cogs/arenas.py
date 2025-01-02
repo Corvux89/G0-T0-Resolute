@@ -57,8 +57,8 @@ class Arenas(commands.Cog):
             arenas = await get_player_arenas(self.bot, player)
 
             for arena in arenas:
-                if player.characters[0].id in arena.characters and arena.completed_phases < arena.tier.max_phases-1:
-                    return await ctx.respond(f"Character already in a new arena.", ephemeral=True)
+                if player.characters[0].id in arena.characters and (arena.completed_phases < arena.tier.max_phases-1 or arena.tier.max_phases == 1):
+                    raise G0T0Error(f"Character already in an active arena.")
 
             post = ArenaPost(player, player.characters)
             if await build_arena_post(ctx, self.bot, post):

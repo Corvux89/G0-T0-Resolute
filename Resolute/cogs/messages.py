@@ -200,7 +200,7 @@ class Messages(commands.Cog):
                                                                 credits=convertedCC*rate.value,
                                                                 ignore_handicap=True)
                             
-                            await guild.market_channel.send(embed=LogEmbed(converted_entry, ctx.author, transaction.player.member, transaction.character, True), delete_after=5)
+                            await guild.market_channel.send(embed=LogEmbed(converted_entry, ctx.author, transaction.player.member, transaction.character, True))
 
                     await message.add_reaction(APPROVAL_EMOJI[0])
 

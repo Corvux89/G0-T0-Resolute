@@ -25,4 +25,4 @@ APPROVAL_EMOJI = ['✅', 'greencheck']
 DENIED_EMOJI = ['❌']
 NULL_EMOJI = ['◀️', '⏪']
 EDIT_EMOJI = ['📝', '✏️']
-ACTIVITY_POINT_MINIMUM = 5
+ACTIVITY_POINT_MINIMUM = 250

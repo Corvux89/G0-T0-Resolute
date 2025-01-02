@@ -12,6 +12,7 @@ from Resolute.helpers import (get_guild, get_player, get_player_adventures,
                               get_player_arenas, process_message,
                               upsert_application)
 from Resolute.helpers.events import handle_entitlements
+from Resolute.helpers.messages import get_player_from_say_message
 from Resolute.models.embeds import ErrorEmbed
 from Resolute.models.embeds.events import MemberLeaveEmbed
 from Resolute.models.objects.exceptions import G0T0CommandError, G0T0Error
@@ -30,6 +31,13 @@ class Events(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         log.info(f'Cog \'Events\' loaded')
+
+    @commands.Cog.listener()
+    async def on_message(self, message: discord.Message):
+        if message.reference is not None:
+            channel = self.bot.get_channel(message.reference.channel_id)
+            if (orig_message := await channel.fetch_message(message.reference.message_id)) and orig_message.author.bot and (orig_player := await get_player_from_say_message(self.bot, orig_message)):
+                 await orig_player.member.send(f"{message.author.mention} replied to your message:\n{channel.jump_url}")
 
     @commands.Cog.listener()
     async def on_raw_member_remove(self, payload: discord.RawMemberRemoveEvent):

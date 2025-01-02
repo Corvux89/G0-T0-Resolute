@@ -56,7 +56,7 @@ class Guilds(commands.Cog):
                     content = ctx.message.content.replace(f'>{npc.key}', '')
                     await player.update_command_count(self.bot, "npc")
                     webhook = await get_webhook(ctx.channel)
-                    chunks = await split_content(content)
+                    chunks = split_content(content)
                     
                     for chunk in chunks:
                         if isinstance(ctx.channel, discord.Thread):

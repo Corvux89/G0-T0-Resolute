@@ -37,10 +37,10 @@ class Events(commands.Cog):
         if message.reference is not None:
             channel = self.bot.get_channel(message.reference.channel_id)
             try:
-                if ((orig_message := message.reference.cached_message) or (orig_message := await channel.fetch_message(message.reference.message_id))) and orig_message.author.bot and (orig_player := await get_player_from_say_message(self.bot, orig_message)):
+                if (orig_message := message.reference.resolved) and orig_message.author.bot and (orig_player := await get_player_from_say_message(self.bot, orig_message)):
                     await orig_player.member.send(f"{message.author.mention} replied to your message:\n{channel.jump_url}")
-            except:
-                pass
+            except Exception as error:
+                log.info(f"Error replying to message {error}")
 
     @commands.Cog.listener()
     async def on_raw_member_remove(self, payload: discord.RawMemberRemoveEvent):

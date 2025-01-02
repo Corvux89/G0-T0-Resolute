@@ -278,18 +278,18 @@ async def get_selection(ctx: discord.ApplicationContext, choices: list[str], del
     return choices[idx]
 
 def split_content(content: str, chunk_size: int = 2000) -> list[str]:
-    words = content.split()
+    words = content.splitlines(keepends=True)
     out = []
     current_chunk = ""
 
     for word in words:
         if len(current_chunk) + len(word) + 1 > chunk_size:
-            out.append(current_chunk.strip())
+            out.append(current_chunk)
             current_chunk = ""
 
         current_chunk += word + " "
 
     if current_chunk:
-        out.append(current_chunk.strip())
+        out.append(current_chunk)
 
     return out

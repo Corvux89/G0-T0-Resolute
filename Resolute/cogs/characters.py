@@ -6,11 +6,13 @@ from discord import ApplicationContext, Option, SlashCommandGroup
 from discord.ext import commands
 
 from Resolute.bot import G0T0Bot
+from Resolute.constants import ACTIVITY_POINT_MINIMUM
 from Resolute.helpers import (get_cached_application, get_guild,
                               get_level_up_application,
                               get_new_character_application, get_player,
-                              get_webhook, get_webhook_character,
+                              get_webhook_character,
                               update_activity_points)
+from Resolute.helpers.general_helpers import split_content
 from Resolute.models.embeds.players import PlayerOverviewEmbed
 from Resolute.models.objects.exceptions import (ApplicationNotFound,
                                                 CharacterNotFound,
@@ -68,11 +70,15 @@ class Character(commands.Cog):
         if not character:
             character = await get_webhook_character(self.bot, player, ctx.channel)
 
-        await player.send_webhook_message(self.bot, ctx, character, content)
+        chunks = split_content(content)
+        for chunk in chunks:
+            await player.send_webhook_message(self.bot, ctx, character, chunk)
 
-        if not g.is_dev_channel(ctx.channel):
-            await player.update_post_stats(self.bot, character, ctx.message, content=content)
-            await update_activity_points(self.bot, player, g)
+            if not g.is_dev_channel(ctx.channel):
+                await player.update_post_stats(self.bot, character, ctx.message, content=chunk)
+
+                if len(chunk) >= ACTIVITY_POINT_MINIMUM:
+                    await update_activity_points(self.bot, player, g)
 
                 
     @character_admin_commands.command(

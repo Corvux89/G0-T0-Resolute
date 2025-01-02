@@ -8,10 +8,13 @@ from discord.ui.button import Button
 
 from Resolute.bot import G0T0Bot
 from Resolute.compendium import Compendium
+from Resolute.constants import ACTIVITY_POINT_MINIMUM
 from Resolute.helpers import (create_log, create_new_character, get_character,
                               get_player, get_webhook, is_admin, isImageURL,
                               manage_player_roles, process_message,
                               upsert_character, upsert_class)
+from Resolute.helpers.guilds import get_guild
+from Resolute.helpers.logs import update_activity_points
 from Resolute.helpers.messages import get_char_name_from_message, get_player_from_say_message
 from Resolute.helpers.players import build_rp_post
 from Resolute.models.categories import CharacterClass, CharacterSpecies
@@ -581,17 +584,23 @@ class SayEditModal(Modal):
         self.bot = bot
         self.message = message
 
-        self.add_item(InputText(label="Message", placeholder="", value=message.content, style=discord.InputTextStyle.long))
+        self.add_item(InputText(label="Message", placeholder="", value=message.content, style=discord.InputTextStyle.long, max_length=2000))
 
     async def callback(self, interaction: discord.Interaction):
         webook = await get_webhook(interaction.channel)
-        content = self.children[0].value
+        content = self.children[0].value            
 
         try:
             if (player := await get_player_from_say_message(self.bot, self.message)) and (char_name := get_char_name_from_message(self.message)) and (char := next((c for c in player.characters if c.name == char_name), None)):
                 await player.update_post_stats(self.bot, char, self.message, retract=True)
                 await player.update_post_stats(self.bot, char, self.message, content=content)
+                guild = await get_guild(self.bot, player.guild_id)
 
+                if len(content) <= ACTIVITY_POINT_MINIMUM and len(self.message.content) >= ACTIVITY_POINT_MINIMUM:
+                    await update_activity_points(self.bot, player, guild, False)
+                elif len(content) >= ACTIVITY_POINT_MINIMUM and len(self.message.content) <= ACTIVITY_POINT_MINIMUM:
+                    await update_activity_points(self.bot, player, guild, False)
+                    
             await webook.edit_message(self.message.id, content=content)
         except:
             pass

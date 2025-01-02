@@ -5,11 +5,13 @@ from discord import ApplicationContext, Option, SlashCommandGroup
 from discord.ext import commands
 
 from Resolute.bot import G0T0Bot
+from Resolute.constants import ACTIVITY_POINT_MINIMUM
 from Resolute.helpers import (get_adventure_from_category,
                               get_adventure_from_role,
                               get_faction_autocomplete, get_guild, get_player,
                               get_player_adventures, get_webhook,
                               update_activity_points, update_dm)
+from Resolute.helpers.general_helpers import split_content
 from Resolute.models.embeds.adventures import AdventuresEmbed
 from Resolute.models.objects.adventures import (Adventure,
                                                 upsert_adventure_query)
@@ -43,12 +45,25 @@ class Adventures(commands.Cog):
                     content = ctx.message.content.replace(f'>{npc.key}', '')
                     await player.update_command_count(self.bot, "npc")
                     webhook = await get_webhook(ctx.channel)
-                    await webhook.send(username=npc.name,
-                                    avatar_url=npc.avatar_url if npc.avatar_url else None,
-                                    content=content)
-                    if not guild.is_dev_channel(ctx.channel):
-                        await player.update_post_stats(self.bot, npc, ctx.message, content=content)
-                        await update_activity_points(self.bot, player, guild)
+                    chunks = split_content(content)
+
+                    for chunk in chunks:
+                        if isinstance(ctx.channel, discord.Thread):
+                            await webhook.send(username=npc.name,
+                                                avatar_url=npc.avatar_url if npc.avatar_url else None,
+                                                content=chunk,
+                                                thread=ctx.channel)
+                        else:
+                            await webhook.send(username=npc.name,
+                                            avatar_url=npc.avatar_url if npc.avatar_url else None,
+                                            content=chunk)
+                            
+                        if not guild.is_dev_channel(ctx.channel):
+                            await player.update_post_stats(self.bot, npc, ctx.message, content=chunk)
+
+                            if len(chunk)>=ACTIVITY_POINT_MINIMUM:
+                                await update_activity_points(self.bot, player, guild)
+
                     await ctx.message.delete()
 
     @commands.slash_command(

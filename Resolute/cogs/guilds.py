@@ -11,11 +11,12 @@ from discord import ApplicationContext, SlashCommandGroup
 from discord.ext import commands, tasks
 
 from Resolute.bot import G0T0Bot
+from Resolute.constants import ACTIVITY_POINT_MINIMUM
 from Resolute.helpers import (confirm, create_log, delete_weekly_stipend,
                               get_guild, get_guild_stipends,
                               get_guilds_with_reset, get_player, get_webhook,
                               is_admin, update_activity_points, update_guild)
-from Resolute.models.categories import Activity
+from Resolute.helpers.general_helpers import split_content
 from Resolute.models.embeds.guilds import ResetEmbed
 from Resolute.models.objects.guilds import PlayerGuild
 from Resolute.models.objects.players import reset_div_cc
@@ -55,19 +56,23 @@ class Guilds(commands.Cog):
                     content = ctx.message.content.replace(f'>{npc.key}', '')
                     await player.update_command_count(self.bot, "npc")
                     webhook = await get_webhook(ctx.channel)
-                    if isinstance(ctx.channel, discord.Thread):
-                        await webhook.send(username=npc.name,
-                                            avatar_url=npc.avatar_url if npc.avatar_url else None,
-                                            content=content,
-                                            thread=ctx.channel)
-                    else:
-                        await webhook.send(username=npc.name,
-                                        avatar_url=npc.avatar_url if npc.avatar_url else None,
-                                        content=content)
+                    chunks = await split_content(content)
                     
-                    if not guild.is_dev_channel(ctx.channel):
-                        await player.update_post_stats(self.bot, npc, ctx.message, content=content)
-                        await update_activity_points(self.bot, player, guild)
+                    for chunk in chunks:
+                        if isinstance(ctx.channel, discord.Thread):
+                            await webhook.send(username=npc.name,
+                                                avatar_url=npc.avatar_url if npc.avatar_url else None,
+                                                content=chunk,
+                                                thread=ctx.channel)
+                        else:
+                            await webhook.send(username=npc.name,
+                                            avatar_url=npc.avatar_url if npc.avatar_url else None,
+                                            content=chunk)
+                        
+                        if not guild.is_dev_channel(ctx.channel):
+                            await player.update_post_stats(self.bot, npc, ctx.message, content=chunk)
+                            if len(chunk) > ACTIVITY_POINT_MINIMUM:
+                                await update_activity_points(self.bot, player, guild)
                     await ctx.message.delete()
     
     @guilds_commands.command(

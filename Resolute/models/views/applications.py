@@ -158,10 +158,12 @@ class NewCharacterRequestUI(CharacterSelect):
         if guild.staff_role and guild.application_channel:
             message = self.application.format_app(self.owner, guild.staff_role)
             webhook = await get_webhook(guild.application_channel)
+
+            if len(message) > 2000:
+                raise G0T0Error("Application too long, please shorten your response to a couple of questions and try to resubmit")
             
             if self.application.message:
                 await webhook.edit_message(self.application.message.id, content=message)
-                # await self.application.message.edit(content=message)
                 await interaction.response.send_message("Request Updated", ephemeral=True)
                 await upsert_application(self.bot.db, self.owner.id)
             else:

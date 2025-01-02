@@ -204,7 +204,8 @@ class Guilds(commands.Cog):
             if g.rp_post_channel:
                 try:
                     deleted_messages = await g.rp_post_channel.purge(limit=None, before=cutoff_time, check=predicate)
-                    log.info(f"RP BOARD: {len(deleted_messages)} message{'s' if len(deleted_messages) > 1 else ''} deleted from {g.rp_post_channel.name} for {g.guild.name} [{g.guild.id}]")
+                    if len(deleted_messages) > 0:
+                        log.info(f"RP BOARD: {len(deleted_messages)} message{'s' if len(deleted_messages) > 1 else ''} deleted from {g.rp_post_channel.name} for {g.guild.name} [{g.guild.id}]")
                 except Exception as error:
                     if isinstance(error, discord.errors.HTTPException):
                         log.error(f"RP BOARD: Error purging messages in {g.rp_post_channel.name}")

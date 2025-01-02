@@ -35,9 +35,12 @@ class Events(commands.Cog):
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
         if message.reference is not None:
-            channel = self.bot.get_channel(message.reference.channel_id)
-            if (orig_message := await channel.fetch_message(message.reference.message_id)) and orig_message.author.bot and (orig_player := await get_player_from_say_message(self.bot, orig_message)):
-                 await orig_player.member.send(f"{message.author.mention} replied to your message:\n{channel.jump_url}")
+            channel = self.bot.get_channel(message.reference.channel_id)s
+            try:
+                if (orig_message := await channel.fetch_message(message.reference.message_id)) and orig_message.author.bot and (orig_player := await get_player_from_say_message(self.bot, orig_message)):
+                    await orig_player.member.send(f"{message.author.mention} replied to your message:\n{channel.jump_url}")
+            except:
+                pass
 
     @commands.Cog.listener()
     async def on_raw_member_remove(self, payload: discord.RawMemberRemoveEvent):
@@ -74,11 +77,7 @@ class Events(commands.Cog):
         except Exception as error:
             if isinstance(error, discord.errors.HTTPException):
                 log.error(f"ON_MEMBER_REMOVE: Error sending message to exit channel in "
-                        f"{guild.guild.name} [ {guild.id} ] for {payload.user.display_name} [ {payload.user.id} ]")
-
-
-            
-            
+                        f"{guild.guild.name} [ {guild.id} ] for {payload.user.display_name} [ {payload.user.id} ]")     
 
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member):

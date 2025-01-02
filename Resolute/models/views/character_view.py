@@ -887,7 +887,7 @@ class RPPostUI(RPPostView):
         if await build_rp_post(self.bot, self.player, self.posts, self.orig_message.id if self.orig_message else None):
             await interaction.respond("Request Submitted!", ephemeral=True)
         else:
-            await interaction.respond("Something went wrong", ephemeral=True)
+            await interaction.channel.send("Something went wrong posting. Your message may be too long. Shorten it up an try it again.", delete_after=t)
 
         await self.on_timeout()
 

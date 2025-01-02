@@ -137,11 +137,14 @@ async def build_rp_post(bot: G0T0Bot, player: Player, posts: list[RPPost], messa
     g = await get_guild(bot, player.guild_id)
 
     if g.rp_post_channel:
-        webhook = await get_webhook(g.rp_post_channel)
-        if message_id:
-            await webhook.edit_message(message_id, embed=RPPostEmbed(player, posts))
-        else:
-            await webhook.send(username=player.member.display_name, avatar_url=player.member.display_avatar.url,
-                                embed=RPPostEmbed(player, posts))
+        try:
+            webhook = await get_webhook(g.rp_post_channel)
+            if message_id:
+                await webhook.edit_message(message_id, embed=RPPostEmbed(player, posts))
+            else:
+                await webhook.send(username=player.member.display_name, avatar_url=player.member.display_avatar.url,
+                                    embed=RPPostEmbed(player, posts))
+        except:
+            return False
         return True
     return False

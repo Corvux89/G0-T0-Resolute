@@ -163,23 +163,6 @@ async def get_webhook(channel: discord.TextChannel) -> discord.Webhook:
     
     return hook
 
-
-def isImageURL(url: str) -> bool:
-    try:
-       response = requests.head(url, allow_redirects=True)
-
-       if response.status_code == 200:
-           content_type = response.headers.get('Content-Type', '').lower()
-
-           return content_type.startswith('image/')
-       elif response.status_code == 429 and 'imgur.com' in url:
-           # Give a pass to imgur I guess
-           return True
-    except:
-        pass
-
-    return False
-
 def paginate(choices: list[str], per_page: int) -> list[list[str]]:
     out = []
     for idx in range(0, len(choices), per_page):

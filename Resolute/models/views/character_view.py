@@ -10,8 +10,7 @@ from Resolute.bot import G0T0Bot
 from Resolute.compendium import Compendium
 from Resolute.constants import ACTIVITY_POINT_MINIMUM
 from Resolute.helpers import (create_log, create_new_character, get_character,
-                              get_player, get_webhook, is_admin, isImageURL,
-                              manage_player_roles, process_message,
+                              get_player, get_webhook, is_admin, manage_player_roles, process_message,
                               upsert_character, upsert_class)
 from Resolute.helpers.guilds import get_guild
 from Resolute.helpers.logs import update_activity_points
@@ -754,12 +753,8 @@ class CharacterAvatarModal(Modal):
     async def callback(self, interaction: discord.Interaction):
         url = self.children[0].value
 
-        if url and not isImageURL(url):
-            await interaction.response.send_message(embed=ErrorEmbed("Not a valid image url"), ephemeral=True)
-            return self.stop()
-        else:
-            self.character.avatar_url = self.children[0].value
-            await upsert_character(self.bot, self.character)
+        self.character.avatar_url = self.children[0].value
+        await upsert_character(self.bot, self.character)
 
         await interaction.response.defer()
         self.stop()

@@ -4,14 +4,13 @@ import discord
 
 from Resolute.bot import G0T0Bot
 from Resolute.helpers import (delete_npc, get_adventure_from_category,
-                              get_guild, get_npc, is_admin, isImageURL,
-                              upsert_npc)
+                              get_guild, get_npc, is_admin, upsert_npc)
 from Resolute.helpers.guilds import reload_guild_in_cache
 from Resolute.models.embeds import ErrorEmbed
 from Resolute.models.embeds.npc import NPCEmbed
 from Resolute.models.objects.adventures import Adventure
 from Resolute.models.objects.guilds import PlayerGuild
-from Resolute.models.objects.ref_objects import NPC, delete_npc_query
+from Resolute.models.objects.ref_objects import NPC
 from Resolute.models.views.base import InteractiveView
 
 
@@ -178,9 +177,6 @@ class NPCModal(discord.ui.Modal):
         name=self.children[1].value if not self.npc else self.children[0].value
         url=self.children[2].value if not self.npc else self.children[1].value
 
-        if url and not isImageURL(url):
-            await interaction.response.send_message(embed=ErrorEmbed("Not a valid image url"), ephemeral=True)
-            self.stop()        
         if not self.npc and (npc := await get_npc(self.bot, self.guild.id, key)): 
             await interaction.response.send_message(embed=ErrorEmbed(f"An NPC already exists with that key"), 
                                                     ephemeral=True) 

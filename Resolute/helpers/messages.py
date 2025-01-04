@@ -36,8 +36,8 @@ def get_char_name_from_message(message: discord.Message) -> str:
 
 def get_player_name_from_message(message: discord.Message) -> str:
         try:
-            player_name = message.author.name.split(' // ')[1]
+            player_name = message.author.name.split(' // ')[1:]
         except:
             return None
         
-        return player_name
+        return " // ".join(player_name)

@@ -53,7 +53,6 @@ class Arenas(commands.Cog):
         if len(player.characters) == 0:
             raise CharacterNotFound(ctx.author)
         elif len(player.characters) == 1:
-            await ctx.defer()
             arenas = await get_player_arenas(self.bot, player)
 
             for arena in arenas:

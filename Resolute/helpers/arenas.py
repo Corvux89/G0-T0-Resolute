@@ -86,6 +86,8 @@ async def remove_arena_board_post(ctx: discord.ApplicationContext | discord.Inte
     g = await get_guild(bot, ctx.guild_id)    
 
     if g.arena_board_channel:
+        if not g.arena_board_channel.permissions_for(ctx.guild.me).manage_messages:
+            return log.warning(f"Bot does not have permission to manage arena board messages in {g.guild.name} [{g.id}]")
         try:
             deleted_message = await g.arena_board_channel.purge(check=predicate)
             log.info(f"{len(deleted_message)} message{'s' if len(deleted_message)>1 else ''} by {ctx.guild.get_member(player.id).name} deleted from #{g.arena_board_channel.name}")

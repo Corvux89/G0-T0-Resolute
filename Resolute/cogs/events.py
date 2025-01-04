@@ -35,10 +35,11 @@ class Events(commands.Cog):
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
         if message.reference is not None:
-            channel = self.bot.get_channel(message.reference.channel_id)
             try:
-                if (orig_message := message.reference.resolved) and orig_message.author.bot and (orig_player := await get_player_from_say_message(self.bot, orig_message)):
-                    await orig_player.member.send(f"{message.author.mention} replied to your message:\n{channel.jump_url}")
+                if message.reference.resolved and message.reference.resolved.author.bot and (orig_player := await get_player_from_say_message(self.bot, message.reference.resolved)):
+                    if not orig_player.member.can_send("test"):
+                        log.error("Cannot send message to user {orig_player.member.display_name} [{orig_player.member.id}]")
+                    await orig_player.member.send(f"{message.author.mention} replied to your message:\n{message.reference.resolved.channel.jump_url}")
             except Exception as error:
                 log.info(f"Error replying to message {error}")
 

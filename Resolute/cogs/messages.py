@@ -117,7 +117,7 @@ class Messages(commands.Cog):
         # Character Say
         elif is_player_say_message(player, message):
             if not guild.is_dev_channel(ctx.channel):
-                if (player := await get_player_from_say_message(self.bot, message)) and (char := next((c for c in player.characters if c.name ==  get_char_name_from_message(message)), None)):
+                if (char := next((c for c in player.characters if c.name ==  get_char_name_from_message(message)), None)):
                     await player.update_post_stats(self.bot, char, message, retract=True)
                 if len(message.content) >= ACTIVITY_POINT_MINIMUM:
                     await update_activity_points(self.bot, player, guild, False)

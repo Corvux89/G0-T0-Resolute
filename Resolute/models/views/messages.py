@@ -2,7 +2,7 @@
 
 import discord
 from Resolute.bot import G0T0Bot
-from Resolute.constants import APPROVAL_EMOJI
+from Resolute.constants import APPROVAL_EMOJI, CHANNEL_BREAK
 from Resolute.helpers.logs import create_log
 from Resolute.helpers.players import get_player
 from Resolute.models.categories.categories import Activity
@@ -101,6 +101,7 @@ class MessageLogUI(MessageLog):
             await interaction.channel.send(embed=LogEmbed(log_entry, self.owner, member.player.member, member.character))
 
         await self.msg.add_reaction(APPROVAL_EMOJI[0])
+        await interaction.channel.send(CHANNEL_BREAK)
         await self.on_timeout()
     
     @discord.ui.button(label="Cancel", style=discord.ButtonStyle.danger, row=2)

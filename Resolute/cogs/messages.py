@@ -213,6 +213,7 @@ class Messages(commands.Cog):
                     
                     await message.edit(content="", embed=LogEmbed(log_entry, ctx.author, transaction.player.member, transaction.character, True))
 
+        # RP
         elif guild.staff_role and guild.staff_role.mention in message.content and len(message.mentions) > 0:
             ui = await MessageLogUI.new(self.bot, ctx.author, message)
             await ui.send_to(ctx)

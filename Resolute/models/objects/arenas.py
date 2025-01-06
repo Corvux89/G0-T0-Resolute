@@ -120,7 +120,7 @@ def upsert_arena_query(arena: Arena):
 class ArenaPostType(Enum):
     COMBAT = 'Combat'
     NARRATIVE = 'Narrative'
-    BOTH = 'Combar or Narrative'
+    BOTH = 'Combat or Narrative'
     
 
 class ArenaPost(object):

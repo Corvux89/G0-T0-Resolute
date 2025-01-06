@@ -49,7 +49,7 @@ class ArenaPhaseEmbed(Embed):
 class ArenaPostEmbed(Embed):
     def __init__(self, post: ArenaPost):
         super().__init__(
-            title=f"Arena Request",
+            title=f"{post.type.value} Arena Request",
             color=Color.random()
         )
 

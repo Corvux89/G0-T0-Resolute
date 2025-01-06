@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from enum import Enum
 
 import discord
 import sqlalchemy as sa
@@ -116,10 +117,17 @@ def upsert_arena_query(arena: Arena):
         completed_phases=arena.completed_phases
     ).returning(arenas_table)
 
+class ArenaPostType(Enum):
+    COMBAT = 'Combat'
+    NARRATIVE = 'Narrative'
+    BOTH = 'Combar or Narrative'
+    
+
 class ArenaPost(object):
     def __init__(self, player: Player, characters: list[PlayerCharacter] = [], *args, **kwargs):
         self.player = player
         self.characters = characters
+        self.type: ArenaPostType = kwargs.get('type', ArenaPostType.COMBAT)
 
         self.message: discord.Message = kwargs.get("message")
 

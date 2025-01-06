@@ -6,10 +6,11 @@ from Resolute.bot import G0T0Bot
 from Resolute.helpers import (add_player_to_arena, build_arena_post, get_arena,
                               get_character, get_player, get_player_arenas)
 from Resolute.models.embeds.arenas import ArenaPostEmbed
-from Resolute.models.objects.arenas import ArenaPost
+from Resolute.models.objects.arenas import ArenaPost, ArenaPostType
 from Resolute.models.objects.characters import PlayerCharacter
 from Resolute.models.objects.exceptions import (ArenaNotFound,
                                                 CharacterNotFound, G0T0Error)
+from Resolute.models.objects.guilds import PlayerGuild
 from Resolute.models.objects.players import Player
 from Resolute.models.views.base import InteractiveView
 
@@ -154,9 +155,10 @@ class ArenaCharacterSelect(ArenaView):
         self.character_select.options = char_list
 
 class ArenaRequest(InteractiveView):
-    __menu_copy_attrs__ = ("bot", "post")   
+    __menu_copy_attrs__ = ("bot", "post", "guild")   
     bot: G0T0Bot
     post: ArenaPost
+    guild: PlayerGuild
 
     async def get_content(self):
         return {"content": "", "embed": ArenaPostEmbed(self.post)}
@@ -166,25 +168,43 @@ class ArenaRequestCharacterSelect(ArenaRequest):
     character: PlayerCharacter = None
 
     @classmethod
-    def new(cls, bot: G0T0Bot, owner: discord.Member, player: Player, post: ArenaPost = None):
+    def new(cls, bot: G0T0Bot, owner: discord.Member, guild: PlayerGuild, player: Player, post: ArenaPost = None):
         inst = cls(owner=owner)
         inst.bot = bot
+        inst.guild = guild
         inst.post = post or ArenaPost(player, [])
-        inst.character = None
         return inst
 
     async def _before_send(self):
-        char_list = []
-        for char in self.post.player.characters:
-            char_list.append(discord.SelectOption(label=f"{char.name}", value=f"{char.id}", default=True if self.character and char.id == self.character.id else False))
-        self.character_select.options = char_list
+        if len(self.post.player.characters) == 1:
+            self.remove_item(self.character_select)
+            self.remove_item(self.queue_character)
+            self.remove_item(self.remove_character)
+        else:
+            char_list = []
+            for char in self.post.player.characters:
+                char_list.append(discord.SelectOption(label=f"{char.name}", value=f"{char.id}", default=True if self.character and char.id == self.character.id else False))
+            self.character_select.options = char_list
 
-        self.queue_character.disabled = False if self.character else True
-        self.remove_character.disabled = False if self.character else True
-        self.next_application.disabled = False if len(self.post.characters) > 0 else True
+            self.queue_character.disabled = False if self.character else True
+            self.remove_character.disabled = False if self.character else True
+            self.next_application.disabled = False if len(self.post.characters) > 0 else True
+
+        if self.guild.member_role and self.guild.member_role not in self.post.player.member.roles:
+            self.remove_item(self.arena_type_select)
+        else:
+            type_list = []
+            for type in ArenaPostType:
+                type_list.append(discord.SelectOption(label=f"{type.value}", value=f"{type.name}", default=True if self.post.type.name == type.name else False))
+            self.arena_type_select.options = type_list
 
 
-    @discord.ui.select(placeholder="Select a character to join arena", row=1, custom_id="character_select")
+    @discord.ui.select(placeholder="Select an arena type to join", row=1, custom_id='arena_type')
+    async def arena_type_select(self, type: discord.ui.Select, interaction: discord.Interaction):
+        self.post.type = ArenaPostType[type.values[0]]
+        await self.refresh_content(interaction)
+
+    @discord.ui.select(placeholder="Select a character to join arena", row=2, custom_id="character_select")
     async def character_select(self, char: discord.ui.Select, interaction: discord.Interaction):
         character = await get_character(self.bot, char.values[0])
  
@@ -195,7 +215,7 @@ class ArenaRequestCharacterSelect(ArenaRequest):
         
         await self.refresh_content(interaction)
     
-    @discord.ui.button(label="Add", style=discord.ButtonStyle.primary, custom_id="add_character", row=2)
+    @discord.ui.button(label="Add", style=discord.ButtonStyle.primary, custom_id="add_character", row=3)
     async def queue_character(self, _: discord.ui.Button, interaction: discord.Interaction):
         arenas = await get_player_arenas(self.bot, self.post.player)
         add = True
@@ -210,14 +230,14 @@ class ArenaRequestCharacterSelect(ArenaRequest):
             
         await self.refresh_content(interaction)
 
-    @discord.ui.button(label="Remove", style=discord.ButtonStyle.red, custom_id="remove_character", row=2)
+    @discord.ui.button(label="Remove", style=discord.ButtonStyle.red, custom_id="remove_character", row=3)
     async def remove_character(self, _: discord.ui.Button, interaction: discord.Interaction):
         if self.character.id in [c.id for c in self.post.characters]:
             char = next((c for c in self.post.characters if c.id == self.character.id), None)
             self.post.characters.remove(char)
         await self.refresh_content(interaction)
 
-    @discord.ui.button(label="Accept", style=discord.ButtonStyle.primary, row=3)
+    @discord.ui.button(label="Accept", style=discord.ButtonStyle.primary, row=4)
     async def next_application(self, _: discord.ui.Button, interaction: discord.Interaction):
         if await build_arena_post(interaction, self.bot, self.post):
             await interaction.respond("Request Submitted!", ephemeral=True)
@@ -226,7 +246,7 @@ class ArenaRequestCharacterSelect(ArenaRequest):
 
         await self.on_timeout()
 
-    @discord.ui.button(label="Exit", style=discord.ButtonStyle.red, row=3)
+    @discord.ui.button(label="Exit", style=discord.ButtonStyle.red, row=4)
     async def exit_application(self, _: discord.ui.Button, interaction: discord.Interaction):
         await self.on_timeout()
 

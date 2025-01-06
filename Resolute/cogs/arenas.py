@@ -60,10 +60,16 @@ class Arenas(commands.Cog):
                     raise G0T0Error(f"Character already in an active arena.")
 
             post = ArenaPost(player, player.characters)
-            if await build_arena_post(ctx, self.bot, post):
-                return await ctx.respond(f"Request submitted!", ephemeral=True)
+
+            if g.member_role and g.member_role in player.member.roles:
+                ui = ArenaRequestCharacterSelect.new(self.bot, ctx.author, g, player, post)
+                await ui.send_to(ctx)
+                return await ctx.delete()
+            else:
+                if await build_arena_post(ctx, self.bot, post):
+                    return await ctx.respond(f"Request submitted!", ephemeral=True)
         else:
-            ui = ArenaRequestCharacterSelect.new(self.bot, ctx.author, player)
+            ui = ArenaRequestCharacterSelect.new(self.bot, ctx.author, g, player)
             await ui.send_to(ctx)
             return await ctx.delete()
         

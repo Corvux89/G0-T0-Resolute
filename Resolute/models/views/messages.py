@@ -101,7 +101,8 @@ class MessageLogUI(MessageLog):
             await interaction.channel.send(embed=LogEmbed(log_entry, self.owner, member.player.member, member.character))
 
         await self.msg.add_reaction(APPROVAL_EMOJI[0])
-        await interaction.channel.send(CHANNEL_BREAK)
+        if self.activity.value == "RP":
+            await interaction.channel.send(CHANNEL_BREAK)
         await self.on_timeout()
     
     @discord.ui.button(label="Cancel", style=discord.ButtonStyle.danger, row=2)

@@ -131,13 +131,11 @@ class Guilds(commands.Cog):
         elif not conf:
             return await ctx.respond(f"Ok, cancelling.", delete_after=10)
         
-        await self.push_announcements(g, None, title="Announcements")
-        g.weekly_announcement = []
-        g.ping_announcement = False
+        g = await self.push_announcements(g, None, title="Announcements")
         await update_guild(self.bot, g)
         return await ctx.respond("Announcements manually completed")
         
-    async def push_announcements(self, guild: PlayerGuild, complete_time: float = None, **kwargs):
+    async def push_announcements(self, guild: PlayerGuild, complete_time: float = None, **kwargs) -> PlayerGuild:
         if guild.announcement_channel:
             try:
                 embeds = ResetEmbed.chunk_announcements(guild, complete_time, **kwargs)
@@ -145,12 +143,17 @@ class Guilds(commands.Cog):
                     await guild.announcement_channel.send(embeds=embeds, content=f"{guild.entry_role.mention}{guild.member_role.mention}")
                 else:
                     await guild.announcement_channel.send(embeds=embeds)
+                
+                guild.weekly_announcement = []
+                guild.ping_announcement = False
             except Exception as error:
                 if isinstance(error, discord.errors.HTTPException):
                     log.error(f"WEEKLY RESET: Error sending message to announcements channel in "
                               f"{guild.guild.name} [ {guild.id} ]")
                 else:
                     log.error(error)
+
+        return guild
 
     async def perform_weekly_reset(self, g: PlayerGuild):
         # Setup
@@ -196,10 +199,7 @@ class Guilds(commands.Cog):
         end = timer()
 
         # Announce we're all done!
-        await self.push_announcements(guild, end-start)
-
-        g.weekly_announcement = []
-        g.ping_announcement = False
+        g = await self.push_announcements(guild, end-start)
 
         await update_guild(self.bot, g)
         

@@ -12,6 +12,8 @@ from Resolute.helpers import (add_player_to_arena, build_arena_post,
                               get_guild, get_player, get_player_arenas,
                               update_arena_tier, update_arena_view_embed,
                               upsert_arena)
+from Resolute.helpers.arenas import can_join_arena
+from Resolute.helpers.autocomplete import get_arena_type_autocomplete
 from Resolute.models.categories import ArenaTier, ArenaType
 from Resolute.models.embeds.arenas import ArenaPhaseEmbed, ArenaStatusEmbed
 from Resolute.models.objects.arenas import Arena, ArenaPost
@@ -52,22 +54,20 @@ class Arenas(commands.Cog):
 
         if len(player.characters) == 0:
             raise CharacterNotFound(ctx.author)
+        elif not await can_join_arena(self.bot, player):
+            raise G0T0Error(f"You or your characters are already in the maximum allowed arenas.")
         elif len(player.characters) == 1:
-            arenas = await get_player_arenas(self.bot, player)
-
-            for arena in arenas:
-                if player.characters[0].id in arena.characters and (arena.completed_phases < arena.tier.max_phases-1 or arena.tier.max_phases == 1):
-                    raise G0T0Error(f"Character already in an active arena.")
-
             post = ArenaPost(player, player.characters)
 
             if g.member_role and g.member_role in player.member.roles:
                 ui = ArenaRequestCharacterSelect.new(self.bot, ctx.author, g, player, post)
                 await ui.send_to(ctx)
                 return await ctx.delete()
-            else:
+            elif await can_join_arena(self.bot, player, self.bot.compendium.get_object(ArenaType, "COMBAT"), player.characters[0]):
                 if await build_arena_post(ctx, self.bot, post):
                     return await ctx.respond(f"Request submitted!", ephemeral=True)
+            else:
+                raise G0T0Error(f"Character already in an active arena.")
         else:
             ui = ArenaRequestCharacterSelect.new(self.bot, ctx.author, g, player)
             await ui.send_to(ctx)
@@ -80,7 +80,7 @@ class Arenas(commands.Cog):
         name="claim",
         description="Opens an arena in this channel and sets you as host"
     )
-    async def arena_claim(self, ctx: ApplicationContext):
+    async def arena_claim(self, ctx: ApplicationContext, type: Option(str, description="Arena Type", autocomplete=get_arena_type_autocomplete, required=True, default="COMBAT")):
         await ctx.defer()
 
         arena: Arena = await get_arena(self.bot, ctx.channel_id)
@@ -90,7 +90,7 @@ class Arenas(commands.Cog):
                             "Use `/arena status` to check on the status of the current arena in this channel")
         
         tier = self.bot.compendium.get_object(ArenaTier, 1)
-        type = self.bot.compendium.get_object(ArenaType, "CHARACTER")
+        type = self.bot.compendium.get_object(ArenaType, type)
 
         arena = Arena(ctx.channel.id, ctx.author.id, tier, type)
 

@@ -11,6 +11,7 @@ from Resolute.helpers.characters import get_character
 from Resolute.helpers.guilds import get_guild
 from Resolute.helpers.general_helpers import get_webhook
 from Resolute.models.categories import ArenaTier
+from Resolute.models.categories.categories import ArenaType
 from Resolute.models.embeds import ErrorEmbed
 from Resolute.models.embeds.arenas import ArenaPostEmbed, ArenaStatusEmbed
 from Resolute.models.objects.arenas import (Arena, ArenaPost, ArenaSchema,
@@ -19,6 +20,7 @@ from Resolute.models.objects.arenas import (Arena, ArenaPost, ArenaSchema,
                                             get_character_arena_query,
                                             upsert_arena_query)
 from Resolute.models.objects.characters import PlayerCharacter
+from Resolute.models.objects.exceptions import G0T0Error
 from Resolute.models.objects.players import Player
 
 log = logging.getLogger(__name__)
@@ -52,7 +54,9 @@ async def upsert_arena(bot: G0T0Bot, arena: Arena) -> Arena:
 
 async def add_player_to_arena(bot: G0T0Bot, interaction: discord.Interaction, player: Player, character: PlayerCharacter, arena: Arena) -> None:
     if character.id in arena.characters:
-        return await interaction.response.send_message(embed=ErrorEmbed("Character already in the arena"), ephemeral=True)    
+        raise G0T0Error("Character already in the arena")
+    elif not await can_join_arena(bot, player, arena.type, character):
+        raise G0T0Error(f"Character is already in an {arena.type.value.lower()} arena")    
     if player.id in {c.player_id for c in arena.player_characters}:
         remove_char = next((c for c in arena.player_characters if c.player_id == player.id), None)
         arena.player_characters.remove(remove_char)
@@ -152,5 +156,25 @@ async def build_arena_post(ctx: discord.ApplicationContext | discord.Interaction
         return True
     return False
 
+
+async def can_join_arena(bot: G0T0Bot, player: Player, arena_type: ArenaType = None, character: PlayerCharacter = None) -> bool:
+    player_arenas = await get_player_arenas(bot, player)
+    guild = await get_guild(bot, player.guild_id)
+
+    if len(player_arenas) >= 2:
+        return False
+    elif arena_type and arena_type.value == "NARRATIVE" and guild.member_role and guild.member_role not in player.member.roles:
+        return False
+
+    if arena_type:
+        filtered_arenas = [a for a in player_arenas if a.type.id == arena_type.id]
+    else:
+        filtered_arenas = []
     
- 
+    if character and (arena := next((a for a in filtered_arenas if character.id in a.characters), None)):
+        return False
+
+    return True
+
+
+    

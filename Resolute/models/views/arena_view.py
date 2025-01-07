@@ -5,6 +5,9 @@ import discord
 from Resolute.bot import G0T0Bot
 from Resolute.helpers import (add_player_to_arena, build_arena_post, get_arena,
                               get_character, get_player, get_player_arenas)
+from Resolute.helpers.arenas import can_join_arena
+from Resolute.models.categories.categories import ArenaType
+from Resolute.models.embeds import ErrorEmbed
 from Resolute.models.embeds.arenas import ArenaPostEmbed
 from Resolute.models.objects.arenas import ArenaPost, ArenaPostType
 from Resolute.models.objects.characters import PlayerCharacter
@@ -23,6 +26,10 @@ class ArenaView(discord.ui.View):
     def __init__(self, bot: G0T0Bot):
         super().__init__(timeout=None)
         self.bot = bot
+
+    async def on_error(self, error, item, interaction):
+        if isinstance(error, G0T0Error):
+            return await interaction.response.send_message(embed=ErrorEmbed(error), ephemeral=True)
 
     @classmethod
     def from_menu(cls, other: "ArenaView"):
@@ -74,7 +81,7 @@ class CharacterArenaViewUI(ArenaView):
     async def join_arena_button(self, _: discord.ui.Button, interaction: discord.Interaction):
         arena = await get_arena(self.bot, interaction.channel.id)
 
-        if arena is None or arena.type.value != "CHARACTER":
+        if arena is None:
             raise ArenaNotFound()
         
         if interaction.user.id == arena.host_id:
@@ -130,7 +137,7 @@ class ArenaCharacterSelect(ArenaView):
     async def join_arena_button(self, _: discord.ui.Button, interaction: discord.Interaction):
         arena = await get_arena(self.bot, interaction.channel.id)
 
-        if arena is None or arena.type.value != "CHARACTER":
+        if arena is None:
             raise ArenaNotFound()
 
         if interaction.user.id == arena.host_id:
@@ -182,8 +189,10 @@ class ArenaRequestCharacterSelect(ArenaRequest):
             self.remove_item(self.remove_character)
         else:
             char_list = []
+            
             for char in self.post.player.characters:
                 char_list.append(discord.SelectOption(label=f"{char.name}", value=f"{char.id}", default=True if self.character and char.id == self.character.id else False))
+            
             self.character_select.options = char_list
 
             self.queue_character.disabled = False if self.character else True
@@ -217,15 +226,10 @@ class ArenaRequestCharacterSelect(ArenaRequest):
     
     @discord.ui.button(label="Add", style=discord.ButtonStyle.primary, custom_id="add_character", row=3)
     async def queue_character(self, _: discord.ui.Button, interaction: discord.Interaction):
-        arenas = await get_player_arenas(self.bot, self.post.player)
-        add = True
+        if self.post.type.name != "BOTH" and  not await can_join_arena(self.bot, self.post.player, self.bot.compendium.get_object(ArenaType, self.post.type.name), self.character):
+            raise G0T0Error(f"{self.character.name} can't queue up for another {self.post.type.name.lower()} arena.")
 
-        for arena in arenas:
-            if self.character.id in arena.characters and arena.completed_phases < arena.tier.max_phases-1:
-                add = False
-                await interaction.channel.send("Character already in a new arena.", delete_after=5)
-
-        if self.character.id not in [c.id for c in self.post.characters] and add:
+        if self.character.id not in [c.id for c in self.post.characters]:
             self.post.characters.append(self.character)
             
         await self.refresh_content(interaction)
@@ -239,6 +243,11 @@ class ArenaRequestCharacterSelect(ArenaRequest):
 
     @discord.ui.button(label="Accept", style=discord.ButtonStyle.primary, row=4)
     async def next_application(self, _: discord.ui.Button, interaction: discord.Interaction):
+        if self.post.type.name != "BOTH":
+            for character in self.post.characters:
+                if not await can_join_arena(self.bot, self.post.player, self.bot.compendium.get_object(ArenaType, self.post.type.name), character):
+                    raise G0T0Error(f"{character.name} can't queue up for another {self.post.type.name.lower()} arena.\nPlease update and try to resubmit")
+
         if await build_arena_post(interaction, self.bot, self.post):
             await interaction.respond("Request Submitted!", ephemeral=True)
         else:

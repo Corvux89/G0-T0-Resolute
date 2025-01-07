@@ -34,8 +34,8 @@ class Dashboards(commands.Cog):
 
     @commands.Cog.listener()
     async def on_compendium_loaded(self):
-        log.info(f"Reloading dashboards every {DASHBOARD_REFRESH_INTERVAL} minutes.")
         if not self.update_dashboards.is_running():
+            log.info(f"Reloading dashboards every {DASHBOARD_REFRESH_INTERVAL} minutes.")
             await self.update_dashboards.start()
 
 

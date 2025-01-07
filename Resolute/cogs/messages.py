@@ -133,7 +133,7 @@ class Messages(commands.Cog):
             await message.delete()
 
         # Adventure NPC
-        elif (adventure := await get_adventure_from_category(self.bot, ctx.channel.category.id)) and ctx.author.id in adventure.dms and is_adventure_npc_message(adventure, message):
+        elif ctx.channel.category and (adventure := await get_adventure_from_category(self.bot, ctx.channel.category.id)) and ctx.author.id in adventure.dms and is_adventure_npc_message(adventure, message):
             if not guild.is_dev_channel(ctx.channel):
                 if len(message.content) >= ACTIVITY_POINT_MINIMUM:
                     await update_activity_points(self.bot, player, guild, False)

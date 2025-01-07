@@ -4,7 +4,7 @@ from Resolute.models.objects.arenas import Arena, ArenaPost
 
 class ArenaStatusEmbed(Embed):
     def __init__(self, ctx: ApplicationContext | Interaction, arena: Arena):
-        super().__init__(title="Arena Status", color=Color.random())
+        super().__init__(title=f"{arena.type.value.title()} Arena Status", color=Color.random())
         self.set_thumbnail(url=THUMBNAIL)
 
         self.description = f"**Tier**: {arena.tier.id}\n"\

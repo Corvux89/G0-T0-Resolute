@@ -79,9 +79,7 @@ async def delete_dashboard(bot: G0T0Bot, dashboard: RefDashboard) -> None:
 
 
 async def get_last_message(channel: discord.TextChannel) -> discord.Message:
-    last_message = channel.last_message
-
-    if last_message is None:
+    if not (last_message := channel.last_message):
         try:
             last_message = next((msg for msg in channel.history(limit=1)), None)
         except:
@@ -269,7 +267,7 @@ async def update_dashboard(bot: G0T0Bot, dashboard: RefDashboard):
                               timestamp=discord.utils.utcnow())
         
         embed.add_field(name="Stretch Goals",
-                        value="If we can get enough reserves we will look at making a website as well and try for better integrations")
+                        value="If we end up with enough reserve funds, we will look at making a website to house our content rulings / updates and work on better integrations with the bot.")
         
         embed.set_image(url="attachment://progress.png")
         embed.set_footer(text="Last Updated")

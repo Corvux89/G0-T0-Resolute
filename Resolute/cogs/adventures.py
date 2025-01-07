@@ -37,7 +37,7 @@ class Adventures(commands.Cog):
 
     @commands.Cog.listener()
     async def on_command_error(self, ctx: commands.Context, error):
-        if hasattr(ctx, "bot") and hasattr(ctx.bot, "db") and ctx.guild:
+        if hasattr(ctx, "bot") and hasattr(ctx.bot, "db") and ctx.guild and ctx.channel.category:
             if adventure := await get_adventure_from_category(self.bot, ctx.channel.category.id):
                 if ctx.author.id in adventure.dms and (npc := next((npc for npc in adventure.npcs if npc.key == ctx.invoked_with), None)):
                     guild = await get_guild(self.bot, ctx.guild.id)

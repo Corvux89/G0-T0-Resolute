@@ -2,6 +2,9 @@ from typing import Mapping, Optional, Type
 
 import discord
 
+from Resolute.models.embeds import ErrorEmbed
+from Resolute.models.objects.exceptions import G0T0Error
+
 
 class InteractiveView(discord.ui.View):
     def __init__(self, owner: discord.Member, *args, **kwargs):
@@ -14,6 +17,12 @@ class InteractiveView(discord.ui.View):
             return True
         await interaction.response.send_message("You are not the owner of this interaction", ephemeral=True)
         return False
+    
+    async def on_error(self, error, item, interaction):
+        if isinstance(error, G0T0Error):
+            return await interaction.response.send_message(embed=ErrorEmbed(error), ephemeral=True)
+
+        return await super().on_error(error, item, interaction)
     
     @classmethod
     def from_menu(cls, other: "InteractiveView"):

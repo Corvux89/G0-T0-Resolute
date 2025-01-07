@@ -113,6 +113,44 @@ class Guilds(commands.Cog):
 
         await self.perform_weekly_reset(g)
         return await ctx.respond("Weekly reset manually completed")
+    
+    @guilds_commands.command(
+        name="send_announcements",
+        description="Send announcements only"
+    )
+    @commands.check(is_admin)
+    async def guild_announcements(self, ctx: ApplicationContext):
+        await ctx.defer()
+
+        g: PlayerGuild = await get_guild(self.bot, ctx.guild.id)
+
+        conf = await confirm(ctx, f"Are you sure you want to manually push announcements? (Reply with yes/no)", True)
+
+        if conf is None:
+            return await ctx.respond(f"Times oud waiting for a response or invalid response.", delete_after=10)
+        elif not conf:
+            return await ctx.respond(f"Ok, cancelling.", delete_after=10)
+        
+        await self.push_announcements(g, None, title="Announcements")
+        g.weekly_announcement = []
+        g.ping_announcement = False
+        await update_guild(self.bot, g)
+        return await ctx.respond("Announcements manually completed")
+        
+    async def push_announcements(self, guild: PlayerGuild, complete_time: float = None, **kwargs):
+        if guild.announcement_channel:
+            try:
+                embeds = ResetEmbed.chunk_announcements(guild, complete_time, **kwargs)
+                if guild.ping_announcement == True and guild.entry_role and guild.member_role:
+                    await guild.announcement_channel.send(embeds=embeds, content=f"{guild.entry_role.mention}{guild.member_role.mention}")
+                else:
+                    await guild.announcement_channel.send(embeds=embeds)
+            except Exception as error:
+                if isinstance(error, discord.errors.HTTPException):
+                    log.error(f"WEEKLY RESET: Error sending message to announcements channel in "
+                              f"{guild.guild.name} [ {guild.id} ]")
+                else:
+                    log.error(error)
 
     async def perform_weekly_reset(self, g: PlayerGuild):
         # Setup
@@ -158,25 +196,12 @@ class Guilds(commands.Cog):
         end = timer()
 
         # Announce we're all done!
-        if g.announcement_channel:
-            try:
-                if g.ping_announcement == True and g.entry_role and g.member_role:
-                    await g.announcement_channel.send(embed=ResetEmbed(g, end-start), content=f"{g.entry_role.mention}{g.member_role.mention}")
-                else:
-                    await g.announcement_channel.send(embed=ResetEmbed(g, end-start))
-            except Exception as error:
-                if isinstance(error, discord.errors.HTTPException):
-                    log.error(f"WEEKLY RESET: Error sending message to announcements channel in "
-                              f"{self.bot.get_guild(g.id).name} [ {g.id} ]")
-                else:
-                    log.error(error)
-                    
-        # Cleanup
+        await self.push_announcements(guild, end-start)
+
         g.weekly_announcement = []
         g.ping_announcement = False
 
         await update_guild(self.bot, g)
-
         
 
     # --------------------------- #

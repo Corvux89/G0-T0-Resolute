@@ -35,28 +35,58 @@ class GuildEmbed(Embed):
                            inline=False)
             
 class ResetEmbed(Embed):
-    def __init__(self, g: PlayerGuild, completeTime: float):
-        super().__init__(title=f"Weekly Reset",
-                         color=Color.random())
+    def __init__(self, g: PlayerGuild, is_primary: bool = False, **kwargs):
+        super().__init__(color=Color.random())
+        if is_primary:
+            title = kwargs.get('title', 'Weekly Reset')
+
+            self.set_thumbnail(url=THUMBNAIL)
+
+            if 'reset' in title.lower() and g.reset_message:
+                self.description = f"{process_message(g.reset_message, g)}"
+
+            if g.calendar and g.server_date:
+                self.add_field(name="Galactic Date",
+                            value=f"{g.formatted_server_date}",
+                            inline=False)
+            if time := kwargs.get('complete_time', 0):
+                self.set_footer(text=f"Weekly reset complete in {time:.2f} seconds")
+        else:
+            title = kwargs.get('title', 'Announcements')
         
-        self.set_thumbnail(url=THUMBNAIL)
+        self.title = title
 
-        if g.reset_message:
-            self.description = f"{process_message(g.reset_message, g)}"
+    @staticmethod
+    def chunk_announcements(g: PlayerGuild, complete_time: float = 0, **kwargs):
+        embeds = []
+        current_embed = None
+        total_chars = 0
 
-        if g.calendar and g.server_date:
-            self.add_field(name="Galactic Date",
-                           value=f"{g.formatted_server_date}",
-                           inline=False)
+        if len(g.weekly_announcement) == 0:
+            return [ResetEmbed(g, True, complete_time=complete_time)]
 
-        if g.weekly_announcement:
-            for announcement in g.weekly_announcement:
-                parts = announcement.split("|")
-                title = parts[0] if len(parts) > 1 else "Announcement"
-                body = parts[1] if len(parts) > 1 else parts[0]
-                self.add_field(name=title,
-                               value=process_message(body, g),
-                               inline=False)
+        for announcement in g.weekly_announcement:
+            parts = announcement.split("|")
+            title = parts[0] if len(parts) > 1 else "Announcement"
+            body = parts[1] if len(parts) > 1 else parts[0]
+            processed_announcement = process_message(body, g)
 
-        self.set_footer(text=f"Weekly reset complete in {completeTime:.2f} seconds")
+            field_char_count = len(title) + len(processed_announcement)
+
+            if (not current_embed or
+                total_chars + field_char_count > 6000 or
+                len(current_embed.fields) >= 25):
+                
+                if current_embed:
+                    embeds.append(current_embed)
+
+                current_embed = ResetEmbed(g, len(embeds)==0, complete_time=complete_time, **kwargs)
+                total_chars = len(current_embed.title or "") + len(current_embed.description or "") + len(current_embed.footer.text if current_embed.footer else "" or "")
+            
+            current_embed.add_field(name=title, value=processed_announcement, inline=False)
+            total_chars += field_char_count
+
+        if current_embed:
+            embeds.append(current_embed)
         
+        return embeds

@@ -239,5 +239,5 @@ class Messages(commands.Cog):
         
 
         await message.add_reaction(NULL_EMOJI[0])
-
+        await message.edit(embed=LogEmbed)
         return await ctx.respond(content=None, embed=LogEmbed(mod_log, ctx.author, player.member, character))

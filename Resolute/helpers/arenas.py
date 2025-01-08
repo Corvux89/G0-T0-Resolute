@@ -159,15 +159,16 @@ async def build_arena_post(ctx: discord.ApplicationContext | discord.Interaction
 
 async def can_join_arena(bot: G0T0Bot, player: Player, arena_type: ArenaType = None, character: PlayerCharacter = None) -> bool:
     player_arenas = await get_player_arenas(bot, player)
+    participating_arenas = [a for a in player_arenas if any([c.id in a.characters for c in player.characters])]
     guild = await get_guild(bot, player.guild_id)
 
-    if len(player_arenas) >= 2:
+    if len(participating_arenas) >= 2:
         return False
     elif arena_type and arena_type.value == "NARRATIVE" and guild.member_role and guild.member_role not in player.member.roles:
         return False
 
     if arena_type:
-        filtered_arenas = [a for a in player_arenas if a.type.id == arena_type.id]
+        filtered_arenas = [a for a in participating_arenas if a.type.id == arena_type.id]
     else:
         filtered_arenas = []
     

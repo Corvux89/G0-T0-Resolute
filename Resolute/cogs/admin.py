@@ -1,10 +1,10 @@
 import asyncio
 import datetime
 import logging
-import operator
 from os import listdir
+import discord
 
-from discord import (ApplicationContext, ExtensionNotFound, ExtensionNotLoaded, Option, SlashCommandGroup)
+from discord import (ApplicationContext, ExtensionNotFound, ExtensionNotLoaded, Option, SlashCommandGroup, Embed)
 from discord.ext import commands, tasks
 
 from Resolute.bot import G0T0Bot
@@ -12,6 +12,7 @@ from Resolute.constants import ADMIN_GUILDS
 from Resolute.helpers import get_guild, get_player, is_admin, is_owner
 from Resolute.helpers.dashboards import update_financial_dashboards
 from Resolute.helpers.financial import get_financial_data, update_financial_data
+from Resolute.helpers.store import get_store_items
 from Resolute.models.views.admin import AdminMenuUI
 from Resolute.models.views.automation_request import AutomationRequestView
 
@@ -107,11 +108,48 @@ class Admin(commands.Cog):
 
     @commands.command(name="dev")
     async def dev(self, ctx: ApplicationContext):
-        player = await get_player(self.bot, ctx.author.id, ctx.guild.id if ctx.guild else None)
-        points = sorted(self.bot.compendium.activity_points[0].values(), key=operator.attrgetter('id'))
-        for point in points:
-            print(point.id)
-        await ctx.send("Testing")
+        now = datetime.datetime.now(datetime.timezone.utc)
+        entitlements = await self.bot.fetch_entitlements()
+        store_items = await get_store_items(self.bot)    
+        # entitlements = [e for e in entitlements if e.starts_at.year == now.year and e.starts_at.month == now.month]
+
+        embed = Embed(title="Supporters")
+
+        users = {}
+
+        for e in entitlements:
+            if store := next((s for s in store_items if s.sku == e.sku_id), None):
+                if e.user_id not in users:
+                    users[e.user_id] = {e.sku_id: 1}
+                else:
+                    if e.sku_id not in users[e.user_id]:
+                        users[e.user_id][e.sku_id] = 1
+                    else:
+                        users[e.user_id][e.sku_id] += 1
+
+        
+        for user_id in users:
+            user = ctx.guild.get_member(user_id)
+            user_str = ""
+            total = 0
+
+            for sku, count in users[user_id].items():
+                if store := next((s for s in store_items if s.sku == sku), None):
+                    cost = store.user_cost * count
+                    total += cost
+                    user_str += f"{sku} x {count} @ ${store.user_cost:.2f} = ${cost:.2f}\n"
+
+            user_str += f"\n**Total**: ${total:.2f}"
+
+
+            embed.add_field(name=f"{user.display_name if user else 'Not Found'}",
+                            value=user_str,
+                            inline=False)
+            
+        return await ctx.send(embed=embed)
+
+
+        
 
     # --------------------------- #
     # Private Methods

@@ -195,7 +195,8 @@ class Character(commands.Cog):
     )
     async def edit_application(self, ctx: ApplicationContext,
                                application_id: Option(str, description="Application ID", required=False)):
-        guild = await get_guild(self.bot, ctx.guild.id)
+        player = await get_player(self.bot, ctx.author.id, ctx.guild.id if ctx.guild else None)
+        guild = await get_guild(self.bot, player.guild_id)
         
         if guild.application_channel:
             if application_id:
@@ -220,8 +221,6 @@ class Character(commands.Cog):
         
         appliation_text = message.content
         player_match = re.search(r"^\*\*Player:\*\* (.+)", appliation_text, re.MULTILINE)
-        player = await get_player(self.bot, ctx.author.id, ctx.guild.id if ctx.guild else None)
-        g = await get_guild(self.bot, player.guild_id)
         type_match = re.search(r"^\*\*(.*?)\*\*\s\|", appliation_text, re.MULTILINE)
         type = type_match.group(1).strip().replace('*', '') if type_match else None
 

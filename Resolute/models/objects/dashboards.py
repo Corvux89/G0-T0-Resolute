@@ -45,7 +45,7 @@ ref_dashboard_table = sa.Table(
 
 class RefDashboardSchema(Schema):
     compendium: Compendium
-    category_channel_id = fields.Integer(required=True)
+    category_channel_id = fields.Integer(required=False, allow_none=True)
     channel_id = fields.Integer(required=True)
     post_id = fields.Integer(required=True)
     excluded_channel_ids = fields.List(fields.Integer)

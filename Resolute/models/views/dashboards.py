@@ -92,9 +92,6 @@ class _NewDashboardUI(DashboardSettings):
     async def dashboard_channel(self, channel: discord.ui.Select, interaction: discord.Interaction):
         self.new_dashboard.channel_id = channel.values[0].id
 
-        if self.new_dashboard.dashboard_type.value.upper() != "RP":
-            self.new_dashboard.category_channel_id = channel.values[0].category.id
-
         await self.refresh_content(interaction)
 
     @discord.ui.button(label="Create Dashboard", style=discord.ButtonStyle.primary, row=4)

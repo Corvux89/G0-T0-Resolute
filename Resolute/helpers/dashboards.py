@@ -95,7 +95,7 @@ async def get_guild_dashboards(bot: G0T0Bot, guild_id: int) -> list[RefDashboard
     async with bot.db.acquire() as conn:
         async for row in conn.execute(get_dashboards()):
             dashboard: RefDashboard = RefDashboardSchema(bot.compendium).load(row)
-            if bot.get_channel(dashboard.category_channel_id).guild.id == guild_id:
+            if bot.get_channel(dashboard.channel_id).guild.id == guild_id:
                 dashboards.append(dashboard)
 
     return dashboards
@@ -139,7 +139,10 @@ async def update_financial_dashboards(bot: G0T0Bot):
 async def update_dashboard(bot: G0T0Bot, dashboard: RefDashboard):
     original_message = await get_pinned_post(bot, dashboard)
 
-    if not original_message or not original_message.pinned and original_message is not True:
+    if isinstance(original_message, bool):
+        return
+
+    if not original_message or not original_message.pinned:
         return await delete_dashboard(bot, dashboard)
     
     guild = await get_guild(bot, original_message.guild.id)

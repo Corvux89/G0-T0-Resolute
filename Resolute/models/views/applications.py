@@ -217,10 +217,6 @@ class _MiscuUI(CharacterSelect):
     @discord.ui.button(label="Back", style=discord.ButtonStyle.grey, row=2)
     async def back(self, _: discord.ui.Button, interaction: discord.Interaction):
         await self.defer_to(NewCharacterRequestUI, interaction)
-
-    async def _before_send(self):
-        if self.application.type not in ["Reroll", "Free Reroll"]:
-            self.remove_item(self.hp_level)
             
     async def commit(self):
        await upsert_application(self.bot.db, self.owner.id, self.application.format_app(self.owner))
@@ -231,13 +227,12 @@ class _MiscuUI(CharacterSelect):
                         value=self.application.name,
                         inline=False)
         
-        if self.application.type in ["Free Reroll", "Reroll"]:
-            embed.add_field(name="__Level__",
-                            value=self.application.level,
-                            inline=False)
-            embed.add_field(name="__HP__",
-                            value=self.application.hp,
-                            inline=False)
+        embed.add_field(name="__Level__",
+                        value=self.application.level,
+                        inline=False)
+        embed.add_field(name="__HP__",
+                        value=self.application.hp,
+                        inline=False)
         embed.add_field(name="__Starting Credits__",
                         value=self.application.credits,
                         inline=False)
@@ -331,8 +326,8 @@ class HPLevelModal(Modal):
     def __init__(self, application: NewCharacterApplication):
         super().__init__(title="HP Rolls")
         self.application = application
-        self.add_item(InputText(label="Character Reroll Level", placeholder="Character Reroll Level", value=self.application.level, required=False, max_length=2))
-        self.add_item(InputText(label="HP Rolls (Link or Rolls)", required=False, placeholder="HP Rolls (Link or Rolls)", value=self.application.hp))
+        self.add_item(InputText(label="Character Level", placeholder="Character Level", value=self.application.level, required=False, max_length=2))
+        self.add_item(InputText(label="HP", required=False, placeholder="HP", value=self.application.hp))
 
     async def callback(self, interaction: discord.Interaction):
         self.application.level = self.children[0].value

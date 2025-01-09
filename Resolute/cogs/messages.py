@@ -107,6 +107,23 @@ class Messages(commands.Cog):
 
             await message.delete()
 
+        # Market
+        if guild.market_channel and message.channel.id == guild.market_channel.id:
+            if transaction := await get_market_request(self.bot, message):
+                if len(message.reactions) > 0:
+                    for reaction in message.reactions:
+                        if reaction.emoji in DENIED_EMOJI:
+                            users = await reaction.users().flatten()
+
+                            for user in users:
+                                if is_staff(ctx) or user.id == self.bot.user.id:
+                                    raise G0T0Error(f"Transaction was previously denied. Please make a new request")
+                
+                if transaction.player.id != ctx.author.id:
+                    raise G0T0Error("You can only edit your own transactions")
+                
+                await message.delete()
+
         # RP Post
         elif guild.rp_post_channel and message.channel.id == guild.rp_post_channel.id:
             if not message.author.bot or message.embeds[0].footer.text != f"{ctx.author.id}":

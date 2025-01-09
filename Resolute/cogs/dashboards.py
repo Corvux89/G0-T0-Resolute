@@ -49,7 +49,10 @@ class Dashboards(commands.Cog):
             
             post_message = await get_pinned_post(self.bot, dashboard)
 
-            if not post_message or not post_message.pinned and post_message is not True:
+            if isinstance(post_message, bool):
+                return
+
+            if not post_message or not post_message.pinned:
                 return await delete_dashboard(self.bot, dashboard)
             
             guild = await get_guild(self.bot, message.guild.id)

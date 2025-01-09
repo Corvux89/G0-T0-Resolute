@@ -120,7 +120,6 @@ class TransactionPromptUI(MarketPrompt):
     async def exit(self, *_):
         if self.transaction.message:
             await self.transaction.message.edit(embed=TransactionEmbed(self.transaction))
-            await self.transaction.message.thread.delete()
             await self.transaction.message.clear_reactions()
         await self.on_timeout()
 

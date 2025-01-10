@@ -67,7 +67,7 @@ class Messages(commands.Cog):
         elif guild.arena_board_channel and message.channel.id == guild.arena_board_channel.id:
             if not message.author.bot or message.embeds[0].footer.text != f"{ctx.author.id}":
                 raise G0T0Error("You cannot edit this arena board post")
-            elif len(player.characters) <= 1 and guild.member_role and guild.member_role not in message.author.roles:
+            elif len(player.characters) <= 1 and guild.member_role and guild.member_role not in player.member.roles:
                 raise G0T0Error(f"There is nothing to edit")
             
             post = ArenaPost(player)

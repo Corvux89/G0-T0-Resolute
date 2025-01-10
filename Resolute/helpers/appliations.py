@@ -142,7 +142,7 @@ async def get_level_up_application(bot: G0T0Bot, application_text: str = None, m
         message=message,
         level=get_match(r"\*\*New Level:\*\* (.+?)\n", app_text),
         hp=get_match(r"\*\*HP:\*\* (.+?)\n", app_text),
-        feats=get_match(r"\*\*New Features:\*\* (.+?)\n", app_text),
+        feats=get_match(r"\*\*New Features:\*\* (.+?)(?=\n\*\*)", app_text),
         changes=get_match(r"\*\*Changes:\*\* (.+?)(?=\n\*\*)", app_text),
         link=get_match(r"\*\*Link:\*\* (.+)", app_text)
     )

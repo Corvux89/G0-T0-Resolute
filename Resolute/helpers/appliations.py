@@ -87,7 +87,7 @@ async def get_new_character_application(bot: G0T0Bot, application_text: str = No
 
     application = NewCharacterApplication(
         message=message,
-        name=get_match(r"\*\*Name:\*\* (.+?)\n", app_text),
+        name=get_match(r"\*\*Name:\*\* (.+?)\n\*\*Player", app_text),
         type=type_match.group(1).strip().replace('*', '') if type_match else "New Character",
         base_scores=AppBaseScores(
             str=base_scores_match.group(1) if base_scores_match else "", 

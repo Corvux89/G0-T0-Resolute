@@ -105,7 +105,7 @@ def update_arena_tier(bot: G0T0Bot, arena: Arena) -> None:
     if arena.player_characters:
         avg_level = mode(c.level for c in arena.player_characters)
         tiers = list(bot.compendium.arena_tier[0].values())
-        levels = [t.avg_level for t in tiers]
+        levels = sorted([t.avg_level for t in tiers])
 
         if avg_level > levels[-1]:
             arena.tier = tiers[-1]

@@ -8,6 +8,7 @@ from sqlalchemy.util import asyncio
 from Resolute.bot import G0T0Bot
 from Resolute.constants import BOT_OWNERS
 from Resolute.helpers.guilds import get_guild
+from Resolute.models.objects.characters import PlayerCharacter
 from Resolute.models.objects.exceptions import SelectionCancelled
 from Resolute.models.objects.guilds import PlayerGuild
 
@@ -125,6 +126,15 @@ def auth_and_chan(ctx) -> bool:
 
     return chk
 
+def find_character(name: str, characters: list[PlayerCharacter]) -> list[PlayerCharacter]:
+    direct_match = [c for c in characters if c.name.lower() == name.lower()]
+
+    if not direct_match:
+        partial_matches = [c for c in characters if name.lower() in c.name.lower()]
+        return partial_matches
+
+    return direct_match
+
 
 def process_message(message: str, g: PlayerGuild,  member: Member = None, mappings: dict = None) -> str:
     channel_mentions = re.findall(r'{#([^}]*)}', message)
@@ -133,6 +143,7 @@ def process_message(message: str, g: PlayerGuild,  member: Member = None, mappin
     for chan in channel_mentions:
         if (channel := discord.utils.get(g.guild.channels, name=chan)):
             message = message.replace("{#"+chan+"}", f"{channel.mention}")
+
     for r in role_mentions:
         if (role := discord.utils.get(g.guild.roles, name=r)):
             message = message.replace("{@"+r+"}", f"{role.mention}")

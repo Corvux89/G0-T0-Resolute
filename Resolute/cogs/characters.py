@@ -12,7 +12,8 @@ from Resolute.helpers import (get_cached_application, get_guild,
                               get_new_character_application, get_player,
                               get_webhook_character,
                               update_activity_points)
-from Resolute.helpers.general_helpers import split_content
+from Resolute.helpers.characters import get_all_guild_characters
+from Resolute.helpers.general_helpers import process_message, split_content
 from Resolute.models.embeds.players import PlayerOverviewEmbed
 from Resolute.models.objects.exceptions import (ApplicationNotFound,
                                                 CharacterNotFound,
@@ -32,7 +33,6 @@ def setup(bot: commands.Bot):
 
 
 class Character(commands.Cog):
-    # TODO: Character Reroll Renown Conversion
     bot: G0T0Bot
     character_admin_commands = SlashCommandGroup("character_admin", "Character administration commands", guild_only=True)
 
@@ -50,6 +50,7 @@ class Character(commands.Cog):
 
         content = content.replace(f">say ", "")
         await ctx.message.delete()
+        char_match = r"^(['\"“”])(.*?)\1"
 
         if content == "" or content == ">say":
             return
@@ -61,11 +62,11 @@ class Character(commands.Cog):
         if not player.characters:
             raise CharacterNotFound(player.member)
         
-        if match := re.match(r"^(['\"])(.*?)\1", content):
+        if match := re.match(r"^(['\"“”])(.*?)['\"“”]", content):
             search = match.group(2)
             character = next((c for c in player.characters if search.lower() in c.name.lower()), None)
             if character:
-                content = re.sub(r"^(['\"])(.*?)\1\s*", "", content, count=1)
+                content = re.sub(r"^(['\"“”])(.*?)['\"“”]\s*", "", content, count=1)
             
         if not character:
             character = await get_webhook_character(self.bot, player, ctx.channel)

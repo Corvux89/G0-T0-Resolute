@@ -21,7 +21,7 @@ class ArenaStatusEmbed(Embed):
         
         if arena.player_characters:
             self.add_field(name="**Players**:",
-                        value="\n".join([f"{ZWSP3}- {c.name}{'*inactive*' if not c.active else ''} ({ctx.guild.get_member(c.player_id).mention})" for c in arena.player_characters]),
+                        value="\n".join([f"{ZWSP3}- [{c.level}] {c.name}{'*inactive*' if not c.active else ''} ({ctx.guild.get_member(c.player_id).mention})" for c in arena.player_characters]),
                         inline=False)
             
 class ArenaPhaseEmbed(Embed):

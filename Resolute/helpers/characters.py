@@ -160,3 +160,12 @@ async def update_character_renown(bot: G0T0Bot, character: PlayerCharacter, fact
     character_renown.renown += renown
 
     return await upsert_renown(bot, character_renown)
+
+def find_character_by_name(name: str, characters: list[PlayerCharacter]) -> list[PlayerCharacter]:
+    direct_matches = [c for c in characters if c.name.lower() == name.lower()]
+
+    if not direct_matches:
+        partial_matches = [c for c in characters if name.lower() in c.name.lower()]
+        return partial_matches
+    
+    return direct_matches

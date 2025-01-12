@@ -12,8 +12,9 @@ from Resolute.helpers import (get_cached_application, get_guild,
                               get_new_character_application, get_player,
                               get_webhook_character,
                               update_activity_points)
-from Resolute.helpers.characters import get_all_guild_characters
-from Resolute.helpers.general_helpers import process_message, split_content
+from Resolute.helpers.characters import find_character_by_name, get_all_guild_characters
+from Resolute.helpers.general_helpers import get_selection, process_message, split_content
+from Resolute.helpers.messages import get_player_from_say_message
 from Resolute.models.embeds.players import PlayerOverviewEmbed
 from Resolute.models.objects.exceptions import (ApplicationNotFound,
                                                 CharacterNotFound,
@@ -50,7 +51,6 @@ class Character(commands.Cog):
 
         content = content.replace(f">say ", "")
         await ctx.message.delete()
-        char_match = r"^(['\"“”])(.*?)\1"
 
         if content == "" or content == ">say":
             return
@@ -58,6 +58,7 @@ class Character(commands.Cog):
         player = await get_player(self.bot, ctx.author.id, ctx.guild.id)
         g = await get_guild(self.bot, ctx.guild.id)
         character = None
+        mentioned_characters = []
 
         if not player.characters:
             raise CharacterNotFound(player.member)
@@ -71,6 +72,24 @@ class Character(commands.Cog):
         if not character:
             character = await get_webhook_character(self.bot, player, ctx.channel)
 
+        if char_mentions := re.findall(r'{\$([^}]*)}', content):
+            guild_characters = await get_all_guild_characters(self.bot, g.id)
+            for mention in char_mentions:
+                matches = find_character_by_name(mention, guild_characters)
+                mention_char = None
+
+                if len(matches) == 1:
+                    mention_char = matches[0]
+                elif len(matches) > 1:
+                    choices = [f"{c.name} [{ctx.guild.get_member(c.player_id).display_name}]" for c in matches]
+                    choice = await get_selection(ctx, choices, True, True, f"Type your choice in {ctx.channel.jump_url}", True, f"Found multiple matches for `{mention}`")
+                    mention_char = matches[choices.index(choice)]
+
+                if mention_char:
+                    if mention_char not in mentioned_characters:
+                        mentioned_characters.append(mention_char)
+                    content = content.replace("{$" + mention + "}", mention_char.name)            
+
         chunks = split_content(content)
         for chunk in chunks:
             await player.send_webhook_message(self.bot, ctx, character, chunk)
@@ -80,6 +99,21 @@ class Character(commands.Cog):
 
                 if len(chunk) >= ACTIVITY_POINT_MINIMUM:
                     await update_activity_points(self.bot, player, g)
+
+        # Character Mentions
+        for char in mentioned_characters:
+            if member := ctx.guild.get_member(char.player_id):
+                await member.send(f"{ctx.author.mention} directly mentioned `{char.name}` in:\n{ctx.channel.jump_url}")
+
+        # Message response ping
+        if ctx.message.reference is not None:
+            try:
+                if ctx.message.reference.resolved and ctx.message.reference.resolved.author.bot and (orig_player := await get_player_from_say_message(self.bot, ctx.message.reference.resolved)):
+                    await orig_player.member.send(f"{ctx.author.mention} replied to your message in:\n{ctx.channel.jump_url}")
+            except Exception as error:
+                log.error(f"Error replying to message {error}")
+
+        
 
                 
     @character_admin_commands.command(

@@ -78,7 +78,7 @@ class CharacterSettingsEmbed(Embed):
         self.set_thumbnail(url=player.member.display_avatar.url if not character.avatar_url else character.avatar_url)
         self.color = player.member.color
 
-        self.description= (f"**Character**: {character.name}\n"
+        self.description= (f"**Character**: {character.name}{f' (*{character.nickname}*)' if character.nickname else ''}\n"
                            f"**Faction**: {character.faction.value if character.faction else '*None*'}\n"
                            f"**Global Character**: {'True' if character.primary_character else 'False'}")
 

@@ -731,7 +731,7 @@ class _CharacterSettings2UI(CharacterSettings):
         await self.prompt_modal(interaction, modal)
         await self.refresh_content(interaction)
 
-    @discord.ui.button(label="Update Nickname", style=discord.ButtonStyle.primary, row=2)
+    @discord.ui.button(label="Update Mention Name", style=discord.ButtonStyle.primary, row=2)
     async def update_nickname(self, _: discord.ui.Button, interaction: discord.Interaction):
         modal = CharacterNicknameModal(self.bot, self.active_character)
         await self.prompt_modal(interaction, modal)
@@ -769,11 +769,11 @@ class CharacterNicknameModal(Modal):
     character: PlayerCharacter
 
     def __init__(self, bot: G0T0Bot, character: PlayerCharacter):
-        super().__init__(title="Set Character Nickname")
+        super().__init__(title="Set Character Mention Name")
         self.bot = bot
         self.character = character
 
-        self.add_item(InputText(label="Nickname", placeholder="", value=character.nickname, required=False))
+        self.add_item(InputText(label="Mention Name", placeholder="", value=character.nickname, required=False))
 
     async def callback(self, interaction: discord.Interaction):
         self.character.nickname = self.children[0].value

@@ -12,6 +12,7 @@ from Resolute.constants import ACTIVITY_POINT_MINIMUM
 from Resolute.helpers import (create_log, create_new_character, get_character,
                               get_player, get_webhook, is_admin, manage_player_roles, process_message,
                               upsert_character, upsert_class)
+from Resolute.helpers.characters import handle_character_mention
 from Resolute.helpers.guilds import get_guild
 from Resolute.helpers.logs import update_activity_points
 from Resolute.helpers.messages import get_char_name_from_message, get_player_from_say_message
@@ -728,7 +729,13 @@ class _CharacterSettings2UI(CharacterSettings):
     async def update_avatar(self, _: discord.ui.Button, interaction: discord.Interaction):
         modal = CharacterAvatarModal(self.bot, self.active_character)
         await self.prompt_modal(interaction, modal)
-        await self.refresh_content(interaction) 
+        await self.refresh_content(interaction)
+
+    @discord.ui.button(label="Update Nickname", style=discord.ButtonStyle.primary, row=2)
+    async def update_nickname(self, _: discord.ui.Button, interaction: discord.Interaction):
+        modal = CharacterNicknameModal(self.bot, self.active_character)
+        await self.prompt_modal(interaction, modal)
+        await self.refresh_content(interaction)
 
     @discord.ui.button(label="Back", style=discord.ButtonStyle.secondary, row=3)
     async def back(self, _: discord.ui.Button, interaction: discord.Interaction):
@@ -751,9 +758,25 @@ class CharacterAvatarModal(Modal):
         self.add_item(InputText(label="Avatar Image URL", placeholder="", value=character.avatar_url, required=False))
 
     async def callback(self, interaction: discord.Interaction):
-        url = self.children[0].value
-
         self.character.avatar_url = self.children[0].value
+        await upsert_character(self.bot, self.character)
+
+        await interaction.response.defer()
+        self.stop()
+
+class CharacterNicknameModal(Modal):
+    bot: G0T0Bot
+    character: PlayerCharacter
+
+    def __init__(self, bot: G0T0Bot, character: PlayerCharacter):
+        super().__init__(title="Set Character Nickname")
+        self.bot = bot
+        self.character = character
+
+        self.add_item(InputText(label="Nickname", placeholder="", value=character.nickname, required=False))
+
+    async def callback(self, interaction: discord.Interaction):
+        self.character.nickname = self.children[0].value
         await upsert_character(self.bot, self.character)
 
         await interaction.response.defer()

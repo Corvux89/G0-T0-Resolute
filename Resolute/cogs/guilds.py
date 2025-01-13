@@ -16,6 +16,7 @@ from Resolute.helpers import (confirm, create_log, delete_weekly_stipend,
                               get_guild, get_guild_stipends,
                               get_guilds_with_reset, get_player, get_webhook,
                               is_admin, update_activity_points, update_guild)
+from Resolute.helpers.characters import handle_character_mention
 from Resolute.helpers.general_helpers import split_content
 from Resolute.models.embeds.guilds import ResetEmbed
 from Resolute.models.objects.guilds import PlayerGuild
@@ -54,6 +55,8 @@ class Guilds(commands.Cog):
                 if bool(set(user_roles) & set(npc.roles)) or is_admin(ctx):
                     player = await get_player(self.bot, ctx.author.id, ctx.guild.id)
                     content = ctx.message.content.replace(f'>{npc.key}', '')
+                    content = await handle_character_mention(ctx, content)
+
                     await player.update_command_count(self.bot, "npc")
                     webhook = await get_webhook(ctx.channel)
                     chunks = split_content(content)
@@ -236,4 +239,6 @@ class Guilds(commands.Cog):
                         log.error(f"RP BOARD: Error purging messages in {g.rp_post_channel.name}")
                     else:
                         log.error(error)
+
+
 

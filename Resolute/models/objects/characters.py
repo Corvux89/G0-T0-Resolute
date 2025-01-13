@@ -28,6 +28,7 @@ class PlayerCharacter(object):
         self.channels: list = kwargs.get('channels', [])
         self.faction: Faction = kwargs.get('faction')
         self.avatar_url = kwargs.get('avatar_url')
+        self.nickname = kwargs.get('nickname')
 
         # Virtual Attributes
         self.classes: list[PlayerCharacterClass] = []
@@ -74,7 +75,8 @@ characters_table = sa.Table(
     Column("primary_character", BOOLEAN, nullable=False, default=False),
     Column("channels", ARRAY(BigInteger), nullable=False, default=[]),
     Column("faction", Integer, nullable=True),
-    Column("avatar_url", String, nullable=True)
+    Column("avatar_url", String, nullable=True),
+    Column("nickname", String, nullable=True)
 )
 
 class CharacterSchema(Schema):
@@ -93,6 +95,7 @@ class CharacterSchema(Schema):
     channels = fields.List(fields.Integer, allow_none=False)
     faction = fields.Method(None, "load_faction", allow_none=True)
     avatar_url = fields.String(required=False, allow_none=True)
+    nickname = fields.String(required=False, allow_none=True)
 
     def __init__(self, compendium, **kwargs):
         super().__init__(**kwargs)
@@ -153,7 +156,8 @@ def upsert_character_query(character: PlayerCharacter):
         "avatar_url": character.avatar_url,
         "channels": character.channels,
         "primary_character": character.primary_character,
-        "faction": character.faction.id if character.faction else None
+        "faction": character.faction.id if character.faction else None,
+        "nickname": character.nickname
         }
         
         update_statement = characters_table.update().where(characters_table.c.id == character.id).values(**update_dict).returning(characters_table)

@@ -1,7 +1,6 @@
 import re
 
 import discord
-import requests
 from discord import ApplicationContext, Interaction, Member
 from sqlalchemy.util import asyncio
 
@@ -265,7 +264,7 @@ async def get_selection(ctx: discord.ApplicationContext, choices: list[str], del
             await try_delete(m)
 
     if m is None or m.content.lower() == 'c':
-        raise SelectionCancelled()
+        return None
     
     idx = int(m.content) - 1
 
@@ -286,4 +285,4 @@ def split_content(content: str, chunk_size: int = 2000) -> list[str]:
     if current_chunk:
         out.append(current_chunk)
 
-    return out
+    return out   

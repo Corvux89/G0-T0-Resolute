@@ -11,6 +11,7 @@ from Resolute.helpers import (get_adventure_from_category,
                               get_faction_autocomplete, get_guild, get_player,
                               get_player_adventures, get_webhook,
                               update_activity_points, update_dm)
+from Resolute.helpers.characters import handle_character_mention
 from Resolute.helpers.general_helpers import split_content
 from Resolute.models.embeds.adventures import AdventuresEmbed
 from Resolute.models.objects.adventures import (Adventure,
@@ -43,6 +44,8 @@ class Adventures(commands.Cog):
                     guild = await get_guild(self.bot, ctx.guild.id)
                     player = await get_player(self.bot, ctx.author.id, ctx.guild.id)
                     content = ctx.message.content.replace(f'>{npc.key}', '')
+                    content = await handle_character_mention(ctx, content)
+
                     await player.update_command_count(self.bot, "npc")
                     webhook = await get_webhook(ctx.channel)
                     chunks = split_content(content)

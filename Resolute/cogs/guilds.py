@@ -202,7 +202,7 @@ class Guilds(commands.Cog):
         end = timer()
 
         # Announce we're all done!
-        g = await self.push_announcements(guild, end-start)
+        g = await self.push_announcements(g, end-start)
 
         await update_guild(self.bot, g)
         

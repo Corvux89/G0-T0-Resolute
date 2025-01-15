@@ -1,3 +1,4 @@
+import aiopg.sa
 import sqlalchemy as sa
 from marshmallow import Schema, fields, post_load
 from sqlalchemy import BOOLEAN, BigInteger, Column, Integer, String, and_
@@ -9,11 +10,185 @@ from Resolute.models import metadata
 from Resolute.models.categories import (CharacterArchetype, CharacterClass,
                                         CharacterSpecies)
 from Resolute.models.categories.categories import Faction
-from Resolute.models.objects.guilds import PlayerGuild
+        
 
+class CharacterRenown(object):
+    def __init__(self, db: aiopg.sa.Engine, compendium: Compendium, **kwargs):
+        self._db = db
+        self._compendium = compendium
+
+        self.id = kwargs.get("id")
+        self.character_id = kwargs.get("character_id")
+        self.faction: Faction = kwargs.get("faction")
+
+        self.renown = kwargs.get("renown", 0)
+
+    def get_formatted_renown(self):
+        return f"**{self.faction.value}**: {max(0, self.renown)}"
+    
+    async def upsert(self):
+        async with self._db.acquire() as conn:
+            results = await conn.execute(upsert_character_renown_query(self))
+            row = await results.first()
+
+        renown = RenownSchema(self._db, self._compendium).load(row)
+
+        return renown
+
+renown_table = sa.Table(
+    "renown",
+    metadata,
+    Column("id", Integer, primary_key=True, autoincrement='auto'),
+    Column("character_id", Integer, nullable=False),  # ref: > characters.id
+    Column("faction", Integer, nullable=False),
+    Column("renown", Integer)
+)
+
+class RenownSchema(Schema):
+    db: aiopg.sa.Engine
+    compendium: Compendium
+
+    id = fields.Integer(required=True)
+    character_id = fields.Integer(required=True)
+    faction = fields.Method(None, "load_faction")
+    renown = fields.Integer()
+
+    def __init__(self, db: aiopg.sa.Engine, compendium: Compendium, **kwargs):
+        super().__init__(**kwargs)
+        self.compendium = compendium
+        self.db = db
+
+    @post_load
+    def make_renown(self, data, **kwargs):
+        renown = CharacterRenown(self.db, self.compendium, **data)
+        return renown
+
+    def load_faction(self, value):
+        return self.compendium.get_object(Faction, value)
+
+def get_character_renown(char_id: int) -> FromClause:
+    return renown_table.select().where(
+        renown_table.c.character_id == char_id
+    ).order_by(renown_table.c.id.asc())
+
+def upsert_character_renown_query(renown: CharacterRenown):
+    if hasattr(renown, "id") and renown.id is not None:
+        update_dict = {
+            "character_id": renown.character_id,
+            "faction": renown.faction.id,
+            "renown": renown.renown
+        }
+
+        update_statement = renown_table.update().where(renown_table.c.id == renown.id).values(**update_dict).returning(renown_table)
+        return update_statement
+
+    insert_statement = insert(renown_table).values(
+        character_id=renown.character_id,
+        faction=renown.faction.id,
+        renown=renown.renown
+    ).returning(renown_table)
+
+    return insert_statement
+
+class PlayerCharacterClass(object):
+    def __init__(self,db: aiopg.sa.Engine, compendium: Compendium, **kwargs):
+        self._db = db
+        self._compendium = compendium
+
+        self.id = kwargs.get('id')
+        self.character_id = kwargs.get('character_id')
+        self.primary_class: CharacterClass = kwargs.get('primary_class')
+        self.archetype: CharacterArchetype = kwargs.get('archetype')
+        self.active = kwargs.get('active', True)
+
+    def is_valid(self):
+        self.active = True if not hasattr(self, "active") else self.active
+        return (hasattr(self, "primary_class") and self.primary_class is not None)
+
+    def get_formatted_class(self):
+        if hasattr(self, "archetype") and self.archetype is not None:
+            return f"{self.archetype.value} {self.primary_class.value}"
+        elif hasattr(self, "primary_class") and self.primary_class is not None:
+            return f"{self.primary_class.value}"
+        else:
+            return ""
+        
+    async def upsert(self):
+        async with self._db.acquire() as conn:
+            results = await conn.execute(upsert_class_query(self))
+            row = await results.first()
+
+        new_class = PlayerCharacterClassSchema(self._db, self._compendium).load(row)
+
+        return new_class
+        
+character_class_table = sa.Table(
+    "character_class",
+    metadata,
+    Column("id", Integer, primary_key=True, autoincrement='auto'),
+    Column("character_id", Integer, nullable=False),  # ref: > characters.id
+    Column("primary_class", Integer, nullable=False),  # ref: > c_character_class.id
+    Column("archetype", Integer, nullable=True),  # ref: > c_character_subclass.id
+    Column("active", BOOLEAN, nullable=False, default=True)
+)
+        
+class PlayerCharacterClassSchema(Schema):
+    db: aiopg.sa.Engine
+    compendium: Compendium
+
+    id = fields.Integer(required=True)
+    character_id = fields.Integer(required=True)
+    primary_class = fields.Method(None, "load_primary_class")
+    archetype = fields.Method(None, "load_archetype", allow_none=True)
+    active = fields.Boolean(required=True)
+
+    def __init__(self, db: aiopg.sa.Engine, compendium: Compendium, **kwargs):
+        super().__init__(**kwargs)
+        self.db = db
+        self.compendium = compendium
+
+    @post_load
+    def make_class(self, data, **kwargs):
+        cl = PlayerCharacterClass(self.db, self.compendium, **data)
+        return cl
+
+    def load_primary_class(self, value):
+        return self.compendium.get_object(CharacterClass, value)
+
+    def load_archetype(self, value):
+        return self.compendium.get_object(CharacterArchetype, value)
+
+    
+def get_character_class(char_id: int) -> FromClause:
+    return character_class_table.select().where(
+        and_(character_class_table.c.character_id == char_id, character_class_table.c.active == True)
+    ).order_by(character_class_table.c.id.asc())
+
+def upsert_class_query(char_class: PlayerCharacterClass):
+    if hasattr(char_class, "id") and char_class.id is not None:
+        update_dict = {
+            'character_id': char_class.character_id,
+            'primary_class': char_class.primary_class.id,
+            'archetype': None if not hasattr(char_class.archetype, 'id') else char_class.archetype.id,
+            'active': char_class.active
+        }
+        
+        update_statement = character_class_table.update().where(character_class_table.c.id == char_class.id).values(**update_dict).returning(character_class_table)
+        return update_statement
+    
+    insert_statement = insert(character_class_table).values(
+        character_id=char_class.character_id,
+        primary_class=char_class.primary_class.id,
+        archetype=None if not hasattr(char_class.archetype, "id") else char_class.archetype.id
+    ).returning(character_class_table)
+
+    return insert_statement
 
 class PlayerCharacter(object): 
-    def __init__(self, **kwargs):
+    def __init__(self, db: aiopg.sa.Engine, compendium: Compendium, **kwargs):
+        self._db = db
+        self._compendium = compendium
+
         self.id = kwargs.get('id')
         self.name = kwargs.get('name')
         self.species: CharacterSpecies = kwargs.get('species')
@@ -53,10 +228,30 @@ class PlayerCharacter(object):
         return f"**{self.name}** - Level {self.level} {self.species.value} [{class_str}]" 
 
 
-    def is_valid(self, guild: PlayerGuild):
+    def is_valid(self, max_level: int):
         return (hasattr(self, "name") and self.name is not None and 
                 hasattr(self, "species") and self.species is not None and
-                hasattr(self, "level") and 0 < self.level <= guild.max_level)        
+                hasattr(self, "level") and 0 < self.level <= max_level)
+
+    async def upsert(self):
+        async with self._db.acquire() as conn:
+            results = await conn.execute(upsert_character_query(self))
+            row = await results.first()
+
+        character: PlayerCharacter = await CharacterSchema(self._db, self._compendium).load(row)
+
+        return character
+
+    
+    async def update_renown(self, faction: Faction, renown: int) -> CharacterRenown:
+        character_renown = next((r for r in self.renown if r.faction.id == faction.id), 
+                                CharacterRenown(self._db, self._compendium,
+                                    faction=faction,
+                                    character_id=self.id))
+        character_renown.renown += renown
+        await character_renown.upsert()
+
+        return character_renown
 
 
 characters_table = sa.Table(
@@ -80,7 +275,9 @@ characters_table = sa.Table(
 )
 
 class CharacterSchema(Schema):
+    db: aiopg.sa.Engine
     compendium: Compendium
+
     id = fields.Integer(required=True)
     name = fields.String(required=True)
     species = fields.Method(None, "load_species")
@@ -97,19 +294,39 @@ class CharacterSchema(Schema):
     avatar_url = fields.String(required=False, allow_none=True)
     nickname = fields.String(required=False, allow_none=True)
 
-    def __init__(self, compendium, **kwargs):
+    def __init__(self, db: aiopg.sa.Engine, compendium: Compendium, **kwargs):
         super().__init__(**kwargs)
+        self.db = db
         self.compendium = compendium
 
     @post_load
-    def make_character(self, data, **kwargs):
-        return PlayerCharacter(**data)
+    async def make_character(self, data, **kwargs):
+        character = PlayerCharacter(self.db, self.compendium, **data)
+        await self.get_classes(character)
+        await self.get_renown(character)
+        return character
 
     def load_species(self, value):
         return self.compendium.get_object(CharacterSpecies, value)
     
     def load_faction(self, value):
         return self.compendium.get_object(Faction, value)
+    
+    async def get_classes(self, character: PlayerCharacter):
+        async with self.db.acquire() as conn:
+            class_results = await conn.execute(get_character_class(character.id))
+            class_rows = await class_results.fetchall()
+
+        character.classes = [PlayerCharacterClassSchema(self.db, self.compendium).load(row) for row in class_rows]
+
+    async def get_renown(self, character: PlayerCharacter):
+        async with self.db.acquire() as conn:
+            renown_results = await conn.execute(get_character_renown(character.id))
+            renown_rows = await renown_results.fetchall()
+
+        character.renown = [RenownSchema(self.db, self.compendium).load(row) for row in renown_rows]
+
+
 
 def get_active_player_characters(player_id: int, guild_id: int) -> FromClause:
     return characters_table.select().where(
@@ -182,142 +399,3 @@ def upsert_character_query(character: PlayerCharacter):
 
     return insert_statement
 
-class PlayerCharacterClass(object):
-    def __init__(self, **kwargs):
-        self.id = kwargs.get('id')
-        self.character_id = kwargs.get('character_id')
-        self.primary_class: CharacterClass = kwargs.get('primary_class')
-        self.archetype: CharacterArchetype = kwargs.get('archetype')
-        self.active = kwargs.get('active', True)
-
-    def is_valid(self):
-        self.active = True if not hasattr(self, "active") else self.active
-        return (hasattr(self, "primary_class") and self.primary_class is not None)
-
-    def get_formatted_class(self):
-        if hasattr(self, "archetype") and self.archetype is not None:
-            return f"{self.archetype.value} {self.primary_class.value}"
-        elif hasattr(self, "primary_class") and self.primary_class is not None:
-            return f"{self.primary_class.value}"
-        else:
-            return ""
-        
-character_class_table = sa.Table(
-    "character_class",
-    metadata,
-    Column("id", Integer, primary_key=True, autoincrement='auto'),
-    Column("character_id", Integer, nullable=False),  # ref: > characters.id
-    Column("primary_class", Integer, nullable=False),  # ref: > c_character_class.id
-    Column("archetype", Integer, nullable=True),  # ref: > c_character_subclass.id
-    Column("active", BOOLEAN, nullable=False, default=True)
-)
-        
-class PlayerCharacterClassSchema(Schema):
-    compendium: Compendium
-    id = fields.Integer(required=True)
-    character_id = fields.Integer(required=True)
-    primary_class = fields.Method(None, "load_primary_class")
-    archetype = fields.Method(None, "load_archetype", allow_none=True)
-    active = fields.Boolean(required=True)
-
-    def __init__(self, compendium, **kwargs):
-        super().__init__(**kwargs)
-        self.compendium = compendium
-
-    @post_load
-    def make_class(self, data, **kwargs):
-        return PlayerCharacterClass(**data)
-
-    def load_primary_class(self, value):
-        return self.compendium.get_object(CharacterClass, value)
-
-    def load_archetype(self, value):
-        return self.compendium.get_object(CharacterArchetype, value)
-
-    
-def get_character_class(char_id: int) -> FromClause:
-    return character_class_table.select().where(
-        and_(character_class_table.c.character_id == char_id, character_class_table.c.active == True)
-    ).order_by(character_class_table.c.id.asc())
-
-def upsert_class_query(char_class: PlayerCharacterClass):
-    if hasattr(char_class, "id") and char_class.id is not None:
-        update_dict = {
-            'character_id': char_class.character_id,
-            'primary_class': char_class.primary_class.id,
-            'archetype': None if not hasattr(char_class.archetype, 'id') else char_class.archetype.id,
-            'active': char_class.active
-        }
-        
-        update_statement = character_class_table.update().where(character_class_table.c.id == char_class.id).values(**update_dict).returning(character_class_table)
-        return update_statement
-    
-    insert_statement = insert(character_class_table).values(
-        character_id=char_class.character_id,
-        primary_class=char_class.primary_class.id,
-        archetype=None if not hasattr(char_class.archetype, "id") else char_class.archetype.id
-    ).returning(character_class_table)
-
-    return insert_statement
-
-class CharacterRenown(object):
-    def __init__(self, **kwargs):
-        self.id = kwargs.get("id")
-        self.character_id = kwargs.get("character_id")
-        self.faction: Faction = kwargs.get("faction")
-
-        self.renown = kwargs.get("renown", 0)
-
-    def get_formatted_renown(self):
-        return f"**{self.faction.value}**: {max(0, self.renown)}"
-
-renown_table = sa.Table(
-    "renown",
-    metadata,
-    Column("id", Integer, primary_key=True, autoincrement='auto'),
-    Column("character_id", Integer, nullable=False),  # ref: > characters.id
-    Column("faction", Integer, nullable=False),
-    Column("renown", Integer)
-)
-
-class RenownSchema(Schema):
-    compendium: Compendium
-    id = fields.Integer(required=True)
-    character_id = fields.Integer(required=True)
-    faction = fields.Method(None, "load_faction")
-    renown = fields.Integer()
-
-    def __init__(self, compendium, **kwargs):
-        super().__init__(**kwargs)
-        self.compendium = compendium
-
-    @post_load
-    def make_renown(self, data, **kwargs):
-        return CharacterRenown(**data)
-
-    def load_faction(self, value):
-        return self.compendium.get_object(Faction, value)
-
-def get_character_renown(char_id: int) -> FromClause:
-    return renown_table.select().where(
-        renown_table.c.character_id == char_id
-    ).order_by(renown_table.c.id.asc())
-
-def upsert_character_renown_query(renown: CharacterRenown):
-    if hasattr(renown, "id") and renown.id is not None:
-        update_dict = {
-            "character_id": renown.character_id,
-            "faction": renown.faction.id,
-            "renown": renown.renown
-        }
-
-        update_statement = renown_table.update().where(renown_table.c.id == renown.id).values(**update_dict).returning(renown_table)
-        return update_statement
-
-    insert_statement = insert(renown_table).values(
-        character_id=renown.character_id,
-        faction=renown.faction.id,
-        renown=renown.renown
-    ).returning(renown_table)
-
-    return insert_statement

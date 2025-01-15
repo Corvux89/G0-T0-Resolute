@@ -7,10 +7,9 @@ from discord import SelectOption
 from discord.ui import InputText, Modal
 
 from Resolute.bot import G0T0Bot
-from Resolute.helpers import (confirm, create_log, delete_npc, get_guild,
-                              get_player, is_admin, update_dm,
-                              upsert_adventure)
-from Resolute.models.categories import Activity
+from Resolute.helpers.adventures import update_dm
+from Resolute.helpers.general_helpers import confirm, is_admin
+from Resolute.helpers.logs import create_log
 from Resolute.models.categories.categories import Faction
 from Resolute.models.embeds import ErrorEmbed
 from Resolute.models.embeds.adventures import (AdventureRewardEmbed,
@@ -33,7 +32,7 @@ class AdventureSettings(InteractiveView):
     
 
     async def commit(self):
-        await upsert_adventure(self.bot, self.adventure)
+        await self.adventure.upsert()
 
     async def send_to(self, destination, *args, **kwargs):
         content_kwargs = await self.get_content(destination)
@@ -86,12 +85,11 @@ class AdventureSettingsUI(AdventureSettings):
         response = await self.prompt_modal(interaction, modal)
 
         if response.cc > 0:
-            g = await get_guild(self.bot, interaction.guild.id)
             self.adventure.cc += response.cc
 
             dm_reward = response.cc + ceil(response.cc * .25)
             for dm in self.adventure.dms:
-                player = await get_player(self.bot, dm, interaction.guild.id)
+                player = await self.bot.get_player(dm, interaction.guild.id)
                 await create_log(self.bot, self.owner, "ADVENTURE_DM", player, 
                                     notes=f"{self.adventure.name}",
                                     cc=dm_reward, 
@@ -100,7 +98,7 @@ class AdventureSettingsUI(AdventureSettings):
             player_reward = response.cc
 
             for character in self.adventure.player_characters:
-                player = await get_player(self.bot, character.player_id, interaction.guild.id)
+                player = await self.bot.get_player(character.player_id, interaction.guild.id)
                 await create_log(self.bot, self.owner, "ADVENTURE", player, 
                                     character=character, 
                                     notes=f"{self.adventure.name}", 
@@ -112,7 +110,7 @@ class AdventureSettingsUI(AdventureSettings):
 
     @discord.ui.button(label="NPCs", style=discord.ButtonStyle.primary, row=2)
     async def npcs(self, _: discord.ui.Button, interaction: discord.Interaction):
-        guild = await get_guild(self.bot, self.adventure.guild_id)
+        guild = await self.bot.get_player_guild(self.adventure.guild_id)
         view = NPCSettingsUI.new(self.bot, self.owner, guild, AdventureSettingsUI,
                                adventure=self.adventure)
         await view.send_to(interaction)
@@ -138,11 +136,10 @@ class AdventureSettingsUI(AdventureSettings):
                     if renown is None:
                         raise TimeoutError()
                     elif not renown:
-                        guild = await get_guild(self.bot, self.adventure.guild_id)
                         amount = 1 if len(self.adventure.factions) > 1 else 2
 
                         for char in self.adventure.player_characters:
-                            player = await get_player(self.bot, char.player_id, guild.id)
+                            player = await self.bot.get_player(char.player_id, self.adventure.guild_id)
                             for faction in self.adventure.factions:
                                 await create_log(self.bot, self.owner, "RENOWN", player,
                                                             character=char,
@@ -153,12 +150,11 @@ class AdventureSettingsUI(AdventureSettings):
                 # Close adventure and clean up role
                 self.adventure.end_ts = datetime.now(timezone.utc)
                 await adventure_role.delete(reason=f"Closing adventure")
-
-                await upsert_adventure(self.bot, self.adventure)
+                await self.adventure.upsert()
 
                 # NPC Cleanup
                 for npc in self.adventure.npcs:
-                    await delete_npc(self.bot, npc)
+                    await npc.delete()
 
                 await self.on_timeout()
         
@@ -182,7 +178,7 @@ class _AdventureMemberSelect(AdventureSettings):
     async def member_select(self, user: discord.ui.Select, interaction: discord.Interaction):
         member: discord.Member = user.values[0]
         self.member = member
-        self.player = await get_player(self.bot, self.member.id, interaction.guild.id)
+        self.player = await self.bot.get_player(self.member.id, interaction.guild.id)
         self.character = None
         if not self.dm_select and self.get_item("char_select") is None:
             self.add_item(self.character_select)
@@ -249,7 +245,7 @@ class _AdventureMemberSelect(AdventureSettings):
                 for channel in adventure_category.channels:
                     channel_overwrites = await update_dm(self.member, channel.overwrites, adventure_role, self.adventure.name, True)
                     await channel.edit(overwrites=channel_overwrites)
-                await upsert_adventure(self.bot, self.adventure)
+                await self.adventure.upsert()
         else:
             if character := next((ch for ch in self.adventure.player_characters if ch.player_id == self.player.id), None):
                 self.adventure.player_characters.remove(character)

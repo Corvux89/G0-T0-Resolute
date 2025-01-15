@@ -6,10 +6,7 @@ from discord import ClientUser, Member
 
 from Resolute.bot import G0T0Bot
 from Resolute.constants import ZWSP3
-from Resolute.helpers.characters import update_character_renown
 from Resolute.helpers.general_helpers import confirm
-from Resolute.helpers.guilds import get_guild
-from Resolute.helpers.players import get_player
 from Resolute.models.categories import Activity
 from Resolute.models.categories.categories import Faction
 from Resolute.models.embeds.logs import LogEmbed
@@ -26,38 +23,38 @@ from Resolute.models.objects.logs import (DBLog, LogSchema,
 from Resolute.models.objects.players import Player, upsert_player_query
 
 
-def get_activity_amount(player: Player, guild: PlayerGuild, activity: Activity, override_amount: int = 0) -> int:
+def get_activity_amount(player: Player, activity: Activity, override_amount: int = 0) -> int:
     reward_cc = override_amount if override_amount != 0 else activity.cc if activity.cc else 0
 
-    if activity.diversion and (player.div_cc + reward_cc > guild.div_limit):
-        reward_cc = 0 if guild.div_limit - player.div_cc < 0 else guild.div_limit - player.div_cc
+    if activity.diversion and (player.div_cc + reward_cc > player.guild.div_limit):
+        reward_cc = 0 if player.guild.div_limit - player.div_cc < 0 else player.guild.div_limit - player.div_cc
 
     return reward_cc
 
-def handicap_adjustment(player: Player, guild: PlayerGuild, amount: int, ignore: bool) -> int:
-    if ignore or guild.handicap_cc <= player.handicap_amount:
+def handicap_adjustment(player: Player, amount: int, ignore: bool) -> int:
+    if ignore or player.guild.handicap_cc <= player.handicap_amount:
         return 0
     
-    return min(amount, guild.handicap_cc - player.handicap_amount)
+    return min(amount, player.guild.handicap_cc - player.handicap_amount)
 
-async def author_rewards(bot: G0T0Bot, author: discord.Member, guild: PlayerGuild, log_entry: DBLog) -> None:
-    if not guild.reward_threshold or log_entry.activity.value == "LOG_REWARD":
+async def author_rewards(bot: G0T0Bot, author: discord.Member, log_entry: DBLog) -> None:
+    player = await bot.get_player(author.id, log_entry.guild_id)
+
+    if not player.guild.reward_threshold or log_entry.activity.value == "LOG_REWARD":
         return
-    
-    player = await get_player(bot, author.id, guild.id)
 
     player.points += log_entry.activity.points
 
-    if player.points >= guild.reward_threshold:
+    if player.points >= player.guild.reward_threshold:
         activity: Activity = bot.compendium.get_activity("LOG_REWARD")
-        qty = max(1, player.points//guild.reward_threshold)        
+        qty = max(1, player.points//player.guild.reward_threshold)        
         reward_log = await create_log(bot, bot.user, "LOG_REWARD", player,
                                       cc=activity.cc * qty,
-                                      notes=f"Rewards for {guild.reward_threshold * qty} points")
-        player.points = max(0, player.points - (guild.reward_threshold * qty))
+                                      notes=f"Rewards for {player.guild.reward_threshold * qty} points")
+        player.points = max(0, player.points - (player.guild.reward_threshold * qty))
 
-        if guild.staff_channel:
-            await guild.staff_channel.send(embed=LogEmbed(reward_log, bot.user, player.member, None, True))
+        if player.guild.staff_channel:
+            await player.guild.staff_channel.send(embed=LogEmbed(reward_log, bot.user, player.member, None, True))
 
     async with bot.db.acquire() as conn:
             await conn.execute(upsert_player_query(player))
@@ -113,9 +110,8 @@ async def create_log(bot: G0T0Bot, author: Member | ClientUser, activity: Activi
         activity = bot.compendium.get_activity(activity)
 
     # Get Values
-    guild = await get_guild(bot, player.guild_id)
-    activity_cc = get_activity_amount(player, guild, activity, cc)
-    handicap_amount = handicap_adjustment(player, guild, activity_cc, ignore_handicap)
+    activity_cc = get_activity_amount(player, activity, cc)
+    handicap_amount = handicap_adjustment(player, activity_cc, ignore_handicap)
 
     # Shell Log
     log_entry = DBLog(author=author.id, 
@@ -125,7 +121,7 @@ async def create_log(bot: G0T0Bot, author: Member | ClientUser, activity: Activi
                       character_id=character.id if character else None,
                      activity=activity, 
                      notes=notes, 
-                     guild_id=guild.id,
+                     guild_id=player.guild_id,
                      adventure_id=adventure.id if adventure else None,
                      faction=faction,
                      renown=renown)
@@ -148,7 +144,7 @@ async def create_log(bot: G0T0Bot, author: Member | ClientUser, activity: Activi
         player.div_cc += activity_cc
 
     if faction:
-        await update_character_renown(bot, character, faction, renown)
+        await character.update_renown(faction, renown)
 
     # Write to DB
     async with bot.db.acquire() as conn:
@@ -163,7 +159,7 @@ async def create_log(bot: G0T0Bot, author: Member | ClientUser, activity: Activi
     log_entry = LogSchema(bot.compendium).load(row)
 
     # Author Rewards
-    await author_rewards(bot, author, guild, log_entry)
+    await author_rewards(bot, author, log_entry)
 
     return log_entry
 
@@ -224,11 +220,11 @@ def get_match(pattern, text, group=1, default=None):
     return match.group(group) if match and match.group(group) != 'None' else default
 
 
-async def update_activity_points(bot: G0T0Bot, player: Player, guild: PlayerGuild, increment: bool = True):
+async def update_activity_points(bot: G0T0Bot, player: Player, increment: bool = True):
     if increment:
         player.activity_points += 1
     else:
-        player.activity_points -= 1
+        player.activity_points = max(player.activity_points - 1, 0)
 
     activity_point = None
     for point in sorted(bot.compendium.activity_points[0].values(), key=operator.attrgetter('id')):
@@ -245,11 +241,11 @@ async def update_activity_points(bot: G0T0Bot, player: Player, guild: PlayerGuil
                                    cc=-1 if revert else 0
                                    )
 
-        if guild.activity_points_channel and not revert:
-            await guild.activity_points_channel.send(embed=LogEmbed(act_log, bot.user, player.member), content=f"{player.member.mention}")
+        if player.guild.activity_points_channel and not revert:
+            await player.guild.activity_points_channel.send(embed=LogEmbed(act_log, bot.user, player.member), content=f"{player.member.mention}")
 
-        if guild.staff_channel and revert:
-            await guild.staff_channel.send(embed=LogEmbed(act_log, bot.user, player.member))
+        if player.guild.staff_channel and revert:
+            await player.guild.staff_channel.send(embed=LogEmbed(act_log, bot.user, player.member))
             await player.member.send(embed=LogEmbed(act_log, bot.user, player.member))
     else:
         async with bot.db.acquire() as conn:
@@ -259,7 +255,8 @@ async def null_log(bot: G0T0Bot, ctx: discord.ApplicationContext, log: DBLog, re
     if log.invalid:
         raise G0T0Bot(f"Log [ {log.id} ] has already been invalidated.")
     
-    player = await get_player(bot, log.player_id, log.guild_id, True)
+    player = await bot.get_player(log.player_id, log.guild_id,
+                                  inactive=True)
     
     if log.character_id:
         character = next((c for c in player.characters if c.id == log.character_id), None)
@@ -279,9 +276,7 @@ async def null_log(bot: G0T0Bot, ctx: discord.ApplicationContext, log: DBLog, re
     elif not conf:
         raise G0T0Error("Ok, cancelling")
     
-    guild = await get_guild(bot, log.guild_id)
-    
-    if log.created_ts > guild._last_reset and log.activity.diversion:
+    if log.created_ts > player.guild._last_reset and log.activity.diversion:
         player.div_cc = max(player.div_cc-log.cc, 0)
     
     note = (f"{log.activity.value} log # {log.id} nulled by "

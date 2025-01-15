@@ -6,10 +6,8 @@ from discord.ui import InputText, Modal
 
 from Resolute.bot import G0T0Bot
 from Resolute.constants import DAYS_OF_WEEK
-from Resolute.helpers import (delete_weekly_stipend, get_guild_internal_date,
-                              get_guild_stipends, get_positivity,
-                              get_weekly_stipend, update_guild,
-                              update_weekly_stipend)
+from Resolute.helpers.general_helpers import get_positivity
+from Resolute.helpers.guilds import delete_weekly_stipend, get_guild_internal_date, update_weekly_stipend
 from Resolute.models.embeds import ErrorEmbed
 from Resolute.models.embeds.guilds import GuildEmbed, ResetEmbed
 from Resolute.models.objects.guilds import PlayerGuild
@@ -25,7 +23,8 @@ class GuildSettings(InteractiveView):
     guild: PlayerGuild = None
 
     async def commit(self):
-        self.guild = await update_guild(self.bot, self.guild)
+        self.guild = await self.guild.upsert()
+        self.bot.dispatch("refresh_guild_cache", self.guild)
     
 class GuildSettingsUI(GuildSettings):
     @classmethod
@@ -36,8 +35,7 @@ class GuildSettingsUI(GuildSettings):
         return inst
     
     async def get_content(self):
-        stipend_list  = await get_guild_stipends(self.bot.db, self.guild.id)
-        embed = GuildEmbed(self.guild, stipend_list)
+        embed = GuildEmbed(self.guild)
 
         return {"embed": embed, "content": None}
     
@@ -92,8 +90,7 @@ class _GuildSettings2(GuildSettings):
         await self.defer_to(GuildSettingsUI, interaction)
 
     async def get_content(self):
-        stipend_list  = await get_guild_stipends(self.bot.db, self.guild.id)
-        embed = GuildEmbed(self.guild, stipend_list)
+        embed = GuildEmbed(self.guild)
 
         return {"embed": embed, "content": None}
 
@@ -141,8 +138,7 @@ class _GuildResetView(GuildSettings):
         pass
 
     async def get_content(self):
-        stipend_list  = await get_guild_stipends(self.bot.db, self.guild.id)
-        embed = GuildEmbed(self.guild, stipend_list)
+        embed = GuildEmbed(self.guild)
 
         return {"embed": embed, "content": None}
     
@@ -156,10 +152,8 @@ class _GuildStipendView(GuildSettings):
 
     @discord.ui.button(label="Add/Modify Stipend", style=discord.ButtonStyle.primary, row=2)
     async def guild_edit_stipend(self, _: discord.ui.Button, interaction: discord.Interaction):
-        stipend: RefWeeklyStipend = await get_weekly_stipend(self.bot.db, self.role.id)
-
-        if stipend is None:
-            stipend = RefWeeklyStipend(role_id=self.role.id, guild_id=self.guild.id)
+        stipend: RefWeeklyStipend = next((s for s in self.guild.stipends if s.role_id == self.role.id),
+                                         RefWeeklyStipend(role_id=self.role.id, guild_id=self.guild.id))
         
         modal = GuildStipendModal(stipend, self.role)
 
@@ -173,7 +167,7 @@ class _GuildStipendView(GuildSettings):
 
     @discord.ui.button(label="Remove Stipend", style=discord.ButtonStyle.red, row=2)
     async def guild_remove_stipend(self, _:discord.ui.Button, interaction: discord.Interaction):
-        stipend: RefWeeklyStipend = await get_weekly_stipend(self.bot.db, self.role.id)
+        stipend: RefWeeklyStipend = next((s for s in self.guild.stipends if s.role_id == self.role.id),None)
 
         if stipend is None:
             await interaction.channel.send(f"No stipend for `{self.role.name}`",delete_after=5)
@@ -188,8 +182,7 @@ class _GuildStipendView(GuildSettings):
         await self.defer_to(GuildSettingsUI, interaction)
 
     async def get_content(self):
-        stipend_list  = await get_guild_stipends(self.bot.db, self.guild.id)
-        embed = GuildEmbed(self.guild, stipend_list)
+        embed = GuildEmbed(self.guild)
 
         return {"embed": embed, "content": None}
 

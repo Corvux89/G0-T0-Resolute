@@ -3,13 +3,11 @@ from typing import Type
 import discord
 
 from Resolute.bot import G0T0Bot
-from Resolute.helpers import (add_player_to_arena, build_arena_post, get_arena,
-                              get_character, get_player, get_player_arenas)
-from Resolute.helpers.arenas import can_join_arena
+from Resolute.helpers.arenas import add_player_to_arena, can_join_arena
 from Resolute.models.categories.categories import ArenaType
 from Resolute.models.embeds import ErrorEmbed
 from Resolute.models.embeds.arenas import ArenaPostEmbed
-from Resolute.models.objects.arenas import ArenaPost, ArenaPostType
+from Resolute.models.objects.applications import ArenaPost, ArenaPostType
 from Resolute.models.objects.characters import PlayerCharacter
 from Resolute.models.objects.exceptions import (ArenaNotFound,
                                                 CharacterNotFound, G0T0Error)
@@ -65,7 +63,7 @@ class ArenaView(discord.ui.View):
     async def refresh_content(self, interaction: discord.Interaction, **kwargs):
         await self._before_send()
         if interaction.response.is_done():
-            arena = await get_arena(self.bot, interaction.channel.id)
+            arena = await self.bot.get_arena(interaction.channel.id)
             message: discord.Message = await interaction.channel.fetch_message(arena.pin_message_id)
             await message.edit(view=self, **kwargs)
         else:
@@ -79,7 +77,7 @@ class CharacterArenaViewUI(ArenaView):
     
     @discord.ui.button(label="Join Arena", style=discord.ButtonStyle.primary, custom_id="join_arena_button")
     async def join_arena_button(self, _: discord.ui.Button, interaction: discord.Interaction):
-        arena = await get_arena(self.bot, interaction.channel.id)
+        arena = await self.bot.get_arena(interaction.channel.id)
 
         if arena is None:
             raise ArenaNotFound()
@@ -87,12 +85,12 @@ class CharacterArenaViewUI(ArenaView):
         if interaction.user.id == arena.host_id:
             raise G0T0Error("You're already hosting this arena.")
         
-        self.player = await get_player(self.bot, interaction.user.id, interaction.guild.id)
+        self.player = await self.bot.get_player(interaction.user.id, interaction.guild.id)
 
         if not self.player.characters:
             raise CharacterNotFound(self.player.member)
         elif len(self.player.characters) == 1:
-            await add_player_to_arena(self.bot, interaction, self.player, self.player.characters[0], arena)
+            await add_player_to_arena(interaction, self.player, self.player.characters[0], arena)
         else:
             await self.defer_to(ArenaCharacterSelect, interaction)
 
@@ -120,22 +118,22 @@ class ArenaCharacterSelect(ArenaView):
 
     @discord.ui.select(placeholder="Select a character to join arena", row=1, custom_id="character_select")
     async def character_select(self, char: discord.ui.Select, interaction: discord.Interaction):
-        arena = await get_arena(self.bot, interaction.channel.id)
-        character = await get_character(self.bot, char.values[0])
+        arena = await self.bot.get_arena(interaction.channel.id)
+        character = await self.bot.get_character(char.values[0])
 
         if not self.player:
-            self.player = await get_player(self.bot, character.player_id, interaction.guild.id)
+            self.player = await self.bot.get_player(character.player_id, interaction.guild.id)
 
         if character.player_id != interaction.user.id and interaction.user.id != arena.host_id and interaction.user.id != self.owner_id:
             raise G0T0Error("Thats not your character")
 
-        await add_player_to_arena(self.bot, interaction, self.player, character, arena)
+        await add_player_to_arena(interaction, self.player, character, arena)
 
         await self.defer_to(CharacterArenaViewUI, interaction)
 
     @discord.ui.button(label="Join Arena", style=discord.ButtonStyle.primary, custom_id="join_arena_button")
     async def join_arena_button(self, _: discord.ui.Button, interaction: discord.Interaction):
-        arena = await get_arena(self.bot, interaction.channel.id)
+        arena = await self.bot.get_arena(interaction.channel.id)
 
         if arena is None:
             raise ArenaNotFound()
@@ -143,12 +141,12 @@ class ArenaCharacterSelect(ArenaView):
         if interaction.user.id == arena.host_id:
             raise G0T0Error("You're already hosting this arena.")
         
-        self.player = await get_player(self.bot, interaction.user.id, interaction.guild.id)
+        self.player = await self.bot.get_player(interaction.user.id, interaction.guild.id)
 
         if not self.player.characters:
             raise CharacterNotFound(self.player.member)
         elif len(self.player.characters) == 1:
-            await add_player_to_arena(self.bot, interaction, self.player, self.player.characters[0], arena)
+            await add_player_to_arena(interaction, self.player, self.player.characters[0], arena)
         else:
             await self.defer_to(ArenaCharacterSelect, interaction)
 
@@ -175,10 +173,9 @@ class ArenaRequestCharacterSelect(ArenaRequest):
     character: PlayerCharacter = None
 
     @classmethod
-    def new(cls, bot: G0T0Bot, owner: discord.Member, guild: PlayerGuild, player: Player, post: ArenaPost = None):
-        inst = cls(owner=owner)
+    def new(cls, bot: G0T0Bot, player: Player, post: ArenaPost = None):
+        inst = cls(owner=player.member)
         inst.bot = bot
-        inst.guild = guild
         inst.post = post or ArenaPost(player, [])
         return inst
 
@@ -199,7 +196,7 @@ class ArenaRequestCharacterSelect(ArenaRequest):
             self.remove_character.disabled = False if self.character else True
             self.next_application.disabled = False if len(self.post.characters) > 0 else True
 
-        if self.guild.member_role and self.guild.member_role not in self.post.player.member.roles:
+        if self.post.player.guild.member_role and self.post.player.guild.member_role not in self.post.player.member.roles:
             self.remove_item(self.arena_type_select)
         else:
             type_list = []
@@ -215,7 +212,7 @@ class ArenaRequestCharacterSelect(ArenaRequest):
 
     @discord.ui.select(placeholder="Select a character to join arena", row=2, custom_id="character_select")
     async def character_select(self, char: discord.ui.Select, interaction: discord.Interaction):
-        character = await get_character(self.bot, char.values[0])
+        character = await self.bot.get_character(char.values[0])
  
         if character.player_id != interaction.user.id and interaction.user.id != self.owner.id:
             raise G0T0Error("Thats not your character")
@@ -226,7 +223,7 @@ class ArenaRequestCharacterSelect(ArenaRequest):
     
     @discord.ui.button(label="Add", style=discord.ButtonStyle.primary, custom_id="add_character", row=3)
     async def queue_character(self, _: discord.ui.Button, interaction: discord.Interaction):
-        if self.post.type.name != "BOTH" and  not await can_join_arena(self.bot, self.post.player, self.bot.compendium.get_object(ArenaType, self.post.type.name), self.character):
+        if self.post.type.name != "BOTH" and  not await can_join_arena(self.post.player, self.bot.compendium.get_object(ArenaType, self.post.type.name), self.character):
             raise G0T0Error(f"{self.character.name} can't queue up for another {self.post.type.name.lower()} arena.")
 
         if self.character.id not in [c.id for c in self.post.characters]:
@@ -245,10 +242,10 @@ class ArenaRequestCharacterSelect(ArenaRequest):
     async def next_application(self, _: discord.ui.Button, interaction: discord.Interaction):
         if self.post.type.name != "BOTH":
             for character in self.post.characters:
-                if not await can_join_arena(self.bot, self.post.player, self.bot.compendium.get_object(ArenaType, self.post.type.name), character):
+                if not await can_join_arena(self.post.player, self.bot.compendium.get_object(ArenaType, self.post.type.name), character):
                     raise G0T0Error(f"{character.name} can't queue up for another {self.post.type.name.lower()} arena.\nPlease update and try to resubmit")
 
-        if await build_arena_post(interaction, self.bot, self.post):
+        if await ArenaPostEmbed(self.post).build():
             await interaction.respond("Request Submitted!", ephemeral=True)
         else:
             await interaction.respond("Something went wrong", ephemeral=True)

@@ -7,7 +7,6 @@ import requests
 from texttable import Texttable
 
 from Resolute.bot import G0T0Bot
-from Resolute.helpers import get_guild
 from Resolute.helpers.financial import get_financial_data
 from Resolute.models.categories.categories import DashboardType
 from Resolute.models.embeds.dashboards import RPDashboardEmbed
@@ -145,7 +144,7 @@ async def update_dashboard(bot: G0T0Bot, dashboard: RefDashboard):
     if not original_message or not original_message.pinned:
         return await delete_dashboard(bot, dashboard)
     
-    guild = await get_guild(bot, original_message.guild.id)
+    guild = await bot.get_player_guild(original_message.guild.id)
     
     if dashboard.dashboard_type.value.upper() == "RP":
         channels = get_dashboard_channels(bot, dashboard)

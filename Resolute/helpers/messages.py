@@ -1,7 +1,6 @@
 import discord
 
 from Resolute.bot import G0T0Bot
-from Resolute.helpers.players import get_player
 from Resolute.models.objects.adventures import Adventure
 from Resolute.models.objects.guilds import PlayerGuild
 from Resolute.models.objects.players import Player
@@ -16,7 +15,7 @@ def is_player_say_message(player: Player, message: discord.Message) -> bool:
 
 async def get_player_from_say_message(bot: G0T0Bot, message: discord.Message) -> Player:
          if (player_name := get_player_name_from_message(message)) and (char_name := get_char_name_from_message(message)) and (member := discord.utils.get(message.guild.members, display_name=player_name)):
-              player = await get_player(bot, member.id, member.guild.id)
+              player = await bot.get_player(member.id, member.guild.id)
               return player
               
 

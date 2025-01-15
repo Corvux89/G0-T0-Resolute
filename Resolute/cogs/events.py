@@ -8,11 +8,9 @@ from discord.ext import commands
 
 from Resolute.bot import G0T0Bot
 from Resolute.constants import ERROR_CHANNEL
-from Resolute.helpers import (get_guild, get_player, get_player_adventures,
-                              get_player_arenas, process_message,
-                              upsert_application)
+from Resolute.helpers.appliations import upsert_application
 from Resolute.helpers.events import handle_entitlements
-from Resolute.helpers.messages import get_player_from_say_message
+from Resolute.helpers.general_helpers import process_message
 from Resolute.models.embeds import ErrorEmbed
 from Resolute.models.embeds.events import MemberLeaveEmbed
 from Resolute.models.objects.exceptions import G0T0CommandError, G0T0Error
@@ -32,44 +30,40 @@ class Events(commands.Cog):
 
     @commands.Cog.listener()
     async def on_raw_member_remove(self, payload: discord.RawMemberRemoveEvent):
-        guild = await get_guild(self.bot, payload.guild_id)
-
         # Reference Table Cleanup
         await upsert_application(self.bot.db, payload.user.id)
 
-        # Cleanup Arena Board
-        def predicate(message):
-            return message.author == payload.user
-        
-        if guild.arena_board_channel:
+        if player := await self.bot.get_player(payload.user.id, payload.guild_id, 
+                                               lookup_only=True):
+            # Cleanup Arena Board
+            def predicate(message):
+                return message.author == payload.user
+            
+            if player.guild.arena_board_channel:
+                try:
+                    await player.guild.arena_board_channel.purge(check=predicate)
+                except Exception as error:
+                    if isinstance(error, discord.errors.HTTPException):
+                        pass
+                    else:
+                        log.error(error)
+                        
+            if player.guild.exit_channel:
+                player.member = payload.user
+            else:
+                player: Player = Player(payload.user.id, payload.guild_id, member=payload.user)
+
+            
             try:
-                await guild.arena_board_channel.purge(check=predicate)
+                await player.guild.exit_channel.send(embed=MemberLeaveEmbed(player))
             except Exception as error:
                 if isinstance(error, discord.errors.HTTPException):
-                    pass
-                else:
-                    log.error(error)
-                    
-        if guild.exit_channel and (player := await get_player(self.bot, payload.user.id, payload.guild_id, False, None, True)):
-            player.member = payload.user
-            adventures = await get_player_adventures(self.bot, player)
-            arenas = await get_player_arenas(self.bot, player)            
-        else:
-            player: Player = Player(payload.user.id, payload.guild_id, member=payload.user)
-            arenas = []
-            adventures = []
-
-        
-        try:
-            await guild.exit_channel.send(embed=MemberLeaveEmbed(player, adventures, arenas))
-        except Exception as error:
-            if isinstance(error, discord.errors.HTTPException):
-                log.error(f"ON_MEMBER_REMOVE: Error sending message to exit channel in "
-                        f"{guild.guild.name} [ {guild.id} ] for {payload.user.display_name} [ {payload.user.id} ]")     
+                    log.error(f"ON_MEMBER_REMOVE: Error sending message to exit channel in "
+                            f"{player.guild.guild.name} [ {player.guild.id} ] for {payload.user.display_name} [ {payload.user.id} ]")     
 
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member):
-        g = await get_guild(self.bot, member.guild.id)
+        g = await self.bot.get_player_guild(member.guild.id)
 
         if g.entrance_channel and g.greeting != None and g.greeting != "":
             message = process_message(g.greeting, member.guild, member)
@@ -78,8 +72,8 @@ class Events(commands.Cog):
     @commands.Cog.listener()
     async def on_command(self, ctx: discord.ApplicationContext):
         if hasattr(ctx, "bot") and hasattr(ctx.bot, "db"):
-            player = await get_player(self.bot, ctx.author.id, ctx.guild.id if ctx.guild else None)
-            await player.update_command_count(self.bot, str(ctx.command))
+            player = await self.bot.get_player(ctx.author.id, ctx.guild.id if ctx.guild else None)
+            await player.update_command_count(str(ctx.command))
 
     
     @commands.Cog.listener()
@@ -87,8 +81,10 @@ class Events(commands.Cog):
         try:
             params = "".join([f" [{p['name']}: {p['value']}]" for p in (ctx.selected_options or [])])
             if hasattr(ctx, "bot") and hasattr(ctx.bot, "db"):
-                if player := await get_player(self.bot, ctx.author.id, ctx.guild.id if ctx.guild else None, False, None, True):
-                    await player.update_command_count(self.bot, str(ctx.command))
+                if player := await self.bot.get_player(ctx.author.id, ctx.guild.id if ctx.guild else None,
+                                                       lookup_only=True):
+                    
+                    await player.update_command_count(str(ctx.command))
 
             log.info(f"cmd: chan {ctx.channel} [{ctx.channel.id}], serv: {f'{ctx.guild.name} [{ctx.guild.id}]' if ctx.guild_id else 'DC'}, "
                      f"auth: {ctx.user} [{ctx.user.id}]: {ctx.command}  {params}")
@@ -96,8 +92,8 @@ class Events(commands.Cog):
         except AttributeError:
             params = "".join([f" [{p['name']}: {p['value']}]" for p in (ctx.selected_options or [])])
             if hasattr(ctx, "bot") and hasattr(ctx.bot, "db"):
-                player = await get_player(self.bot, ctx.author.id, ctx.guild.id if ctx.guild else None)
-                await player.update_command_count(self.bot, str(ctx.command))
+                player = await self.bot.get_player(ctx.author.id, ctx.guild.id if ctx.guild else None)
+                await player.update_command_count(str(ctx.command))
 
             log.info(f"Command in DM with {ctx.user} [{ctx.user.id}]: {ctx.command} {params}")
 

@@ -4,11 +4,8 @@ import discord
 from discord import ApplicationContext, Interaction, Member
 from sqlalchemy.util import asyncio
 
-from Resolute.bot import G0T0Bot
 from Resolute.constants import BOT_OWNERS
-from Resolute.helpers.guilds import get_guild
 from Resolute.models.objects.characters import PlayerCharacter
-from Resolute.models.objects.exceptions import SelectionCancelled
 from Resolute.models.objects.guilds import PlayerGuild
 
 
@@ -35,8 +32,7 @@ async def is_admin(ctx: ApplicationContext | Interaction) -> bool:
     :return: True if user is a bot owner, can manage the guild, or has a listed role, otherwise False
     """
 
-    
-    g = await get_guild(ctx.bot, ctx.guild.id)
+    g = await ctx.bot.get_player_guild(ctx.guild.id)
 
     r_list = [g.admin_role] if g.admin_role else []
 
@@ -53,7 +49,7 @@ async def is_admin(ctx: ApplicationContext | Interaction) -> bool:
         return False
     
 async def is_staff(ctx: ApplicationContext | Interaction) -> bool:
-    g = await get_guild(ctx.bot, ctx.guild.id)
+    g = await ctx.bot.get_player_guild(ctx.guild.id)
     
     r_list = []
     
@@ -89,7 +85,7 @@ def get_positivity(string) -> bool:
         return None
 
 
-async def confirm(ctx, message, delete_msgs=False, bot: G0T0Bot = None, response_check=get_positivity, full_reply: bool = False) -> bool|str:
+async def confirm(ctx, message, delete_msgs=False, bot = None, response_check=get_positivity, full_reply: bool = False) -> bool|str:
     msg = await ctx.channel.send(message)
     
     if bot is None:

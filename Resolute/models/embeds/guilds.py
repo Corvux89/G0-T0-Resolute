@@ -9,7 +9,7 @@ from Resolute.models.objects.ref_objects import RefWeeklyStipend
 
 
 class GuildEmbed(Embed):
-    def __init__(self, g: PlayerGuild, stipends: list[RefWeeklyStipend] = None):
+    def __init__(self, g: PlayerGuild):
         super().__init__(title=f'Server Settings for {g.guild.name}',
                          colour=Color.random())
         self.set_thumbnail(url=THUMBNAIL)
@@ -29,9 +29,9 @@ class GuildEmbed(Embed):
                         value=reset_str,
                         inline=False)
             
-        if len(stipends) > 0:
+        if len(g.stipends) > 0:
             self.add_field(name="Stipends (* = Leadership Role and only applies highest amount)",
-                        value="\n".join([f"{discord.utils.get(g.guild.roles, id=s.role_id).mention} ({s.amount} CC's){'*' if s.leadership else ''}{f' - {s.reason}' if s.reason else ''}" for s in stipends]),
+                        value="\n".join([f"{discord.utils.get(g.guild.roles, id=s.role_id).mention} ({s.amount} CC's){'*' if s.leadership else ''}{f' - {s.reason}' if s.reason else ''}" for s in g.stipends]),
                            inline=False)
             
 class ResetEmbed(Embed):

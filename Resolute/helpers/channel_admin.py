@@ -1,7 +1,6 @@
 import discord
 
 from Resolute.bot import G0T0Bot
-from Resolute.helpers.guilds import get_guild
 
 owner_overwrites = discord.PermissionOverwrite(view_channel=True,
                                                manage_messages=True,
@@ -34,7 +33,7 @@ async def remove_owner(channel: discord.TextChannel, member: discord.Member) -> 
 
 async def create_channel(bot: G0T0Bot, name: str, category: discord.TextChannel, member: discord.Member) -> discord.TextChannel:
     channel_overwrites = category.overwrites
-    g = await get_guild(bot, category.guild.id)
+    g = await bot.get_player_guild(category.guild.id)
 
     channel_overwrites[member] = owner_overwrites
     

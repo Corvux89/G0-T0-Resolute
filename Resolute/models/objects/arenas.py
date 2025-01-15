@@ -1,8 +1,10 @@
+import bisect
 from datetime import datetime, timezone
-from enum import Enum
+from statistics import mode
 
 import discord
 import sqlalchemy as sa
+import aiopg.sa
 from marshmallow import Schema, fields, post_load
 from sqlalchemy import TIMESTAMP, BigInteger, Column, Integer, and_, null
 from sqlalchemy.dialects.postgresql import ARRAY
@@ -12,13 +14,13 @@ from Resolute.compendium import Compendium
 from Resolute.models import metadata
 from Resolute.models.categories import ArenaTier, ArenaType
 from Resolute.models.objects.characters import PlayerCharacter
-from Resolute.models.objects.players import Player
 
 
-class Arena(object):
-    players: list[Player] = []
-    
-    def __init__(self, channel_id: int, host_id: int, tier: ArenaTier, type: ArenaType, **kwargs):
+class Arena(object):    
+    def __init__(self, db: aiopg.sa.Engine, compendium: Compendium, channel_id: int, host_id: int, tier: ArenaTier, type: ArenaType, **kwargs):
+        self._db = db
+        self._compendium = compendium
+
         self.id = kwargs.get('id')
         self.channel_id = channel_id
         self.tier = tier
@@ -30,6 +32,42 @@ class Arena(object):
         self.end_ts = kwargs.get('end_ts')
         self.player_characters: list[PlayerCharacter] = []
         self.pin_message_id = kwargs.get('pin_message_id')
+
+        self.channel: discord.TextChannel = kwargs.get('channel')
+
+    def update_tier(self):
+        if self.player_characters:
+            avg_level = mode(c.level for c in self.player_characters)
+            tiers = list(self._compendium.arena_tier[0].values())
+            levels = sorted([t.avg_level for t in tiers])
+
+            if avg_level > levels[-1]:
+                self.tier = tiers[-1]
+            else:
+                tier = bisect.bisect(levels, avg_level)
+                self.tier = self._compendium.get_object(ArenaTier, tier)
+
+    async def upsert(self):
+        async with self._db.acquire() as conn:
+            results = await conn.execute(upsert_arena_query(self))
+            row = await results.first()
+
+        if row is None:
+            return None
+        
+        arena = await ArenaSchema(self._db, self._compendium).load(row)
+
+        return arena
+    
+    async def close(self):
+        self.end_ts = datetime.now(timezone.utc)
+
+        await self.upsert()
+
+        if message := await self.channel.fetch_message(self.pin_message_id):
+            await message.delete(reason="Closing Arena")
+        
+    
     
 arenas_table = sa.Table(
     "arenas",
@@ -47,7 +85,9 @@ arenas_table = sa.Table(
 )
 
 class ArenaSchema(Schema):
+    db: aiopg.sa.Engine
     compendium: Compendium
+
     id = fields.Integer(data_key="id", required=True)
     channel_id = fields.Integer(data_key="channel_id", required=True)
     pin_message_id = fields.Integer(data_key="pin_message_id", required=True)
@@ -59,13 +99,17 @@ class ArenaSchema(Schema):
     end_ts = fields.Method(None, "load_timestamp", allow_none=True)
     characters = fields.List(fields.Integer, required=False, allow_none=True, default=[])
 
-    def __init__(self, compendium, **kwargs):
+    def __init__(self, db: aiopg.sa.Engine, compendium: Compendium, **kwargs):
         super().__init__(**kwargs)
+        self.db = db
         self.compendium = compendium
 
     @post_load
-    def make_arena(self, data, **kwargs):
-        return Arena(**data)
+    async def make_arena(self, data, **kwargs):
+        arena = Arena(self.db, self.compendium, **data)
+        arena.channel = self.bot.get_channel(data.get('channel_id'))
+        await self.get_characters(arena)
+        return arena
 
     def load_tier(self, value):
         return self.compendium.get_object(ArenaTier, value)
@@ -75,6 +119,11 @@ class ArenaSchema(Schema):
 
     def load_timestamp(self, value):  # Marshmallow doesn't like loading DateTime for some reason. This is a workaround
         return datetime(value.year, value.month, value.day, value.hour, value.minute, value.second, tzinfo=timezone.utc)
+    
+    async def get_characters(self, arena: Arena):
+        for char in arena.characters:
+            arena.player_characters.append(await self.bot.get_character(char))
+
 
 def get_arena_by_channel_query(channel_id: int) -> FromClause:
     return arenas_table.select().where(
@@ -117,21 +166,6 @@ def upsert_arena_query(arena: Arena):
         completed_phases=arena.completed_phases
     ).returning(arenas_table)
 
-class ArenaPostType(Enum):
-    COMBAT = 'Combat'
-    NARRATIVE = 'Narrative'
-    BOTH = 'Combat or Narrative'
-    
-
-class ArenaPost(object):
-    def __init__(self, player: Player, characters: list[PlayerCharacter] = [], *args, **kwargs):
-        self.player = player
-        self.characters = characters
-        self.type: ArenaPostType = kwargs.get('type', ArenaPostType.COMBAT)
-
-        self.message: discord.Message = kwargs.get("message")
 
 
-
-                
         

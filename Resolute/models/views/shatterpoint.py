@@ -4,17 +4,16 @@ import discord
 from discord.ui import InputText, Modal
 
 from Resolute.bot import G0T0Bot
-from Resolute.helpers import (confirm, create_log, delete_players,
-                              delete_shatterpoint, get_all_guild_characters,
-                              get_char_name_from_message, get_guild,
-                              get_player, get_shatterpoint,
-                              upsert_shatterpoint, upsert_shatterpoint_player)
-from Resolute.helpers.shatterpoint import delete_renown, upsert_shatterpoint_renown
+from Resolute.helpers.general_helpers import confirm
+from Resolute.helpers.logs import create_log
+from Resolute.helpers.messages import get_char_name_from_message
+from Resolute.helpers.shatterpoint import delete_players, delete_renown, delete_shatterpoint, get_shatterpoint, upsert_shatterpoint, upsert_shatterpoint_player, upsert_shatterpoint_renown
 from Resolute.models.categories.categories import CodeConversion, Faction
 from Resolute.models.embeds import ErrorEmbed
 from Resolute.models.embeds.shatterpoint import (ShatterpointEmbed,
                                                  ShatterpointLogEmbed)
 from Resolute.models.objects.characters import PlayerCharacter
+from Resolute.models.objects.guilds import PlayerGuild
 from Resolute.models.objects.players import Player
 from Resolute.models.objects.shatterpoint import (Shatterpoint,
                                                   ShatterpointPlayer, ShatterpointRenown)
@@ -67,7 +66,7 @@ class ShatterpointSettingsUI(ShatterpointSettings):
             await interaction.channel.send(embed=ErrorEmbed("Ok, cancelling"), delete_after=5)
         else:
             for p in self.shatterpoint.players:
-                player = await get_player(self.bot, p.player_id, interaction.guild.id)
+                player = await self.bot.get_player(p.player_id, interaction.guild.id)
                 await create_log(self.bot, self.owner, "GLOBAL", player, 
                                  notes=self.shatterpoint.name, 
                                  cc=p.cc)
@@ -131,8 +130,9 @@ class _ShatterpointManage(ShatterpointSettings):
         if not self.channel:
             await interaction.channel.send(embed=ErrorEmbed("Select a channel to scrape first"), delete_after=5)
         else:
+            guild: PlayerGuild = self.bot.get_player_guild(interaction.guild.id)
             messages = await self.channel.history(oldest_first=True, limit=600).flatten()
-            characters = await get_all_guild_characters(self.bot, interaction.guild.id)
+            characters = await guild.get_all_characters(self.bot.compendium)
 
             for message in messages:
                 player: ShatterpointPlayer = None
@@ -210,7 +210,7 @@ class _ShatterpointPlayerManage(ShatterpointSettings):
                                                                                                              player_id=member.id, 
                                                                                                              cc=self.shatterpoint.base_cc))
         self.player = player
-        self.bot_player = await get_player(self.bot, self.player.player_id, self.player.guild_id)
+        self.bot_player = await self.bot.get_player(self.player.player_id, self.player.guild_id)
         self.character = None
         await self.refresh_content(interaction)
 

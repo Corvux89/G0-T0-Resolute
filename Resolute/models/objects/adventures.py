@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 
+import aiopg.sa
 import sqlalchemy as sa
 from marshmallow import Schema, fields, post_load
 from sqlalchemy import (TIMESTAMP, BigInteger, Column, Integer, String, and_,
@@ -10,12 +11,14 @@ from sqlalchemy.sql import FromClause
 from Resolute.compendium import Compendium
 from Resolute.models import metadata
 from Resolute.models.categories.categories import Faction
-from Resolute.models.objects.characters import PlayerCharacter
-from Resolute.models.objects.ref_objects import NPC
+from Resolute.models.objects.characters import CharacterSchema, PlayerCharacter, get_character_from_id
+from Resolute.models.objects.ref_objects import NPC, NPCSchema, get_adventure_npcs_query
 
 
 class Adventure(object):
-    def __init__(self, guild_id: int, name: str, role_id: int, category_channel_id: int, **kwargs):
+    def __init__(self, db: aiopg.sa.Engine, guild_id: int, name: str, role_id: int, category_channel_id: int, **kwargs):
+        self._db = db
+
         self.id = kwargs.get('id')
         self.guild_id = guild_id
         self.name: str = name
@@ -31,6 +34,10 @@ class Adventure(object):
 
         # Virtual attributes
         self.npcs: list[NPC] = []
+
+    async def upsert(self):
+        async with self._db.acquire() as conn:
+            await conn.execute(upsert_adventure_query(self))
 
 
 adventures_table = sa.Table(
@@ -50,7 +57,9 @@ adventures_table = sa.Table(
 )
 
 class AdventureSchema(Schema):
+    db: aiopg.sa.Engine
     compendium: Compendium
+
     id = fields.Integer(required=True)
     guild_id = fields.Integer(required=True)
     name = fields.String(required=True)
@@ -63,13 +72,17 @@ class AdventureSchema(Schema):
     characters = fields.List(fields.Integer, required=False, allow_none=True, default=[])
     factions = fields.Method(None, "load_factions")
 
-    def __init__(self, compendium, **kwargs):
+    def __init__(self, db: aiopg.sa.Engine, compendium: Compendium, **kwargs):
         super().__init__(**kwargs)
+        self.db = db
         self.compendium = compendium
 
     @post_load
-    def make_adventure(self, data, **kwargs):
-        return Adventure(**data)
+    async def make_adventure(self, data, **kwargs):
+        adventure = Adventure(self.db, **data)
+        await self.get_characters(adventure)
+        await self.get_npcs(adventure)
+        return adventure
 
     def load_timestamp(self, value):  # Marshmallow doesn't like loading DateTime for some reason. This is a workaround
         return datetime(value.year, value.month, value.day, value.hour, value.minute, value.second, tzinfo=timezone.utc)
@@ -79,6 +92,26 @@ class AdventureSchema(Schema):
         for f in value:
             factions.append(self.compendium.get_object(Faction, f))
         return factions
+    
+    async def get_characters(self, adventure: Adventure):
+        if adventure.characters:
+            for char_id in adventure.characters:
+                async with self.db.acquire() as conn:
+                    results = await conn.execute(get_character_from_id(char_id))
+                    row = await results.first()
+
+                character: PlayerCharacter = await CharacterSchema(self.db, self.compendium).load(row)
+
+                if character:
+                    adventure.player_characters.append(character)
+
+    async def get_npcs(self, adventure: Adventure):
+        async with self.db.acquire() as conn:
+            results = await conn.execute(get_adventure_npcs_query(adventure.id))
+            rows = await results.fetchall()
+
+        adventure.npcs = [NPCSchema(self.db).load(row) for row in rows]
+
     
 
 def upsert_adventure_query(adventure: Adventure):

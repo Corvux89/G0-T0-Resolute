@@ -3,8 +3,6 @@ import re
 import discord
 
 from Resolute.bot import G0T0Bot
-from Resolute.helpers.characters import get_character
-from Resolute.helpers.players import get_player
 from Resolute.models.categories.categories import (TransactionSubType,
                                                    TransactionType)
 from Resolute.models.objects.market import MarketTransaction
@@ -33,10 +31,10 @@ async def get_market_request(bot: G0T0Bot, message: discord.Message) -> MarketTr
     else:
         notes = None
 
-    player = await get_player(bot, int(player_id), message.guild.id)
+    player = await bot.get_player(int(player_id), message.guild.id)
 
     if char_id:
-        character = await get_character(bot, char_id)
+        character = await bot.get_character(char_id)
     else:
         character = None
     

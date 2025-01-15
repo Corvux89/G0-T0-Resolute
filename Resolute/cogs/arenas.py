@@ -7,19 +7,16 @@ from discord.ext import commands
 
 from Resolute.bot import G0T0Bot
 from Resolute.constants import CHANNEL_BREAK
-from Resolute.helpers import (add_player_to_arena, build_arena_post,
-                              close_arena, confirm, create_log, get_arena,
-                              get_guild, get_player, get_player_arenas,
-                              update_arena_tier, update_arena_view_embed,
-                              upsert_arena)
-from Resolute.helpers.arenas import can_join_arena
+from Resolute.helpers.arenas import add_player_to_arena, can_join_arena
 from Resolute.helpers.autocomplete import get_arena_type_autocomplete
+from Resolute.helpers.general_helpers import confirm
+from Resolute.helpers.logs import create_log
 from Resolute.models.categories import ArenaTier, ArenaType
-from Resolute.models.embeds.arenas import ArenaPhaseEmbed, ArenaStatusEmbed
-from Resolute.models.objects.arenas import Arena, ArenaPost
+from Resolute.models.embeds.arenas import ArenaPhaseEmbed, ArenaPostEmbed, ArenaStatusEmbed
+from Resolute.models.objects.applications import ArenaPost
+from Resolute.models.objects.arenas import Arena
 from Resolute.models.objects.exceptions import (ArenaNotFound,
-                                                CharacterNotFound, G0T0Error,
-                                                RoleNotFound)
+                                                CharacterNotFound, G0T0Error)
 from Resolute.models.views.arena_view import (ArenaCharacterSelect,
                                               ArenaRequestCharacterSelect,
                                               CharacterArenaViewUI)
@@ -49,27 +46,27 @@ class Arenas(commands.Cog):
             description="Request to join an arena"
     )
     async def arena_request(self, ctx: ApplicationContext):
-        player = await get_player(self.bot, ctx.author.id, ctx.guild.id if ctx.guild else None)
-        g = await get_guild(self.bot, player.guild_id)
+        player = await self.bot.get_player(ctx.author.id, ctx.guild.id if ctx.guild else None,
+                                           ctx=ctx)
 
         if len(player.characters) == 0:
             raise CharacterNotFound(ctx.author)
-        elif not await can_join_arena(self.bot, player):
+        elif not await can_join_arena(player):
             raise G0T0Error(f"You or your characters are already in the maximum allowed arenas.")
         elif len(player.characters) == 1:
             post = ArenaPost(player, player.characters)
 
-            if g.member_role and g.member_role in player.member.roles:
-                ui = ArenaRequestCharacterSelect.new(self.bot, ctx.author, g, player, post)
+            if player.guild.member_role and player.guild.member_role in player.member.roles:
+                ui = ArenaRequestCharacterSelect.new(self.bot, player, post)
                 await ui.send_to(ctx)
                 return await ctx.delete()
-            elif await can_join_arena(self.bot, player, self.bot.compendium.get_object(ArenaType, "COMBAT"), player.characters[0]):
-                if await build_arena_post(ctx, self.bot, post):
+            elif await can_join_arena(player, self.bot.compendium.get_object(ArenaType, "COMBAT"), player.characters[0]):
+                if await ArenaPostEmbed(post).build():
                     return await ctx.respond(f"Request submitted!", ephemeral=True)
             else:
                 raise G0T0Error(f"Character already in an active arena.")
         else:
-            ui = ArenaRequestCharacterSelect.new(self.bot, ctx.author, g, player)
+            ui = ArenaRequestCharacterSelect.new(self.bot, player)
             await ui.send_to(ctx)
             return await ctx.delete()
         
@@ -83,7 +80,7 @@ class Arenas(commands.Cog):
     async def arena_claim(self, ctx: ApplicationContext, type: Option(str, description="Arena Type", autocomplete=get_arena_type_autocomplete, required=True, default="COMBAT")):
         await ctx.defer()
 
-        arena: Arena = await get_arena(self.bot, ctx.channel_id)
+        arena: Arena = await self.bot.get_arena(ctx.channel_id)
 
         if arena:
             raise G0T0Error(f"{ctx.channel.mention} is already in use\n"
@@ -92,7 +89,7 @@ class Arenas(commands.Cog):
         tier = self.bot.compendium.get_object(ArenaTier, 1)
         type = self.bot.compendium.get_object(ArenaType, type)
 
-        arena = Arena(ctx.channel.id, ctx.author.id, tier, type)
+        arena = Arena(self.bot.db, self.bot.compendium, ctx.channel.id, ctx.author.id, tier, type)
 
         ui = CharacterArenaViewUI.new(self.bot)
         embed = ArenaStatusEmbed(ctx, arena)
@@ -100,8 +97,7 @@ class Arenas(commands.Cog):
         message: discord.WebhookMessage = await ui.send_to(ctx, embed=embed)
 
         arena.pin_message_id = message.id
-
-        await upsert_arena(self.bot, arena)
+        await arena.upsert()
 
         await ctx.delete()
         
@@ -112,13 +108,13 @@ class Arenas(commands.Cog):
     )
     async def arena_status(self, ctx: ApplicationContext):
         await ctx.defer()
-        arena = await get_arena(self.bot, ctx.channel.id)
+        arena = await self.bot.get_arena(ctx.channel.id)
 
         if arena is None:
             raise ArenaNotFound()
         
         embed=ArenaStatusEmbed(ctx, arena)
-        await update_arena_view_embed(ctx, arena)
+        await embed.update()
         return await ctx.respond(embed=embed)
 
     @arena_commands.command(
@@ -127,7 +123,7 @@ class Arenas(commands.Cog):
     )
     async def arena_add(self, ctx: ApplicationContext,
                         member: Option(discord.SlashCommandOptionType(6), description="Player to add to arena", required=True)):
-        arena = await get_arena(self.bot, ctx.channel.id)
+        arena = await self.bot.get_arena(ctx.channel.id)
 
         if arena is None:
             raise ArenaNotFound()
@@ -135,12 +131,12 @@ class Arenas(commands.Cog):
         if member.id == arena.host_id:
             raise G0T0Error("Cannot add the host to an arena")
 
-        player = await get_player(self.bot, member.id, ctx.guild.id)
+        player = await self.bot.get_player(member.id, ctx.guild.id)
 
         if not player.characters:
             raise CharacterNotFound(member)
         elif len(player.characters) == 1:
-            await add_player_to_arena(self.bot, ctx, player, player.characters[0], arena)
+            await add_player_to_arena(ctx, player, player.characters[0], arena)
         else:
             ui = ArenaCharacterSelect.new(self.bot, player, ctx.author.id)
             await ui.send_to(ctx)
@@ -152,7 +148,7 @@ class Arenas(commands.Cog):
     )
     async def arena_remove(self, ctx: ApplicationContext,
                            member: Option(discord.SlashCommandOptionType(6), description="Player to remove from arena", required=True)):
-        arena = await get_arena(self.bot, ctx.channel.id)
+        arena = await self.bot.get_arena(ctx.channel.id)
 
         if arena is None:
             raise ArenaNotFound()
@@ -166,10 +162,10 @@ class Arenas(commands.Cog):
             arena.characters.remove(remove_char.id)
 
             if arena.completed_phases == 0:
-                update_arena_tier(self.bot, arena)
+                arena.update_tier()
             
-            await upsert_arena(self.bot, arena)
-            await update_arena_view_embed(ctx, arena)                
+            await arena.upsert()
+            await ArenaStatusEmbed(ctx, arena).update()              
             return await ctx.respond(f"{member.mention} has been removed from the arena.")
         else:
             raise G0T0Error(f"{member.mention} is not an arena participant")
@@ -182,35 +178,33 @@ class Arenas(commands.Cog):
                           result: Option(str, description="The result of the phase", required=True,
                                          choices=["WIN", "LOSS"])):
         
-        arena = await get_arena(self.bot, ctx.channel.id)
+        arena = await self.bot.get_arena(ctx.channel.id)
 
         if arena is None:
             raise ArenaNotFound()
         
         arena.completed_phases += 1
-        await upsert_arena(self.bot, arena)
+        await arena.upsert()
 
         # Host Log
-        host = await get_player(self.bot, arena.host_id, ctx.guild.id)
+        host = await self.bot.get_player(arena.host_id, ctx.guild.id)
         await create_log(self.bot, ctx.author, "ARENA_HOST", host)
-        arena.players.append(host)
 
         # Rewards
         for character in arena.player_characters:
-            player = await get_player(self.bot, character.player_id, ctx.guild.id)
+            player = await self.bot.get_player(character.player_id, ctx.guild.id)
             await create_log(self.bot, ctx.author, "ARENA", player,
                                 character=character, notes=result)
-            arena.players.append(player)
 
             if (arena.completed_phases % 2 == 0 or arena.completed_phases == arena.tier.max_phases) and result == "WIN":
                 await create_log(self.bot, ctx.author, "ARENA_BONUS", player,
                                     character=character)
             
-        await update_arena_view_embed(ctx, arena)
+        await ArenaStatusEmbed(ctx, arena).update()
         await ctx.respond(embed=ArenaPhaseEmbed(ctx, arena, result))
 
         if arena.completed_phases >= arena.tier.max_phases or result == "LOSS":
-            await close_arena(self.bot, arena)
+            await arena.close()
             await ctx.respond(f"Arena closed. This channel is now free for use")
             await ctx.channel.send(CHANNEL_BREAK)
 
@@ -220,7 +214,7 @@ class Arenas(commands.Cog):
     )
     async def arena_close(self, ctx: ApplicationContext):
         await ctx.defer()
-        arena = await get_arena(self.bot, ctx.channel.id)
+        arena = await self.bot.get_arena(ctx.channel.id)
 
         if arena is None:
             raise ArenaNotFound()
@@ -232,7 +226,7 @@ class Arenas(commands.Cog):
         elif not conf:
             return await ctx.respond(f'Ok, cancelling.', delete_after=10)
 
-        await close_arena(self.bot, arena)
+        await arena.close()
         await ctx.respond(f"Arena closed. This channel is now free for use")
         await ctx.channel.send(CHANNEL_BREAK)
 

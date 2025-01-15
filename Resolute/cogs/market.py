@@ -4,7 +4,6 @@ from discord import ApplicationContext, SlashCommandGroup
 from discord.ext import commands
 
 from Resolute.bot import G0T0Bot
-from Resolute.helpers import get_player
 from Resolute.models.objects.exceptions import CharacterNotFound
 from Resolute.models.views.market import MarketPromptUI, TransactionPromptUI
 
@@ -30,7 +29,8 @@ class Market(commands.Cog):
     )
     async def market_request(self, ctx: ApplicationContext):
         await ctx.defer()
-        player = await get_player(self.bot, ctx.author.id, ctx.guild.id if ctx.guild else None)
+        player = await self.bot.get_player(ctx.author.id, ctx.guild.id if ctx.guild else None,
+                                           ctx=ctx)
 
         if not player.characters:
             raise CharacterNotFound()

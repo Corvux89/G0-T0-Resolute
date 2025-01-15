@@ -6,13 +6,11 @@ from discord.ext import commands
 
 from Resolute.bot import G0T0Bot
 from Resolute.constants import ACTIVITY_POINT_MINIMUM
-from Resolute.helpers import (get_adventure_from_category,
-                              get_adventure_from_role,
-                              get_faction_autocomplete, get_guild, get_player,
-                              get_player_adventures, get_webhook,
-                              update_activity_points, update_dm)
+from Resolute.helpers.adventures import update_dm
+from Resolute.helpers.autocomplete import get_faction_autocomplete
 from Resolute.helpers.characters import handle_character_mention
-from Resolute.helpers.general_helpers import split_content
+from Resolute.helpers.general_helpers import get_webhook, split_content
+from Resolute.helpers.logs import update_activity_points
 from Resolute.models.embeds.adventures import AdventuresEmbed
 from Resolute.models.objects.adventures import (Adventure,
                                                 upsert_adventure_query)
@@ -39,14 +37,13 @@ class Adventures(commands.Cog):
     @commands.Cog.listener()
     async def on_command_error(self, ctx: commands.Context, error):
         if hasattr(ctx, "bot") and hasattr(ctx.bot, "db") and ctx.guild and ctx.channel.category:
-            if adventure := await get_adventure_from_category(self.bot, ctx.channel.category.id):
+            if adventure := await self.bot.get_adventure_from_category(ctx.channel.category.id):
                 if ctx.author.id in adventure.dms and (npc := next((npc for npc in adventure.npcs if npc.key == ctx.invoked_with), None)):
-                    guild = await get_guild(self.bot, ctx.guild.id)
-                    player = await get_player(self.bot, ctx.author.id, ctx.guild.id)
+                    player = await self.bot.get_player(ctx.author.id, ctx.guild.id)
                     content = ctx.message.content.replace(f'>{npc.key}', '')
                     content = await handle_character_mention(ctx, content)
 
-                    await player.update_command_count(self.bot, "npc")
+                    await player.update_command_count("npc")
                     webhook = await get_webhook(ctx.channel)
                     chunks = split_content(content)
 
@@ -61,11 +58,11 @@ class Adventures(commands.Cog):
                                             avatar_url=npc.avatar_url if npc.avatar_url else None,
                                             content=chunk)
                             
-                        if not guild.is_dev_channel(ctx.channel):
-                            await player.update_post_stats(self.bot, npc, ctx.message, content=chunk)
+                        if not player.guild.is_dev_channel(ctx.channel):
+                            await player.update_post_stats(npc, ctx.message, content=chunk)
 
                             if len(chunk)>=ACTIVITY_POINT_MINIMUM:
-                                await update_activity_points(self.bot, player, guild)
+                                await update_activity_points(self.bot, player)
 
                     await ctx.message.delete()
 
@@ -82,16 +79,15 @@ class Adventures(commands.Cog):
         if member is None:
             member = ctx.author
 
-        player = await get_player(self.bot, member.id, ctx.guild.id if ctx.guild else None)
+        player = await self.bot.get_player(member.id, ctx.guild.id if ctx.guild else None)
         
         if not player.characters:
             raise CharacterNotFound(member)
         
-        adventures = await get_player_adventures(self.bot, player)
         
         phrases = [p for p in [phrase, phrase2] if p]
 
-        return await ctx.respond(embed=AdventuresEmbed(ctx, player, adventures, phrases))
+        return await ctx.respond(embed=AdventuresEmbed(ctx, player, phrases))
 
 
     @adventure_commands.command(
@@ -113,7 +109,7 @@ class Adventures(commands.Cog):
         if discord.utils.get(ctx.guild.roles, name=role_name):
             raise G0T0Error(f"Role `@{role_name}` already exists")
         else:
-            g = await get_guild(self.bot, ctx.guild.id)
+            g = await self.bot.get_player_guild(ctx.guild.id)
             adventure_role = await ctx.guild.create_role(name=role_name, mentionable=True,
                                                          reason=f"Created by {ctx.author.nick} for adventure"
                                                                 f"{adventure_name}")
@@ -211,11 +207,11 @@ class Adventures(commands.Cog):
                                role: Option(discord.Role, description="Role of the adventure", required=False),
                                channel_category: Option(discord.CategoryChannel, description="Adventure Channel Category", required=False)):
         if role:
-            adventure = await get_adventure_from_role(self.bot, role.id)
+            adventure = await self.bot.get_adventure_from_role(role.id)
         elif channel_category:
-            adventure = await get_adventure_from_category(self.bot, channel_category.id)
+            adventure = await self.bot.get_adventure_from_category(channel_category.id)
         else:
-            adventure = await get_adventure_from_category(self.bot, ctx.channel.category.id)
+            adventure = await self.bot.get_adventure_from_category(ctx.channel.category.id)
 
         if adventure is None:
             raise AdventureNotFound()

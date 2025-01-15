@@ -7,16 +7,13 @@ from discord.ext import commands
 
 from Resolute.bot import G0T0Bot
 from Resolute.constants import ZWSP3
-from Resolute.helpers import (confirm, create_log, get_character_stats,
-                              get_guild, get_log, get_n_player_logs,
-                              get_player, get_player_stats, is_admin, is_staff)
-from Resolute.helpers.logs import null_log
+from Resolute.helpers.general_helpers import is_admin, is_staff
+from Resolute.helpers.logs import create_log, get_character_stats, get_log, get_n_player_logs, get_player_stats, null_log
 from Resolute.models.categories import CodeConversion
 from Resolute.models.embeds.logs import LogEmbed, LogHxEmbed, LogStatsEmbed
 from Resolute.models.objects.exceptions import (CharacterNotFound, G0T0Error,
                                                 InvalidCurrencySelection,
                                                 LogNotFound)
-from Resolute.models.objects.logs import upsert_log
 from Resolute.models.views.logs import LogPromptUI
 
 log = logging.getLogger(__name__)
@@ -43,7 +40,7 @@ class Log(commands.Cog):
                      host: Option(bool, description="Host of the RP or not", required=True, default=False)):
 
         if host:
-            player = await get_player(self.bot, member.id, ctx.guild.id)
+            player = await self.bot.get_player(member.id, ctx.guild.id)
             log_entry = await create_log(self.bot, ctx.author, "RP_HOST", player)
             return await ctx.respond(embed=LogEmbed(log_entry, ctx.author, member))
         else:
@@ -92,7 +89,7 @@ class Log(commands.Cog):
                 await self.prompt_log(ctx, member, "BUY", item, 0, -cost, True, False, True)
             elif currency == "CC":
                 await ctx.defer()
-                player = await get_player(self.bot, member.id, ctx.guild.id)
+                player = await self.bot.get_player(member.id, ctx.guild.id)
                 
                 log_entry = await create_log(self.bot, ctx.author, "BUY", player,
                                              notes=item,
@@ -122,7 +119,7 @@ class Log(commands.Cog):
 
         elif currency == "CC":
             await ctx.defer()
-            player = await get_player(self.bot, member.id, ctx.guild.id)
+            player = await self.bot.get_player(member.id, ctx.guild.id)
             log_entry = await create_log(self.bot, ctx.author, "SELL", player,
                                             notes=item,
                                             cc=cost,
@@ -148,7 +145,8 @@ class Log(commands.Cog):
         if log_entry is None:
             raise LogNotFound(log_id)
         
-        player = await get_player(self.bot, log_entry.player_id, log_entry.guild_id, True)
+        player = await self.bot.get_player(log_entry.player_id, log_entry.guild_id, 
+                                           inactive=True)
         character = next((c for c in player.characters if c.id == log_entry.character_id), None) if log_entry.character_id else None
         mod_log = await null_log(self.bot, ctx, log_entry, reason)
         
@@ -162,7 +160,7 @@ class Log(commands.Cog):
                         member: Option(discord.SlashCommandOptionType(6), description="Player to view stats for", required=True)):
         await ctx.defer()
 
-        player = await get_player(self.bot, member.id, ctx.guild.id, True)
+        player = await self.bot.get_player(member.id, ctx.guild.id, True)
         player_stats = await get_player_stats(self.bot, player)
 
         embeds = []
@@ -207,7 +205,8 @@ class Log(commands.Cog):
                                           min_value=1, max_value=20, default=5)):
         await ctx.defer()
 
-        player = await get_player(self.bot, member.id, ctx.guild.id, True)
+        player = await self.bot.get_player(member.id, ctx.guild.id, 
+                                           inactive=True)
 
         logs = await get_n_player_logs(self.bot, player, num_logs)
 
@@ -221,8 +220,7 @@ class Log(commands.Cog):
                          cc: int = 0, credits: int = 0, ignore_handicap: bool = False, conversion: bool = False, show_values: bool = False) -> None:
         await ctx.defer()
 
-        player = await get_player(self.bot, member.id, ctx.guild_id)
-        g = await get_guild(self.bot, ctx.guild.id)
+        player = await self.bot.get_player(member.id, ctx.guild_id)
 
         if not player.characters:
             raise CharacterNotFound(player.member)
@@ -255,7 +253,7 @@ class Log(commands.Cog):
             
             return await ctx.respond(embed=LogEmbed(log_entry, ctx.author, member, player.characters[0],show_values))
         else:
-            ui = LogPromptUI.new(self.bot, ctx.author, member, player, g, activity, credits=credits, cc=cc, notes=notes,
+            ui = LogPromptUI.new(self.bot, ctx.author, member, player, activity, credits=credits, cc=cc, notes=notes,
                                  ignore_handicap=ignore_handicap, show_values=show_values)    
             await ui.send_to(ctx)
             await ctx.delete()

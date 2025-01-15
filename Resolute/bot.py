@@ -1,24 +1,30 @@
 import asyncio
 import logging
 import signal
-from threading import Thread
 import aiopg.sa
 from aiopg.sa import create_engine
 from discord.ext import commands
 from timeit import default_timer as timer
-from quart import Quart, jsonify
+from quart import Quart
 from sqlalchemy.schema import CreateTable
 from Resolute.compendium import Compendium
 from Resolute.constants import DB_URL, PORT
+from Resolute.helpers.general_helpers import get_selection
 from Resolute.models import metadata
+from Resolute.models.objects.adventures import Adventure, AdventureSchema, get_adventure_by_category_channel_query, get_adventure_by_role_query
+from Resolute.models.objects.arenas import Arena, ArenaSchema, get_arena_by_channel_query
+from Resolute.models.objects.characters import CharacterSchema, PlayerCharacter, get_character_from_id
+from Resolute.models.objects.exceptions import G0T0Error
+from Resolute.models.objects.guilds import PlayerGuild
+from Resolute.models.objects.players import Player, PlayerSchema, get_player_query, upsert_player_query
 
-
-log = logging.getLogger(__name__)
+log = logging.getLogger(__name__)   
 
 
 async def create_tables(conn: aiopg.sa.SAConnection):
     for table in metadata.sorted_tables:
         await conn.execute(CreateTable(table, if_not_exists=True))
+
 
 class G0T0Bot(commands.Bot):
     db: aiopg.sa.Engine
@@ -75,3 +81,107 @@ class G0T0Bot(commands.Bot):
             except (NotImplementedError, RuntimeError):
                 pass
         super().run(*args, **kwargs)
+
+    async def get_player_guild(self, guild_id: int) -> PlayerGuild:
+        if len(self.player_guilds) > 0 and (guild:= self.player_guilds.get(str(guild_id))):
+            return guild
+
+        guild = await PlayerGuild(self.db, guild=self.get_guild(guild_id)).fetch()
+
+        self.player_guilds[str(guild_id)] = guild
+
+        return guild
+    
+    async def get_character(self, char_id: int) -> PlayerCharacter:
+        async with self.db.acquire() as conn:
+            results = await conn.execute(get_character_from_id(char_id))
+            row = await results.first()
+
+        character: PlayerCharacter = await CharacterSchema(self.db, self.compendium).load(row)
+
+        return character
+    
+    async def get_adventure_from_role(self, role_id: int) -> Adventure:
+        async with self.db.acquire() as conn:
+            results = await conn.execute(get_adventure_by_role_query(role_id))
+            row = await results.first()
+
+        if row is None:
+            return None
+        
+        adventure = await AdventureSchema(self.db, self.compendium).load(row)
+
+        return adventure
+        
+    async def get_adventure_from_category(self, category_channel_id: int) -> Adventure:
+        async with self.db.acquire() as conn:
+            results = await conn.execute(get_adventure_by_category_channel_query(category_channel_id))
+            row = await results.first()
+
+        if row is None:
+            return None
+
+        adventure = await AdventureSchema(self.db, self.compendium).load(row)
+
+        return adventure
+    
+    async def get_arena(self, channel_id: int) -> Arena:
+        async with self.db.acquire() as conn:
+            results = await conn.execute(get_arena_by_channel_query(channel_id))
+            row = await results.first()
+
+        if row is None:
+            return None
+        
+        arena: Arena = await ArenaSchema(self.db, self.compendium).load(row)
+
+        return arena
+    
+    async def get_player(self, player_id: int, guild_id: int, **kwargs) -> Player:
+        inactive = kwargs.get('inactive', False)
+        lookup_only = kwargs.get('lookup_only', False)
+        ctx = kwargs.get('ctx')
+
+        async with self.db.acquire() as conn:
+            results = await conn.execute(get_player_query(player_id, guild_id))
+            rows = await results.fetchall()
+
+            if len(rows) == 0 and guild_id and not lookup_only:
+                player = Player(id=player_id, guild_id=guild_id)
+                results = await conn.execute(upsert_player_query(player))
+                row = await results.first()
+            elif lookup_only:
+                return None
+            elif len(rows) == 0 and not guild_id:
+                if ctx:
+                    guilds = [g for g in self.guilds if g.get_member(player_id)]
+
+                    if len(guilds) == 1:
+                        row = None
+                        player = Player(id=player_id, guild_id=guilds[0].id)
+                        results = await conn.execute(upsert_player_query(player))
+                        row = await results.first()
+                    elif len(guilds) > 1:
+                        guild = await get_selection(ctx, guilds, True, True, None, False, "Which guild is the command for?\n")
+
+                        if guild:
+                            player = Player(id=player_id, guild_id=guild.id)
+                            results = await conn.execute(upsert_player_query(player))
+                            row = await results.first()
+                        else:
+                            raise G0T0Error("No guild selected.")
+                else:
+                    raise G0T0Error("Unable to find player")
+            else:
+                if ctx:
+                    guilds = [self.get_guild(r["guild_id"]).name for r in rows]
+                    guild = await get_selection(ctx, guilds, True, True, None, False, "Which guild is the command for?\n")
+                    row = rows[guilds.index(guild)]
+                else:
+                    row = rows[0]
+
+        player: Player = await PlayerSchema(self, inactive).load(row)
+
+        return player
+
+

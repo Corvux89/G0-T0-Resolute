@@ -1,3 +1,4 @@
+from enum import Enum
 import discord
 import sqlalchemy as sa
 from marshmallow import Schema, fields
@@ -6,6 +7,7 @@ from sqlalchemy.sql.selectable import FromClause, TableClause
 
 from Resolute.models import metadata
 from Resolute.models.objects.characters import PlayerCharacter
+from Resolute.models.objects.players import Player
 
 
 class AppBaseScores(object):
@@ -219,3 +221,18 @@ class LevelUpApplication(object):
             f"**Changes:** {self.changes}\n"
             f"**Link:** {self.link}\n\n"
         )
+    
+
+class ArenaPostType(Enum):
+    COMBAT = 'Combat'
+    NARRATIVE = 'Narrative'
+    BOTH = 'Combat or Narrative'
+    
+
+class ArenaPost(object):
+    def __init__(self, player: Player, characters: list[PlayerCharacter] = [], *args, **kwargs):
+        self.player = player
+        self.characters = characters
+        self.type: ArenaPostType = kwargs.get('type', ArenaPostType.COMBAT)
+
+        self.message: discord.Message = kwargs.get("message")

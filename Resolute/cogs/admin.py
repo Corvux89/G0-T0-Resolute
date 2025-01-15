@@ -2,14 +2,13 @@ import asyncio
 import datetime
 import logging
 from os import listdir
-import discord
 
 from discord import (ApplicationContext, ExtensionNotFound, ExtensionNotLoaded, Option, SlashCommandGroup, Embed)
 from discord.ext import commands, tasks
 
 from Resolute.bot import G0T0Bot
 from Resolute.constants import ADMIN_GUILDS
-from Resolute.helpers import get_guild, get_player, is_admin, is_owner
+from Resolute.helpers import get_player, is_admin, is_owner
 from Resolute.helpers.dashboards import update_financial_dashboards
 from Resolute.helpers.financial import get_financial_data, update_financial_data
 from Resolute.helpers.store import get_store_items
@@ -54,7 +53,7 @@ class Admin(commands.Cog):
         """
 
         player = await get_player(self.bot, ctx.author.id, ctx.guild.id if ctx.guild else None, False, ctx)
-        g = await get_guild(self.bot, player.guild_id)
+        g = await player.get_guild(self.bot)
         modal = AutomationRequestView(g)
         await ctx.send_modal(modal)
 

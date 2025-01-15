@@ -6,7 +6,6 @@ from discord import ClientUser, Member
 
 from Resolute.bot import G0T0Bot
 from Resolute.constants import ZWSP3
-from Resolute.helpers.characters import update_character_renown
 from Resolute.helpers.general_helpers import confirm
 from Resolute.helpers.guilds import get_guild
 from Resolute.helpers.players import get_player
@@ -148,7 +147,7 @@ async def create_log(bot: G0T0Bot, author: Member | ClientUser, activity: Activi
         player.div_cc += activity_cc
 
     if faction:
-        await update_character_renown(bot, character, faction, renown)
+        await character.update_renown(bot, faction, renown)
 
     # Write to DB
     async with bot.db.acquire() as conn:
@@ -228,7 +227,7 @@ async def update_activity_points(bot: G0T0Bot, player: Player, guild: PlayerGuil
     if increment:
         player.activity_points += 1
     else:
-        player.activity_points -= 1
+        player.activity_points = min(player.activity_points - 1, 0)
 
     activity_point = None
     for point in sorted(bot.compendium.activity_points[0].values(), key=operator.attrgetter('id')):

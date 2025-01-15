@@ -7,19 +7,16 @@ from discord.ext import commands
 
 from Resolute.bot import G0T0Bot
 from Resolute.constants import CHANNEL_BREAK
-from Resolute.helpers import (add_player_to_arena, build_arena_post,
-                              close_arena, confirm, create_log, get_arena,
-                              get_guild, get_player, get_player_arenas,
-                              update_arena_tier, update_arena_view_embed,
-                              upsert_arena)
+from Resolute.helpers import (add_player_to_arena, 
+                              confirm, create_log, get_arena,
+                              get_guild, get_player)
 from Resolute.helpers.arenas import can_join_arena
 from Resolute.helpers.autocomplete import get_arena_type_autocomplete
 from Resolute.models.categories import ArenaTier, ArenaType
-from Resolute.models.embeds.arenas import ArenaPhaseEmbed, ArenaStatusEmbed
+from Resolute.models.embeds.arenas import ArenaPhaseEmbed, ArenaPostEmbed, ArenaStatusEmbed
 from Resolute.models.objects.arenas import Arena, ArenaPost
 from Resolute.models.objects.exceptions import (ArenaNotFound,
-                                                CharacterNotFound, G0T0Error,
-                                                RoleNotFound)
+                                                CharacterNotFound, G0T0Error)
 from Resolute.models.views.arena_view import (ArenaCharacterSelect,
                                               ArenaRequestCharacterSelect,
                                               CharacterArenaViewUI)
@@ -64,7 +61,8 @@ class Arenas(commands.Cog):
                 await ui.send_to(ctx)
                 return await ctx.delete()
             elif await can_join_arena(self.bot, player, self.bot.compendium.get_object(ArenaType, "COMBAT"), player.characters[0]):
-                if await build_arena_post(ctx, self.bot, post):
+                if await ArenaPostEmbed(post).build(self.bot):
+                # if await build_arena_post(ctx, self.bot, post):
                     return await ctx.respond(f"Request submitted!", ephemeral=True)
             else:
                 raise G0T0Error(f"Character already in an active arena.")
@@ -100,8 +98,7 @@ class Arenas(commands.Cog):
         message: discord.WebhookMessage = await ui.send_to(ctx, embed=embed)
 
         arena.pin_message_id = message.id
-
-        await upsert_arena(self.bot, arena)
+        await arena.upsert(self.bot)
 
         await ctx.delete()
         
@@ -118,7 +115,8 @@ class Arenas(commands.Cog):
             raise ArenaNotFound()
         
         embed=ArenaStatusEmbed(ctx, arena)
-        await update_arena_view_embed(ctx, arena)
+        await embed.update()
+        # await update_arena_view_embed(ctx, arena)
         return await ctx.respond(embed=embed)
 
     @arena_commands.command(
@@ -166,10 +164,11 @@ class Arenas(commands.Cog):
             arena.characters.remove(remove_char.id)
 
             if arena.completed_phases == 0:
-                update_arena_tier(self.bot, arena)
+                arena.update_tier(self.bot)
             
-            await upsert_arena(self.bot, arena)
-            await update_arena_view_embed(ctx, arena)                
+            await arena.upsert(self.bot)
+            await ArenaStatusEmbed(ctx, arena).update()
+            # await update_arena_view_embed(ctx, arena)                
             return await ctx.respond(f"{member.mention} has been removed from the arena.")
         else:
             raise G0T0Error(f"{member.mention} is not an arena participant")
@@ -188,7 +187,7 @@ class Arenas(commands.Cog):
             raise ArenaNotFound()
         
         arena.completed_phases += 1
-        await upsert_arena(self.bot, arena)
+        await arena.upsert(self.bot)
 
         # Host Log
         host = await get_player(self.bot, arena.host_id, ctx.guild.id)
@@ -206,11 +205,11 @@ class Arenas(commands.Cog):
                 await create_log(self.bot, ctx.author, "ARENA_BONUS", player,
                                     character=character)
             
-        await update_arena_view_embed(ctx, arena)
+        await ArenaStatusEmbed(ctx, arena).update()
         await ctx.respond(embed=ArenaPhaseEmbed(ctx, arena, result))
 
         if arena.completed_phases >= arena.tier.max_phases or result == "LOSS":
-            await close_arena(self.bot, arena)
+            await arena.close(self.bot)
             await ctx.respond(f"Arena closed. This channel is now free for use")
             await ctx.channel.send(CHANNEL_BREAK)
 
@@ -232,7 +231,7 @@ class Arenas(commands.Cog):
         elif not conf:
             return await ctx.respond(f'Ok, cancelling.', delete_after=10)
 
-        await close_arena(self.bot, arena)
+        await arena.close(self.bot)
         await ctx.respond(f"Arena closed. This channel is now free for use")
         await ctx.channel.send(CHANNEL_BREAK)
 

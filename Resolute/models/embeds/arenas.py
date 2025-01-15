@@ -1,9 +1,14 @@
 from discord import Embed, ApplicationContext, Interaction, Color
+from Resolute.bot import G0T0Bot
 from Resolute.constants import THUMBNAIL, ZWSP3
+from Resolute.helpers.general_helpers import get_webhook
+from Resolute.helpers.guilds import get_guild
 from Resolute.models.objects.arenas import Arena, ArenaPost
 
 class ArenaStatusEmbed(Embed):
     def __init__(self, ctx: ApplicationContext | Interaction, arena: Arena):
+        self.arena = arena
+        self.ctx = ctx
         super().__init__(title=f"{arena.type.value.title()} Arena Status", color=Color.random())
         self.set_thumbnail(url=THUMBNAIL)
 
@@ -23,6 +28,12 @@ class ArenaStatusEmbed(Embed):
             self.add_field(name="**Players**:",
                         value="\n".join([f"{ZWSP3}- [{c.level}] {c.name}{'*inactive*' if not c.active else ''} ({ctx.guild.get_member(c.player_id).mention})" for c in arena.player_characters]),
                         inline=False)
+            
+    async def update(self):
+        message = await self.ctx.channel.fetch_message(self.arena.pin_message_id)
+        
+        if message:
+            await message.edit(embed=self)
             
 class ArenaPhaseEmbed(Embed):
     def __init__(self, ctx: ApplicationContext, arena: Arena, result: str):
@@ -52,6 +63,7 @@ class ArenaPostEmbed(Embed):
             title=f"{post.type.value} Arena Request",
             color=Color.random()
         )
+        self.post = post
 
         self.set_thumbnail(url=post.player.member.avatar.url)
 
@@ -63,4 +75,16 @@ class ArenaPostEmbed(Embed):
         
         self.set_footer(text=f"{post.player.member.id}")
 
-        
+    async def build(self, bot: G0T0Bot) -> bool:
+        g = await get_guild(bot, self.post.player.guild_id)
+
+        if g.arena_board_channel:
+            webhook = await get_webhook(g.arena_board_channel)
+            if self.post.message:
+                await webhook.edit_message(self.post.message.id, embed=self)
+            else:
+                await webhook.send(username=self.post.player.member.display_name,
+                                   avatar_url=self.post.player.member.display_avatar.url,
+                                   embed=self)
+            return True
+        return False

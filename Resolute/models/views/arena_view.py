@@ -3,8 +3,8 @@ from typing import Type
 import discord
 
 from Resolute.bot import G0T0Bot
-from Resolute.helpers import (add_player_to_arena, build_arena_post, get_arena,
-                              get_character, get_player, get_player_arenas)
+from Resolute.helpers import (add_player_to_arena, get_arena,
+                              get_character, get_player)
 from Resolute.helpers.arenas import can_join_arena
 from Resolute.models.categories.categories import ArenaType
 from Resolute.models.embeds import ErrorEmbed
@@ -248,7 +248,8 @@ class ArenaRequestCharacterSelect(ArenaRequest):
                 if not await can_join_arena(self.bot, self.post.player, self.bot.compendium.get_object(ArenaType, self.post.type.name), character):
                     raise G0T0Error(f"{character.name} can't queue up for another {self.post.type.name.lower()} arena.\nPlease update and try to resubmit")
 
-        if await build_arena_post(interaction, self.bot, self.post):
+        if await ArenaPostEmbed(self.post).build(self.bot):
+        # if await build_arena_post(interaction, self.bot, self.post):
             await interaction.respond("Request Submitted!", ephemeral=True)
         else:
             await interaction.respond("Something went wrong", ephemeral=True)

@@ -5,7 +5,6 @@ import discord
 from Resolute.bot import G0T0Bot
 from Resolute.helpers import (delete_npc, get_adventure_from_category,
                               get_guild, get_npc, is_admin, upsert_npc)
-from Resolute.helpers.guilds import reload_guild_in_cache
 from Resolute.models.embeds import ErrorEmbed
 from Resolute.models.embeds.npc import NPCEmbed
 from Resolute.models.objects.adventures import Adventure
@@ -131,7 +130,7 @@ class NPCSettingsUI(NPCSettings):
     @discord.ui.button(label="Delete NPC", style=discord.ButtonStyle.danger, row=3)
     async def delete_npc_button(self, _: discord.ui.Button, interaction: discord.Interaction):
         await delete_npc(self.bot, self.npc)    
-        await reload_guild_in_cache(self.bot, self.guild.id)    
+        await self.guild.reload_cache(self.bot)
         self.npc = None
         await self.refresh_content(interaction)
 
@@ -140,7 +139,7 @@ class NPCSettingsUI(NPCSettings):
         if self.role.id not in self.npc.roles:
             self.npc.roles.append(self.role.id)
             await upsert_npc(self.bot, self.npc)
-            await reload_guild_in_cache(self.bot, self.guild.id)
+            await self.guild.reload_cache(self.bot)
         await self.refresh_content(interaction)
 
     @discord.ui.button(label="Remove Role", style=discord.ButtonStyle.primary, row=4)
@@ -148,7 +147,7 @@ class NPCSettingsUI(NPCSettings):
         if self.role.id in self.npc.roles:
             self.npc.roles.remove(self.role.id)
             await upsert_npc(self.bot, self.npc)
-            await reload_guild_in_cache(self.bot, self.guild.id)
+            await self.guild.reload_cache(self.bot)
         await self.refresh_content(interaction)
 
     @discord.ui.button(label="Back", style=discord.ButtonStyle.grey, row=4)
@@ -192,7 +191,7 @@ class NPCModal(discord.ui.Modal):
                             avatar_url=url,
                             adventure_id=self.adventure.id if self.adventure else None)
              await upsert_npc(self.bot, self.npc)
-             await reload_guild_in_cache(self.bot, self.guild.id)
+             await self.guild.reload_cache(self.bot)
                       
         await interaction.response.defer()
         self.stop()

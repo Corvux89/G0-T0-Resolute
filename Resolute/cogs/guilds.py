@@ -15,7 +15,7 @@ from Resolute.constants import ACTIVITY_POINT_MINIMUM
 from Resolute.helpers import (confirm, create_log, delete_weekly_stipend,
                               get_guild, get_guild_stipends,
                               get_guilds_with_reset, get_player, get_webhook,
-                              is_admin, update_activity_points, update_guild)
+                              is_admin, update_activity_points)
 from Resolute.helpers.characters import handle_character_mention
 from Resolute.helpers.general_helpers import split_content
 from Resolute.models.embeds.guilds import ResetEmbed
@@ -135,7 +135,7 @@ class Guilds(commands.Cog):
             return await ctx.respond(f"Ok, cancelling.", delete_after=10)
         
         g = await self.push_announcements(g, None, title="Announcements")
-        await update_guild(self.bot, g)
+        await g.upsert(self.bot)
         return await ctx.respond("Announcements manually completed")
         
     async def push_announcements(self, guild: PlayerGuild, complete_time: float = None, **kwargs) -> PlayerGuild:
@@ -173,7 +173,7 @@ class Guilds(commands.Cog):
             g.server_date += random.randint(13, 16)
         
 
-        # Reset Player CC's and 
+        # Reset Player CC's and Activity Points
         async with self.bot.db.acquire() as conn:
             await conn.execute(reset_div_cc(g.id))
         
@@ -203,8 +203,7 @@ class Guilds(commands.Cog):
 
         # Announce we're all done!
         g = await self.push_announcements(g, end-start)
-
-        await update_guild(self.bot, g)
+        await g.upsert(self.bot)
         
 
     # --------------------------- #

@@ -1,5 +1,7 @@
+import bisect
 from datetime import datetime, timezone
 from enum import Enum
+from statistics import mode
 
 import discord
 import sqlalchemy as sa
@@ -8,7 +10,8 @@ from sqlalchemy import TIMESTAMP, BigInteger, Column, Integer, and_, null
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.sql.selectable import FromClause
 
-from Resolute.compendium import Compendium
+from Resolute.bot import G0T0Bot
+from Resolute.helpers.characters import get_character
 from Resolute.models import metadata
 from Resolute.models.categories import ArenaTier, ArenaType
 from Resolute.models.objects.characters import PlayerCharacter
@@ -30,6 +33,42 @@ class Arena(object):
         self.end_ts = kwargs.get('end_ts')
         self.player_characters: list[PlayerCharacter] = []
         self.pin_message_id = kwargs.get('pin_message_id')
+
+        self.channel: discord.TextChannel = kwargs.get('channel')
+
+    def update_tier(self, bot: G0T0Bot):
+        if self.player_characters:
+            avg_level = mode(c.level for c in self.player_characters)
+            tiers = list(bot.compendium.arena_tier[0].values())
+            levels = sorted([t.avg_level for t in tiers])
+
+            if avg_level > levels[-1]:
+                self.tier = tiers[-1]
+            else:
+                tier = bisect.bisect(levels, avg_level)
+                self.tier = bot.compendium.get_object(ArenaTier, tier)
+
+    async def upsert(self, bot: G0T0Bot):
+        async with bot.db.acquire() as conn:
+            results = await conn.execute(upsert_arena_query(self))
+            row = await results.first()
+
+        if row is None:
+            return None
+        
+        arena = await ArenaSchema(bot).load(row)
+
+        return arena
+    
+    async def close(self, bot: G0T0Bot):
+        self.end_ts = datetime.now(timezone.utc)
+
+        await self.upsert(bot)
+
+        if message := await self.channel.fetch_message(self.pin_message_id):
+            await message.delete(reason="Closing Arena")     
+
+    
     
 arenas_table = sa.Table(
     "arenas",
@@ -47,7 +86,7 @@ arenas_table = sa.Table(
 )
 
 class ArenaSchema(Schema):
-    compendium: Compendium
+    bot: G0T0Bot
     id = fields.Integer(data_key="id", required=True)
     channel_id = fields.Integer(data_key="channel_id", required=True)
     pin_message_id = fields.Integer(data_key="pin_message_id", required=True)
@@ -59,22 +98,30 @@ class ArenaSchema(Schema):
     end_ts = fields.Method(None, "load_timestamp", allow_none=True)
     characters = fields.List(fields.Integer, required=False, allow_none=True, default=[])
 
-    def __init__(self, compendium, **kwargs):
+    def __init__(self, bot: G0T0Bot, **kwargs):
         super().__init__(**kwargs)
-        self.compendium = compendium
+        self.bot = bot
 
     @post_load
-    def make_arena(self, data, **kwargs):
-        return Arena(**data)
+    async def make_arena(self, data, **kwargs):
+        arena = Arena(**data)
+        arena.channel = self.bot.get_channel(data.get('channel_id'))
+        await self.get_characters(arena)
+        return arena
 
     def load_tier(self, value):
-        return self.compendium.get_object(ArenaTier, value)
+        return self.bot.compendium.get_object(ArenaTier, value)
 
     def load_type(self, value):
-        return self.compendium.get_object(ArenaType, value)
+        return self.bot.compendium.get_object(ArenaType, value)
 
     def load_timestamp(self, value):  # Marshmallow doesn't like loading DateTime for some reason. This is a workaround
         return datetime(value.year, value.month, value.day, value.hour, value.minute, value.second, tzinfo=timezone.utc)
+    
+    async def get_characters(self, arena: Arena):
+        for char in arena.characters:
+            arena.player_characters.append(await get_character(self.bot, char))
+
 
 def get_arena_by_channel_query(channel_id: int) -> FromClause:
     return arenas_table.select().where(
@@ -131,7 +178,4 @@ class ArenaPost(object):
 
         self.message: discord.Message = kwargs.get("message")
 
-
-
-                
         

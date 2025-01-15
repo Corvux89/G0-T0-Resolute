@@ -7,9 +7,7 @@ import discord
 from Resolute.bot import G0T0Bot
 from Resolute.helpers.general_helpers import get_selection
 from Resolute.helpers.guilds import get_guild
-from Resolute.models.categories.categories import Faction
-from Resolute.models.objects.characters import (CharacterRenown,
-                                                CharacterSchema,
+from Resolute.models.objects.characters import (CharacterSchema,
                                                 PlayerCharacter,
                                                 PlayerCharacterClass,
                                                 PlayerCharacterClassSchema,
@@ -19,10 +17,7 @@ from Resolute.models.objects.characters import (CharacterRenown,
                                                 get_character_class,
                                                 get_character_from_id,
                                                 get_character_renown,
-                                                get_guild_characters_query,
-                                                upsert_character_query,
-                                                upsert_character_renown_query,
-                                                upsert_class_query)
+                                                get_guild_characters_query)
 from Resolute.models.objects.players import Player
 
 log = logging.getLogger(__name__)
@@ -50,15 +45,6 @@ async def get_characters(bot: G0T0Bot, player_id: int, guild_id: int, inactive: 
 
     return character_list
 
-async def upsert_class(bot: G0T0Bot, char_class: PlayerCharacterClass) -> PlayerCharacterClass:
-    async with bot.db.acquire() as conn:
-        results = await conn.execute(upsert_class_query(char_class))
-        row = await results.first()
-
-    new_class = PlayerCharacterClassSchema(bot.compendium).load(row)
-
-    return new_class
-
 async def get_character(bot: G0T0Bot, char_id: int) -> PlayerCharacter:
     async with bot.db.acquire() as conn:
         results = await conn.execute(get_character_from_id(char_id))
@@ -70,33 +56,9 @@ async def get_character(bot: G0T0Bot, char_id: int) -> PlayerCharacter:
         renown_results = await conn.execute(get_character_renown(char_id))
         renown_rows = await renown_results.fetchall()
 
-    character = CharacterSchema(bot.compendium).load(row)
+    character: PlayerCharacter = CharacterSchema(bot.compendium).load(row)
     character.classes = [PlayerCharacterClassSchema(bot.compendium).load(row) for row in class_rows]
     character.renown = [RenownSchema(bot.compendium).load(row) for row in renown_rows]
-
-    return character
-
-async def upsert_renown(bot: G0T0Bot, renown: CharacterRenown) -> CharacterRenown:
-    async with bot.db.acquire() as conn:
-        results = await conn.execute(upsert_character_renown_query(renown))
-        row = await results.first()
-
-    renown = RenownSchema(bot.compendium).load(row)
-
-    return renown
-
-async def upsert_character(bot: G0T0Bot, character: PlayerCharacter) -> PlayerCharacter:
-    async with bot.db.acquire() as conn:
-        results = await conn.execute(upsert_character_query(character))
-        row = await results.first()
-
-    character = CharacterSchema(bot.compendium).load(row)
-
-    async with bot.db.acquire() as conn:
-        class_results = await conn.execute(get_character_class(character.id))
-        class_rows = await class_results.fetchall()
-
-    character.classes = [PlayerCharacterClassSchema(bot.compendium).load(row) for row in class_rows]
 
     return character
 
@@ -117,12 +79,12 @@ async def create_new_character(bot: G0T0Bot, type: str, player: Player, new_char
         else:
             player.handicap_amount = 0
 
-        old_character = await upsert_character(bot, old_character)
+        await old_character.upsert(bot)
 
-    new_character = await upsert_character(bot, new_character)
+    new_character = await new_character.upsert(bot)
 
     new_class.character_id = new_character.id
-    new_class = await upsert_class(bot, new_class)
+    new_class = await new_class.upsert(bot)
 
     new_character.classes.append(new_class)
 
@@ -132,20 +94,6 @@ async def create_new_character(bot: G0T0Bot, type: str, player: Player, new_char
 
     return new_character
 
-async def get_webhook_character(bot: G0T0Bot, player: Player, channel: discord.TextChannel) -> PlayerCharacter:
-    if character := player.get_channel_character(channel):
-        return character
-    elif character := player.get_primary_character():
-        character.channels.append(channel.id)
-        await upsert_character(bot, character)
-        return character
-    
-    character = player.characters[0]
-    character.primary_character = True
-    character.channels.append(channel.id)
-    await upsert_character(bot, character)
-    return character
-
 async def get_all_guild_characters(bot: G0T0Bot, gulid_id: int) -> list[PlayerCharacter]:
     async with bot.db.acquire() as conn:
         results = await conn.execute(get_guild_characters_query(gulid_id))
@@ -154,15 +102,6 @@ async def get_all_guild_characters(bot: G0T0Bot, gulid_id: int) -> list[PlayerCh
     character_list = [CharacterSchema(bot.compendium).load(row) for row in rows]
 
     return character_list
-
-async def update_character_renown(bot: G0T0Bot, character: PlayerCharacter, faction: Faction, renown: int) -> CharacterRenown:
-    character_renown = next((r for r in character.renown if r.faction.id == faction.id),
-                            CharacterRenown(faction=faction,
-                                            character_id=character.id))
-    
-    character_renown.renown += renown
-
-    return await upsert_renown(bot, character_renown)
 
 def find_character_by_name(name: str, characters: list[PlayerCharacter]) -> list[PlayerCharacter]:
     direct_matches = [c for c in characters if c.name.lower() == name.lower()]

@@ -73,7 +73,7 @@ class Messages(commands.Cog):
             post = ArenaPost(player)
             post.message = message
 
-            ui = ArenaRequestCharacterSelect.new(self.bot, ctx.author, player, post)
+            ui = ArenaRequestCharacterSelect.new(self.bot, ctx.author, guild, player, post)
             await ui.send_to(ctx.author)
 
         # RP Post
@@ -108,7 +108,7 @@ class Messages(commands.Cog):
             await message.delete()
 
         # Market
-        if guild.market_channel and message.channel.id == guild.market_channel.id:
+        elif guild.market_channel and message.channel.id == guild.market_channel.id:
             if transaction := await get_market_request(self.bot, message):
                 if len(message.reactions) > 0:
                     for reaction in message.reactions:

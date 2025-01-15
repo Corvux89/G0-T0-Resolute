@@ -10,9 +10,7 @@ from Resolute.bot import G0T0Bot
 from Resolute.compendium import Compendium
 from Resolute.constants import ACTIVITY_POINT_MINIMUM
 from Resolute.helpers import (create_log, create_new_character, get_character,
-                              get_player, get_webhook, is_admin, manage_player_roles, process_message,
-                              upsert_character, upsert_class)
-from Resolute.helpers.characters import handle_character_mention
+                              get_player, get_webhook, is_admin, manage_player_roles, process_message)
 from Resolute.helpers.guilds import get_guild
 from Resolute.helpers.logs import update_activity_points
 from Resolute.helpers.messages import get_char_name_from_message, get_player_from_say_message
@@ -288,7 +286,7 @@ class _EditCharacterClass(CharacterManage):
         new_class = PlayerCharacterClass(character_id=self.active_character.id, primary_class=response.primary_class, archetype=response.archetype)
 
         if new_class.primary_class:
-           new_class = await upsert_class(self.bot, new_class)
+           new_class = await new_class.upsert(self.bot)
            self.active_character.classes.append(new_class)
            
         await self.refresh_content(interaction)
@@ -301,7 +299,7 @@ class _EditCharacterClass(CharacterManage):
         if response.primary_class and (response.primary_class != self.active_class.primary_class or response.archetype != self.active_class.archetype):
             self.active_class.primary_class = response.primary_class
             self.active_class.archetype = response.archetype
-            await upsert_class(self.bot, self.active_class)
+            await self.active_class.upsert(self.bot)
 
         await self.refresh_content(interaction)
 
@@ -312,7 +310,7 @@ class _EditCharacterClass(CharacterManage):
         else:
             self.active_character.classes.pop(self.active_character.classes.index(self.active_class))
             self.active_class.active = False
-            await upsert_class(self.bot, self.active_class)
+            await self.active_class.upsert(self.bot)
             self.active_class = self.active_character.classes[0]
         await self.refresh_content(interaction)
 
@@ -619,7 +617,7 @@ class CharacterSettings(InteractiveView):
     active_channel: discord.TextChannel = None
 
     async def commit(self):
-        await upsert_character(self.bot, self.active_character)
+        await self.active_character.upsert(self.bot)
         self.player = await get_player(self.bot, self.player.id, self.guild.id)
 
     async def get_content(self) -> Mapping:
@@ -659,7 +657,7 @@ class CharacterSettingsUI(CharacterSettings):
         for char in self.player.characters:
             if channel.id in char.channels:
                 char.channels.remove(channel.id)
-                await upsert_character(self.bot, char)
+                await char.upsert(self.bot)
 
         if channel.id not in self.active_character.channels:
             self.active_character.channels.append(channel.id)
@@ -671,7 +669,7 @@ class CharacterSettingsUI(CharacterSettings):
         for char in self.player.characters:
             if self.active_channel.id in char.channels:
                 char.channels.remove(self.active_channel.id)
-                await upsert_character(self.bot, char)
+                await char.upsert(self.bot)
 
             if self.active_channel.id not in self.active_character.channels:
                 self.active_character.channels.append(self.active_channel.id)
@@ -694,7 +692,7 @@ class CharacterSettingsUI(CharacterSettings):
         for char in self.player.characters:
             if char.primary_character:
                 char.primary_character = False
-                await upsert_character(self.bot, char)
+                await char.upsert(self.bot)
 
         self.active_character.primary_character = True
         await self.refresh_content(interaction)
@@ -722,7 +720,7 @@ class _CharacterSettings2UI(CharacterSettings):
     @discord.ui.select(placeholder="Select a faction", row=1)
     async def faction_select(self, faction: discord.ui.Select, interaction: discord.Interaction):
         self.active_character.faction = self.bot.compendium.get_object(Faction, int(faction.values[0]))
-        await upsert_character(self.bot, self.active_character)
+        await self.active_character.upsert(self.bot)
         await self.refresh_content(interaction)  
 
     @discord.ui.button(label="Update Avatar", style=discord.ButtonStyle.primary, row=2)
@@ -759,7 +757,7 @@ class CharacterAvatarModal(Modal):
 
     async def callback(self, interaction: discord.Interaction):
         self.character.avatar_url = self.children[0].value
-        await upsert_character(self.bot, self.character)
+        await self.character.upsert(self.bot)
 
         await interaction.response.defer()
         self.stop()
@@ -777,7 +775,7 @@ class CharacterNicknameModal(Modal):
 
     async def callback(self, interaction: discord.Interaction):
         self.character.nickname = self.children[0].value
-        await upsert_character(self.bot, self.character)
+        await self.character.upsert(self.bot)
 
         await interaction.response.defer()
         self.stop()

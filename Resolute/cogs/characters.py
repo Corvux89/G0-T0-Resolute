@@ -10,7 +10,6 @@ from Resolute.constants import ACTIVITY_POINT_MINIMUM
 from Resolute.helpers import (get_cached_application, get_guild,
                               get_level_up_application,
                               get_new_character_application, get_player,
-                              get_webhook_character,
                               update_activity_points)
 from Resolute.helpers.characters import handle_character_mention
 from Resolute.helpers.general_helpers import split_content
@@ -70,13 +69,13 @@ class Character(commands.Cog):
                 content = re.sub(r"^(['\"“”])(.*?)['\"“”]\s*", "", content, count=1)
             
         if not character:
-            character = await get_webhook_character(self.bot, player, ctx.channel)
+            character = await player.get_webhook_character(self.bot, ctx.channel)
 
         content = await handle_character_mention(ctx, content)        
 
         chunks = split_content(content)
         for chunk in chunks:
-            await player.send_webhook_message(self.bot, ctx, character, chunk)
+            await player.send_webhook_message(ctx, character, chunk)
 
             if not g.is_dev_channel(ctx.channel):
                 await player.update_post_stats(self.bot, character, ctx.message, content=chunk)
@@ -121,7 +120,8 @@ class Character(commands.Cog):
 
         member = member or ctx.author
         player = await get_player(self.bot, member.id, ctx.guild.id if ctx.guild else None)
-        g = await get_guild(self.bot, player.guild_id)
+        # g = await player.get_guild(self.bot)
+        g = await self.bot.get_player_guild(player.guild_id)
 
         if len(player.characters) == 0:
             return await ctx.respond(embed=PlayerOverviewEmbed(player, g, self.bot.compendium))

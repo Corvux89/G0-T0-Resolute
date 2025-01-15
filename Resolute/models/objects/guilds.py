@@ -10,8 +10,9 @@ from sqlalchemy import (BOOLEAN, TIMESTAMP, BigInteger, Column, Integer,
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.sql import FromClause
 
+from Resolute.bot import G0T0Bot
 from Resolute.models import metadata
-from Resolute.models.objects.ref_objects import NPC, RefServerCalendar
+from Resolute.models.objects.ref_objects import NPC, NPCSchema, RefServerCalendar, RefServerCalendarSchema, get_guild_npcs_query, get_server_calendar
 
 
 class PlayerGuild(object):
@@ -137,6 +138,33 @@ class PlayerGuild(object):
         if not self.dev_channels:
             return False
         return channel in self.dev_channels
+    
+    async def upsert(self, bot: G0T0Bot):
+        async with bot.db.acquire() as conn:
+            results = await conn.execute(upsert_guild(self))
+            row = await results.first()
+
+        g = await GuildSchema(bot, self.id).load(row)
+
+        bot.player_guilds[str(self.id)] = g
+        return g
+    
+    async def reload_cache(self, bot: G0T0Bot):
+        async with bot.db.acquire() as conn:
+            async with conn.begin():
+                results = await conn.execute(get_guild_from_id(self.id))
+                guild_row = await results.first()
+
+                if guild_row is None:
+                    guild = PlayerGuild(id=self.id)
+                    results = await conn.execute(upsert_guild(guild))
+                    guild_row = await results.first()
+
+                g: PlayerGuild = await GuildSchema(bot, self.id).load(guild_row)
+
+        bot.player_guilds[str(self.id)] = g
+    
+    
 
 guilds_table = sa.Table(
     "guilds",
@@ -183,6 +211,7 @@ guilds_table = sa.Table(
 )
 
 class GuildSchema(Schema):
+    bot: G0T0Bot
     guild: discord.Guild
     id = fields.Integer(required=True)
     max_level = fields.Integer()
@@ -224,13 +253,18 @@ class GuildSchema(Schema):
     rp_post_channel = fields.Method(None, "load_channel", allow_none=True)
     dev_channels = fields.Method(None, "load_channels", allow_none=True)
 
-    def __init__(self, guild, **kwargs):
+    def __init__(self, bot: G0T0Bot, guild_id: int, **kwargs):
         super().__init__(**kwargs)
-        self.guild = guild
+        self.bot = bot
+        self.guild = bot.get_guild(guild_id)
 
     @post_load
-    def make_guild(self, data, **kwargs):
-        return PlayerGuild(**data)
+    async def make_guild(self, data, **kwargs):
+        guild = PlayerGuild(**data)
+        guild.guild = self.guild
+        await self.load_calendar(guild)
+        await self.load_npcs(guild)
+        return guild
 
     def load_timestamp(self, value):  # Marshmallow doesn't like loading DateTime for some reason. This is a workaround
         return datetime(value.year, value.month, value.day, value.hour, value.minute, value.second, tzinfo=timezone.utc)
@@ -247,6 +281,21 @@ class GuildSchema(Schema):
             channels.append(self.guild.get_channel(c))
 
         return channels
+    
+    async def load_calendar(self, guild: PlayerGuild):
+        async with self.bot.db.acquire() as conn:
+            results = await conn.execute(get_server_calendar(guild.id))
+            rows = await results.fetchall()
+
+        guild.calendar = [RefServerCalendarSchema().load(row) for row in rows]
+
+    
+    async def load_npcs(self, guild: PlayerGuild):
+        async with self.bot.db.acquire() as conn:
+            results = await conn.execute(get_guild_npcs_query(guild.id))
+            rows = await results.fetchall()
+        guild.npcs = [NPCSchema().load(row) for row in rows]
+            
     
 
 def get_guild_from_id(guild_id: int) -> FromClause:

@@ -41,8 +41,8 @@ class Adventures(commands.Cog):
         if hasattr(ctx, "bot") and hasattr(ctx.bot, "db") and ctx.guild and ctx.channel.category:
             if adventure := await get_adventure_from_category(self.bot, ctx.channel.category.id):
                 if ctx.author.id in adventure.dms and (npc := next((npc for npc in adventure.npcs if npc.key == ctx.invoked_with), None)):
-                    guild = await get_guild(self.bot, ctx.guild.id)
                     player = await get_player(self.bot, ctx.author.id, ctx.guild.id)
+                    guild = await player.get_guild(self.bot)
                     content = ctx.message.content.replace(f'>{npc.key}', '')
                     content = await handle_character_mention(ctx, content)
 

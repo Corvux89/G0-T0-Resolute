@@ -4,22 +4,20 @@ from typing import Mapping
 import discord
 
 from Resolute.bot import G0T0Bot
-from Resolute.helpers import create_log
+from Resolute.helpers.logs import create_log
 from Resolute.models.categories import CodeConversion
 from Resolute.models.embeds.logs import LogEmbed
 from Resolute.models.objects.characters import PlayerCharacter
 from Resolute.models.objects.exceptions import TransactionError
-from Resolute.models.objects.guilds import PlayerGuild
 from Resolute.models.objects.players import Player
 from Resolute.models.views.base import InteractiveView
 
 
 class LogPrompt(InteractiveView):
-    __menu_copy_attrs__ = ("bot", "player", "member", "activity", "credits", "guild", "notes", "cc", "ignore_handicap", "show_values")
+    __menu_copy_attrs__ = ("bot", "player", "member", "activity", "credits", "notes", "cc", "ignore_handicap", "show_values")
     owner: discord.Member = None
     member = discord.Member = None
     bot: G0T0Bot
-    guild: PlayerGuild
     activity: str
     credits: int = 0
     cc: int = 0
@@ -33,12 +31,11 @@ class LogPrompt(InteractiveView):
     
 class LogPromptUI(LogPrompt):
     @classmethod
-    def new(cls, bot: G0T0Bot, owner: discord.Member, member: discord.Member, player: Player, guild: PlayerCharacter, activity: str, **kwargs):
+    def new(cls, bot: G0T0Bot, owner: discord.Member, member: discord.Member, player: Player, activity: str, **kwargs):
         inst = cls(owner=owner)
         inst.bot = bot
         inst.member = member
         inst.player = player
-        inst.guild = guild
         inst.activity = activity
         inst.credits = kwargs.get('credits', 0)
         inst.cc = kwargs.get('cc', 0)

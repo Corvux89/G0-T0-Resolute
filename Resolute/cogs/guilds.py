@@ -12,12 +12,10 @@ from discord.ext import commands, tasks
 
 from Resolute.bot import G0T0Bot
 from Resolute.constants import ACTIVITY_POINT_MINIMUM
-from Resolute.helpers import (confirm, create_log, delete_weekly_stipend,
-                              get_guild, get_guild_stipends,
-                              get_guilds_with_reset, get_player, get_webhook,
-                              is_admin, update_activity_points)
 from Resolute.helpers.characters import handle_character_mention
-from Resolute.helpers.general_helpers import split_content
+from Resolute.helpers.general_helpers import confirm, get_webhook, is_admin, split_content
+from Resolute.helpers.guilds import delete_weekly_stipend, get_guilds_with_reset
+from Resolute.helpers.logs import create_log, update_activity_points
 from Resolute.models.embeds.guilds import ResetEmbed
 from Resolute.models.objects.guilds import PlayerGuild
 from Resolute.models.objects.players import reset_div_cc
@@ -49,15 +47,15 @@ class Guilds(commands.Cog):
     @commands.Cog.listener()
     async def on_command_error(self, ctx: commands.Context, error):
         if hasattr(ctx, "bot") and hasattr(ctx.bot, "db") and ctx.guild:
-            guild = await get_guild(self.bot, ctx.guild.id)
+            guild = await self.bot.get_player_guild(ctx.guild.id)
             if npc := next((npc for npc in guild.npcs if npc.key == ctx.invoked_with), None):
                 user_roles = [role.id for role in ctx.author.roles]
-                if bool(set(user_roles) & set(npc.roles)) or is_admin(ctx):
-                    player = await get_player(self.bot, ctx.author.id, ctx.guild.id)
+                if bool(set(user_roles) & set(npc.roles)) or await is_admin(ctx):
+                    player = await self.bot.get_player(ctx.author.id, ctx.guild.id)
                     content = ctx.message.content.replace(f'>{npc.key}', '')
                     content = await handle_character_mention(ctx, content)
 
-                    await player.update_command_count(self.bot, "npc")
+                    await player.update_command_count("npc")
                     webhook = await get_webhook(ctx.channel)
                     chunks = split_content(content)
                     
@@ -73,9 +71,9 @@ class Guilds(commands.Cog):
                                             content=chunk)
                         
                         if not guild.is_dev_channel(ctx.channel):
-                            await player.update_post_stats(self.bot, npc, ctx.message, content=chunk)
+                            await player.update_post_stats(npc, ctx.message, content=chunk)
                             if len(chunk) > ACTIVITY_POINT_MINIMUM:
-                                await update_activity_points(self.bot, player, guild)
+                                await update_activity_points(self.bot, player)
                     await ctx.message.delete()
     
     @guilds_commands.command(
@@ -84,7 +82,7 @@ class Guilds(commands.Cog):
     )
     @commands.check(is_admin)
     async def guild_settings(self, ctx: ApplicationContext):
-        g = await get_guild(self.bot, ctx.guild.id)
+        g = await self.bot.get_player_guild(ctx.guild.id)
 
         ui = GuildSettingsUI.new(self.bot, ctx.author, g)
 
@@ -105,7 +103,7 @@ class Guilds(commands.Cog):
         """
         await ctx.defer()
 
-        g: PlayerGuild = await get_guild(self.bot, ctx.guild.id)
+        g: PlayerGuild = await self.bot.get_player_guild(ctx.guild.id)
 
         conf = await confirm(ctx, f"Are you sure you want to manually do a weekly reset? (Reply with yes/no)", True)
 
@@ -125,7 +123,7 @@ class Guilds(commands.Cog):
     async def guild_announcements(self, ctx: ApplicationContext):
         await ctx.defer()
 
-        g: PlayerGuild = await get_guild(self.bot, ctx.guild.id)
+        g: PlayerGuild = await self.bot.get_player_guild(ctx.guild.id)
 
         conf = await confirm(ctx, f"Are you sure you want to manually push announcements? (Reply with yes/no)", True)
 
@@ -135,7 +133,8 @@ class Guilds(commands.Cog):
             return await ctx.respond(f"Ok, cancelling.", delete_after=10)
         
         g = await self.push_announcements(g, None, title="Announcements")
-        await g.upsert(self.bot)
+        await g.upsert()
+        self.bot.dispatch("refresh_guild_cache", g)
         return await ctx.respond("Announcements manually completed")
         
     async def push_announcements(self, guild: PlayerGuild, complete_time: float = None, **kwargs) -> PlayerGuild:
@@ -161,9 +160,6 @@ class Guilds(commands.Cog):
     async def perform_weekly_reset(self, g: PlayerGuild):
         # Setup
         start = timer()
-        player_cc = 0
-        stipends = await get_guild_stipends(self.bot.db, g.id)
-        guild = self.bot.get_guild(g.id)   
         stipend_task = []
 
         # Guild updates
@@ -180,14 +176,15 @@ class Guilds(commands.Cog):
         # Stipends
         leadership_stipend_players = set()
 
-        for stipend in stipends:
+        for stipend in g.stipends:
             if stipend_role := self.bot.get_guild(g.id).get_role(stipend.role_id):
                 members = stipend_role.members
                 if stipend.leadership:
                     members = list(filter(lambda m: m.id not in leadership_stipend_players, members))
                     leadership_stipend_players.update(m.id for m in stipend_role.members)
 
-                player_list = await asyncio.gather(*(get_player(self.bot, m.id, g.id) for m in members))
+                # TODO: Look at this...may be a better way now
+                player_list = await asyncio.gather(*(self.bot.get_player(m.id, g.id) for m in members))
                 
                 for player in player_list:
                     stipend_task.append(create_log(self.bot, self.bot.user, "STIPEND", player,
@@ -203,7 +200,8 @@ class Guilds(commands.Cog):
 
         # Announce we're all done!
         g = await self.push_announcements(g, end-start)
-        await g.upsert(self.bot)
+        await g.upsert()
+        self.bot.dispatch("refresh_guild_cache", g)
         
 
     # --------------------------- #
@@ -223,7 +221,7 @@ class Guilds(commands.Cog):
         cutoff_time = datetime.now(timezone.utc) - timedelta(hours=72)
 
         for guild in self.bot.guilds:
-            g: PlayerGuild = await get_guild(self.bot, guild.id)
+            g: PlayerGuild = await self.bot.get_player_guild(guild.id)
 
             def predicate(message: discord.Message):
                 return message.author.bot and message.webhook_id is not None

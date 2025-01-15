@@ -5,8 +5,7 @@ from discord import Embed, SelectOption
 from discord.ui import InputText, Modal
 
 from Resolute.bot import G0T0Bot
-from Resolute.helpers import (get_cached_application, get_guild,
-                              upsert_application)
+from Resolute.helpers.appliations import get_cached_application, upsert_application
 from Resolute.helpers.general_helpers import get_webhook
 from Resolute.models.embeds.applications import NewCharacterRequestEmbed
 from Resolute.models.objects.applications import (LevelUpApplication,
@@ -62,8 +61,7 @@ class CharacterSelectUI(CharacterSelect):
     @discord.ui.button(label="Edit Application", style=discord.ButtonStyle.primary, row=3)
     async def application_edit(self, _: discord.ui.Button, interaction: discord.Interaction):
         if self.levelUp:
-            guild = await get_guild(self.bot, self.player.guild_id)
-            modal = LevelUpRequestModal(guild, self.character, self.application)
+            modal = LevelUpRequestModal(self.player.guild, self.character, self.application)
             await self.prompt_modal(interaction, modal)
             await self.on_timeout()
         else:
@@ -72,12 +70,10 @@ class CharacterSelectUI(CharacterSelect):
     @discord.ui.button(label="New Application", style=discord.ButtonStyle.primary, row=3)
     async def application_create(self, _: discord.ui.Button, interaction: discord.Interaction):
         if self.levelUp:
-            g = await get_guild(self.bot, self.player.guild_id)
-
-            if self.character.level >= g.max_level:
+            if self.character.level >= self.player.guild.max_level:
                 raise G0T0Error("Character is already at max level for the server")
             else:    
-                modal = LevelUpRequestModal(g, self.character)
+                modal = LevelUpRequestModal(self.player.guild, self.character)
                 await self.prompt_modal(interaction, modal)
                 await self.on_timeout()
         else:
@@ -154,10 +150,9 @@ class NewCharacterRequestUI(CharacterSelect):
 
     @discord.ui.button(label="Submit", style=discord.ButtonStyle.green, row=2)
     async def submit(self, _: discord.ui.Button, interaction: discord.Interaction):
-        guild = await get_guild(self.bot, self.player.guild_id)
-        if guild.staff_role and guild.application_channel:
-            message = self.application.format_app(self.owner, guild.staff_role)
-            webhook = await get_webhook(guild.application_channel)
+        if self.player.guild.staff_role and self.player.guild.application_channel:
+            message = self.application.format_app(self.owner, self.player.guild.staff_role)
+            webhook = await get_webhook(self.player.guild.application_channel)
 
             if len(message) > 2000:
                 raise G0T0Error("Application too long, please shorten your response to a couple of questions and try to resubmit")

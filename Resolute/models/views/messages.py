@@ -4,7 +4,6 @@ import discord
 from Resolute.bot import G0T0Bot
 from Resolute.constants import APPROVAL_EMOJI, CHANNEL_BREAK
 from Resolute.helpers.logs import create_log
-from Resolute.helpers.players import get_player
 from Resolute.models.categories.categories import Activity
 from Resolute.models.embeds.logs import LogEmbed
 from Resolute.models.objects.characters import PlayerCharacter
@@ -45,7 +44,7 @@ class MessageLogUI(MessageLog):
         inst.members = []
 
         for member in message.mentions:
-            player = await get_player(bot, member.id, owner.guild.id)
+            player = await bot.get_player(member.id, owner.guild.id)
 
             if len(player.characters) == 0:
                 raise CharacterNotFound(player.member)

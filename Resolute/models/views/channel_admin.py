@@ -5,7 +5,7 @@ import discord
 from discord.ui import InputText, Modal
 
 from Resolute.bot import G0T0Bot
-from Resolute.helpers import add_owner, create_channel, remove_owner
+from Resolute.helpers.channel_admin import add_owner, create_channel, remove_owner
 from Resolute.models.embeds import ErrorEmbed
 from Resolute.models.embeds.channel_admin import ChannelEmbed
 from Resolute.models.objects.exceptions import G0T0Error

@@ -8,10 +8,11 @@ from discord.ext import commands, tasks
 
 from Resolute.bot import G0T0Bot
 from Resolute.constants import ADMIN_GUILDS
-from Resolute.helpers import get_player, is_admin, is_owner
 from Resolute.helpers.dashboards import update_financial_dashboards
 from Resolute.helpers.financial import get_financial_data, update_financial_data
+from Resolute.helpers.general_helpers import is_admin, is_owner
 from Resolute.helpers.store import get_store_items
+from Resolute.models.objects.guilds import PlayerGuild
 from Resolute.models.views.admin import AdminMenuUI
 from Resolute.models.views.automation_request import AutomationRequestView
 
@@ -37,6 +38,11 @@ class Admin(commands.Cog):
         if not self.check_financials.is_running():
             asyncio.ensure_future(self.check_financials.start())
 
+    @commands.Cog.listener()
+    async def on_refresh_guild_cache(self, guild: PlayerGuild):
+        guild = await guild.fetch()
+        self.bot.player_guilds[str(guild.id)] = guild
+
     @commands.slash_command(
         name="automation_request",
         description="Log an automation request"
@@ -51,10 +57,9 @@ class Admin(commands.Cog):
         Returns:
             Interaction: Modal interaction to gather information about the request
         """
-
-        player = await get_player(self.bot, ctx.author.id, ctx.guild.id if ctx.guild else None, False, ctx)
-        g = await player.get_guild(self.bot)
-        modal = AutomationRequestView(g)
+        player = await self.bot.get_player(ctx.author.id, ctx.guild.id if ctx.guild else None,
+                                           ctx=ctx)
+        modal = AutomationRequestView(player.guild)
         await ctx.send_modal(modal)
 
     @admin_commands.command(

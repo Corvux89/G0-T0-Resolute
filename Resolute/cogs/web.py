@@ -5,7 +5,6 @@ from quart import jsonify, request, abort
 
 from Resolute.bot import G0T0Bot
 from Resolute.constants import AUTH_TOKEN, ERROR_CHANNEL
-from Resolute.helpers.guilds import get_guild
 
 
 
@@ -17,14 +16,14 @@ def setup(bot: commands.Bot):
 class WebCog(commands.Cog):
     bot: G0T0Bot
 
-    def __init__(self, bot):
+    def __init__(self, bot: G0T0Bot):
         self.bot = bot
         self.auth(bot)
         self.routes(bot)
         log.info(f'Cog \'Web\' loaded')
 
     @staticmethod
-    def auth(bot):
+    def auth(bot: G0T0Bot):
         @bot.web_app.before_request
         async def verify_token():
             auth_token = request.headers.get('auth-token')
@@ -33,7 +32,7 @@ class WebCog(commands.Cog):
                 return jsonify({"error": "You don't have access to this"}), 401
     
     @staticmethod
-    def routes(bot):
+    def routes(bot: G0T0Bot):
         # Reload the compendium
         @bot.web_app.route('/reload', methods=['POST'])
         async def reload(self):
@@ -52,9 +51,8 @@ class WebCog(commands.Cog):
                 data = await request.json
             except:
                 return abort(401)
-            
-            g = await get_guild(self.bot, int(data['guild_id']))
-            await g.reload_cache(self.bot)
+            guild = await bot.get_player_guild(int(data['guild_id']))
+            bot.dispatch("refresh_guild_cache", guild)
             await bot.get_channel(int(ERROR_CHANNEL)).send(data['text'])
             return jsonify({'text': 'Guild Cache Reloaded!'}), 200
 

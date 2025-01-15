@@ -1,9 +1,8 @@
 from discord import Embed, ApplicationContext, Interaction, Color
-from Resolute.bot import G0T0Bot
 from Resolute.constants import THUMBNAIL, ZWSP3
 from Resolute.helpers.general_helpers import get_webhook
-from Resolute.helpers.guilds import get_guild
-from Resolute.models.objects.arenas import Arena, ArenaPost
+from Resolute.models.objects.applications import ArenaPost
+from Resolute.models.objects.arenas import Arena
 
 class ArenaStatusEmbed(Embed):
     def __init__(self, ctx: ApplicationContext | Interaction, arena: Arena):
@@ -75,11 +74,9 @@ class ArenaPostEmbed(Embed):
         
         self.set_footer(text=f"{post.player.member.id}")
 
-    async def build(self, bot: G0T0Bot) -> bool:
-        g = await get_guild(bot, self.post.player.guild_id)
-
-        if g.arena_board_channel:
-            webhook = await get_webhook(g.arena_board_channel)
+    async def build(self) -> bool:
+        if self.post.player.guild.arena_board_channel:
+            webhook = await get_webhook(self.post.player.guild.arena_board_channel)
             if self.post.message:
                 await webhook.edit_message(self.post.message.id, embed=self)
             else:

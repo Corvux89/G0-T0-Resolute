@@ -1,19 +1,22 @@
+import aiopg.sa
 import sqlalchemy as sa
 from marshmallow import Schema, fields, post_load
 from sqlalchemy import BOOLEAN, BigInteger, Column, Integer, String, and_
 from sqlalchemy.dialects.postgresql import ARRAY, insert
 from sqlalchemy.sql import FromClause
 
-from Resolute.bot import G0T0Bot
 from Resolute.compendium import Compendium
 from Resolute.models import metadata
 from Resolute.models.categories import (CharacterArchetype, CharacterClass,
                                         CharacterSpecies)
 from Resolute.models.categories.categories import Faction
-from Resolute.models.objects.guilds import PlayerGuild
+        
 
 class CharacterRenown(object):
-    def __init__(self, **kwargs):
+    def __init__(self, db: aiopg.sa.Engine, compendium: Compendium, **kwargs):
+        self._db = db
+        self._compendium = compendium
+
         self.id = kwargs.get("id")
         self.character_id = kwargs.get("character_id")
         self.faction: Faction = kwargs.get("faction")
@@ -23,12 +26,12 @@ class CharacterRenown(object):
     def get_formatted_renown(self):
         return f"**{self.faction.value}**: {max(0, self.renown)}"
     
-    async def upsert(self, bot: G0T0Bot):
-        async with bot.db.acquire() as conn:
+    async def upsert(self):
+        async with self._db.acquire() as conn:
             results = await conn.execute(upsert_character_renown_query(self))
             row = await results.first()
 
-        renown = RenownSchema(bot.compendium).load(row)
+        renown = RenownSchema(self._db, self._compendium).load(row)
 
         return renown
 
@@ -42,19 +45,23 @@ renown_table = sa.Table(
 )
 
 class RenownSchema(Schema):
+    db: aiopg.sa.Engine
     compendium: Compendium
+
     id = fields.Integer(required=True)
     character_id = fields.Integer(required=True)
     faction = fields.Method(None, "load_faction")
     renown = fields.Integer()
 
-    def __init__(self, compendium, **kwargs):
+    def __init__(self, db: aiopg.sa.Engine, compendium: Compendium, **kwargs):
         super().__init__(**kwargs)
         self.compendium = compendium
+        self.db = db
 
     @post_load
     def make_renown(self, data, **kwargs):
-        return CharacterRenown(**data)
+        renown = CharacterRenown(self.db, self.compendium, **data)
+        return renown
 
     def load_faction(self, value):
         return self.compendium.get_object(Faction, value)
@@ -84,7 +91,10 @@ def upsert_character_renown_query(renown: CharacterRenown):
     return insert_statement
 
 class PlayerCharacterClass(object):
-    def __init__(self, **kwargs):
+    def __init__(self,db: aiopg.sa.Engine, compendium: Compendium, **kwargs):
+        self._db = db
+        self._compendium = compendium
+
         self.id = kwargs.get('id')
         self.character_id = kwargs.get('character_id')
         self.primary_class: CharacterClass = kwargs.get('primary_class')
@@ -103,12 +113,12 @@ class PlayerCharacterClass(object):
         else:
             return ""
         
-    async def upsert(self, bot: G0T0Bot):
-        async with bot.db.acquire() as conn:
+    async def upsert(self):
+        async with self._db.acquire() as conn:
             results = await conn.execute(upsert_class_query(self))
             row = await results.first()
 
-        new_class = PlayerCharacterClassSchema(bot.compendium).load(row)
+        new_class = PlayerCharacterClassSchema(self._db, self._compendium).load(row)
 
         return new_class
         
@@ -123,20 +133,24 @@ character_class_table = sa.Table(
 )
         
 class PlayerCharacterClassSchema(Schema):
+    db: aiopg.sa.Engine
     compendium: Compendium
+
     id = fields.Integer(required=True)
     character_id = fields.Integer(required=True)
     primary_class = fields.Method(None, "load_primary_class")
     archetype = fields.Method(None, "load_archetype", allow_none=True)
     active = fields.Boolean(required=True)
 
-    def __init__(self, compendium, **kwargs):
+    def __init__(self, db: aiopg.sa.Engine, compendium: Compendium, **kwargs):
         super().__init__(**kwargs)
+        self.db = db
         self.compendium = compendium
 
     @post_load
     def make_class(self, data, **kwargs):
-        return PlayerCharacterClass(**data)
+        cl = PlayerCharacterClass(self.db, self.compendium, **data)
+        return cl
 
     def load_primary_class(self, value):
         return self.compendium.get_object(CharacterClass, value)
@@ -171,7 +185,10 @@ def upsert_class_query(char_class: PlayerCharacterClass):
     return insert_statement
 
 class PlayerCharacter(object): 
-    def __init__(self, **kwargs):
+    def __init__(self, db: aiopg.sa.Engine, compendium: Compendium, **kwargs):
+        self._db = db
+        self._compendium = compendium
+
         self.id = kwargs.get('id')
         self.name = kwargs.get('name')
         self.species: CharacterSpecies = kwargs.get('species')
@@ -211,33 +228,28 @@ class PlayerCharacter(object):
         return f"**{self.name}** - Level {self.level} {self.species.value} [{class_str}]" 
 
 
-    def is_valid(self, guild: PlayerGuild):
+    def is_valid(self, max_level: int):
         return (hasattr(self, "name") and self.name is not None and 
                 hasattr(self, "species") and self.species is not None and
-                hasattr(self, "level") and 0 < self.level <= guild.max_level)
+                hasattr(self, "level") and 0 < self.level <= max_level)
 
-    async def upsert(self, bot: G0T0Bot):
-        async with bot.db.acquire() as conn:
+    async def upsert(self):
+        async with self._db.acquire() as conn:
             results = await conn.execute(upsert_character_query(self))
             row = await results.first()
 
-        character = CharacterSchema(bot.compendium).load(row)
-
-        async with bot.db.acquire() as conn:
-            class_results = await conn.execute(get_character_class(character.id))
-            class_rows = await class_results.fetchall()
-
-        character.classes = [PlayerCharacterClassSchema(bot.compendium).load(row) for row in class_rows]
+        character: PlayerCharacter = await CharacterSchema(self._db, self._compendium).load(row)
 
         return character
 
     
-    async def update_renown(self, bot: G0T0Bot, faction: Faction, renown: int) -> CharacterRenown:
+    async def update_renown(self, faction: Faction, renown: int) -> CharacterRenown:
         character_renown = next((r for r in self.renown if r.faction.id == faction.id), 
-                                CharacterRenown(faction=faction,
-                                                character_id=self.id))
+                                CharacterRenown(self._db, self._compendium,
+                                    faction=faction,
+                                    character_id=self.id))
         character_renown.renown += renown
-        await character_renown.upsert(bot)
+        await character_renown.upsert()
 
         return character_renown
 
@@ -263,7 +275,9 @@ characters_table = sa.Table(
 )
 
 class CharacterSchema(Schema):
+    db: aiopg.sa.Engine
     compendium: Compendium
+
     id = fields.Integer(required=True)
     name = fields.String(required=True)
     species = fields.Method(None, "load_species")
@@ -280,19 +294,39 @@ class CharacterSchema(Schema):
     avatar_url = fields.String(required=False, allow_none=True)
     nickname = fields.String(required=False, allow_none=True)
 
-    def __init__(self, compendium, **kwargs):
+    def __init__(self, db: aiopg.sa.Engine, compendium: Compendium, **kwargs):
         super().__init__(**kwargs)
+        self.db = db
         self.compendium = compendium
 
     @post_load
-    def make_character(self, data, **kwargs):
-        return PlayerCharacter(**data)
+    async def make_character(self, data, **kwargs):
+        character = PlayerCharacter(self.db, self.compendium, **data)
+        await self.get_classes(character)
+        await self.get_renown(character)
+        return character
 
     def load_species(self, value):
         return self.compendium.get_object(CharacterSpecies, value)
     
     def load_faction(self, value):
         return self.compendium.get_object(Faction, value)
+    
+    async def get_classes(self, character: PlayerCharacter):
+        async with self.db.acquire() as conn:
+            class_results = await conn.execute(get_character_class(character.id))
+            class_rows = await class_results.fetchall()
+
+        character.classes = [PlayerCharacterClassSchema(self.db, self.compendium).load(row) for row in class_rows]
+
+    async def get_renown(self, character: PlayerCharacter):
+        async with self.db.acquire() as conn:
+            renown_results = await conn.execute(get_character_renown(character.id))
+            renown_rows = await renown_results.fetchall()
+
+        character.renown = [RenownSchema(self.db, self.compendium).load(row) for row in renown_rows]
+
+
 
 def get_active_player_characters(player_id: int, guild_id: int) -> FromClause:
     return characters_table.select().where(

@@ -4,7 +4,6 @@ import aiopg
 import discord
 
 from Resolute.bot import G0T0Bot
-from Resolute.helpers.characters import get_character
 from Resolute.models.objects.applications import (AppBackground, AppBaseScores,
                                                   AppClass, ApplicationSchema,
                                                   AppSpecies,
@@ -125,7 +124,7 @@ async def get_new_character_application(bot: G0T0Bot, application_text: str = No
     )
 
     if char_id:
-        application.character = await get_character(bot, char_id)
+        application.character = await bot.get_character(char_id)
 
     return application
 
@@ -148,6 +147,6 @@ async def get_level_up_application(bot: G0T0Bot, application_text: str = None, m
     )
 
     if char_id:
-        application.character = await get_character(bot, char_id)
+        application.character = await bot.get_character(char_id)
 
     return application

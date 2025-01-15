@@ -7,16 +7,13 @@ from discord.ext import commands
 from Resolute.bot import G0T0Bot
 from Resolute.constants import (ACTIVITY_POINT_MINIMUM, APPROVAL_EMOJI, DENIED_EMOJI, EDIT_EMOJI,
                                 NULL_EMOJI)
-from Resolute.helpers import (confirm, create_log, get_adventure_from_category,
-                              get_guild, get_log_from_entry,
-                              get_market_request, get_player, is_admin,
-                              is_adventure_npc_message, is_player_say_message,
-                              is_staff, update_activity_points)
-from Resolute.helpers.logs import null_log
-from Resolute.helpers.messages import get_char_name_from_message, get_player_from_say_message
+from Resolute.helpers.general_helpers import confirm, is_admin, is_staff
+from Resolute.helpers.logs import create_log, get_log_from_entry, null_log, update_activity_points
+from Resolute.helpers.market import get_market_request
+from Resolute.helpers.messages import get_char_name_from_message, get_player_from_say_message, is_adventure_npc_message, is_player_say_message
 from Resolute.models.categories.categories import CodeConversion
 from Resolute.models.embeds.logs import LogEmbed
-from Resolute.models.objects.arenas import ArenaPost
+from Resolute.models.objects.applications import ArenaPost
 from Resolute.models.objects.exceptions import G0T0Error, TransactionError
 from Resolute.models.views.arena_view import ArenaRequestCharacterSelect
 from Resolute.models.views.character_view import RPPostUI, SayEditModal
@@ -40,11 +37,10 @@ class Messages(commands.Cog):
         name="Edit"
     )
     async def message_edit(self, ctx: discord.ApplicationContext, message: discord.Message):
-        guild = await get_guild(self.bot, ctx.guild.id)
-        player = await get_player(self.bot, ctx.author.id, guild.id)
+        player = await self.bot.get_player(ctx.author.id, ctx.guild.id)
 
         # Market
-        if guild.market_channel and message.channel.id == guild.market_channel.id:
+        if player.guild.market_channel and message.channel.id == player.guild.market_channel.id:
             if transaction := await get_market_request(self.bot, message):
 
                 # Check if transaction was denied previously
@@ -64,20 +60,20 @@ class Messages(commands.Cog):
                 await ui.send_to(ctx.author)
 
         # Arena Board
-        elif guild.arena_board_channel and message.channel.id == guild.arena_board_channel.id:
+        elif player.guild.arena_board_channel and message.channel.id == player.guild.arena_board_channel.id:
             if not message.author.bot or message.embeds[0].footer.text != f"{ctx.author.id}":
                 raise G0T0Error("You cannot edit this arena board post")
-            elif len(player.characters) <= 1 and guild.member_role and guild.member_role not in player.member.roles:
+            elif len(player.characters) <= 1 and player.guild.member_role and player.guild.member_role not in player.member.roles:
                 raise G0T0Error(f"There is nothing to edit")
             
             post = ArenaPost(player)
             post.message = message
 
-            ui = ArenaRequestCharacterSelect.new(self.bot, ctx.author, guild, player, post)
+            ui = ArenaRequestCharacterSelect.new(self.bot, player, post)
             await ui.send_to(ctx.author)
 
         # RP Post
-        elif guild.rp_post_channel and message.channel.id == guild.rp_post_channel.id:
+        elif player.guild.rp_post_channel and message.channel.id == player.guild.rp_post_channel.id:
             if not message.author.bot or message.embeds[0].footer.text != f"{ctx.author.id}":
                 raise G0T0Error("You cannot edit this roleplay board post")
             
@@ -97,18 +93,17 @@ class Messages(commands.Cog):
         name="Delete"
     )
     async def message_delete(self, ctx: discord.ApplicationContext, message: discord.Message):
-        guild = await get_guild(self.bot, ctx.guild.id)
-        player = await get_player(self.bot, ctx.author.id, guild.id)
+        player = await self.bot.get_player(ctx.author.id, ctx.guild.id)
 
         # Arena Board
-        if guild.arena_board_channel and message.channel.id == guild.arena_board_channel.id:
+        if player.guild.arena_board_channel and message.channel.id == player.guild.arena_board_channel.id:
             if not message.author.bot or message.embeds[0].footer.text != f"{ctx.author.id}":
                 raise G0T0Error("You cannot edit this arena board post")
 
             await message.delete()
 
         # Market
-        elif guild.market_channel and message.channel.id == guild.market_channel.id:
+        elif player.guild.market_channel and message.channel.id == player.guild.market_channel.id:
             if transaction := await get_market_request(self.bot, message):
                 if len(message.reactions) > 0:
                     for reaction in message.reactions:
@@ -125,7 +120,7 @@ class Messages(commands.Cog):
                 await message.delete()
 
         # RP Post
-        elif guild.rp_post_channel and message.channel.id == guild.rp_post_channel.id:
+        elif player.guild.rp_post_channel and message.channel.id == player.guild.rp_post_channel.id:
             if not message.author.bot or message.embeds[0].footer.text != f"{ctx.author.id}":
                 raise G0T0Error("You cannot edit this roleplay board post")
             
@@ -133,29 +128,39 @@ class Messages(commands.Cog):
 
         # Character Say
         elif is_player_say_message(player, message):
-            if not guild.is_dev_channel(ctx.channel):
+            if not player.guild.is_dev_channel(ctx.channel):
                 if (char := next((c for c in player.characters if c.name ==  get_char_name_from_message(message)), None)):
-                    await player.update_post_stats(self.bot, char, message, retract=True)
+                    await player.update_post_stats(char, message, retract=True)
                 if len(message.content) >= ACTIVITY_POINT_MINIMUM:
-                    await update_activity_points(self.bot, player, guild, False)
+                    await update_activity_points(self.bot, player, False)
             await message.delete()
 
         # Staff Say Delete
         elif message.author.bot and is_staff and (orig_player := await get_player_from_say_message(self.bot, message)):
-            if not guild.is_dev_channel(ctx.channel):
+            if not player.guild.is_dev_channel(ctx.channel):
                 if len(message.content) >= ACTIVITY_POINT_MINIMUM:
-                    await update_activity_points(self.bot, orig_player, guild, False)
+                    await update_activity_points(self.bot, orig_player, False)
                 if (char := next((c for c in orig_player.characters if c.name == get_char_name_from_message(message)), None)):
-                    await orig_player.update_post_stats(self.bot, char, message, retract=True)
+                    await orig_player.update_post_stats(char, message, retract=True)
             await message.delete()
 
         # Adventure NPC
-        elif ctx.channel.category and (adventure := await get_adventure_from_category(self.bot, ctx.channel.category.id)) and ctx.author.id in adventure.dms and is_adventure_npc_message(adventure, message):
-            if not guild.is_dev_channel(ctx.channel):
+        elif ctx.channel.category and (adventure := await self.bot.get_adventure_from_category(ctx.channel.category.id)) and ctx.author.id in adventure.dms and is_adventure_npc_message(adventure, message):
+            if not player.guild.is_dev_channel(ctx.channel):
                 if len(message.content) >= ACTIVITY_POINT_MINIMUM:
-                    await update_activity_points(self.bot, player, guild, False)
+                    await update_activity_points(self.bot, player, False)
                 if npc := next((npc for npc in adventure.npcs if npc.name.lower() == message.author.name.lower()), None):
-                    await player.update_post_stats(self.bot, npc, message, retract=True)
+                    await player.update_post_stats(npc, message, retract=True)
+            await message.delete()
+
+        # Global NPC
+        elif message.author.bot and (npc := next((n for n in player.guild.npcs if n.name == message.author.name), None)):
+            if not player.guild.is_dev_channel(ctx.channel):
+                if len(message.content) >= ACTIVITY_POINT_MINIMUM:
+                    await update_activity_points(self.bot, player, False)
+                
+                await player.update_post_stats(npc, message, retract=True)
+
             await message.delete()
         
         else:
@@ -168,7 +173,7 @@ class Messages(commands.Cog):
     )
     @commands.check(is_staff)
     async def message_approve(self, ctx: discord.ApplicationContext, message: discord.Message):
-        guild = await get_guild(self.bot, ctx.guild.id)
+        guild = await self.bot.get_player_guild(ctx.guild.id)
 
         # Market Transactions
         if guild.market_channel and message.channel.id == guild.market_channel.id:
@@ -250,7 +255,8 @@ class Messages(commands.Cog):
         
         reason = await confirm(ctx, f"What is the reason for nulling the log?", True, self.bot, response_check=None)
 
-        player = await get_player(self.bot, log_entry.player_id, log_entry.guild_id, True)
+        player = await self.bot.get_player(log_entry.player_id, log_entry.guild_id, 
+                                           inactive=True)
         character = next((c for c in player.characters if c.id == log_entry.character_id), None) if log_entry.character_id else None
         mod_log = await null_log(self.bot, ctx, log_entry, reason)
         

@@ -3,7 +3,8 @@ from discord.commands import SlashCommandGroup
 from discord.ext import commands
 
 from Resolute.bot import G0T0Bot
-from Resolute.helpers import get_shatterpoint, is_admin
+from Resolute.helpers.general_helpers import is_admin
+from Resolute.helpers.shatterpoint import get_shatterpoint
 from Resolute.models.views.shatterpoint import ShatterpointSettingsUI
 
 log = logging.getLogger(__name__)

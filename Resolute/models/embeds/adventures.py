@@ -5,7 +5,7 @@ from Resolute.models.objects.adventures import Adventure
 from Resolute.models.objects.players import Player
 
 class AdventuresEmbed(Embed):
-    def __init__(self, ctx: ApplicationContext, player: Player, adventures: list[Adventure], phrases: list[str]):
+    def __init__(self, ctx: ApplicationContext, player: Player, phrases: list[str]):
         super().__init__(title=f"Adventure Information for {player.member.display_name}",
                          color=Color.dark_grey())
         
@@ -13,7 +13,7 @@ class AdventuresEmbed(Embed):
         
         guild = ctx.guild if ctx.guild else player.member.guild
 
-        dm_str = adventure_str = "\n".join([f"{ZWSP3}{adventure.name} ({guild.get_role(adventure.role_id).mention})" for adventure in adventures if player.id in adventure.dms]) if len(adventures)>0 else None
+        dm_str = adventure_str = "\n".join([f"{ZWSP3}{adventure.name} ({guild.get_role(adventure.role_id).mention})" for adventure in player.adventures if player.id in adventure.dms]) if len(player.adventures)>0 else None
 
         if dm_str is not None:
             self.add_field(name=f"DM'ing Adventures",
@@ -22,7 +22,7 @@ class AdventuresEmbed(Embed):
 
 
         for character in player.characters:
-            adventure_str = "\n".join([f"{ZWSP3}{adventure.name} ({guild.get_role(adventure.role_id).mention})" for adventure in adventures if character.id in adventure.characters]) if len(adventures)>0 else "None"
+            adventure_str = "\n".join([f"{ZWSP3}{adventure.name} ({guild.get_role(adventure.role_id).mention})" for adventure in player.adventures if character.id in adventure.characters]) if len(player.adventures)>0 else "None"
             class_str = ",".join([f" {c.get_formatted_class()}" for c in character.classes])
             self.add_field(name=f"{character.name} - Level {character.level} [{class_str}]",
                            value=adventure_str or "None",

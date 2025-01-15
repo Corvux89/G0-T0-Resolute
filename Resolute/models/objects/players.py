@@ -1,6 +1,7 @@
 import json
 import logging
 
+import aiopg.sa
 import discord
 import sqlalchemy as sa
 from marshmallow import Schema, fields, post_load
@@ -8,20 +9,23 @@ from sqlalchemy import BigInteger, Column, Integer, String, and_, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.sql import FromClause
 
-from Resolute.bot import G0T0Bot
+from Resolute.compendium import Compendium
 from Resolute.helpers.general_helpers import get_webhook
 from Resolute.models import metadata
 from Resolute.models.categories.categories import LevelTier
+from Resolute.models.objects.adventures import Adventure, AdventureSchema, get_adventures_by_dm_query, get_character_adventures_query
+from Resolute.models.objects.arenas import Arena, ArenaSchema, get_arena_by_host_query, get_character_arena_query
 from Resolute.models.objects.characters import CharacterSchema, PlayerCharacter, PlayerCharacterClassSchema, RenownSchema, get_active_player_characters, get_all_player_characters, get_character_class, get_character_renown
-from Resolute.models.objects.guilds import GuildSchema, PlayerGuild, get_guild_from_id
+from Resolute.models.objects.guilds import PlayerGuild
 from Resolute.models.objects.logs import get_log_count_by_player_and_activity
 from Resolute.models.objects.ref_objects import NPC
 
 log = logging.getLogger(__name__)
 
-
 class Player(object):
     def __init__(self, id: int, guild_id: int, **kwargs):
+        self._db: aiopg.sa.Engine
+
         self.id = id
         self.guild_id = guild_id
         self.handicap_amount: int = kwargs.get('handicap_amount', 0)
@@ -39,6 +43,9 @@ class Player(object):
         self.completed_arenas: int = None
         self.needed_rps: int = None
         self.needed_arenas: int = None
+        self.guild: PlayerGuild = None
+        self.arenas: list[Arena] = []
+        self.adventures: list[Adventure] = []
 
     @property
     def highest_level_character(self) -> PlayerCharacter:
@@ -46,10 +53,10 @@ class Player(object):
             return max(self.characters, key=lambda char: char.level)
         return None
     
-    def has_character_in_tier(self, bot: G0T0Bot, tier: int) -> bool:
+    def has_character_in_tier(self, compendium: Compendium, tier: int) -> bool:
         if hasattr(self, "characters") and self.characters:
             for character in self.characters:
-                level_tier: LevelTier = bot.compendium.get_object(LevelTier, character.level)
+                level_tier: LevelTier = compendium.get_object(LevelTier, character.level)
                 if level_tier.tier == tier:
                     return True
         return False
@@ -64,18 +71,18 @@ class Player(object):
             if char.primary_character:
                 return char
             
-    async def get_webhook_character(self, bot: G0T0Bot, channel: discord.TextChannel | discord.Thread | discord.ForumChannel) -> PlayerCharacter:
+    async def get_webhook_character(self, channel: discord.TextChannel | discord.Thread | discord.ForumChannel) -> PlayerCharacter:
         if character := self.get_channel_character(channel):
             return character
         elif character := self.get_primary_character():
             character.channels.append(channel.id)
-            await character.upsert(bot)
+            await character.upsert()
             return character
         
         character = self.characters[0]
         character.primary_character = True
         character.channels.append(channel.id)
-        await character.upsert(bot)
+        await character.upsert()
         return character
 
 
@@ -93,7 +100,7 @@ class Player(object):
                             content=content)
 
     
-    async def update_command_count(self, bot: G0T0Bot, command: str):
+    async def update_command_count(self, command: str):
         stats = json.loads(self.statistics if self.statistics else "{}")
         if "commands" not in stats:
             stats["commands"] = {}
@@ -105,10 +112,10 @@ class Player(object):
 
         self.statistics = json.dumps(stats)
 
-        async with bot.db.acquire() as conn:
+        async with self._db.acquire() as conn:
             await conn.execute(upsert_player_query(self))
     
-    async def update_post_stats(self, bot: G0T0Bot, character: PlayerCharacter | NPC, post: discord.Message, **kwargs):
+    async def update_post_stats(self, character: PlayerCharacter | NPC, post: discord.Message, **kwargs):
         content = kwargs.get('content', post.content)
         retract = kwargs.get('retract', False)
 
@@ -156,48 +163,28 @@ class Player(object):
 
         self.statistics = json.dumps(stats)
 
-        async with bot.db.acquire() as conn:
+        async with self._db.acquire() as conn:
             await conn.execute(upsert_player_query(self))
 
-    async def remove_arena_board_post(self, bot: G0T0Bot, ctx: discord.ApplicationContext | discord.Interaction):
+    async def remove_arena_board_post(self, ctx: discord.ApplicationContext | discord.Interaction):
         def predicate(message: discord.Message):
             if message.author.bot:
                 return message.embeds[0].footer.text == f"{self.id}"
             
             return message.author == self.member
-        
-        g = await self.get_guild(bot)
 
-        if g.arena_board_channel:
-            if not g.arena_board_channel.permissions_for(ctx.guild.me).manage_messages:
-                return log.warning(f"Bot does not have permission to manage arena board messages in {g.guild.name} [{g.id}]")
+        if self.guild.arena_board_channel:
+            if not self.guild.arena_board_channel.permissions_for(ctx.guild.me).manage_messages:
+                return log.warning(f"Bot does not have permission to manage arena board messages in {self.guild.guild.name} [{self.guild.guild.id}]")
             
             try:
-                deleted_message = await g.arena_board_channel.purge(check=predicate)
-                log.info(f"{len(deleted_message)} message{'s' if len(deleted_message)>1 else ''} by {ctx.guild.get_member(self.id).name} deleted from #{g.arena_board_channel.name}")
+                deleted_message = await self.guild.arena_board_channel.purge(check=predicate)
+                log.info(f"{len(deleted_message)} message{'s' if len(deleted_message)>1 else ''} by {self.member.name} deleted from #{self.guild.arena_board_channel.name}")
             except Exception as error:
                 if isinstance(error, discord.errors.HTTPException):
-                    await ctx.send(f'Warning: deleting users\'s post(s) from {g.arena_board_channel.mention} failed')
+                    await ctx.send(f'Warning: deleting users\'s post(s) from {self.guild.arena_board_channel.mention} failed')
                 else:
                     log.error(error)
-
-    async def get_guild(self, bot: G0T0Bot) -> PlayerGuild:
-        if len(bot.player_guilds) > 0 and (guild := bot.player_guilds.get(str(self.guild_id))):
-            return guild
-        
-        async with bot.db.acquire() as conn:
-            async with conn.begin():
-                results = await conn.execute(get_guild_from_id(self.guild_id))
-                guild_row = await results.first()
-
-                if guild_row is None:
-                    guild = PlayerGuild(id=self.guild_id)
-                    guild: PlayerGuild = await guild.upsert(bot)
-                else:
-                    guild = await GuildSchema(bot, self.guild_id).load(guild_row)
-
-        bot.player_guilds[str(guild.id)] = guild
-        return guild
     
 player_table = sa.Table(
     "players",
@@ -214,7 +201,7 @@ player_table = sa.Table(
 )
 
 class PlayerSchema(Schema):
-    bot: G0T0Bot
+    bot = None
     inactive: bool
     id = fields.Integer(required=True)
     guild_id = fields.Integer(required=True)
@@ -226,7 +213,7 @@ class PlayerSchema(Schema):
     activity_level = fields.Integer()
     statistics = fields.String(default="{}")
 
-    def __init__(self, bot: G0T0Bot, inactive: bool, **kwargs):
+    def __init__(self, bot, inactive: bool, **kwargs):
         super().__init__(**kwargs)
         self.bot = bot
         self.inactive = inactive
@@ -236,7 +223,10 @@ class PlayerSchema(Schema):
         player = Player(**data)
         await self.get_characters(player)
         await self.get_player_quests(player)
+        await self.get_adventures(player)
         player.member = self.bot.get_guild(player.guild_id).get_member(player.id)
+        player.guild = await self.bot.get_player_guild(player.guild_id)
+        player._db = self.bot.db
         return player
     
     async def get_characters(self, player: Player):
@@ -247,7 +237,7 @@ class PlayerSchema(Schema):
                 results = await conn.execute(get_active_player_characters(player.id, player.guild_id))
             rows = await results.fetchall()
 
-        character_list: list[PlayerCharacter] = [CharacterSchema(self.bot.compendium).load(row) for row in rows]
+        character_list: list[PlayerCharacter] = [await CharacterSchema(self.bot.db, self.bot.compendium).load(row) for row in rows]
 
         for character in character_list:
             async with self.bot.db.acquire() as conn:
@@ -257,8 +247,8 @@ class PlayerSchema(Schema):
                 renown_results = await conn.execute(get_character_renown(character.id))
                 renown_rows = await renown_results.fetchall()
 
-            character.classes = [PlayerCharacterClassSchema(self.bot.compendium).load(row) for row in class_rows]
-            character.renown = [RenownSchema(self.bot.compendium).load(row) for row in renown_rows]
+            character.classes = [PlayerCharacterClassSchema(self.bot.db, self.bot.compendium).load(row) for row in class_rows]
+            character.renown = [RenownSchema(self.bot.db, self.bot.compendium).load(row) for row in renown_rows]
         
         player.characters = character_list
 
@@ -278,7 +268,35 @@ class PlayerSchema(Schema):
             player.completed_arenas = await areana_result.scalar() + await arena_host_result.scalar()
 
         player.needed_rps = 1 if player.highest_level_character.level == 1 else 2
-        player.needed_arenas = 1 if player.highest_level_character.level == 1 else 2         
+        player.needed_arenas = 1 if player.highest_level_character.level == 1 else 2
+
+    async def get_adventures(self, player: Player):
+        rows = []
+
+        async with self.bot.db.acquire() as conn:
+            dm_adventures = await conn.execute(get_adventures_by_dm_query(player.id))
+            rows = await dm_adventures.fetchall()
+
+        for character in player.characters:
+            async with self.bot.db.acquire() as conn:
+                player_adventures = await conn.execute(get_character_adventures_query(character.id))
+                rows.extend(await player_adventures.fetchall())
+
+        player.adventures.extend([await AdventureSchema(self.bot.db, self.bot.compendium).load(row) for row in rows])
+
+    async def get_arenas(self, player: Player):
+        rows =[]
+
+        async with self.bot.db.acquire() as conn:
+            host_arenas = await conn.execute(get_arena_by_host_query(player.id))
+            rows = await host_arenas.fetchall()
+
+        for character in player.characters:
+            async with self.bot.db.acquire() as conn:
+                player_arenas = await conn.execute(get_character_arena_query(character.id))
+                rows.extend(await player_arenas.fetchall())
+
+        player.arenas.extend(ArenaSchema(self.bot.db, self.bot.compendium).load(row) for row in rows)
         
     
 

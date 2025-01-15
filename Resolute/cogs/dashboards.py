@@ -8,8 +8,7 @@ from discord.ext import commands, tasks
 
 from Resolute.bot import G0T0Bot
 from Resolute.constants import DASHBOARD_REFRESH_INTERVAL, ZWSP3
-from Resolute.helpers import (delete_dashboard, get_dashboard_from_category,
-                              get_guild, get_pinned_post, update_dashboard)
+from Resolute.helpers.dashboards import delete_dashboard, get_dashboard_from_category, get_pinned_post, update_dashboard
 from Resolute.models.embeds.dashboards import RPDashboardEmbed
 from Resolute.models.objects.dashboards import (RefDashboard,
                                                 RefDashboardSchema,
@@ -55,7 +54,7 @@ class Dashboards(commands.Cog):
             if not post_message or not post_message.pinned:
                 return await delete_dashboard(self.bot, dashboard)
             
-            guild = await get_guild(self.bot, message.guild.id)
+            guild = await self.bot.get_player_guild(message.guild.id)
             
             if dashboard.dashboard_type.value.upper() == "RP":
                 embed = post_message.embeds[0]

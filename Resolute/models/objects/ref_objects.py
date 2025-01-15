@@ -1,4 +1,5 @@
 import sqlalchemy as sa
+import aiopg.sa
 from marshmallow import Schema, fields, post_load
 from sqlalchemy import BOOLEAN, BigInteger, Column, Integer, String, and_, null
 from sqlalchemy.dialects.postgresql import ARRAY, insert
@@ -113,13 +114,22 @@ def get_server_calendar(guild_id: int) -> FromClause:
 
 
 class NPC(object):
-    def __init__(self, guild_id: int, key: str, name: str, **kwargs):
+    def __init__(self, db: aiopg.sa.Engine, guild_id: int, key: str, name: str, **kwargs):
+        self._db = db
         self.guild_id: int = guild_id
         self.key: str = key
         self.name: str = name
         self.avatar_url: str = kwargs.get('avatar_url')
         self.roles: list[int] = kwargs.get('roles', [])
         self.adventure_id: int = kwargs.get('adventure_id')
+
+    async def delete(self):
+        async with self._db.acquire() as conn:
+            await conn.execute(delete_npc_query(self))
+
+    async def upsert(self):
+        async with self._db.acquire() as conn:
+            await conn.execute(upsert_npc_query(self))
 
 
 npc_table = sa.Table(
@@ -136,7 +146,8 @@ npc_table = sa.Table(
 
 
 class NPCSchema(Schema):
-    compendium: Compendium
+    db: aiopg.sa.Engine
+
     guild_id=fields.Integer(required=True)
     key=fields.String(required=True)
     name=fields.String(required=True)
@@ -144,12 +155,15 @@ class NPCSchema(Schema):
     roles=fields.List(fields.Integer, required=True)
     adventure_id=fields.Integer(required=False, allow_none=True)
 
-    def __init__(self, **kwargs):
+    def __init__(self, db: aiopg.sa.Engine, **kwargs):
         super().__init__(**kwargs)
+        self.db = db
+        
 
     @post_load
     def make_npc(self, data, **kwargs):
-        return NPC(**data)
+        npc = NPC(self.db, **data)
+        return npc
 
 
 def upsert_npc_query(npc: NPC):

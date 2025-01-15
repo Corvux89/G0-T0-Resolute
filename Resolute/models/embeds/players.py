@@ -6,7 +6,7 @@ from Resolute.models.objects.guilds import PlayerGuild
 from Resolute.models.objects.players import Player, RPPost
 
 class PlayerOverviewEmbed(Embed):
-    def __init__(self, player: Player, guild: PlayerGuild, compendium: Compendium):
+    def __init__(self, player: Player, compendium: Compendium):
         super().__init__(title=f"Information for {player.member.display_name}")
         self.set_thumbnail(url=player.member.display_avatar.url)
         self.color = player.member.color
@@ -14,14 +14,14 @@ class PlayerOverviewEmbed(Embed):
         self.description = (f"**Chain Codes**: {player.cc:,}")
 
         # Guild Handicap
-        if guild.handicap_cc > 0 and player.handicap_amount < guild.handicap_cc:
+        if player.guild.handicap_cc > 0 and player.handicap_amount < player.guild.handicap_cc:
             self.description += f"\n**Booster enabled. All CC Rewards Doubled**"
 
         activity_limit = max(compendium.activity_points[0].values(), key=lambda act: act.points)
         
         # Diversion Limits
         self.add_field(name="Weekly Limits: ",
-                       value=f"{ZWSP3}Diversion Chain Codes: {player.div_cc:,}/{guild.div_limit:,}\n"
+                       value=f"{ZWSP3}Diversion Chain Codes: {player.div_cc:,}/{player.guild.div_limit:,}\n"
                              f"{ZWSP3}Weekly Activity: {player.activity_points}/{activity_limit.points}, Level {player.activity_level}",
                        inline=False)
         

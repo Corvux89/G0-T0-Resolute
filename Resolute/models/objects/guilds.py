@@ -1,7 +1,9 @@
 import calendar
 from datetime import datetime, timedelta, timezone
 from math import floor
+from typing import TYPE_CHECKING
 
+import aiopg.sa
 import discord
 import sqlalchemy as sa
 from marshmallow import Schema, fields, post_load
@@ -10,17 +12,17 @@ from sqlalchemy import (BOOLEAN, TIMESTAMP, BigInteger, Column, Integer,
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.sql import FromClause
 
-from Resolute.bot import G0T0Bot
+from Resolute.compendium import Compendium
 from Resolute.models import metadata
-from Resolute.models.objects.ref_objects import NPC, NPCSchema, RefServerCalendar, RefServerCalendarSchema, get_guild_npcs_query, get_server_calendar
-
+from Resolute.models.objects.ref_objects import NPC, NPCSchema, RefServerCalendar, RefServerCalendarSchema, RefWeeklyStipend, RefWeeklyStipendSchema, get_guild_npcs_query, get_guild_weekly_stipends_query, get_server_calendar
+from Resolute.models.objects.characters import CharacterSchema, get_guild_characters_query
 
 class PlayerGuild(object):
-    calendar: list[RefServerCalendar]
 
-    def __init__(self, id: int, **kwargs):
-        self.id = id
+    def __init__(self, db: aiopg.sa.Engine, **kwargs):
+        self._db = db
 
+        self.id: int = kwargs.get('id')
         self.max_level: int = kwargs.get('max_level', 3)
         self.weeks: int = kwargs.get('weeks', 0)
         self._reset_day: int = kwargs.get('reset_day')
@@ -39,9 +41,10 @@ class PlayerGuild(object):
         self.reward_threshold: int = kwargs.get('reward_threshold')
 
         # Virtual attributes
-        self.calendar = None
-        self.guild: discord.Guild = None
+        self.calendar: list[RefServerCalendar] = None
+        self.guild: discord.Guild = kwargs.get('guild')
         self.npcs: list[NPC] = []
+        self.stipends: list[RefWeeklyStipend] = []
 
         # Roles
         self.entry_role: discord.Role = kwargs.get('entry_role')
@@ -68,6 +71,10 @@ class PlayerGuild(object):
         self.activity_points_channel: discord.TextChannel = kwargs.get('activity_points_channel')
         self.rp_post_channel: discord.TextChannel = kwargs.get('rp_post_channel')
         self.dev_channels: list[discord.TextChannel] = kwargs.get('dev_channels', [])
+
+
+        if not self.id and self.guild:
+            self.id = self.guild.id
 
 
     @property
@@ -139,32 +146,37 @@ class PlayerGuild(object):
             return False
         return channel in self.dev_channels
     
-    async def upsert(self, bot: G0T0Bot):
-        async with bot.db.acquire() as conn:
+    # Add event listener for this
+    async def upsert(self):
+        async with self._db.acquire() as conn:
             results = await conn.execute(upsert_guild(self))
             row = await results.first()
 
-        g = await GuildSchema(bot, self.id).load(row)
+        g = await GuildSchema(self._db, self.guild).load(row)
 
-        bot.player_guilds[str(self.id)] = g
         return g
-    
-    async def reload_cache(self, bot: G0T0Bot):
-        async with bot.db.acquire() as conn:
-            async with conn.begin():
-                results = await conn.execute(get_guild_from_id(self.id))
-                guild_row = await results.first()
 
-                if guild_row is None:
-                    guild = PlayerGuild(id=self.id)
-                    results = await conn.execute(upsert_guild(guild))
-                    guild_row = await results.first()
+    async def fetch(self):
+        async with self._db.acquire() as conn:
+            results = await conn.execute(get_guild_from_id(self.id))
+            guild_row = await results.first()
 
-                g: PlayerGuild = await GuildSchema(bot, self.id).load(guild_row)
+            if guild_row is None:
+                guild = PlayerGuild(self._db, id=self.id)
+                guild: PlayerGuild = await guild.upsert()
+            else: 
+                guild = await GuildSchema(self._db, guild=self.guild).load(guild_row)
 
-        bot.player_guilds[str(self.id)] = g
+        return guild
     
-    
+    async def get_all_characters(self, compendium: Compendium):
+        async with self._db.acquire() as conn:
+            results = await conn.execute(get_guild_characters_query(self.id))
+            rows = await results.fetchall()
+
+        character_list = [await CharacterSchema(self._db, compendium).load(row) for row in rows]
+
+        return character_list
 
 guilds_table = sa.Table(
     "guilds",
@@ -211,8 +223,9 @@ guilds_table = sa.Table(
 )
 
 class GuildSchema(Schema):
-    bot: G0T0Bot
-    guild: discord.Guild
+    _db: aiopg.sa.Engine
+    _guild: discord.Guild
+
     id = fields.Integer(required=True)
     max_level = fields.Integer()
     weeks = fields.Integer()
@@ -253,37 +266,38 @@ class GuildSchema(Schema):
     rp_post_channel = fields.Method(None, "load_channel", allow_none=True)
     dev_channels = fields.Method(None, "load_channels", allow_none=True)
 
-    def __init__(self, bot: G0T0Bot, guild_id: int, **kwargs):
+    def __init__(self, db: aiopg.sa.Engine, guild: discord.Guild, **kwargs):
         super().__init__(**kwargs)
-        self.bot = bot
-        self.guild = bot.get_guild(guild_id)
+        self._db = db
+        self._guild = guild
 
     @post_load
     async def make_guild(self, data, **kwargs):
-        guild = PlayerGuild(**data)
-        guild.guild = self.guild
+        guild = PlayerGuild(self._db, **data)
+        guild.guild = self._guild
         await self.load_calendar(guild)
         await self.load_npcs(guild)
+        await self.load_weekly_stipends(guild)
         return guild
 
     def load_timestamp(self, value):  # Marshmallow doesn't like loading DateTime for some reason. This is a workaround
         return datetime(value.year, value.month, value.day, value.hour, value.minute, value.second, tzinfo=timezone.utc)
     
     def load_role(self, value):
-        return self.guild.get_role(value)
+        return self._guild.get_role(value)
     
     def load_channel(self, value):
-        return self.guild.get_channel(value)
+        return self._guild.get_channel(value)
 
     def load_channels(self, value):
         channels = []
         for c in value:
-            channels.append(self.guild.get_channel(c))
+            channels.append(self._guild.get_channel(c))
 
         return channels
     
     async def load_calendar(self, guild: PlayerGuild):
-        async with self.bot.db.acquire() as conn:
+        async with self._db.acquire() as conn:
             results = await conn.execute(get_server_calendar(guild.id))
             rows = await results.fetchall()
 
@@ -291,11 +305,17 @@ class GuildSchema(Schema):
 
     
     async def load_npcs(self, guild: PlayerGuild):
-        async with self.bot.db.acquire() as conn:
+        async with self._db.acquire() as conn:
             results = await conn.execute(get_guild_npcs_query(guild.id))
             rows = await results.fetchall()
-        guild.npcs = [NPCSchema().load(row) for row in rows]
-            
+        guild.npcs = [NPCSchema(self._db).load(row) for row in rows]
+    
+    async def load_weekly_stipends(self, guild: PlayerGuild):
+        async with self._db.acquire() as conn:
+            results = await conn.execute(get_guild_weekly_stipends_query(guild.id))
+            rows = await results.fetchall()
+    
+        guild.stipends = [RefWeeklyStipendSchema().load(row) for row in rows]
     
 
 def get_guild_from_id(guild_id: int) -> FromClause:

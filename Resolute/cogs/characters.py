@@ -7,12 +7,10 @@ from discord.ext import commands
 
 from Resolute.bot import G0T0Bot
 from Resolute.constants import ACTIVITY_POINT_MINIMUM
-from Resolute.helpers import (get_cached_application, get_guild,
-                              get_level_up_application,
-                              get_new_character_application, get_player,
-                              update_activity_points)
+from Resolute.helpers.appliations import get_cached_application, get_level_up_application, get_new_character_application
 from Resolute.helpers.characters import handle_character_mention
 from Resolute.helpers.general_helpers import split_content
+from Resolute.helpers.logs import update_activity_points
 from Resolute.helpers.messages import get_player_from_say_message
 from Resolute.models.embeds.players import PlayerOverviewEmbed
 from Resolute.models.objects.exceptions import (ApplicationNotFound,
@@ -54,10 +52,8 @@ class Character(commands.Cog):
         if content == "" or content == ">say":
             return
         
-        player = await get_player(self.bot, ctx.author.id, ctx.guild.id)
-        g = await get_guild(self.bot, ctx.guild.id)
+        player = await self.bot.get_player(ctx.author.id, ctx.guild.id)
         character = None
-        mentioned_characters = []
 
         if not player.characters:
             raise CharacterNotFound(player.member)
@@ -69,7 +65,7 @@ class Character(commands.Cog):
                 content = re.sub(r"^(['\"“”])(.*?)['\"“”]\s*", "", content, count=1)
             
         if not character:
-            character = await player.get_webhook_character(self.bot, ctx.channel)
+            character = await player.get_webhook_character(ctx.channel)
 
         content = await handle_character_mention(ctx, content)        
 
@@ -77,11 +73,11 @@ class Character(commands.Cog):
         for chunk in chunks:
             await player.send_webhook_message(ctx, character, chunk)
 
-            if not g.is_dev_channel(ctx.channel):
-                await player.update_post_stats(self.bot, character, ctx.message, content=chunk)
+            if not player.guild.is_dev_channel(ctx.channel):
+                await player.update_post_stats(character, ctx.message, content=chunk)
 
                 if len(chunk) >= ACTIVITY_POINT_MINIMUM:
-                    await update_activity_points(self.bot, player, g)
+                    await update_activity_points(self.bot, player)
 
         # Message response ping
         if ctx.message.reference is not None:
@@ -101,11 +97,9 @@ class Character(commands.Cog):
     async def character_manage(self, ctx: ApplicationContext,
                                member: Option(discord.SlashCommandOptionType(6), description="Player", required=True)):
         
-        player = await get_player(self.bot, member.id, ctx.guild.id)
-        g = await get_guild(self.bot, ctx.guild.id)
-        
+        player = await self.bot.get_player(member.id, ctx.guild.id)
 
-        ui = CharacterManageUI.new(self.bot, ctx.author, player, g)
+        ui = CharacterManageUI.new(self.bot, ctx.author, player)
         await ui.send_to(ctx)
         await ctx.delete()
 
@@ -119,31 +113,30 @@ class Character(commands.Cog):
         await ctx.defer()
 
         member = member or ctx.author
-        player = await get_player(self.bot, member.id, ctx.guild.id if ctx.guild else None)
-        # g = await player.get_guild(self.bot)
-        g = await self.bot.get_player_guild(player.guild_id)
+        player = await self.bot.get_player(member.id, ctx.guild.id if ctx.guild else None,
+                                  ctx=ctx)
 
         if len(player.characters) == 0:
-            return await ctx.respond(embed=PlayerOverviewEmbed(player, g, self.bot.compendium))
+            return await ctx.respond(embed=PlayerOverviewEmbed(player, self.bot.compendium))
 
 
-        ui = CharacterGetUI.new(self.bot, ctx.author, player, g)
+        ui = CharacterGetUI.new(self.bot, ctx.author, player)
         await ui.send_to(ctx)
         await ctx.delete()
     
     @commands.slash_command(
             name="settings",
-            description="Character settings",
-            guild_only=True
+            description="Character settings"
     )
     async def character_settings(self, ctx: ApplicationContext):
-        player = await get_player(self.bot, ctx.author.id, ctx.guild.id if ctx.guild else None)
-        g = await get_guild(self.bot, player.guild_id)
+
+        player = await self.bot.get_player(ctx.author.id, ctx.guild.id if ctx.guild else None,
+                                           ctx=ctx)
 
         if not player.characters:
             raise CharacterNotFound(player.member)
         
-        ui = CharacterSettingsUI.new(self.bot, ctx.author, player, g)
+        ui = CharacterSettingsUI.new(self.bot, ctx.author, player)
         await ui.send_to(ctx)
         await ctx.delete()
 
@@ -152,8 +145,8 @@ class Character(commands.Cog):
             description="RP Board Request",
     )
     async def rp_request(self, ctx: ApplicationContext):
-        player = await get_player(self.bot, ctx.author.id, ctx.guild.id if ctx.guild else None)
-        g = await get_guild(self.bot, player.guild_id)
+        player = await self.bot.get_player(ctx.author.id, ctx.guild.id if ctx.guild else None,
+                                           ctx=ctx)
 
         if not player.characters:
             raise CharacterNotFound(player.member)
@@ -168,15 +161,15 @@ class Character(commands.Cog):
         description="Level Request"
     )
     async def character_level_request(self, ctx: ApplicationContext):
-        player = await get_player(self.bot, ctx.author.id, ctx.guild.id if ctx.guild else None)
-        g = await get_guild(self.bot, player.guild_id)
+        player = await self.bot.get_player(ctx.author.id, ctx.guild.id if ctx.guild else None,
+                                           ctx=ctx)
 
         if not player.characters:
             raise CharacterNotFound(player.member)
         elif len(player.characters) == 1:
-            if player.characters[0].level >= g.max_level:
+            if player.characters[0].level >= player.guild.max_level:
                 raise G0T0Error("Character is already at max level for the server")
-            modal = LevelUpRequestModal(g, player.characters[0])
+            modal = LevelUpRequestModal(player.guild, player.characters[0])
             return await ctx.send_modal(modal)
         else:
             ui = CharacterSelectUI.new(self.bot, ctx.author, player, True)
@@ -188,7 +181,8 @@ class Character(commands.Cog):
         description="New Character Request"
     )
     async def new_character_request(self, ctx: ApplicationContext):
-        player = await get_player(self.bot, ctx.author.id, ctx.guild.id if ctx.guild else None, False, ctx)
+        player = await self.bot.get_player(ctx.author.id, ctx.guild.id if ctx.guild else None,
+                                           ctx=ctx)
         application_text = await get_cached_application(self.bot.db, player.id)
         application = None
 
@@ -209,20 +203,20 @@ class Character(commands.Cog):
     )
     async def edit_application(self, ctx: ApplicationContext,
                                application_id: Option(str, description="Application ID", required=False)):
-        player = await get_player(self.bot, ctx.author.id, ctx.guild.id if ctx.guild else None)
-        guild = await get_guild(self.bot, player.guild_id)
+        player = await self.bot.get_player(ctx.author.id, ctx.guild.id if ctx.guild else None,
+                                           ctx=ctx)
         
-        if guild.application_channel:
+        if player.guild.application_channel:
             if application_id:
                 try:
-                    message = await guild.application_channel.fetch_message(int(application_id))
+                    message = await player.guild.application_channel.fetch_message(int(application_id))
                 except ValueError:
                     raise G0T0Error("Invalid application identifier")
                 except discord.errors.NotFound:
                     raise ApplicationNotFound()
             else:
                 try:
-                    message = await guild.application_channel.fetch_message(ctx.channel.id)
+                    message = await player.guild.application_channel.fetch_message(ctx.channel.id)
                 except:
                     raise ApplicationNotFound()
         
@@ -256,7 +250,7 @@ class Character(commands.Cog):
                 if not player.characters:
                     raise CharacterNotFound(player.member)
                 elif len(player.characters) == 1:
-                    modal = LevelUpRequestModal(guild, player.characters[0], application)
+                    modal = LevelUpRequestModal(player.guild, player.characters[0], application)
                     return await ctx.send_modal(modal)
                 else:
                     ui = CharacterSelectUI.new(self.bot, ctx.author, player, True, application, True)

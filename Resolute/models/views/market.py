@@ -4,7 +4,6 @@ import discord
 from discord.ui import InputText
 
 from Resolute.bot import G0T0Bot
-from Resolute.helpers import get_guild
 from Resolute.models.categories.categories import (LevelCost,
                                                    TransactionSubType,
                                                    TransactionType)
@@ -101,12 +100,11 @@ class TransactionPromptUI(MarketPrompt):
 
     @discord.ui.button(label="Submit", style=discord.ButtonStyle.green, row=3)
     async def submit_transaction(self, _: discord.ui.Button, interaction: discord.Interaction):
-        guild = await get_guild(self.bot, self.player.guild_id)
         if self.transaction.message:
             await self.transaction.message.edit(embed=TransactionEmbed(self.transaction))
             await self.transaction.message.clear_reactions()
-        elif guild.market_channel:
-            await guild.market_channel.send(embed=TransactionEmbed(self.transaction))           
+        elif self.player.guild.market_channel:
+            await self.player.guild.market_channel.send(embed=TransactionEmbed(self.transaction))           
             await interaction.response.send_message("Request Submitted!", ephemeral=True)
         else:
             await interaction.response.send_message("Issue submitting request", ephemeral=True)

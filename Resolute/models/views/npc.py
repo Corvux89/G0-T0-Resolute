@@ -3,8 +3,7 @@ from typing import Mapping
 import discord
 
 from Resolute.bot import G0T0Bot
-from Resolute.helpers import (delete_npc, get_adventure_from_category,
-                              get_guild, get_npc, is_admin, upsert_npc)
+from Resolute.helpers.general_helpers import is_admin
 from Resolute.models.embeds import ErrorEmbed
 from Resolute.models.embeds.npc import NPCEmbed
 from Resolute.models.objects.adventures import Adventure
@@ -42,9 +41,9 @@ class NPCSettings(InteractiveView):
 
     async def commit(self):
         if self.adventure:
-            self.adventure = await get_adventure_from_category(self.bot, self.adventure.category_channel_id)
+            self.adventure = await self.bot.get_adventure_from_category(self.adventure.category_channel_id)
         elif self.guild:
-              self.guild = await get_guild(self.bot, self.guild.id)
+              self.guild = await self.bot.get_player_guild(self.guild.id)
 
 
     
@@ -100,7 +99,7 @@ class NPCSettingsUI(NPCSettings):
     
     @discord.ui.select(placeholder="Select an NPC", row=1, custom_id="npc_select")
     async def npc_select(self, n: discord.ui.Select, interaction: discord.Interaction):
-        self.npc = await get_npc(self.bot, self.guild.id, n.values[0])
+        self.npc = next((i for i in self.guild.npcs if i.key == n.values[0]), None)
         await self.refresh_content(interaction)
 
     @discord.ui.role_select(placeholder="Select a role", custom_id="role_select", row=2)
@@ -129,8 +128,7 @@ class NPCSettingsUI(NPCSettings):
 
     @discord.ui.button(label="Delete NPC", style=discord.ButtonStyle.danger, row=3)
     async def delete_npc_button(self, _: discord.ui.Button, interaction: discord.Interaction):
-        await delete_npc(self.bot, self.npc)    
-        await self.guild.reload_cache(self.bot)
+        await self.npc.delete()
         self.npc = None
         await self.refresh_content(interaction)
 
@@ -138,16 +136,14 @@ class NPCSettingsUI(NPCSettings):
     async def add_npc_role(self, _: discord.ui.Button, interaction: discord.Interaction):
         if self.role.id not in self.npc.roles:
             self.npc.roles.append(self.role.id)
-            await upsert_npc(self.bot, self.npc)
-            await self.guild.reload_cache(self.bot)
+            await self.npc.upsert()
         await self.refresh_content(interaction)
 
     @discord.ui.button(label="Remove Role", style=discord.ButtonStyle.primary, row=4)
     async def remove_npc_role(self, _: discord.ui.Button, interaction: discord.Interaction):
         if self.role.id in self.npc.roles:
             self.npc.roles.remove(self.role.id)
-            await upsert_npc(self.bot, self.npc)
-            await self.guild.reload_cache(self.bot)
+            await self.npc.upsert()
         await self.refresh_content(interaction)
 
     @discord.ui.button(label="Back", style=discord.ButtonStyle.grey, row=4)
@@ -176,7 +172,7 @@ class NPCModal(discord.ui.Modal):
         name=self.children[1].value if not self.npc else self.children[0].value
         url=self.children[2].value if not self.npc else self.children[1].value
 
-        if not self.npc and (npc := await get_npc(self.bot, self.guild.id, key)): 
+        if not self.npc and (npc := next((n for n in self.guild.npcs if n.key == key), None)): 
             await interaction.response.send_message(embed=ErrorEmbed(f"An NPC already exists with that key"), 
                                                     ephemeral=True) 
             self.stop()
@@ -184,14 +180,15 @@ class NPCModal(discord.ui.Modal):
         elif self.npc:
              self.npc.key = key
              self.npc.name = name
-             self.npc.avatar_url = url
-             await upsert_npc(self.bot, self.npc)
+             self.npc.avatar_url = url             
         else:
-             self.npc = NPC(self.guild.id, key, name, 
+             self.npc = NPC(self.bot.db, 
+                            self.guild.id, key, name, 
                             avatar_url=url,
                             adventure_id=self.adventure.id if self.adventure else None)
-             await upsert_npc(self.bot, self.npc)
-             await self.guild.reload_cache(self.bot)
+
+        await self.npc.upsert()
+        self.bot.dispatch("refresh_guild_cache", self.guild)
                       
         await interaction.response.defer()
         self.stop()

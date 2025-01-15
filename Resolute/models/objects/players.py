@@ -43,7 +43,7 @@ class Player(object):
         self.completed_arenas: int = None
         self.needed_rps: int = None
         self.needed_arenas: int = None
-        self.guild: PlayerGuild = None
+        self.guild: PlayerGuild = kwargs.get('guild')
         self.arenas: list[Arena] = []
         self.adventures: list[Adventure] = []
 

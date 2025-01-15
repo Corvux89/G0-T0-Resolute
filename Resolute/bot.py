@@ -17,6 +17,7 @@ from Resolute.models.objects.characters import CharacterSchema, PlayerCharacter,
 from Resolute.models.objects.exceptions import G0T0Error
 from Resolute.models.objects.guilds import PlayerGuild
 from Resolute.models.objects.players import Player, PlayerSchema, get_player_query, upsert_player_query
+from Resolute.models.objects.store import Store, StoreSchema, get_store_items_query
 
 log = logging.getLogger(__name__)   
 
@@ -150,7 +151,7 @@ class G0T0Bot(commands.Bot):
                 player = Player(id=player_id, guild_id=guild_id)
                 results = await conn.execute(upsert_player_query(player))
                 row = await results.first()
-            elif lookup_only:
+            elif len(rows) == 0 and lookup_only:
                 return None
             elif len(rows) == 0 and not guild_id:
                 if ctx:
@@ -184,4 +185,12 @@ class G0T0Bot(commands.Bot):
 
         return player
 
+    async def get_store_items(self) -> list[Store]:
+        async with self.db.acquire() as conn:
+            results = await conn.execute(get_store_items_query())
+            rows = await results.fetchall()
+
+        store_items = [StoreSchema().load(row) for row in rows]
+
+        return store_items
 

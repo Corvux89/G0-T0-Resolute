@@ -141,6 +141,14 @@ class PlayerGuild(object):
             return None
         return max(month.day_end for month in self.calendar)
     
+    def get_internal_date(self, day: int, month: int, year: int) -> int:
+        if not self.calendar:
+            return None
+        
+        epoch_time = (year * self.days_in_server_year) + (self.calendar[month-1].day_start+day-1)
+
+        return epoch_time
+    
     def is_dev_channel(self, channel: discord.TextChannel):
         if not self.dev_channels:
             return False
@@ -315,7 +323,7 @@ class GuildSchema(Schema):
             results = await conn.execute(get_guild_weekly_stipends_query(guild.id))
             rows = await results.fetchall()
     
-        guild.stipends = [RefWeeklyStipendSchema().load(row) for row in rows]
+        guild.stipends = [RefWeeklyStipendSchema(self._db).load(row) for row in rows]
     
 
 def get_guild_from_id(guild_id: int) -> FromClause:

@@ -7,7 +7,6 @@ from discord.ui import InputText, Modal
 from Resolute.bot import G0T0Bot
 from Resolute.constants import DAYS_OF_WEEK
 from Resolute.helpers.general_helpers import get_positivity
-from Resolute.helpers.guilds import delete_weekly_stipend, get_guild_internal_date, update_weekly_stipend
 from Resolute.models.embeds import ErrorEmbed
 from Resolute.models.embeds.guilds import GuildEmbed, ResetEmbed
 from Resolute.models.objects.guilds import PlayerGuild
@@ -153,16 +152,14 @@ class _GuildStipendView(GuildSettings):
     @discord.ui.button(label="Add/Modify Stipend", style=discord.ButtonStyle.primary, row=2)
     async def guild_edit_stipend(self, _: discord.ui.Button, interaction: discord.Interaction):
         stipend: RefWeeklyStipend = next((s for s in self.guild.stipends if s.role_id == self.role.id),
-                                         RefWeeklyStipend(role_id=self.role.id, guild_id=self.guild.id))
+                                         RefWeeklyStipend(self.bot.db, role_id=self.role.id, guild_id=self.guild.id))
         
         modal = GuildStipendModal(stipend, self.role)
 
         response = await self.prompt_modal(interaction, modal)
 
         stipend = response.stipend
-
-        await update_weekly_stipend(self.bot.db, stipend)
-
+        await stipend.upsert()
         await self.refresh_content(interaction)
 
     @discord.ui.button(label="Remove Stipend", style=discord.ButtonStyle.red, row=2)
@@ -172,8 +169,8 @@ class _GuildStipendView(GuildSettings):
         if stipend is None:
             await interaction.channel.send(f"No stipend for `{self.role.name}`",delete_after=5)
         
-        else: 
-            await delete_weekly_stipend(self.bot.db, stipend)
+        else:
+            await stipend.delete() 
 
         await self.refresh_content(interaction)
 
@@ -300,7 +297,7 @@ class ServerDateModal(Modal):
 
         if self.children[0] and month and self.children[2]:
             try:
-                self.guild.server_date = get_guild_internal_date(self.guild, int(self.children[2].value), self.guild.calendar.index(month)+1, int(self.children[0].value))
+                self.guild.server_date = self.guild.get_internal_date(int(self.children[2].value), self.guild.calendar.index(month)+1, int(self.children[0].value))
             except:
                 await interaction.channel.send(embed=ErrorEmbed(f"Error setting server date"), delete_after=5)
     

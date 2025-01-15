@@ -14,6 +14,7 @@ from Resolute.helpers.general_helpers import process_message
 from Resolute.models.embeds import ErrorEmbed
 from Resolute.models.embeds.events import MemberLeaveEmbed
 from Resolute.models.objects.exceptions import G0T0CommandError, G0T0Error
+from Resolute.models.objects.guilds import PlayerGuild
 from Resolute.models.objects.players import Player
 
 log = logging.getLogger(__name__)
@@ -31,9 +32,9 @@ class Events(commands.Cog):
     @commands.Cog.listener()
     async def on_raw_member_remove(self, payload: discord.RawMemberRemoveEvent):
         # Reference Table Cleanup
-        await upsert_application(self.bot.db, payload.user.id)
+        await upsert_application(self.bot.db, int(payload.user.id))
 
-        if player := await self.bot.get_player(payload.user.id, payload.guild_id, 
+        if player := await self.bot.get_player(int(payload.user.id), payload.guild_id, 
                                                lookup_only=True):
             # Cleanup Arena Board
             def predicate(message):
@@ -50,16 +51,17 @@ class Events(commands.Cog):
                         
             if player.guild.exit_channel:
                 player.member = payload.user
-            else:
-                player: Player = Player(payload.user.id, payload.guild_id, member=payload.user)
+        else:
+            g: PlayerGuild = await self.bot.get_player_guild(payload.guild_id)
+            player: Player = Player(payload.user.id, payload.guild_id, member=payload.user, guild=g)
 
-            
-            try:
-                await player.guild.exit_channel.send(embed=MemberLeaveEmbed(player))
-            except Exception as error:
-                if isinstance(error, discord.errors.HTTPException):
-                    log.error(f"ON_MEMBER_REMOVE: Error sending message to exit channel in "
-                            f"{player.guild.guild.name} [ {player.guild.id} ] for {payload.user.display_name} [ {payload.user.id} ]")     
+        
+        try:
+            await player.guild.exit_channel.send(embed=MemberLeaveEmbed(player))
+        except Exception as error:
+            if isinstance(error, discord.errors.HTTPException):
+                log.error(f"ON_MEMBER_REMOVE: Error sending message to exit channel in "
+                        f"{player.guild.guild.name} [ {player.guild.id} ] for {payload.user.display_name} [ {payload.user.id} ]")     
 
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member):

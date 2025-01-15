@@ -5,17 +5,25 @@ from sqlalchemy import BOOLEAN, BigInteger, Column, Integer, String, and_, null
 from sqlalchemy.dialects.postgresql import ARRAY, insert
 from sqlalchemy.sql import FromClause, TableClause
 
-from Resolute.compendium import Compendium
 from Resolute.models import metadata
 
 
 class RefWeeklyStipend(object):
-    def __init__(self, guild_id: int, role_id: int, amount: int = 1, reason: str = None, leadership: bool = False):
+    def __init__(self, db: aiopg.sa.Engine, guild_id: int, role_id: int, amount: int = 1, reason: str = None, leadership: bool = False):
+        self._db = db
         self.guild_id = guild_id
         self.role_id = role_id
         self.amount = amount
         self.reason = reason
         self.leadership = leadership
+
+    async def upsert(self):
+        async with self._db.acquire() as conn:
+            await conn.execute(upsert_weekly_stipend(self))
+
+    async def delete(self):
+        async with self._db.acquire() as conn:
+            await conn.execute(delete_weekly_stipend_query(self))
 
 
 ref_weekly_stipend_table = sa.Table(
@@ -29,15 +37,22 @@ ref_weekly_stipend_table = sa.Table(
 )
 
 class RefWeeklyStipendSchema(Schema):
+    db: aiopg.sa.Engine
+
     role_id = fields.Integer(required=True)
     guild_id = fields.Integer(required=True)
     amount = fields.Integer(required=True)
     reason = fields.String(required=False, allow_none=True)
     leadership = fields.Boolean(required=True)
 
+    def __init__(self, db: aiopg.sa.Engine, **kwargs):
+        super().__init__(**kwargs)
+        self.db = db
+
     @post_load
     def make_stipend(self, data, **kwargs):
-        return RefWeeklyStipend(**data)
+        stipend = RefWeeklyStipend(self.db, **data)
+        return stipend
     
 def get_weekly_stipend_query(role_id: int) -> FromClause:
     return ref_weekly_stipend_table.select().where(

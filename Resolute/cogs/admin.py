@@ -11,7 +11,6 @@ from Resolute.constants import ADMIN_GUILDS
 from Resolute.helpers.dashboards import update_financial_dashboards
 from Resolute.helpers.financial import get_financial_data, update_financial_data
 from Resolute.helpers.general_helpers import is_admin, is_owner
-from Resolute.helpers.store import get_store_items
 from Resolute.models.objects.guilds import PlayerGuild
 from Resolute.models.views.admin import AdminMenuUI
 from Resolute.models.views.automation_request import AutomationRequestView
@@ -114,7 +113,7 @@ class Admin(commands.Cog):
     async def dev(self, ctx: ApplicationContext):
         now = datetime.datetime.now(datetime.timezone.utc)
         entitlements = await self.bot.fetch_entitlements()
-        store_items = await get_store_items(self.bot)    
+        store_items = await self.bot.get_store_items()    
         # entitlements = [e for e in entitlements if e.starts_at.year == now.year and e.starts_at.month == now.month]
 
         embed = Embed(title="Supporters")

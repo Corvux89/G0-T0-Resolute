@@ -14,7 +14,7 @@ from Resolute.bot import G0T0Bot
 from Resolute.constants import ACTIVITY_POINT_MINIMUM
 from Resolute.helpers.characters import handle_character_mention
 from Resolute.helpers.general_helpers import confirm, get_webhook, is_admin, split_content
-from Resolute.helpers.guilds import delete_weekly_stipend, get_guilds_with_reset
+from Resolute.helpers.guilds import get_guilds_with_reset
 from Resolute.helpers.logs import create_log, update_activity_points
 from Resolute.models.embeds.guilds import ResetEmbed
 from Resolute.models.objects.guilds import PlayerGuild
@@ -192,7 +192,7 @@ class Guilds(commands.Cog):
                                                     cc=stipend.amount))
                 
             else:
-                await delete_weekly_stipend(self.bot.db, stipend)
+                await stipend.delete()
 
         await asyncio.gather(*stipend_task)                 
 

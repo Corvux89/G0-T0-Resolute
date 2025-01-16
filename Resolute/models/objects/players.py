@@ -282,7 +282,7 @@ class PlayerSchema(Schema):
                 player_adventures = await conn.execute(get_character_adventures_query(character.id))
                 rows.extend(await player_adventures.fetchall())
 
-        player.adventures.extend([await AdventureSchema(self.bot.db, self.bot.compendium).load(row) for row in rows])
+        player.adventures.extend([await AdventureSchema(self.bot).load(row) for row in rows])
 
     async def get_arenas(self, player: Player):
         rows =[]
@@ -296,7 +296,7 @@ class PlayerSchema(Schema):
                 player_arenas = await conn.execute(get_character_arena_query(character.id))
                 rows.extend(await player_arenas.fetchall())
 
-        player.arenas.extend(ArenaSchema(self.bot.db, self.bot.compendium).load(row) for row in rows)
+        player.arenas.extend(ArenaSchema(self.bot).load(row) for row in rows)
         
     
 

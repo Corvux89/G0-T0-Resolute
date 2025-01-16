@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 
 import aiopg.sa
+import discord
 import sqlalchemy as sa
 from marshmallow import Schema, fields, post_load
 from sqlalchemy import (TIMESTAMP, BigInteger, Column, Integer, String, and_,
@@ -34,10 +35,15 @@ class Adventure(object):
 
         # Virtual attributes
         self.npcs: list[NPC] = []
+        self.category_channel: discord.CategoryChannel = None
+        self.role: discord.Role = None
 
     async def upsert(self):
         async with self._db.acquire() as conn:
             await conn.execute(upsert_adventure_query(self))
+
+    async def update_dm_permissions(member: discord.Member, category_permissions: dict, role: discord):
+        pass
 
 
 adventures_table = sa.Table(
@@ -57,8 +63,7 @@ adventures_table = sa.Table(
 )
 
 class AdventureSchema(Schema):
-    db: aiopg.sa.Engine
-    compendium: Compendium
+    bot = None
 
     id = fields.Integer(required=True)
     guild_id = fields.Integer(required=True)
@@ -72,16 +77,17 @@ class AdventureSchema(Schema):
     characters = fields.List(fields.Integer, required=False, allow_none=True, default=[])
     factions = fields.Method(None, "load_factions")
 
-    def __init__(self, db: aiopg.sa.Engine, compendium: Compendium, **kwargs):
+    def __init__(self, bot, **kwargs):
         super().__init__(**kwargs)
-        self.db = db
-        self.compendium = compendium
+        self.bot = bot
 
     @post_load
     async def make_adventure(self, data, **kwargs):
-        adventure = Adventure(self.db, **data)
+        adventure = Adventure(self.bot.db, **data)
         await self.get_characters(adventure)
         await self.get_npcs(adventure)
+        adventure.category_channel = self.bot.get_channel(adventure.category_channel_id)
+        adventure.role = self.bot.get_role(adventure.role_id)
         return adventure
 
     def load_timestamp(self, value):  # Marshmallow doesn't like loading DateTime for some reason. This is a workaround
@@ -95,22 +101,15 @@ class AdventureSchema(Schema):
     
     async def get_characters(self, adventure: Adventure):
         if adventure.characters:
-            for char_id in adventure.characters:
-                async with self.db.acquire() as conn:
-                    results = await conn.execute(get_character_from_id(char_id))
-                    row = await results.first()
-
-                character: PlayerCharacter = await CharacterSchema(self.db, self.compendium).load(row)
-
-                if character:
-                    adventure.player_characters.append(character)
+            for char_id in adventure.characters and (char := await self.bot.get_character(char_id)):
+                adventure.player_characters.append(char)
 
     async def get_npcs(self, adventure: Adventure):
-        async with self.db.acquire() as conn:
+        async with self.bot.db.acquire() as conn:
             results = await conn.execute(get_adventure_npcs_query(adventure.id))
             rows = await results.fetchall()
 
-        adventure.npcs = [NPCSchema(self.db).load(row) for row in rows]
+        adventure.npcs = [NPCSchema(self.bot.db).load(row) for row in rows]
 
     
 

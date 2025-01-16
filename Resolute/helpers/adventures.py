@@ -2,7 +2,6 @@ import discord
 from discord import Member, Role
 
 
-
 async def update_dm(member: Member, category_premissions: dict, role: Role, adventure_name: str,
                     remove: bool = False) -> dict:
     if remove:

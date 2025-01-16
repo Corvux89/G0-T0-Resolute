@@ -49,15 +49,7 @@ class Arena(object):
 
     async def upsert(self):
         async with self._db.acquire() as conn:
-            results = await conn.execute(upsert_arena_query(self))
-            row = await results.first()
-
-        if row is None:
-            return None
-        
-        arena = await ArenaSchema(self._db, self._compendium).load(row)
-
-        return arena
+            await conn.execute(upsert_arena_query(self))
     
     async def close(self):
         self.end_ts = datetime.now(timezone.utc)
@@ -85,8 +77,7 @@ arenas_table = sa.Table(
 )
 
 class ArenaSchema(Schema):
-    db: aiopg.sa.Engine
-    compendium: Compendium
+    bot = None
 
     id = fields.Integer(data_key="id", required=True)
     channel_id = fields.Integer(data_key="channel_id", required=True)
@@ -99,23 +90,22 @@ class ArenaSchema(Schema):
     end_ts = fields.Method(None, "load_timestamp", allow_none=True)
     characters = fields.List(fields.Integer, required=False, allow_none=True, default=[])
 
-    def __init__(self, db: aiopg.sa.Engine, compendium: Compendium, **kwargs):
+    def __init__(self, bot, **kwargs):
         super().__init__(**kwargs)
-        self.db = db
-        self.compendium = compendium
+        self.bot = bot
 
     @post_load
     async def make_arena(self, data, **kwargs):
-        arena = Arena(self.db, self.compendium, **data)
+        arena = Arena(self.bot.db, self.bot.compendium, **data)
         arena.channel = self.bot.get_channel(data.get('channel_id'))
         await self.get_characters(arena)
         return arena
 
     def load_tier(self, value):
-        return self.compendium.get_object(ArenaTier, value)
+        return self.bot.compendium.get_object(ArenaTier, value)
 
     def load_type(self, value):
-        return self.compendium.get_object(ArenaType, value)
+        return self.bot.compendium.get_object(ArenaType, value)
 
     def load_timestamp(self, value):  # Marshmallow doesn't like loading DateTime for some reason. This is a workaround
         return datetime(value.year, value.month, value.day, value.hour, value.minute, value.second, tzinfo=timezone.utc)

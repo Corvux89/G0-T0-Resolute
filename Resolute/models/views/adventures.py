@@ -201,11 +201,10 @@ class _AdventureMemberSelect(AdventureSettings):
             else:
                 self.adventure.dms.append(self.member.id)
 
-                adventure_category = interaction.guild.get_channel(self.adventure.category_channel_id)               
-                category_overwrites = await update_dm(self.member, adventure_category.overwrites, adventure_role, self.adventure.name)
-                await adventure_category.edit(overwrites=category_overwrites)
+                category_overwrites = await update_dm(self.member, self.adventure.category_channel.overwrites, adventure_role, self.adventure.name)
+                await self.adventure.category_channel.edit(overwrites=category_overwrites)
 
-                for channel in adventure_category.channels:
+                for channel in self.adventure.category_channel.channels:
                     channel_overwrites = await update_dm(self.member, channel.overwrites, adventure_role, self.adventure.name)
                     await channel.edit(overwrites=channel_overwrites)
         else:
@@ -238,11 +237,10 @@ class _AdventureMemberSelect(AdventureSettings):
             else:
                 self.adventure.dms.remove(self.member.id)
 
-                adventure_category = interaction.guild.get_channel(self.adventure.category_channel_id)
-                category_overwrites = await update_dm(self.member, adventure_category.overwrites, adventure_role, self.adventure.name, True)
-                await adventure_category.edit(overwrites=category_overwrites)
+                category_overwrites = await update_dm(self.member, self.adventure.category_channel.overwrites, adventure_role, self.adventure.name, True)
+                await self.adventure.category_channel.edit(overwrites=category_overwrites)
 
-                for channel in adventure_category.channels:
+                for channel in self.adventure.category_channel.channels:
                     channel_overwrites = await update_dm(self.member, channel.overwrites, adventure_role, self.adventure.name, True)
                     await channel.edit(overwrites=channel_overwrites)
                 await self.adventure.upsert()

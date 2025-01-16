@@ -110,7 +110,7 @@ class G0T0Bot(commands.Bot):
         if row is None:
             return None
         
-        adventure = await AdventureSchema(self.db, self.compendium).load(row)
+        adventure = await AdventureSchema(self).load(row)
 
         return adventure
         
@@ -122,7 +122,7 @@ class G0T0Bot(commands.Bot):
         if row is None:
             return None
 
-        adventure = await AdventureSchema(self.db, self.compendium).load(row)
+        adventure = await AdventureSchema(self).load(row)
 
         return adventure
     
@@ -134,7 +134,7 @@ class G0T0Bot(commands.Bot):
         if row is None:
             return None
         
-        arena: Arena = await ArenaSchema(self.db, self.compendium).load(row)
+        arena: Arena = await ArenaSchema(self).load(row)
 
         return arena
     

@@ -8,7 +8,7 @@ from Resolute.bot import G0T0Bot
 from Resolute.helpers.appliations import get_cached_application, upsert_application
 from Resolute.helpers.general_helpers import get_webhook
 from Resolute.models.embeds.applications import NewCharacterRequestEmbed
-from Resolute.models.objects.applications import (LevelUpApplication,
+from Resolute.models.objects.applications import (ApplicationType, LevelUpApplication,
                                                   NewCharacterApplication)
 from Resolute.models.objects.characters import PlayerCharacter
 from Resolute.models.objects.exceptions import G0T0Error
@@ -42,9 +42,9 @@ class CharacterSelectUI(CharacterSelect):
     
     @discord.ui.select(placeholder="Select an appliation type", custom_id="type_select", row=1)
     async def application_select(self, type: discord.ui.Select, interaction: discord.Interaction):
-        self.application.type = type.values[0]
+        self.application.type = ApplicationType[type.values[0]]
 
-        if self.application.type == "New Character":
+        if self.application.type == ApplicationType.new:
             self.remove_item(self.character_select)
         else:
             if not self.get_item("char_select"):
@@ -77,7 +77,7 @@ class CharacterSelectUI(CharacterSelect):
                 await self.prompt_modal(interaction, modal)
                 await self.on_timeout()
         else:
-            self.application = NewCharacterApplication(type=self.application.type, character=self.character if self.application.type in ["Reroll", "Free Reroll"] else None)
+            self.application = NewCharacterApplication(type=self.application.type, character=self.character if self.application.type in [ApplicationType.death, ApplicationType.freeroll] else None)
             await self.defer_to(NewCharacterRequestUI, interaction)
 
     @discord.ui.button(label="Exit", style=discord.ButtonStyle.danger, row=3)
@@ -86,13 +86,14 @@ class CharacterSelectUI(CharacterSelect):
 
     async def _before_send(self):
         char_list = []
-        type_list = [SelectOption(label="New Character", value="New Character", default=True if self.application.type == "New Character" else False)]
+        type_list = [SelectOption(label=f"{ApplicationType.new.value}", value=f"{ApplicationType.new.name}", default=True if self.application.type == ApplicationType.new else False)]
         if self.player.characters:
             for char in self.player.characters:
                     char_list.append(SelectOption(label=f"{char.name}", value=f"{self.player.characters.index(char)}", default=True if self.player.characters.index(char) == self.player.characters.index(self.character) else False))
-
-            type_list.append(SelectOption(label="Death Reroll", value="Reroll", default=True if self.application.type == "Reroll" else False))
-            type_list.append(SelectOption(label="Free Reroll", value="Free Reroll", default=True if self.application.type == "Free Reroll" else False))
+            
+            for type in ApplicationType:
+                if type != ApplicationType.new:
+                    type_list.append(SelectOption(label=f"{type.value}", value=f"{type.name}", default=True if self.application.type == type else False))
         else:
             char_list.append(SelectOption(label="Blank Character", value="0"))
             self.remove_item(self.application_select)
@@ -101,7 +102,7 @@ class CharacterSelectUI(CharacterSelect):
         if self.levelUp:
             if self.get_item("type_select"):
                 self.remove_item(self.application_select)
-        elif self.get_item("char_select") and self.application.type == "New Character":
+        elif self.get_item("char_select") and self.application.type == ApplicationType.new:
             self.remove_item(self.character_select)
 
         if await get_cached_application(self.bot.db, self.player.id) is None and self.editOnly == False:
@@ -117,7 +118,7 @@ class CharacterSelectUI(CharacterSelect):
     async def get_content(self) -> Mapping:
         if self.levelUp:
             str = "Select a character to level up:\n"
-        elif self.application.type == "New Character":
+        elif self.application.type == ApplicationType.new:
             str = "Select an application type:\n"
         else:
             str = "Select a character to reroll:\n"
@@ -217,7 +218,7 @@ class _MiscuUI(CharacterSelect):
        await upsert_application(self.bot.db, self.owner.id, self.application.format_app(self.owner))
 
     async def get_content(self) -> Mapping:
-        embed = Embed(title=f"{self.application.type} Application")
+        embed = Embed(title=f"{self.application.type.value} Application")
         embed.add_field(name="__Character Name__",
                         value=self.application.name,
                         inline=False)
@@ -274,7 +275,7 @@ class _CharacterInformationUI(CharacterSelect):
        await upsert_application(self.bot.db, self.owner.id, self.application.format_app(self.owner))
 
     async def get_content(self) -> Mapping:
-        embed = Embed(title=f"{self.application.type} Application")
+        embed = Embed(title=f"{self.application.type.value} Application")
         embed.add_field(name="__Class__",
                         value=self.application.char_class.output(),
                         inline=False)
@@ -308,7 +309,7 @@ class _BaseScoresUI(CharacterSelect):
        await upsert_application(self.bot.db, self.owner.id, self.application.format_app(self.owner))
 
     async def get_content(self) -> Mapping:
-        embed = Embed(title=f"{self.application.type} Application")
+        embed = Embed(title=f"{self.application.type.value} Application")
         embed.add_field(name="__Base Scores__",
                         value=self.application.base_scores.output(),
                         inline=False)

@@ -7,7 +7,7 @@ class MemberLeaveEmbed(Embed):
     def __init__(self, player: Player):
         super().__init__(title=f"{str(player.member)} ( {f'`{player.member.nick}`' if player.member.nick else 'No nickname'}) has left the server")
                 
-        dm_str = "\n".join([f"{ZWSP3}{adventure.name} ( {player.member.guild.get_role(adventure.role_id).mention} )" for adventure in player.adventures if player.id in adventure.dms]) if len(player.adventures)>0 else None
+        dm_str = "\n".join([f"{ZWSP3}{adventure.name} ( {adventure.role.mention} )" for adventure in player.adventures if player.id in adventure.dms]) if len(player.adventures)>0 else None
 
         if dm_str is not None:
             self.add_field(name=f"DM'ing Adventures",

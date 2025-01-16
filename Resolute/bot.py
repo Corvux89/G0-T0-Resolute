@@ -13,7 +13,7 @@ from Resolute.helpers.general_helpers import get_selection
 from Resolute.models import metadata
 from Resolute.models.objects.adventures import Adventure, AdventureSchema, get_adventure_by_category_channel_query, get_adventure_by_role_query
 from Resolute.models.objects.arenas import Arena, ArenaSchema, get_arena_by_channel_query
-from Resolute.models.objects.characters import CharacterSchema, PlayerCharacter, get_character_from_id
+from Resolute.models.objects.characters import CharacterSchema, PlayerCharacter, PlayerCharacterClass, get_character_from_id
 from Resolute.models.objects.exceptions import G0T0Error
 from Resolute.models.objects.guilds import PlayerGuild
 from Resolute.models.objects.players import Player, PlayerSchema, get_player_query, upsert_player_query
@@ -193,4 +193,35 @@ class G0T0Bot(commands.Bot):
         store_items = [StoreSchema().load(row) for row in rows]
 
         return store_items
+    
+    async def create_character(self, type: str, player: Player, new_character: PlayerCharacter, new_class: PlayerCharacterClass, **kwargs):
+        start = timer()
 
+        old_character: PlayerCharacter = kwargs.get('old_character')
+
+        new_character.player_id = player.id
+        new_character.guild_id = player.guild_id        
+
+        if type in ['freeroll', 'death']:
+            new_character.reroll = True
+            old_character.active = False
+
+            if type == 'freeroll':
+                new_character.freeroll_from = old_character.id
+            else:
+                player.handicap_amount = 0
+
+            await old_character.upsert()
+
+        new_character = await new_character.upsert()
+
+        new_class.character_id = new_character.id
+        new_class = await new_class.upsert()
+
+        new_character.classes.append(new_class)
+
+        end = timer()
+
+        log.info(f"Time to create character {new_character.id}: [ {end-start:.2f} ]s")
+
+        return new_character

@@ -87,7 +87,7 @@ class Adventures(commands.Cog):
         
         phrases = [p for p in [phrase, phrase2] if p]
 
-        return await ctx.respond(embed=AdventuresEmbed(ctx, player, phrases))
+        return await ctx.respond(embed=AdventuresEmbed(player, phrases))
 
 
     @adventure_commands.command(

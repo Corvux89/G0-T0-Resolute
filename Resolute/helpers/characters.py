@@ -6,13 +6,14 @@ import discord
 
 from Resolute.bot import G0T0Bot
 from Resolute.helpers.general_helpers import get_selection
+from Resolute.models.objects.applications import ApplicationType
 from Resolute.models.objects.characters import (PlayerCharacter,
                                                 PlayerCharacterClass)
 from Resolute.models.objects.players import Player
 
 log = logging.getLogger(__name__)
 
-async def create_new_character(bot: G0T0Bot, type: str, player: Player, new_character: PlayerCharacter, new_class: PlayerCharacterClass, **kwargs) -> PlayerCharacter:
+async def create_new_character(bot: G0T0Bot, type: ApplicationType, player: Player, new_character: PlayerCharacter, new_class: PlayerCharacterClass, **kwargs) -> PlayerCharacter:
     start = timer()
 
     old_character: PlayerCharacter = kwargs.get('old_character')
@@ -20,7 +21,7 @@ async def create_new_character(bot: G0T0Bot, type: str, player: Player, new_char
     new_character.player_id = player.id
     new_character.guild_id = player.guild_id        
 
-    if type in ['freeroll', 'death']:
+    if type.name in ['freeroll', 'death']:
         new_character.reroll = True
         old_character.active = False
 

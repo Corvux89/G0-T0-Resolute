@@ -121,42 +121,44 @@ class AdventureSettingsUI(AdventureSettings):
 
     @discord.ui.button(label="Close Adventure", style=discord.ButtonStyle.danger, row=2)
     async def adventure_close(self, _: discord.ui.Button, interaction: discord.Interaction):
-        if adventure_role := interaction.guild.get_role(self.adventure.role_id):
-            conf = await confirm(interaction, "Are you sure you want to end this adventure? (Reply with yes/no)", True, self.bot)
+        conf = await confirm(interaction, "Are you sure you want to end this adventure? (Reply with yes/no)", True, self.bot)
 
-            if conf is None:
-                raise TimeoutError()
-            elif not conf:
-                raise G0T0Error("Ok, cancelling")
-            else:
-                # Log Renown if applicable
-                if len(self.adventure.factions) > 0:
-                    renown = await confirm(interaction, "Is this being closed due to inactivity? (Reply with yes/no)", True, self.bot)
+        if conf is None:
+            raise TimeoutError()
+        elif not conf:
+            raise G0T0Error("Ok, cancelling")
+        else:
+            # Log Renown if applicable
+            if len(self.adventure.factions) > 0:
+                renown = await confirm(interaction, "Is this being closed due to inactivity? (Reply with yes/no)", True, self.bot)
 
-                    if renown is None:
-                        raise TimeoutError()
-                    elif not renown:
-                        amount = 1 if len(self.adventure.factions) > 1 else 2
+                if renown is None:
+                    raise TimeoutError()
+                elif not renown:
+                    amount = 1 if len(self.adventure.factions) > 1 else 2
 
-                        for char in self.adventure.player_characters:
-                            player = await self.bot.get_player(char.player_id, self.adventure.guild_id)
-                            for faction in self.adventure.factions:
-                                await create_log(self.bot, self.owner, "RENOWN", player,
-                                                            character=char,
-                                                            notes=f"Adventure Reward: {self.adventure.name}",
-                                                            renown=amount,
-                                                            faction=faction)
-                
-                # Close adventure and clean up role
-                self.adventure.end_ts = datetime.now(timezone.utc)
-                await adventure_role.delete(reason=f"Closing adventure")
-                await self.adventure.upsert()
+                    for char in self.adventure.player_characters:
+                        player = await self.bot.get_player(char.player_id, self.adventure.guild_id)
+                        for faction in self.adventure.factions:
+                            await create_log(self.bot, self.owner, "RENOWN", player,
+                                                        character=char,
+                                                        notes=f"Adventure Reward: {self.adventure.name}",
+                                                        renown=amount,
+                                                        faction=faction)
+            
+            # Close adventure and clean up role
+            self.adventure.end_ts = datetime.now(timezone.utc)
+            try:
+                await self.adventure.role.delete(reason=f"Closing adventure")
+            except:
+                pass
+            await self.adventure.upsert()
 
-                # NPC Cleanup
-                for npc in self.adventure.npcs:
-                    await npc.delete()
+            # NPC Cleanup
+            for npc in self.adventure.npcs:
+                await npc.delete()
 
-                await self.on_timeout()
+            await self.on_timeout()
         
 
     @discord.ui.button(label="Exit", style=discord.ButtonStyle.danger, row=3)
@@ -191,8 +193,6 @@ class _AdventureMemberSelect(AdventureSettings):
 
     @discord.ui.button(label="Add Player", row=3)
     async def add_member(self, _: discord.ui.Button, interaction: discord.Interaction):
-        adventure_role = interaction.guild.get_role(self.adventure.role_id)
-
         if self.dm_select:
             if self.member.id in self.adventure.dms:
                 await interaction.channel.send(embed=ErrorEmbed(f"{self.member.mention} is already a DM of this adventure"), delete_after=5)
@@ -201,11 +201,11 @@ class _AdventureMemberSelect(AdventureSettings):
             else:
                 self.adventure.dms.append(self.member.id)
 
-                category_overwrites = await update_dm(self.member, self.adventure.category_channel.overwrites, adventure_role, self.adventure.name)
+                category_overwrites = await update_dm(self.member, self.adventure.category_channel.overwrites, self.adventure.role, self.adventure.name)
                 await self.adventure.category_channel.edit(overwrites=category_overwrites)
 
                 for channel in self.adventure.category_channel.channels:
-                    channel_overwrites = await update_dm(self.member, channel.overwrites, adventure_role, self.adventure.name)
+                    channel_overwrites = await update_dm(self.member, channel.overwrites, self.adventure.role, self.adventure.name)
                     await channel.edit(overwrites=channel_overwrites)
         else:
             if self.adventure.characters and self.character.id in self.adventure.characters:
@@ -218,8 +218,8 @@ class _AdventureMemberSelect(AdventureSettings):
                 self.adventure.player_characters.append(self.character)
                 self.adventure.characters.append(self.character.id)
 
-                if adventure_role not in self.member.roles:
-                    await self.member.add_roles(adventure_role, reason=f"{self.character.name} added to {self.adventure.name} by {self.owner.name}")
+                if self.adventure.role not in self.member.roles:
+                    await self.member.add_roles(self.adventure.role, reason=f"{self.character.name} added to {self.adventure.name} by {self.owner.name}")
             
                 await interaction.channel.send(f"{self.character.name} ({self.member.mention}) added to {self.adventure.name}")
 
@@ -227,8 +227,6 @@ class _AdventureMemberSelect(AdventureSettings):
         
     @discord.ui.button(label="Remove Player", row=3)
     async def remove_member(self, _: discord.ui.Button, interaction: discord.Interaction):
-        adventure_role = interaction.guild.get_role(self.adventure.role_id)
-
         if self.dm_select:
             if self.member.id not in self.adventure.dms:
                 await interaction.channel.send(embed=ErrorEmbed(f"{self.member.mention} is not a DM of this adventure"), delete_after=5)
@@ -237,11 +235,11 @@ class _AdventureMemberSelect(AdventureSettings):
             else:
                 self.adventure.dms.remove(self.member.id)
 
-                category_overwrites = await update_dm(self.member, self.adventure.category_channel.overwrites, adventure_role, self.adventure.name, True)
+                category_overwrites = await update_dm(self.member, self.adventure.category_channel.overwrites, self.adventure.role, self.adventure.name, True)
                 await self.adventure.category_channel.edit(overwrites=category_overwrites)
 
                 for channel in self.adventure.category_channel.channels:
-                    channel_overwrites = await update_dm(self.member, channel.overwrites, adventure_role, self.adventure.name, True)
+                    channel_overwrites = await update_dm(self.member, channel.overwrites, self.adventure.role, self.adventure.name, True)
                     await channel.edit(overwrites=channel_overwrites)
                 await self.adventure.upsert()
         else:
@@ -249,8 +247,8 @@ class _AdventureMemberSelect(AdventureSettings):
                 self.adventure.player_characters.remove(character)
                 self.adventure.characters.remove(character.id)
 
-                if adventure_role in self.member.roles:
-                    await self.member.remove_roles(adventure_role, reason=f"Removed from {self.adventure.name} by {self.owner.name}")
+                if self.adventure.role in self.member.roles:
+                    await self.member.remove_roles(self.adventure.role, reason=f"Removed from {self.adventure.name} by {self.owner.name}")
             else:
                 await interaction.channel.send(embed=ErrorEmbed(f"{self.member.mention} is not part of this adventure"), delete_after=5)
                 

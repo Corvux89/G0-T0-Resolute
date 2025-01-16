@@ -23,6 +23,7 @@ from Resolute.models.embeds.characters import (CharacterEmbed,
                                                NewCharacterSetupEmbed)
 from Resolute.models.embeds.logs import LogEmbed
 from Resolute.models.embeds.players import PlayerOverviewEmbed, RPPostEmbed
+from Resolute.models.objects.applications import ApplicationType
 from Resolute.models.objects.characters import (CharacterRenown,
                                                 PlayerCharacterClass)
 from Resolute.models.objects.exceptions import G0T0Error
@@ -96,7 +97,7 @@ class CharacterManageUI(CharacterManage):
 
 # Character Manage - New Character 
 class _NewCharacter(CharacterManage):
-    new_type = None
+    new_type: ApplicationType = None
     new_character: PlayerCharacter = None
     new_class: PlayerCharacterClass = None
     transfer_renown: bool = False
@@ -106,7 +107,7 @@ class _NewCharacter(CharacterManage):
 
     @discord.ui.select(placeholder="Select new type", row=1)
     async def new_character_type(self, type: discord.ui.Select, interaction: discord.Interaction):
-        self.new_type = type.values[0]
+        self.new_type = ApplicationType[type.values[0]]
         await self.refresh_content(interaction)
 
     @discord.ui.button(label="Basic Information", style=discord.ButtonStyle.primary, row=3)
@@ -167,14 +168,12 @@ class _NewCharacter(CharacterManage):
             self.new_class = PlayerCharacterClass(self.bot.db, self.bot.compendium)
 
         new_character_type_options = []
-
-        if len(self.player.characters) == 0 or len(self.player.characters) < self.player.guild.max_characters:
-            self.new_type = 'new' if len(self.player.characters) == 0 else self.new_type
-            new_character_type_options.append(SelectOption(label="New Character", value="new", default= True if self.new_type == "new" else False))
-        
-        if len(self.player.characters) > 0:
-            new_character_type_options.append(SelectOption(label="Death Reroll", value="death", default=True if self.new_type == "death" else False))
-            new_character_type_options.append(SelectOption(label="Free Reroll", value="freeroll", default=True if self.new_type == "freeroll" else False))
+        for type in ApplicationType:
+            if type.value == 'new':
+                if len(self.player.characters) == 0 or len(self.player.characters) < self.player.guild.max_characters and type.value == 'new':
+                    new_character_type_options.append(SelectOption(label=f"{type.value}", value=f"{type.name}", default=True if self.new_type == type else False))
+            elif len(self.player.characters) > 0:
+                new_character_type_options.append(SelectOption(label=f"{type.value}", value=f"{type.name}", default=True if self.new_type == type else False))
 
 
         self.new_character_type.options = new_character_type_options
@@ -380,9 +379,9 @@ class NewCharacterInformationModal(Modal):
     active_character: PlayerCharacter
     new_cc: int
     new_credits: int
-    new_type: str
+    new_type: ApplicationType
 
-    def __init__(self, character, active_character, new_cc: int = 0, new_credits: int = 0, new_type: str = None):
+    def __init__(self, character, active_character, new_cc: int = 0, new_credits: int = 0, new_type: ApplicationType = None):
         super().__init__(title=f"{character.name if character.name else 'New Character'} Setup")
         self.character = character
         self.active_character = active_character

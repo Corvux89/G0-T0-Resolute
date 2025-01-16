@@ -42,9 +42,6 @@ class Adventure(object):
         async with self._db.acquire() as conn:
             await conn.execute(upsert_adventure_query(self))
 
-    async def update_dm_permissions(member: discord.Member, category_permissions: dict, role: discord):
-        pass
-
 
 adventures_table = sa.Table(
     "adventures",
@@ -87,7 +84,8 @@ class AdventureSchema(Schema):
         await self.get_characters(adventure)
         await self.get_npcs(adventure)
         adventure.category_channel = self.bot.get_channel(adventure.category_channel_id)
-        adventure.role = self.bot.get_role(adventure.role_id)
+        guild = self.bot.get_guild(adventure.guild_id)
+        adventure.role = guild.get_role(adventure.role_id)
         return adventure
 
     def load_timestamp(self, value):  # Marshmallow doesn't like loading DateTime for some reason. This is a workaround
@@ -101,8 +99,9 @@ class AdventureSchema(Schema):
     
     async def get_characters(self, adventure: Adventure):
         if adventure.characters:
-            for char_id in adventure.characters and (char := await self.bot.get_character(char_id)):
-                adventure.player_characters.append(char)
+            for char_id in adventure.characters:
+                if char := await self.bot.get_character(char_id):
+                    adventure.player_characters.append(char)
 
     async def get_npcs(self, adventure: Adventure):
         async with self.bot.db.acquire() as conn:

@@ -9,6 +9,11 @@ from Resolute.models import metadata
 from Resolute.models.objects.characters import PlayerCharacter
 from Resolute.models.objects.players import Player
 
+class ApplicationType(Enum):
+    new = "New Character"
+    death = "Death Reroll"
+    freeroll = "Free Reroll"
+
 
 class AppBaseScores(object):
     def __init__(self, **kwargs):
@@ -35,9 +40,9 @@ class AppBaseScores(object):
 
 class AppSpecies(object):
     def __init__(self, **kwargs):
-        self.species = kwargs.get('species')
-        self.asi = kwargs.get('asi')
-        self.feats = kwargs.get('feats')
+        self.species = kwargs.get('species', "")
+        self.asi = kwargs.get('asi', "")
+        self.feats = kwargs.get('feats', "")
 
     def get_field(self):
         if not hasattr(self, "species"):
@@ -106,7 +111,7 @@ class NewCharacterApplication(object):
         self.message: discord.Message = kwargs.get('message')
         self.character: PlayerCharacter = kwargs.get('character')
         self.name = kwargs.get('name',"")
-        self.type = kwargs.get('type', "New Character")
+        self.type: ApplicationType = kwargs.get('type', ApplicationType.new)
         self.base_scores: AppBaseScores = kwargs.get('base_scores', AppBaseScores())
         self.species: AppSpecies = kwargs.get('species', AppSpecies())
         self.char_class: AppClass = kwargs.get('char_class', AppClass())
@@ -129,9 +134,9 @@ class NewCharacterApplication(object):
     def format_app(self, owner: discord.Member, staff: discord.Role = None):
         hp_str = f"**HP:** {self.hp}\n\n" if self.hp != "" and self.hp != "None" and self.hp is not None else ""
         level_str=f"**Level:** {self.level}\n" if self.level != "" else "" 
-        reroll_str=f"**Reroll From:** {self.character.name} [{self.character.id}]\n" if self.type in ["Reroll", "Free Reroll"] else ""
+        reroll_str=f"**Reroll From:** {self.character.name} [{self.character.id}]\n" if self.type in [ApplicationType.death, ApplicationType.freeroll] else ""
         return (
-            f"**{self.type}** | {staff.mention if staff else 'Archivist'}\n"
+            f"**{self.type.value}** | {staff.mention if staff else 'Archivist'}\n"
             f"{reroll_str}"
             f"**Name:** {self.name}\n"
             f"**Player:** {owner.mention}\n\n"

@@ -6,8 +6,7 @@ import discord
 from Resolute.bot import G0T0Bot
 from Resolute.models.objects.applications import (AppBackground, AppBaseScores,
                                                   AppClass, ApplicationSchema,
-                                                  AppSpecies,
-                                                  LevelUpApplication,
+                                                  AppSpecies, ApplicationType, LevelUpApplication,
                                                   NewCharacterApplication,
                                                   delete_player_application,
                                                   get_player_application,
@@ -20,21 +19,6 @@ async def upsert_application(db: aiopg.sa.Engine, player_id: int, application: s
         if application:
             await conn.execute(insert_player_application(player_id, application))
 
-def get_application_type(application: str) -> str:
-    type_map = {
-        "Reroll": "New",
-        "Free Reroll": "New", 
-        "New Character": "New",
-        "Level Up": "Level"
-    }
-
-    type_match = re.search(r"^\*\*(.*?)\*\*\s\|", application, re.MULTILINE)
-
-    if type_match:
-        group = type_match.group(1).strip().replace('*', '')
-        return type_map.get(group, "Unknown")
-    
-    return "Unknown"
 
 async def get_cached_application(db: aiopg.sa.Engine, player_id: int) -> str:
     async with db.acquire() as conn:
@@ -87,7 +71,7 @@ async def get_new_character_application(bot: G0T0Bot, application_text: str = No
     application = NewCharacterApplication(
         message=message,
         name=get_match(r"\*\*Name:\*\* (.+?)\n\*\*Player", app_text),
-        type=type_match.group(1).strip().replace('*', '') if type_match else "New Character",
+        type=next((a for a in ApplicationType if a.value == type_match.group(1).strip().replace('*', '')), ApplicationType.new) if type_match else ApplicationType.new,
         base_scores=AppBaseScores(
             str=base_scores_match.group(1) if base_scores_match else "", 
             dex=base_scores_match.group(2) if base_scores_match else "",
@@ -115,7 +99,7 @@ async def get_new_character_application(bot: G0T0Bot, application_text: str = No
             equipment=equip_match.group(2) if equip_match else ""
         ),
         credits=get_match(r"Credits: (.+?)\n", app_text, 1, "0"),
-        homeworld=get_match(r"\*\*Homeworld:\*\* (.+?)\n", app_text),
+        homeworld=get_match(r"\*\*Homeworld:\*\* (.*?)(?=\n\*\*Motivation)", app_text),
         join_motivation=get_match(r"\*\*Motivation for joining the Wardens of the Sky:\*\* (.*?)(?=\n\n\*\*)", app_text),
         good_motivation=get_match(r"\*\*Motivation for doing good:\*\* (.*?)(?=\n\n\*\*)", app_text),
         link=get_match(r"\*\*Link:\*\* (.+)", app_text),

@@ -172,6 +172,7 @@ class _NewCharacter(CharacterManage):
             if type == ApplicationType.new:
                 if len(self.player.characters) == 0 or len(self.player.characters) < self.player.guild.max_characters:
                     new_character_type_options.append(SelectOption(label=f"{type.value}", value=f"{type.name}", default=True if self.new_type == type or len(self.player.characters) == 0 else False))
+                    self.new_type = ApplicationType.new
             elif len(self.player.characters) > 0:
                 new_character_type_options.append(SelectOption(label=f"{type.value}", value=f"{type.name}", default=True if self.new_type == type else False))
 

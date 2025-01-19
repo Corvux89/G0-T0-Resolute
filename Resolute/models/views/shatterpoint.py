@@ -130,7 +130,7 @@ class _ShatterpointManage(ShatterpointSettings):
         if not self.channel:
             await interaction.channel.send(embed=ErrorEmbed("Select a channel to scrape first"), delete_after=5)
         else:
-            guild: PlayerGuild = self.bot.get_player_guild(interaction.guild.id)
+            guild: PlayerGuild = await self.bot.get_player_guild(interaction.guild.id)
             messages = await self.channel.history(oldest_first=True, limit=600).flatten()
             characters = await guild.get_all_characters(self.bot.compendium)
 

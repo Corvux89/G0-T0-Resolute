@@ -25,6 +25,8 @@ from Resolute.models.views.character_view import (CharacterGetUI,
 
 log = logging.getLogger(__name__)
 
+# TODO: Add Character Birthday for server date
+
 
 def setup(bot: commands.Bot):
     bot.add_cog(Character(bot))
@@ -46,10 +48,10 @@ class Character(commands.Cog):
 
         content = ctx.message.content
 
-        content = content.replace(f">say ", "")
+        content = content[4:]
         await ctx.message.delete()
 
-        if content == "" or content == ">say":
+        if content == "" or content.lower() == ">say":
             return
         
         player = await self.bot.get_player(ctx.author.id, ctx.guild.id)

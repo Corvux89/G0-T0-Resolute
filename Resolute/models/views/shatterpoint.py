@@ -7,7 +7,6 @@ from Resolute.bot import G0T0Bot
 from Resolute.helpers.general_helpers import confirm
 from Resolute.helpers.logs import create_log
 from Resolute.helpers.messages import get_char_name_from_message
-from Resolute.helpers.shatterpoint import delete_players, delete_renown, delete_shatterpoint, get_shatterpoint, upsert_shatterpoint, upsert_shatterpoint_player, upsert_shatterpoint_renown
 from Resolute.models.categories.categories import CodeConversion, Faction
 from Resolute.models.embeds import ErrorEmbed
 from Resolute.models.embeds.shatterpoint import (ShatterpointEmbed,
@@ -19,6 +18,9 @@ from Resolute.models.objects.shatterpoint import (Shatterpoint,
                                                   ShatterpointPlayer, ShatterpointRenown)
 from Resolute.models.views.base import InteractiveView
 
+# TODO: Mass Adjust
+# TODO: Optimize/pagify scrape and ignore deleted messages
+
 
 class ShatterpointSettings(InteractiveView):
     __menu_copy_attrs__ = ("bot", "shatterpoint")
@@ -26,7 +28,8 @@ class ShatterpointSettings(InteractiveView):
     shatterpoint: Shatterpoint
 
     async def commit(self):
-        self.shatterpoint = await upsert_shatterpoint(self.bot, self.shatterpoint)
+        await self.shatterpoint.upsert()
+        self.shatterpoint = await self.bot.get_shatterpoint(self.shatterpoint.guild_id)
 
     async def get_content(self) -> Mapping:
         return {"embed": ShatterpointEmbed(self.bot, self.shatterpoint)}
@@ -36,7 +39,7 @@ class ShatterpointSettingsUI(ShatterpointSettings):
     def new(cls, bot: G0T0Bot, owner: discord.Member, shatterpoint: Shatterpoint = None):
         inst = cls(owner=owner)
         inst.bot = bot
-        inst.shatterpoint = shatterpoint or Shatterpoint(guild_id=owner.guild.id)
+        inst.shatterpoint = shatterpoint or Shatterpoint(bot.db, guild_id=owner.guild.id)
 
         return inst
 
@@ -48,7 +51,7 @@ class ShatterpointSettingsUI(ShatterpointSettings):
         for player in self.shatterpoint.players:
             if player.active and player.update:
                 player.cc = self.shatterpoint.base_cc
-                await upsert_shatterpoint_player(self.bot, player)
+                await player.upsert()
 
         await self.refresh_content(interaction) 
 
@@ -88,10 +91,8 @@ class ShatterpointSettingsUI(ShatterpointSettings):
                                          notes=f"Global Reward: {self.shatterpoint.name}",
                                          faction=renown.faction,
                                          renown=renown.renown)
-
-            await delete_shatterpoint(self.bot, interaction.guild.id)
-            await delete_players(self.bot, interaction.guild.id)
-            await delete_renown(self.bot, interaction.guild.id)
+                        
+            await self.shatterpoint.delete()
             await interaction.channel.send(embed=ShatterpointLogEmbed(self.shatterpoint))
             await self.on_timeout()
 
@@ -104,8 +105,8 @@ class ShatterpointSettingsUI(ShatterpointSettings):
         elif not conf:
             await interaction.channel.send(embed=ErrorEmbed("Ok, cancelling"), delete_after=5)
         else:
-            self.shatterpoint = Shatterpoint(guild_id=interaction.guild.id)
-            await delete_players(self.bot, interaction.guild.id)
+            await self.shatterpoint.delete()
+            self.shatterpoint = Shatterpoint(self.bot.db, guild_id=interaction.guild.id)
         
         await self.refresh_content(interaction)
 
@@ -138,12 +139,12 @@ class _ShatterpointManage(ShatterpointSettings):
                 player: ShatterpointPlayer = None
                 if not message.author.bot:
                     player = next((p for p in self.shatterpoint.players if p.player_id == message.author.id), 
-                                  ShatterpointPlayer(guild_id=self.shatterpoint.guild_id,
+                                  ShatterpointPlayer(self.bot.db, guild_id=self.shatterpoint.guild_id,
                                                      player_id=message.author.id,
                                                      cc=self.shatterpoint.base_cc))
                 elif (char_name := get_char_name_from_message(message)) and (character := next((c for c in characters if c.name.lower() == char_name.lower()), None)):
                     player = next((p for p in self.shatterpoint.players if p.player_id == character.player_id), 
-                                  ShatterpointPlayer(guild_id=self.shatterpoint.guild_id,
+                                  ShatterpointPlayer(self.bot.db, guild_id=self.shatterpoint.guild_id,
                                                      player_id=character.player_id,
                                                      cc=self.shatterpoint.base_cc))
                     if character.id not in player.characters:
@@ -155,9 +156,10 @@ class _ShatterpointManage(ShatterpointSettings):
                     if message.channel.id not in player.channels:
                         player.channels.append(message.channel.id)
                     
-                    player = await upsert_shatterpoint_player(self.bot, player)
+                    await player.upsert()
 
-                    self.shatterpoint = await get_shatterpoint(self.bot, self.shatterpoint.guild_id)
+                    if player.player_id not in [p.player_id for p in self.shatterpoint.players]:
+                        self.shatterpoint.players.append(player)
             
             if message.channel.id not in self.shatterpoint.channels:
                 self.shatterpoint.channels.append(message.channel.id)
@@ -206,7 +208,7 @@ class _ShatterpointPlayerManage(ShatterpointSettings):
     @discord.ui.user_select(placeholder="Select a player", row=1)
     async def player_select(self, m: discord.ui.Select, interaction: discord.Interaction):
         member = m.values[0]
-        player = next((x for x in self.shatterpoint.players if x.player_id == member.id), ShatterpointPlayer(guild_id=self.shatterpoint.guild_id, 
+        player = next((x for x in self.shatterpoint.players if x.player_id == member.id), ShatterpointPlayer(self.bot.db, guild_id=self.shatterpoint.guild_id, 
                                                                                                              player_id=member.id, 
                                                                                                              cc=self.shatterpoint.base_cc))
         self.player = player
@@ -233,7 +235,7 @@ class _ShatterpointPlayerManage(ShatterpointSettings):
 
         self.player.active = True
         
-        self.player = await upsert_shatterpoint_player(self.bot, self.player)
+        await self.player.upsert()
 
         await self.refresh_content(interaction)
 
@@ -243,22 +245,21 @@ class _ShatterpointPlayerManage(ShatterpointSettings):
             return await interaction.channel.send(embed=ErrorEmbed("Player already isn't in the global"), delete_after=5)
         else:
             self.player.active = False
-
-            self.player = await upsert_shatterpoint_player(self.bot, self.player)
+            await self.player.upsert()
         await self.refresh_content(interaction)
 
     @discord.ui.button(label="Add Character", style=discord.ButtonStyle.primary, row=4)
     async def character_add(self, _: discord.ui.Button, interaction: discord.Interaction):
         if self.character.id not in self.player.characters:
             self.player.characters.append(self.character.id)
-            self.player = await upsert_shatterpoint_player(self.bot, self.player)
+            await self.player.upsert()
         await self.refresh_content(interaction)
 
     @discord.ui.button(label="Remove Character", style=discord.ButtonStyle.red, row=4)
     async def character_remove(self, _: discord.ui.Button, interaction: discord.Interaction):
         if self.character.id in self.player.characters:
             self.player.characters.remove(self.character.id)
-            self.player = await upsert_shatterpoint_player(self.bot, self.player)
+            await self.player.upsert()
         await self.refresh_content(interaction)
 
     @discord.ui.button(label="Back", style=discord.ButtonStyle.grey, row=4)
@@ -285,14 +286,14 @@ class _ShatterpointRenownManage(ShatterpointSettings):
     @discord.ui.button(label="Add/Remove Renown", style=discord.ButtonStyle.primary, row=2)
     async def modify_renown(self, _: discord.ui.Button, interaction: discord.Interaction):
         renown = next((r for r in self.shatterpoint.renown if r.faction.id == self.faction.id), 
-                      ShatterpointRenown(guild_id=self.shatterpoint.guild_id,
+                      ShatterpointRenown(self.bot.db, 
+                                         guild_id=self.shatterpoint.guild_id,
                                          faction=self.faction))
         
         modal = ShatterpointRenownModal(renown)
 
-        response = await self.prompt_modal(interaction, modal)
-
-        await upsert_shatterpoint_renown(self.bot, renown)
+        await self.prompt_modal(interaction, modal)
+        await renown.upsert()
         
         await self.refresh_content(interaction)
         

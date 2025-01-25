@@ -108,49 +108,7 @@ class Admin(commands.Cog):
 
             self.bot.load_extension(f'Resolute.cogs.{cog}')
             await ctx.respond(f'Cog {cog} reloaded')
-
-    @commands.command(name="dev")
-    async def dev(self, ctx: ApplicationContext):
-        now = datetime.datetime.now(datetime.timezone.utc)
-        entitlements = await self.bot.fetch_entitlements()
-        store_items = await self.bot.get_store_items()    
-        # entitlements = [e for e in entitlements if e.starts_at.year == now.year and e.starts_at.month == now.month]
-
-        embed = Embed(title="Supporters")
-
-        users = {}
-
-        for e in entitlements:
-            if store := next((s for s in store_items if s.sku == e.sku_id), None):
-                if e.user_id not in users:
-                    users[e.user_id] = {e.sku_id: 1}
-                else:
-                    if e.sku_id not in users[e.user_id]:
-                        users[e.user_id][e.sku_id] = 1
-                    else:
-                        users[e.user_id][e.sku_id] += 1
-
-        
-        for user_id in users:
-            user = ctx.guild.get_member(user_id)
-            user_str = ""
-            total = 0
-
-            for sku, count in users[user_id].items():
-                if store := next((s for s in store_items if s.sku == sku), None):
-                    cost = store.user_cost * count
-                    total += cost
-                    user_str += f"{sku} x {count} @ ${store.user_cost:.2f} = ${cost:.2f}\n"
-
-            user_str += f"\n**Total**: ${total:.2f}"
-
-
-            embed.add_field(name=f"{user.display_name if user else 'Not Found'}",
-                            value=user_str,
-                            inline=False)
-            
-        return await ctx.send(embed=embed)
-
+       
 
         
 

@@ -17,6 +17,7 @@ from Resolute.models.objects.characters import CharacterSchema, PlayerCharacter,
 from Resolute.models.objects.exceptions import G0T0Error
 from Resolute.models.objects.guilds import PlayerGuild
 from Resolute.models.objects.players import Player, PlayerSchema, get_player_query, upsert_player_query
+from Resolute.models.objects.shatterpoint import ShatterPointSchema, Shatterpoint, get_shatterpoint_query
 from Resolute.models.objects.store import Store, StoreSchema, get_store_items_query
 
 log = logging.getLogger(__name__)   
@@ -225,3 +226,15 @@ class G0T0Bot(commands.Bot):
         log.info(f"Time to create character {new_character.id}: [ {end-start:.2f} ]s")
 
         return new_character
+    
+    async def get_shatterpoint(self, guild_id: int) -> Shatterpoint:
+        async with self.db.acquire() as conn:
+            results = await conn.execute(get_shatterpoint_query(guild_id))
+            row = await results.first()
+        
+        if row is None:
+            return None
+        
+        shatterpoint: Shatterpoint = await ShatterPointSchema(self).load(row)
+
+        return shatterpoint

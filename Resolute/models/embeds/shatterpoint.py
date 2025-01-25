@@ -13,7 +13,7 @@ class ShatterpointEmbed(Embed):
         guild = bot.get_guild(shatterpoint.guild_id)
         scraped_channels = [bot.get_channel(c).mention for c in shatterpoint.channels] if shatterpoint.channels else ["None"]
         active_players = [p for p in shatterpoint.players if p.active]
-        override_players = [p for p in shatterpoint.players if not p.update]
+        override_players = [p for p in active_players if not p.update]
 
         self.description = f"**Base Chain Codes**: {shatterpoint.base_cc}\n"\
                            f"**Total Participants**: {len(active_players)}"
@@ -39,8 +39,8 @@ class ShatterpointEmbed(Embed):
                        inline=False)
         
         if override_players:
-            self.add_field(name="Manual Overrides",
-                           value="\n".join([f"{ZWSP3}{guild.get_member(p.player_id).mention} ({p.cc})" for p in override_players]),
+            self.add_field(name="Manual Overrides (CC, Renown)",
+                           value="\n".join([f"{ZWSP3}{guild.get_member(p.player_id).mention} ({p.cc}, {p.renown_override if p.renown_override else 'NA'})" for p in override_players]),
                            inline=False)
             
         if player_list:

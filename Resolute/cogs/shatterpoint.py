@@ -4,7 +4,7 @@ from discord.ext import commands
 
 from Resolute.bot import G0T0Bot
 from Resolute.helpers.general_helpers import is_admin
-from Resolute.helpers.shatterpoint import get_shatterpoint
+from Resolute.models.objects.shatterpoint import reset_busy_flag_query
 from Resolute.models.views.shatterpoint import ShatterpointSettingsUI
 
 log = logging.getLogger(__name__)
@@ -22,13 +22,19 @@ class Shatterpoints(commands.Cog):
 
         log.info(f'Cog \'ShatterPoints\' loaded')
 
+    @commands.Cog.listener()
+    async def on_db_connected(self):
+        async with self.bot.db.acquire() as conn:
+            await conn.execute(reset_busy_flag_query())
+
+
     @shatterpoint_commands.command(
         name="manage",
         description="Manage a shatterpoint"
     )
     @commands.check(is_admin)
     async def shatterpoint_manage(self, ctx: ApplicationContext):
-        shatterpoint = await get_shatterpoint(self.bot, ctx.guild.id)
+        shatterpoint = await self.bot.get_shatterpoint(ctx.guild.id)
 
         ui = ShatterpointSettingsUI.new(self.bot, ctx.author, shatterpoint)
         await ui.send_to(ctx)

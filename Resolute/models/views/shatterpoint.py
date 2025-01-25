@@ -1,3 +1,4 @@
+import asyncio
 from typing import Mapping
 
 import discord
@@ -6,8 +7,6 @@ from discord.ui import InputText, Modal
 from Resolute.bot import G0T0Bot
 from Resolute.helpers.general_helpers import confirm
 from Resolute.helpers.logs import create_log
-from Resolute.helpers.messages import get_char_name_from_message
-from Resolute.helpers.shatterpoint import delete_players, delete_renown, delete_shatterpoint, get_shatterpoint, upsert_shatterpoint, upsert_shatterpoint_player, upsert_shatterpoint_renown
 from Resolute.models.categories.categories import CodeConversion, Faction
 from Resolute.models.embeds import ErrorEmbed
 from Resolute.models.embeds.shatterpoint import (ShatterpointEmbed,
@@ -15,9 +14,12 @@ from Resolute.models.embeds.shatterpoint import (ShatterpointEmbed,
 from Resolute.models.objects.characters import PlayerCharacter
 from Resolute.models.objects.guilds import PlayerGuild
 from Resolute.models.objects.players import Player
-from Resolute.models.objects.shatterpoint import (Shatterpoint,
+from Resolute.models.objects.shatterpoint import (AdjustOperator, Shatterpoint,
                                                   ShatterpointPlayer, ShatterpointRenown)
 from Resolute.models.views.base import InteractiveView
+
+# TODO: Mass Adjust
+# TODO: Optimize/pagify scrape and ignore deleted messages
 
 
 class ShatterpointSettings(InteractiveView):
@@ -26,7 +28,9 @@ class ShatterpointSettings(InteractiveView):
     shatterpoint: Shatterpoint
 
     async def commit(self):
-        self.shatterpoint = await upsert_shatterpoint(self.bot, self.shatterpoint)
+        if not self.shatterpoint.busy:
+            await self.shatterpoint.upsert()
+            self.shatterpoint = await self.bot.get_shatterpoint(self.shatterpoint.guild_id)
 
     async def get_content(self) -> Mapping:
         return {"embed": ShatterpointEmbed(self.bot, self.shatterpoint)}
@@ -36,19 +40,23 @@ class ShatterpointSettingsUI(ShatterpointSettings):
     def new(cls, bot: G0T0Bot, owner: discord.Member, shatterpoint: Shatterpoint = None):
         inst = cls(owner=owner)
         inst.bot = bot
-        inst.shatterpoint = shatterpoint or Shatterpoint(guild_id=owner.guild.id)
+        inst.shatterpoint = shatterpoint or Shatterpoint(bot.db, guild_id=owner.guild.id)
 
         return inst
 
     @discord.ui.button(label="Shatterpoint Settings", style=discord.ButtonStyle.primary, row=1)
     async def shatterpoint_settings(self, _: discord.ui.Button, interaction: discord.Interaction):
+        if self.shatterpoint.busy:
+            await interaction.channel.send(embed=ErrorEmbed("Shatterpoint modification in progress. Please wait for it to finish first"), delete_after=5)
+            return await self.refresh_content(interaction)
+        
         modal = ShatterpointSettingsModal(self.shatterpoint)
         await self.prompt_modal(interaction, modal)
 
         for player in self.shatterpoint.players:
             if player.active and player.update:
                 player.cc = self.shatterpoint.base_cc
-                await upsert_shatterpoint_player(self.bot, player)
+                await player.upsert()
 
         await self.refresh_content(interaction) 
 
@@ -58,6 +66,10 @@ class ShatterpointSettingsUI(ShatterpointSettings):
 
     @discord.ui.button(label="Commit", style=discord.ButtonStyle.green, row=1)
     async def shatterpoint_commit(self, _: discord.ui.Button, interaction: discord.Interaction):
+        if self.shatterpoint.busy:
+            await interaction.channel.send(embed=ErrorEmbed("Shatterpoint modification in progress. Please wait for it to finish first"), delete_after=5)
+            return await self.refresh_content(interaction)
+
         conf = await confirm(interaction, "Are you sure you want to log this global? (Reply with yes/no)", True, self.bot)
 
         if conf is None:
@@ -87,16 +99,18 @@ class ShatterpointSettingsUI(ShatterpointSettings):
                                          character=character,
                                          notes=f"Global Reward: {self.shatterpoint.name}",
                                          faction=renown.faction,
-                                         renown=renown.renown)
-
-            await delete_shatterpoint(self.bot, interaction.guild.id)
-            await delete_players(self.bot, interaction.guild.id)
-            await delete_renown(self.bot, interaction.guild.id)
+                                         renown=p.renown_override if p.renown_override else renown.renown)
+                        
+            await self.shatterpoint.delete()
             await interaction.channel.send(embed=ShatterpointLogEmbed(self.shatterpoint))
             await self.on_timeout()
 
     @discord.ui.button(label="Reset", style=discord.ButtonStyle.red, row=2)
     async def shatterpoint_reset(self, _: discord.ui.Button, interaction: discord.Interaction):
+        if self.shatterpoint.busy:
+            await interaction.channel.send(embed=ErrorEmbed("Shatterpoint modification in progress. Please wait for it to finish first"), delete_after=5)
+            return await self.refresh_content(interaction)
+
         conf = await confirm(interaction, "Are you sure you want to reset this global without logging? (Reply yes/no)", True, self.bot)
 
         if conf is None:
@@ -104,8 +118,8 @@ class ShatterpointSettingsUI(ShatterpointSettings):
         elif not conf:
             await interaction.channel.send(embed=ErrorEmbed("Ok, cancelling"), delete_after=5)
         else:
-            self.shatterpoint = Shatterpoint(guild_id=interaction.guild.id)
-            await delete_players(self.bot, interaction.guild.id)
+            await self.shatterpoint.delete()
+            self.shatterpoint = Shatterpoint(self.bot.db, guild_id=interaction.guild.id)
         
         await self.refresh_content(interaction)
 
@@ -118,51 +132,24 @@ class ShatterpointSettingsUI(ShatterpointSettings):
 class _ShatterpointManage(ShatterpointSettings):
     channel: discord.TextChannel = None
 
-    @discord.ui.channel_select(placeholder="Channel to scrape", channel_types=[discord.ChannelType(0)])
+    @discord.ui.channel_select(placeholder="Channel to scrape", channel_types=[discord.ChannelType(0), discord.ChannelType(11), discord.ChannelType(15)])
     async def channel_select(self, chan: discord.ui.Select, interaction: discord.Interaction):
         self.channel = chan.values[0]
         await self.refresh_content(interaction)
 
     @discord.ui.button(label="Scrape Channel", style=discord.ButtonStyle.primary, row=2)
     async def channel_scrape(self, _: discord.ui.Select, interaction: discord.Interaction):
-
-
         if not self.channel:
-            await interaction.channel.send(embed=ErrorEmbed("Select a channel to scrape first"), delete_after=5)
+            return await interaction.channel.send(embed=ErrorEmbed("Select a channel to scrape first"), delete_after=5)
+        elif self.shatterpoint.busy:
+            return await interaction.channel.send(embed=ErrorEmbed("Already scraping a channel. Please wait for it to finish first"), delete_after=5)
         else:
             guild: PlayerGuild = await self.bot.get_player_guild(interaction.guild.id)
-            messages = await self.channel.history(oldest_first=True, limit=600).flatten()
-            characters = await guild.get_all_characters(self.bot.compendium)
-
-            for message in messages:
-                player: ShatterpointPlayer = None
-                if not message.author.bot:
-                    player = next((p for p in self.shatterpoint.players if p.player_id == message.author.id), 
-                                  ShatterpointPlayer(guild_id=self.shatterpoint.guild_id,
-                                                     player_id=message.author.id,
-                                                     cc=self.shatterpoint.base_cc))
-                elif (char_name := get_char_name_from_message(message)) and (character := next((c for c in characters if c.name.lower() == char_name.lower()), None)):
-                    player = next((p for p in self.shatterpoint.players if p.player_id == character.player_id), 
-                                  ShatterpointPlayer(guild_id=self.shatterpoint.guild_id,
-                                                     player_id=character.player_id,
-                                                     cc=self.shatterpoint.base_cc))
-                    if character.id not in player.characters:
-                        player.characters.append(character.id)
-                        
-                if player:
-                    player.num_messages +=1 
-
-                    if message.channel.id not in player.channels:
-                        player.channels.append(message.channel.id)
-                    
-                    player = await upsert_shatterpoint_player(self.bot, player)
-
-                    self.shatterpoint = await get_shatterpoint(self.bot, self.shatterpoint.guild_id)
-            
-            if message.channel.id not in self.shatterpoint.channels:
-                self.shatterpoint.channels.append(message.channel.id)
-
-        await self.refresh_content(interaction)
+            self.shatterpoint.busy = True
+            await self.shatterpoint.upsert()
+            asyncio.create_task(self.shatterpoint.scrape_channel(self.bot, self.channel, guild, interaction.user))
+            await interaction.channel.send("Scraping done in background process. Please rerun the command when finished. You will not be able to modify Shatterpoint settings at this time.", delete_after=5)
+        await self.on_timeout()
 
     @discord.ui.button(label="Players", style=discord.ButtonStyle.primary, row=2)
     async def shatterpoint_players(self, _: discord.ui.Button, interaction: discord.Interaction):
@@ -172,7 +159,12 @@ class _ShatterpointManage(ShatterpointSettings):
     async def shatterpoint_renown(self, _: discord.ui.Button, interaction: discord.Interaction):
         await self.defer_to(_ShatterpointRenownManage, interaction)
 
-    # @discord.ui.button(label="Mass Adjust")
+    @discord.ui.button(label="Mass Adjust", style=discord.ButtonStyle.primary, row=2)
+    async def shatterpoint_adjust(self, _: discord.ui.Button, interaction: discord.Interaction):
+        if self.shatterpoint.busy:
+            await interaction.channel.send(embed=ErrorEmbed("Shatterpoint modification in progress. Please wait for it to finish first"), delete_after=5)
+            return await self.refresh_content(interaction)
+        await self.defer_to(_ShatterpointMassAdjust, interaction)
 
     @discord.ui.button(label="Back", style=discord.ButtonStyle.grey, row=3)
     async def back(self, _: discord.ui.Button, interaction: discord.Interaction):
@@ -184,10 +176,12 @@ class _ShatterpointPlayerManage(ShatterpointSettings):
     character: PlayerCharacter = None
 
     async def get_content(self) -> Mapping:
+        if self.player:
+            self.player = next((p for p in self.shatterpoint.players if p.player_id == self.player.player_id), None)
         return {"embed": ShatterpointEmbed(self.bot, self.shatterpoint, True, self.player)}
     
     async def _before_send(self):
-        self.player_remove.disabled = False if self.player and self.player.id and self.player.active else True
+        self.player_remove.disabled = False if self.player and self.player.player_id and self.player.active else True
         self.remove_item(self.character_select)
 
         if self.player:
@@ -206,7 +200,7 @@ class _ShatterpointPlayerManage(ShatterpointSettings):
     @discord.ui.user_select(placeholder="Select a player", row=1)
     async def player_select(self, m: discord.ui.Select, interaction: discord.Interaction):
         member = m.values[0]
-        player = next((x for x in self.shatterpoint.players if x.player_id == member.id), ShatterpointPlayer(guild_id=self.shatterpoint.guild_id, 
+        player = next((x for x in self.shatterpoint.players if x.player_id == member.id), ShatterpointPlayer(self.bot.db, guild_id=self.shatterpoint.guild_id, 
                                                                                                              player_id=member.id, 
                                                                                                              cc=self.shatterpoint.base_cc))
         self.player = player
@@ -223,48 +217,87 @@ class _ShatterpointPlayerManage(ShatterpointSettings):
 
     @discord.ui.button(label="Player Settings", style=discord.ButtonStyle.primary, row=3)
     async def player_settings(self, _: discord.ui.Button, interaction: discord.Interaction):
+        if self.shatterpoint.busy:
+            await interaction.channel.send(embed=ErrorEmbed("Shatterpoint modification in progress. Please wait for it to finish first"), delete_after=5)
+            return await self.refresh_content(interaction)
+        
         modal = ShatterpointPlayerSettingsModal(self.shatterpoint, self.player, interaction.guild)
         await self.prompt_modal(interaction, modal)
 
-        if self.player.cc == self.shatterpoint.base_cc:
+        if self.player.cc == self.shatterpoint.base_cc and not self.player.renown_override:
             self.player.update = True
         else:
             self.player.update = False
 
         self.player.active = True
         
-        self.player = await upsert_shatterpoint_player(self.bot, self.player)
+        await self.player.upsert()
 
         await self.refresh_content(interaction)
 
     @discord.ui.button(label="Remove Player", style=discord.ButtonStyle.red, row=3)
     async def player_remove(self, _: discord.ui.Button, interaction: discord.Interaction):
-        if not hasattr(self.player, "id") or not self.player.active:
+        if not self.player.active:
             return await interaction.channel.send(embed=ErrorEmbed("Player already isn't in the global"), delete_after=5)
+        elif self.shatterpoint.busy:
+            await interaction.channel.send(embed=ErrorEmbed("Shatterpoint modification in progress. Please wait for it to finish first"), delete_after=5)
+            return await self.refresh_content(interaction)
         else:
             self.player.active = False
-
-            self.player = await upsert_shatterpoint_player(self.bot, self.player)
+            await self.player.upsert()
         await self.refresh_content(interaction)
 
     @discord.ui.button(label="Add Character", style=discord.ButtonStyle.primary, row=4)
     async def character_add(self, _: discord.ui.Button, interaction: discord.Interaction):
+        if self.shatterpoint.busy:
+            await interaction.channel.send(embed=ErrorEmbed("Shatterpoint modification in progress. Please wait for it to finish first"), delete_after=5)
+            return await self.refresh_content(interaction)
+        
         if self.character.id not in self.player.characters:
             self.player.characters.append(self.character.id)
-            self.player = await upsert_shatterpoint_player(self.bot, self.player)
+            await self.player.upsert()
         await self.refresh_content(interaction)
 
     @discord.ui.button(label="Remove Character", style=discord.ButtonStyle.red, row=4)
     async def character_remove(self, _: discord.ui.Button, interaction: discord.Interaction):
+        if self.shatterpoint.busy:
+            await interaction.channel.send(embed=ErrorEmbed("Shatterpoint modification in progress. Please wait for it to finish first"), delete_after=5)
+            return await self.refresh_content(interaction)
         if self.character.id in self.player.characters:
             self.player.characters.remove(self.character.id)
-            self.player = await upsert_shatterpoint_player(self.bot, self.player)
+            await self.player.upsert()
         await self.refresh_content(interaction)
 
     @discord.ui.button(label="Back", style=discord.ButtonStyle.grey, row=4)
     async def back(self, _: discord.ui.Button, interaction: discord.Interaction):
         await self.defer_to(_ShatterpointManage, interaction)
 
+class _ShatterpointMassAdjust(ShatterpointSettings):
+    operator: AdjustOperator = None
+
+    @discord.ui.select(placeholder="Select an operator", row=1)
+    async def select_operator(self, op: discord.ui.Select, interaction: discord.Interaction):
+        self.operator = AdjustOperator[op.values[0]]
+        await self.refresh_content(interaction)
+
+    @discord.ui.button(label="Adjustment Settings", style=discord.ButtonStyle.primary, row=2)
+    async def adjust_settings(self, _: discord.ui.Button, interaction: discord.Interaction):
+        if not self.operator:
+            return await interaction.channel.send(embed=ErrorEmbed("Please select an operator first"), delete_after=5)
+        modal = ShatterpointMassAdjustModal(self.shatterpoint, self.operator)
+        await self.prompt_modal(interaction, modal)
+        await self.refresh_content(interaction)
+
+    @discord.ui.button(label="Back", style=discord.ButtonStyle.grey, row=2)
+    async def back(self, _: discord.ui.Button, interaction: discord.Interaction):
+        await self.defer_to(_ShatterpointManage, interaction)
+
+    async def _before_send(self):
+        op_list = [discord.SelectOption(label=f"{o.value}", value=f"{o.name}", default=True if self.operator == o else False) for o in AdjustOperator]
+        self.select_operator.options = op_list
+
+    async def get_content(self) -> Mapping:
+        return {"embed": ShatterpointEmbed(self.bot, self.shatterpoint, True)}
     
 class _ShatterpointRenownManage(ShatterpointSettings):
     faction: Faction = None
@@ -285,14 +318,14 @@ class _ShatterpointRenownManage(ShatterpointSettings):
     @discord.ui.button(label="Add/Remove Renown", style=discord.ButtonStyle.primary, row=2)
     async def modify_renown(self, _: discord.ui.Button, interaction: discord.Interaction):
         renown = next((r for r in self.shatterpoint.renown if r.faction.id == self.faction.id), 
-                      ShatterpointRenown(guild_id=self.shatterpoint.guild_id,
+                      ShatterpointRenown(self.bot.db, 
+                                         guild_id=self.shatterpoint.guild_id,
                                          faction=self.faction))
         
         modal = ShatterpointRenownModal(renown)
 
-        response = await self.prompt_modal(interaction, modal)
-
-        await upsert_shatterpoint_renown(self.bot, renown)
+        await self.prompt_modal(interaction, modal)
+        await renown.upsert()
         
         await self.refresh_content(interaction)
         
@@ -332,12 +365,15 @@ class ShatterpointPlayerSettingsModal(Modal):
         self.spPlayer = spPlayer
 
         self.add_item(InputText(label="CC Reward", value=f"{self.spPlayer.cc}"))
+        self.add_item(InputText(label="Renown Reward", required=False, value=f"{self.spPlayer.renown_override}"))
 
     async def callback(self, interaction: discord.Interaction):
         try:
             self.spPlayer.cc = int(self.children[0].value)
         except:
             await interaction.channel.send(embed=ErrorEmbed("CC Amount must be a number"), delete_after=5)
+
+        self.spPlayer.renown_override = self.children[1].value if self.children[1].value != '' else None
     
         await interaction.response.defer()
         self.stop()
@@ -360,3 +396,54 @@ class ShatterpointRenownModal(Modal):
 
         await interaction.response.defer()
         self.stop()
+
+
+class ShatterpointMassAdjustModal(Modal):
+    shatterpoint: Shatterpoint
+    operator: AdjustOperator
+
+    def __init__(self, shatterpoint: Shatterpoint, operator: AdjustOperator):
+        super().__init__(title="Mass Adjust")
+        self.shatterpoint = shatterpoint
+        self.operator = operator
+
+        self.add_item(InputText(label="Post Threshold", placeholder="Post Threshold", max_length=4))
+        self.add_item(InputText(label="CC Override", required=False, placeholder="CC Override", max_length=4))
+        self.add_item(InputText(label="Renown Override", required=False, placeholder="Renown Override", max_length=4))
+
+    async def callback(self, interaction):
+        try:
+            threshold = max(0, int(self.children[0].value))
+            cc = int(self.children[1].value) if self.children[1].value else None
+            renown =int(self.children[2].value) if self.children[2].value else None
+        except:
+            await interaction.channel.send(embed=ErrorEmbed("Values must be a number!"))
+
+        if threshold and (cc or renown):
+            for player in self.shatterpoint.players:
+                if not player.active:
+                    continue
+
+                if self.operator == AdjustOperator.less and player.num_messages <= threshold:
+                    player.cc = cc if cc else player.cc
+                    player.renown_override = renown if renown else player.renown_override
+                    player.update = False
+                elif self.operator == AdjustOperator.greater and player.num_messages >= threshold:
+                    player.cc = cc if cc else player.cc
+                    player.renown_override = renown if renown else player.renown_override
+                    player.update = False
+                
+                if len(self.shatterpoint.renown) == 1 and player.renown_override == self.shatterpoint.renown[0].renown:
+                    player.renown_override = None
+
+                if player.cc == self.shatterpoint.base_cc and not player.renown_override:
+                    player.update = True
+                
+                await player.upsert()
+        
+                
+        await interaction.response.defer()
+        self.stop()
+
+
+        

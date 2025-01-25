@@ -48,7 +48,7 @@ class Character(commands.Cog):
 
         content = ctx.message.content
 
-        content = content[4:]
+        content = content[5:]
         await ctx.message.delete()
 
         if content == "" or content.lower() == ">say":

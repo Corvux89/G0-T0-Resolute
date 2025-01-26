@@ -68,7 +68,7 @@ class DashboardSettingsUI(DashboardSettings):
     
 
 class _NewDashboardUI(DashboardSettings):
-    new_dashboard: RefDashboard = RefDashboard()
+    new_dashboard: RefDashboard = None
 
     @discord.ui.select(placeholder="Dashboard Type")
     async def dashboard_type(self, d_type: discord.ui.Select, interaction: discord.Interaction):
@@ -112,6 +112,9 @@ class _NewDashboardUI(DashboardSettings):
 
     async def _before_send(self):
         type_list = []
+        
+        if not self.dashboard:
+            self.dashboard = RefDashboard(self.bot.db)
 
         for type in self.bot.compendium.dashboard_type[0].values():
             type_list.append(SelectOption(label=type.value, value=f"{type.id}", default=True if self.new_dashboard and self.new_dashboard.dashboard_type and self.new_dashboard.dashboard_type.id == type.id else False))

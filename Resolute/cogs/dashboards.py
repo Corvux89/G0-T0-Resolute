@@ -8,7 +8,7 @@ from discord.ext import commands, tasks
 
 from Resolute.bot import G0T0Bot
 from Resolute.constants import DASHBOARD_REFRESH_INTERVAL, ZWSP3
-from Resolute.helpers.dashboards import delete_dashboard, get_dashboard_from_category, get_pinned_post, update_dashboard
+from Resolute.helpers.dashboards import delete_dashboard, get_dashboard_from_category, update_dashboard
 from Resolute.models.embeds.dashboards import RPDashboardEmbed
 from Resolute.models.objects.dashboards import (RefDashboard,
                                                 RefDashboardSchema,
@@ -46,7 +46,7 @@ class Dashboards(commands.Cog):
             if not dashboard or message.channel.id in dashboard.excluded_channel_ids:
                 return
             
-            post_message = await get_pinned_post(self.bot, dashboard)
+            post_message = await dashboard.get_pinned_post()
 
             if isinstance(post_message, bool):
                 return
@@ -117,7 +117,7 @@ class Dashboards(commands.Cog):
         start = timer()
         async with self.bot.db.acquire() as conn:
             async for row in conn.execute(get_dashboards()):
-                dashboard: RefDashboard = RefDashboardSchema(self.bot.compendium).load(row)
+                dashboard: RefDashboard = RefDashboardSchema(self.bot).load(row)
                 await update_dashboard(self.bot, dashboard)
         end = timer()
         log.info(f"DASHBOARD: Channel status dashboards updated in [ {end - start:.2f} ]s")

@@ -1,11 +1,10 @@
 import sqlalchemy as sa
-from discord import TextChannel
+import aiopg.sa
+from discord import CategoryChannel, HTTPException, TextChannel, Message
 from marshmallow import Schema, fields, post_load
 from sqlalchemy import BigInteger, Column, Integer, String
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.sql.selectable import FromClause, TableClause
-
-from Resolute.compendium import Compendium
 from Resolute.constants import ZWSP3
 from Resolute.models import metadata
 from Resolute.models.categories.categories import DashboardType
@@ -26,12 +25,42 @@ class RPDashboardCategory(object):
         return ZWSP3
 
 class RefDashboard(object):
-    def __init__(self, **kwargs):
+    def __init__(self, db: aiopg.sa.Engine, **kwargs):
+        self._db = db
+
         self.category_channel_id = kwargs.get('category_channel_id')
         self.channel_id = kwargs.get('channel_id')
         self.post_id = kwargs.get('post_id')
         self.excluded_channel_ids: list[int] = kwargs.get('excluded_channel_ids', [])
         self.dashboard_type: DashboardType = kwargs.get('dashboard_type')
+        self.channel: TextChannel = kwargs.get('channel')
+        self.category_channel: CategoryChannel = kwargs.get('category_channel')
+        
+    def channels_to_search(self) -> list[TextChannel]:
+        if self.category_channel:
+            return list(filter(lambda c: c.id not in self.excluded_channel_ids, self.category_channel.text_channels))
+        
+        return []
+    
+    async def get_pinned_post(self) -> Message:
+        if self.channel:
+            try:
+                msg = await self.channel.fetch_message(self.post_id)
+            except HTTPException:
+                return True
+            except:
+                return None
+            
+            return msg
+        return None
+    
+    async def upsert(self):
+        async with self._db.acquire() as conn:
+            await conn.execute(upsert_dashboard_query(self))
+
+    async def delete(self):
+        async with self._db.acquire() as conn:
+            await conn.execute(delete_dashboard_query(self))
 
 ref_dashboard_table = sa.Table(
     "ref_dashboards",
@@ -44,23 +73,30 @@ ref_dashboard_table = sa.Table(
 )
 
 class RefDashboardSchema(Schema):
-    compendium: Compendium
+    bot = None
     category_channel_id = fields.Integer(required=False, allow_none=True)
     channel_id = fields.Integer(required=True)
     post_id = fields.Integer(required=True)
     excluded_channel_ids = fields.List(fields.Integer)
     dashboard_type = fields.Method(None, "get_dashboard_type")
 
-    def __init__(self, compendium, **kwargs):
+    def __init__(self, bot, **kwargs):
         super().__init__(**kwargs)
-        self.compendium = compendium
+        self.bot = bot
 
     @post_load
     def make_dashboard(self, data, **kwargs):
-        return RefDashboard(**data)
+        dashboard = RefDashboard(self.bot.db, **data)
+        self.get_channels(dashboard)
+        return dashboard
     
     def get_dashboard_type(self, value):
-        return self.compendium.get_object(DashboardType, value)
+        return self.bot.compendium.get_object(DashboardType, value)
+    
+    def get_channels(self, dashboard: RefDashboard):
+        dashboard.channel = self.bot.get_channel(dashboard.channel_id)
+        dashboard.category_channel = self.bot.get_channel(dashboard.category_channel_id)
+
     
 def get_dashboard_by_category_channel_query(category_channel_id: int) -> FromClause:
     return ref_dashboard_table.select().where(

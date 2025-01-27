@@ -14,6 +14,7 @@ from sqlalchemy.sql import FromClause
 
 from Resolute.compendium import Compendium
 from Resolute.models import metadata
+from Resolute.models.objects.dashboards import RefDashboard
 from Resolute.models.objects.ref_objects import NPC, NPCSchema, RefServerCalendar, RefServerCalendarSchema, RefWeeklyStipend, RefWeeklyStipendSchema, get_guild_npcs_query, get_guild_weekly_stipends_query, get_server_calendar
 from Resolute.models.objects.characters import CharacterSchema, get_guild_characters_query
 
@@ -185,6 +186,9 @@ class PlayerGuild(object):
         character_list = [await CharacterSchema(self._db, compendium).load(row) for row in rows]
 
         return character_list
+    
+    async def get_dashboards(self, bot) -> list[RefDashboard]:
+        pass
 
 guilds_table = sa.Table(
     "guilds",

@@ -53,6 +53,14 @@ class RefDashboard(object):
             
             return msg
         return None
+    
+    async def upsert(self):
+        async with self._db.acquire() as conn:
+            await conn.execute(upsert_dashboard_query(self))
+
+    async def delete(self):
+        async with self._db.acquire() as conn:
+            await conn.execute(delete_dashboard_query(self))
 
 ref_dashboard_table = sa.Table(
     "ref_dashboards",

@@ -8,7 +8,7 @@ from discord.ext import commands, tasks
 
 from Resolute.bot import G0T0Bot
 from Resolute.constants import DASHBOARD_REFRESH_INTERVAL, ZWSP3
-from Resolute.helpers.dashboards import delete_dashboard, get_dashboard_from_category, update_dashboard
+from Resolute.helpers.dashboards import update_dashboard
 from Resolute.models.embeds.dashboards import RPDashboardEmbed
 from Resolute.models.objects.dashboards import (RefDashboard,
                                                 RefDashboardSchema,
@@ -41,7 +41,7 @@ class Dashboards(commands.Cog):
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
         if hasattr(self.bot, "db") and hasattr(message.channel, "category_id") and (category_channel_id := message.channel.category_id) and message.channel.type == discord.ChannelType.text:
-            dashboard = await get_dashboard_from_category(self.bot, category_channel_id)
+            dashboard = await self.bot.get_dashboard_from_category(category_channel_id)
 
             if not dashboard or message.channel.id in dashboard.excluded_channel_ids:
                 return
@@ -52,7 +52,7 @@ class Dashboards(commands.Cog):
                 return
 
             if not post_message or not post_message.pinned:
-                return await delete_dashboard(self.bot, dashboard)
+                return await dashboard.delete()
             
             guild = await self.bot.get_player_guild(message.guild.id)
             
@@ -61,14 +61,14 @@ class Dashboards(commands.Cog):
 
                 staff_field = RPDashboardCategory(title="Archivist",
                                                       name="<:pencil:989284061786808380> -- Awaiting Archivist",
-                                                      channels=[self.bot.get_channel(self.strip_field(x))  for x in [x.value if "Archivist" in x.name else "" for x in embed.fields][0].split('\n')])
+                                                      channels=[self.bot.get_channel(self.strip_field(x))  for x in [x.value if "Archivist" in x.name else "" for x in embed.fields][0].split('\n') if x is not ""])
                 available_field = RPDashboardCategory(title="Available",
                                                      name="<:white_check_mark:983576747381518396> -- Available",
-                                                     channels=[self.bot.get_channel(self.strip_field(x)) for x in [x.value for x in embed.fields if "Available" in x.name][0].split('\n')])
+                                                     channels=[self.bot.get_channel(self.strip_field(x)) for x in [x.value for x in embed.fields if "Available" in x.name][0].split('\n') if x is not ""])
                 
                 unavailable_field = RPDashboardCategory(title="Unavailable",
                                                        name="<:x:983576786447245312> -- Unavailable",
-                                                       channels=[self.bot.get_channel(self.strip_field(x)) for x in [x.value for x in embed.fields if "Unavailable" in x.name][0].split('\n')])
+                                                       channels=[self.bot.get_channel(self.strip_field(x)) for x in [x.value for x in embed.fields if "Unavailable" in x.name][0].split('\n') if x is not ""])
                 
                 all_fields = [staff_field, available_field, unavailable_field]
                 node = ""

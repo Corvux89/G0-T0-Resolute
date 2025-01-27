@@ -5,7 +5,7 @@ import discord
 from discord import ChannelType, SelectOption
 
 from Resolute.bot import G0T0Bot
-from Resolute.helpers.dashboards import get_dashboard_from_post, get_guild_dashboards, update_dashboard, upsert_dashboard
+from Resolute.helpers.dashboards import get_guild_dashboards, update_dashboard
 from Resolute.models.categories.categories import DashboardType
 from Resolute.models.embeds import ErrorEmbed
 from Resolute.models.embeds.dashboards import DashboardEditEmbed
@@ -29,7 +29,7 @@ class DashboardSettingsUI(DashboardSettings):
     
     @discord.ui.select(placeholder="Select a dashboard", options=[SelectOption(label="Dummy Dashboard")], custom_id="d_select")
     async def dashboard_select(self, dashboard: discord.ui.Select, interaction: discord.Interaction):
-        self.dashboard = await get_dashboard_from_post(self.bot, dashboard.values[0])
+        self.dashboard = await self.bot.get_dashboard_from_message(dashboard.values[0])
         await self.refresh_content(interaction)
 
     @discord.ui.button(label="New Dashboard", style=discord.ButtonStyle.primary, row=2)
@@ -100,7 +100,9 @@ class _NewDashboardUI(DashboardSettings):
         await d_message.pin(reason=f"{self.new_dashboard.dashboard_type.value} dashboard created by {self.owner.name}")
         self.new_dashboard.post_id = d_message.id
 
-        await upsert_dashboard(self.bot, self.new_dashboard)
+        await self.new_dashboard.upsert()
+
+        self.new_dashboard = await self.bot.get_dashboard_from_message(d_message.id)
 
         await update_dashboard(self.bot, self.new_dashboard)
 
@@ -113,8 +115,8 @@ class _NewDashboardUI(DashboardSettings):
     async def _before_send(self):
         type_list = []
         
-        if not self.dashboard:
-            self.dashboard = RefDashboard(self.bot.db)
+        if not self.new_dashboard:
+            self.new_dashboard = RefDashboard(self.bot.db)
 
         for type in self.bot.compendium.dashboard_type[0].values():
             type_list.append(SelectOption(label=type.value, value=f"{type.id}", default=True if self.new_dashboard and self.new_dashboard.dashboard_type and self.new_dashboard.dashboard_type.id == type.id else False))
@@ -155,7 +157,7 @@ class _ManageDashboardUI(DashboardSettings):
             await interaction.channel.send(embed=ErrorEmbed(f"Channel already excluded"), delete_after=5)
         else:
             self.dashboard.excluded_channel_ids.append(self.channel.id)
-            await upsert_dashboard(self.bot, self.dashboard)
+            await self.dashboard.upsert()
         await self.refresh_content(interaction)
 
     @discord.ui.button(label="Remove Exclusion", style=discord.ButtonStyle.primary, row=2)
@@ -166,7 +168,7 @@ class _ManageDashboardUI(DashboardSettings):
             await interaction.channel.send(embed=ErrorEmbed(f"Channel not excluded"), delete_after=5)
         else:
             self.dashboard.excluded_channel_ids.remove(self.channel.id)
-            await upsert_dashboard(self.bot, self.dashboard)
+            await self.dashboard.upsert()
         await self.refresh_content(interaction)
     
     @discord.ui.button(label="Back", style=discord.ButtonStyle.grey, row=4)

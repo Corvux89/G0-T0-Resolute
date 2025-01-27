@@ -18,10 +18,6 @@ from Resolute.models.objects.shatterpoint import (AdjustOperator, Shatterpoint,
                                                   ShatterpointPlayer, ShatterpointRenown)
 from Resolute.models.views.base import InteractiveView
 
-# TODO: Mass Adjust
-# TODO: Optimize/pagify scrape and ignore deleted messages
-
-
 class ShatterpointSettings(InteractiveView):
     __menu_copy_attrs__ = ("bot", "shatterpoint")
     bot: G0T0Bot

@@ -183,7 +183,6 @@ class Guilds(commands.Cog):
                     members = list(filter(lambda m: m.id not in leadership_stipend_players, members))
                     leadership_stipend_players.update(m.id for m in stipend_role.members)
 
-                # TODO: Look at this...may be a better way now
                 player_list = await asyncio.gather(*(self.bot.get_player(m.id, g.id) for m in members))
                 
                 for player in player_list:

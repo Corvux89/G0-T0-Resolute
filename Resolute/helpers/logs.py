@@ -59,8 +59,6 @@ async def author_rewards(bot: G0T0Bot, author: discord.Member, log_entry: DBLog)
     async with bot.db.acquire() as conn:
             await conn.execute(upsert_player_query(player))
 
-
-
 async def get_log(bot: G0T0Bot, log_id: int) -> DBLog:
     async with bot.db.acquire() as conn:
         results = await conn.execute(get_log_by_id(log_id))

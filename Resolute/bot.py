@@ -14,6 +14,7 @@ from Resolute.models import metadata
 from Resolute.models.objects.adventures import Adventure, AdventureSchema, get_adventure_by_category_channel_query, get_adventure_by_role_query
 from Resolute.models.objects.arenas import Arena, ArenaSchema, get_arena_by_channel_query
 from Resolute.models.objects.characters import CharacterSchema, PlayerCharacter, PlayerCharacterClass, get_character_from_id
+from Resolute.models.objects.dashboards import RefDashboard, RefDashboardSchema, get_dashboard_by_category_channel_query, get_dashboard_by_post_id
 from Resolute.models.objects.exceptions import G0T0Error
 from Resolute.models.objects.guilds import PlayerGuild
 from Resolute.models.objects.players import Player, PlayerSchema, get_player_query, upsert_player_query
@@ -238,3 +239,27 @@ class G0T0Bot(commands.Bot):
         shatterpoint: Shatterpoint = await ShatterPointSchema(self).load(row)
 
         return shatterpoint
+
+    async def get_dashboard_from_category(self, category_id: int) -> RefDashboard:
+        async with self.db.acquire() as conn:
+            results = await conn.execute(get_dashboard_by_category_channel_query(category_id))
+            row = await results.first()
+
+        if row is None:
+            return None
+        
+        d = RefDashboardSchema(self).load(row)
+
+        return d
+    
+    async def get_dashboard_from_message(self, message_id: int) -> RefDashboard:
+        async with self.db.acquire() as conn:
+            results = await conn.execute(get_dashboard_by_post_id(message_id))
+            row = await results.first() 
+
+        if row is None:
+            return None
+        
+        d = RefDashboardSchema(self).load(row)
+
+        return d

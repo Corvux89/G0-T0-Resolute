@@ -12,51 +12,12 @@ from Resolute.models.categories.categories import DashboardType
 from Resolute.models.embeds.dashboards import RPDashboardEmbed
 from Resolute.models.objects.dashboards import (
     RefDashboard, RefDashboardSchema, RPDashboardCategory,
-    delete_dashboard_query, get_class_census,
-    get_dashboard_by_category_channel_query, get_dashboard_by_post_id, get_dashboard_by_type,
-    get_dashboards, get_level_distribution, upsert_dashboard_query)
+    get_class_census,
+    get_dashboard_by_type,
+    get_dashboards, get_level_distribution)
 from Resolute.models.objects.financial import Financial
 from PIL import Image, ImageDraw, ImageFilter
 
-async def get_dashboard_from_category(bot: G0T0Bot, category_id: int) -> RefDashboard:
-    async with bot.db.acquire() as conn:
-        results = await conn.execute(get_dashboard_by_category_channel_query(category_id))
-        row = await results.first()
-
-    if row is None:
-        return None
-    
-    d = RefDashboardSchema(bot).load(row)
-
-    return d
-
-async def get_dashboard_from_post(bot: G0T0Bot, post_id: int) -> RefDashboard:
-    async with bot.db.acquire() as conn:
-        results = await conn.execute(get_dashboard_by_post_id(post_id))
-        row = await results.first()
-
-    if row is None:
-        return None
-    
-    d = RefDashboardSchema(bot).load(row)
-
-    return d
-
-async def upsert_dashboard(bot: G0T0Bot, dashboard: RefDashboard) -> RefDashboard:
-    async with bot.db.acquire() as conn:
-        results = await conn.execute(upsert_dashboard_query(dashboard))
-        row = await results.first()
-
-    if row is None:
-        return None
-
-    d = RefDashboardSchema(bot).load(row)
-
-    return d
-
-async def delete_dashboard(bot: G0T0Bot, dashboard: RefDashboard) -> None:
-    async with bot.db.acquire() as conn:
-        await conn.execute(delete_dashboard_query(dashboard))
 
 
 async def get_last_message(channel: discord.TextChannel) -> discord.Message:
@@ -124,7 +85,7 @@ async def update_dashboard(bot: G0T0Bot, dashboard: RefDashboard):
         return
 
     if not original_message or not original_message.pinned:
-        return await delete_dashboard(bot, dashboard)
+        return await dashboard.delete()
     
     guild = await bot.get_player_guild(original_message.guild.id)
     

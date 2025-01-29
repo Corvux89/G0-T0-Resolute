@@ -73,13 +73,17 @@ class Character(commands.Cog):
 
         chunks = split_content(content)
         for chunk in chunks:
-            await player.send_webhook_message(ctx, character, chunk)
+            try:
+                await player.send_webhook_message(ctx, character, chunk)
 
-            if not player.guild.is_dev_channel(ctx.channel):
-                await player.update_post_stats(character, ctx.message, content=chunk)
+                if not player.guild.is_dev_channel(ctx.channel):
+                    await player.update_post_stats(character, ctx.message, content=chunk)
 
-                if len(chunk) >= ACTIVITY_POINT_MINIMUM:
-                    await update_activity_points(self.bot, player)
+                    if len(chunk) >= ACTIVITY_POINT_MINIMUM:
+                        await update_activity_points(self.bot, player)
+            except:
+                await player.member.send(f"Error sending message in {ctx.channel.jump_url}. Try again: ")
+                await player.member.send(f"```{content}```")
 
         # Message response ping
         if ctx.message.reference is not None:

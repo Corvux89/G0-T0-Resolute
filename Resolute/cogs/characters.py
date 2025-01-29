@@ -84,6 +84,7 @@ class Character(commands.Cog):
             except:
                 await player.member.send(f"Error sending message in {ctx.channel.jump_url}. Try again: ")
                 await player.member.send(f"```{content}```")
+                return
 
         # Message response ping
         if ctx.message.reference is not None:

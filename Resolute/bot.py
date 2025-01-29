@@ -95,6 +95,9 @@ class G0T0Bot(commands.Bot):
 
         return guild
     
+    async def get_guilds_with_reset(self, day: int, hour: int) -> list[PlayerGuild]:
+        pass    
+    
     async def get_character(self, char_id: int) -> PlayerCharacter:
         async with self.db.acquire() as conn:
             results = await conn.execute(get_character_from_id(char_id))
@@ -263,3 +266,4 @@ class G0T0Bot(commands.Bot):
         d = RefDashboardSchema(self).load(row)
 
         return d
+

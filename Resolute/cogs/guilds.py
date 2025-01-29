@@ -210,7 +210,6 @@ class Guilds(commands.Cog):
     async def schedule_weekly_reset(self):
         hour = datetime.now(timezone.utc).hour
         day = datetime.now(timezone.utc).weekday()
-        # log.info(f"GUIlDS: Checking reset for day {day} and hour {hour}")
         guild_list = await get_guilds_with_reset(self.bot, day, hour)
         for guild in guild_list:
             await self.perform_weekly_reset(guild)

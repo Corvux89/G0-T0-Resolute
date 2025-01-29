@@ -5,7 +5,7 @@ import discord
 from discord import ChannelType, SelectOption
 
 from Resolute.bot import G0T0Bot
-from Resolute.helpers.dashboards import get_guild_dashboards, update_dashboard
+from Resolute.helpers.dashboards import update_dashboard
 from Resolute.models.categories.categories import DashboardType
 from Resolute.models.embeds import ErrorEmbed
 from Resolute.models.embeds.dashboards import DashboardEditEmbed
@@ -45,7 +45,8 @@ class DashboardSettingsUI(DashboardSettings):
         await self.on_timeout()
 
     async def _before_send(self):
-        dashboards = await get_guild_dashboards(self.bot, self.owner.guild.id)
+        g = await self.bot.get_player_guild(self.owner.guild.id)
+        dashboards = await g.get_dashboards(self.bot)
         if len(dashboards)>0:
             d_list = []
             if not self.get_item("d_select"):

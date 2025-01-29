@@ -1,7 +1,8 @@
 import calendar
+import random
 from datetime import datetime, timedelta, timezone
 from math import floor
-from typing import TYPE_CHECKING
+from timeit import default_timer as timer
 
 import aiopg.sa
 import discord
@@ -14,9 +15,16 @@ from sqlalchemy.sql import FromClause
 
 from Resolute.compendium import Compendium
 from Resolute.models import metadata
-from Resolute.models.objects.dashboards import RefDashboard
-from Resolute.models.objects.ref_objects import NPC, NPCSchema, RefServerCalendar, RefServerCalendarSchema, RefWeeklyStipend, RefWeeklyStipendSchema, get_guild_npcs_query, get_guild_weekly_stipends_query, get_server_calendar
-from Resolute.models.objects.characters import CharacterSchema, get_guild_characters_query
+from Resolute.models.objects.characters import (CharacterSchema,
+                                                get_guild_characters_query)
+from Resolute.models.objects.dashboards import (RefDashboard,
+                                                RefDashboardSchema,
+                                                get_dashboards)
+from Resolute.models.objects.ref_objects import (
+    NPC, NPCSchema, RefServerCalendar, RefServerCalendarSchema,
+    RefWeeklyStipend, RefWeeklyStipendSchema, get_guild_npcs_query,
+    get_guild_weekly_stipends_query, get_server_calendar)
+
 
 class PlayerGuild(object):
 
@@ -188,7 +196,15 @@ class PlayerGuild(object):
         return character_list
     
     async def get_dashboards(self, bot) -> list[RefDashboard]:
-        pass
+        dashboards = []
+
+        async with self._db.acquire() as conn:
+            async for row in conn.execute(get_dashboards()):
+                dashboard: RefDashboard = RefDashboardSchema(bot).load(row)
+                if dashboard.channel.guild.id == self.id:
+                    dashboards.append(dashboard)
+
+        return dashboards
 
 guilds_table = sa.Table(
     "guilds",

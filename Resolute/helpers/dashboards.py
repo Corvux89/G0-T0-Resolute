@@ -32,15 +32,6 @@ async def get_last_message(channel: discord.TextChannel) -> discord.Message:
             
     return last_message
 
-async def get_guild_dashboards(bot: G0T0Bot, guild_id: int) -> list[RefDashboard]:
-    dashboards = []
-    async with bot.db.acquire() as conn:
-        async for row in conn.execute(get_dashboards()):
-            dashboard: RefDashboard = RefDashboardSchema(bot).load(row)
-            if bot.get_channel(dashboard.channel_id).guild.id == guild_id:
-                dashboards.append(dashboard)
-
-    return dashboards
 
 async def get_financial_dashboards(bot: G0T0Bot) -> list[RefDashboard]:
     dashboards = []

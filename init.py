@@ -7,7 +7,7 @@ from discord import Color, Embed, Intents
 from discord.ext import commands
 
 from Resolute.bot import G0T0Bot
-from Resolute.constants import BOT_TOKEN, DEBUG_GUILDS, DEFAULT_PREFIX
+from Resolute.constants import BOT_TOKEN, DEFAULT_PREFIX
 
 intents = Intents.default()
 intents.members = True
@@ -29,7 +29,7 @@ logger.setLevel(logging.INFO)
 logger.addHandler(handler)
 log = logging.getLogger("bot")
 
-# Because Windows is terrible
+# # Because Windows is terrible
 if sys.version_info >= (3, 8) and sys.platform.lower().startswith("win"):
     set_event_loop_policy(WindowsSelectorEventLoopPolicy())
 

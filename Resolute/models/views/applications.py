@@ -307,6 +307,25 @@ class _MiscuUI(CharacterView):
 
 
 class _CharacterInformationUI(CharacterView):
+    """
+    A UI class for displaying and interacting with character information in an application.
+    This class inherits from `CharacterView` and provides buttons for modifying character
+    attributes such as class, species, and background. It also includes a back button to
+    navigate to the previous UI.
+    Methods:
+        char_class(_: Button, interaction: Interaction):
+            Handles the interaction for the "Class" button, prompting a modal for class selection.
+        species(_: Button, interaction: Interaction):
+            Handles the interaction for the "Species" button, prompting a modal for species selection.
+        background(_: Button, interaction: Interaction):
+            Handles the interaction for the "Background" button, prompting a modal for background selection.
+        back(_: Button, interaction: Interaction):
+            Handles the interaction for the "Back" button, deferring to the `NewCharacterRequestUI`.
+        commit():
+            Commits the current application data to the database.
+        get_content() -> Mapping:
+            Generates and returns the content to be displayed, including an embed with character information.
+    """
     @button(label="Class", style=ButtonStyle.primary, row=1)
     async def char_class(self, _: Button, interaction: Interaction):
         modal = ClassModal(self.application)
@@ -347,6 +366,21 @@ class _CharacterInformationUI(CharacterView):
         return {"embed": embed, "content": ""}
 
 class _BaseScoresUI(CharacterView):
+    """
+    A UI class for handling base scores in a character application.
+    Methods
+    -------
+    base_scores_1(_: Button, interaction: Interaction)
+        Handles the button interaction for STR/DEX/CON scores, prompts a modal and refreshes content.
+    base_scores_2(_: Button, interaction: Interaction)
+        Handles the button interaction for INT/WIS/CHA scores, prompts a modal and refreshes content.
+    back(_: Button, interaction: Interaction)
+        Handles the button interaction for going back to the previous UI.
+    commit()
+        Commits the application data to the database.
+    get_content() -> Mapping
+        Generates and returns the content to be displayed in the UI.
+    """
     @button(label="STR/DEX/CON", style=ButtonStyle.primary, row=1)
     async def base_scores_1(self, _: Button, interaction: Interaction):
         modal = BaseScore1Modal(self.application)
@@ -375,6 +409,16 @@ class _BaseScoresUI(CharacterView):
         return {"embed": embed, "content": ""}
     
 class HPLevelModal(Modal):
+    """
+    A modal dialog for handling HP rolls in a character application.
+    Attributes:
+        application (NewCharacterApplication): The character application instance.
+    Methods:
+        __init__(application: NewCharacterApplication):
+            Initializes the modal with the given character application.
+        callback(interaction: Interaction):
+            Handles the interaction callback, updating the character's level and HP.
+    """
     application: NewCharacterApplication
 
     def __init__(self, application: NewCharacterApplication):
@@ -391,6 +435,17 @@ class HPLevelModal(Modal):
         self.stop()
     
 class MiscModal(Modal):
+    """
+    A modal dialog for collecting miscellaneous information about a new character application.
+    Attributes:
+        application (NewCharacterApplication): The application data for the new character.
+    Methods:
+        __init__(application: NewCharacterApplication):
+            Initializes the modal with input fields pre-filled with application data.
+        callback(interaction: Interaction):
+            Asynchronously updates the application data with the values from the input fields
+            and defers the interaction response.
+    """
     application: NewCharacterApplication
 
     def __init__(self, application: NewCharacterApplication):
@@ -417,6 +472,16 @@ class MiscModal(Modal):
         self.stop()
 
 class MiscModal2(Modal):
+    """
+    A modal dialog for miscellaneous information related to a character application.
+    Attributes:
+        application (NewCharacterApplication): The character application associated with this modal.
+    Methods:
+        __init__(application: NewCharacterApplication):
+            Initializes the modal with the given character application and adds an input field for the character sheet link.
+        callback(interaction: Interaction):
+            Asynchronously handles the interaction when the modal is submitted, updating the character sheet link in the application.
+    """
     application: NewCharacterApplication
 
     def __init__(self, application: NewCharacterApplication):
@@ -433,6 +498,16 @@ class MiscModal2(Modal):
         
     
 class BackgroundModal(Modal):
+    """
+    A modal dialog for editing the background information of a new character application.
+    Attributes:
+        application (NewCharacterApplication): The character application containing the background information.
+    Methods:
+        __init__(application: NewCharacterApplication):
+            Initializes the modal with input fields for background information.
+        callback(interaction: Interaction):
+            Asynchronously updates the background information in the application with the values from the input fields.
+    """
     application: NewCharacterApplication
 
     def __init__(self, application: NewCharacterApplication):
@@ -456,6 +531,16 @@ class BackgroundModal(Modal):
         self.stop()
 
 class SpeciesModal(Modal):
+    """
+    A modal dialog for entering and displaying species information for a new character application.
+    Attributes:
+        application (NewCharacterApplication): The application instance containing species information.
+    Methods:
+        __init__(application: NewCharacterApplication):
+            Initializes the SpeciesModal with the given application and adds input fields for species information.
+        callback(interaction: Interaction):
+            Asynchronously updates the species information in the application based on user input and stops the modal.
+    """
     application: NewCharacterApplication
 
     def __init__(self, application: NewCharacterApplication):
@@ -476,6 +561,16 @@ class SpeciesModal(Modal):
 
 
 class ClassModal(Modal):
+    """
+    A modal dialog for displaying and editing class information of a character application.
+    Attributes:
+        application (NewCharacterApplication): The character application associated with this modal.
+    Methods:
+        __init__(application: NewCharacterApplication):
+            Initializes the modal with input fields for class information.
+        callback(interaction: Interaction):
+            Asynchronously updates the character class information based on user input and stops the modal.
+    """
     application: NewCharacterApplication
 
     def __init__(self, application: NewCharacterApplication):
@@ -497,6 +592,16 @@ class ClassModal(Modal):
         self.stop()
 
 class BaseScore1Modal(Modal):
+    """
+    A modal dialog for inputting base scores for a new character application.
+    Attributes:
+        appliation (NewCharacterApplication): The character application instance.
+    Methods:
+        __init__(application: NewCharacterApplication):
+            Initializes the modal with input fields for base scores.
+        callback(interaction: Interaction):
+            Asynchronously updates the base scores in the application with the values from the input fields and defers the interaction response.
+    """
     appliation: NewCharacterApplication
 
     def __init__(self, application: NewCharacterApplication):
@@ -517,6 +622,17 @@ class BaseScore1Modal(Modal):
         self.stop()
 
 class BaseScore2Modal(Modal):
+    """
+    A modal dialog for inputting base scores for a new character application.
+    Attributes:
+        appliation (NewCharacterApplication): The application instance containing the base scores.
+    Methods:
+        __init__(application: NewCharacterApplication):
+            Initializes the modal with input fields for Intelligence, Wisdom, and Charisma.
+        callback(interaction: Interaction):
+            Asynchronously updates the base scores in the application with the values from the input fields
+            and defers the interaction response.
+    """
     appliation: NewCharacterApplication
 
     def __init__(self, application: NewCharacterApplication):

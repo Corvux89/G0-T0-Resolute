@@ -2,25 +2,37 @@ import calendar
 from datetime import datetime, timezone
 from io import BytesIO
 
-import discord
 import requests
+from discord import Color, Embed, File, Message, TextChannel, utils
+from PIL import Image, ImageDraw, ImageFilter
 from texttable import Texttable
 
 from Resolute.bot import G0T0Bot
 from Resolute.helpers.financial import get_financial_data
 from Resolute.models.categories.categories import DashboardType
 from Resolute.models.embeds.dashboards import RPDashboardEmbed
-from Resolute.models.objects.dashboards import (
-    RefDashboard, RefDashboardSchema, RPDashboardCategory,
-    get_class_census,
-    get_dashboard_by_type,
-    get_dashboards, get_level_distribution)
+from Resolute.models.objects.dashboards import (RefDashboard,
+                                                RefDashboardSchema,
+                                                RPDashboardCategory,
+                                                get_class_census,
+                                                get_dashboard_by_type,
+                                                get_level_distribution)
 from Resolute.models.objects.financial import Financial
-from PIL import Image, ImageDraw, ImageFilter
 
 
-
-async def get_last_message(channel: discord.TextChannel) -> discord.Message:
+async def get_last_message_in_channel(channel: TextChannel) -> Message:
+    """
+    Retrieve the last message in a given text channel.
+    This function attempts to get the last message in the specified channel.
+    It first checks if the channel's `last_message` attribute is set. If not,
+    it tries to fetch the last message from the channel's history. If that
+    also fails, it attempts to fetch the message using the channel's
+    `last_message_id`. If all attempts fail, it returns None.
+    Args:
+        channel (TextChannel): The text channel from which to retrieve the last message.
+    Returns:
+        Message: The last message in the channel, or None if it cannot be retrieved.
+    """
     if not (last_message := channel.last_message):
         try:
             last_message = next((msg for msg in channel.history(limit=1)), None)
@@ -34,6 +46,15 @@ async def get_last_message(channel: discord.TextChannel) -> discord.Message:
 
 
 async def get_financial_dashboards(bot: G0T0Bot) -> list[RefDashboard]:
+    """
+    Retrieve financial dashboards from the database.
+    This function fetches all dashboards of type "FINANCIAL" from the database
+    and returns them as a list of RefDashboard objects.
+    Args:
+        bot (G0T0Bot): The bot instance containing the database connection and compendium.
+    Returns:
+        list[RefDashboard]: A list of financial dashboards.
+    """
     dashboards = []
 
     d_type = bot.compendium.get_object(DashboardType, "FINANCIAL")
@@ -46,6 +67,13 @@ async def get_financial_dashboards(bot: G0T0Bot) -> list[RefDashboard]:
     return dashboards
 
 async def get_class_census_data(bot: G0T0Bot) -> []:
+    """
+    Fetches class census data from the database.
+    Args:
+        bot (G0T0Bot): An instance of the G0T0Bot which contains the database connection.
+    Returns:
+        list: A list of lists where each inner list contains the class name and its corresponding count.
+    """
     census = []
 
     async with bot.db.acquire() as conn:
@@ -56,6 +84,13 @@ async def get_class_census_data(bot: G0T0Bot) -> []:
     return census
 
 async def get_level_distribution_data(bot: G0T0Bot) -> []:
+    """
+    Fetches level distribution data from the database.
+    Args:
+        bot (G0T0Bot): The bot instance containing the database connection.
+    Returns:
+        list: A list of lists where each sublist contains the level and its corresponding count.
+    """
     data = []
     async with bot.db.acquire() as conn:
         async for row in conn.execute(get_level_distribution()):
@@ -64,12 +99,34 @@ async def get_level_distribution_data(bot: G0T0Bot) -> []:
     return data
 
 async def update_financial_dashboards(bot: G0T0Bot):
+    """
+    Asynchronously updates financial dashboards.
+    This function retrieves a list of financial dashboards and updates each one using the provided bot instance.
+    Args:
+        bot (G0T0Bot): An instance of the G0T0Bot used to interact with the dashboards.
+    Returns:
+        None
+    """
     dashboards = await get_financial_dashboards(bot)
 
     for d in dashboards:
         await update_dashboard(bot, d)
 
 async def update_dashboard(bot: G0T0Bot, dashboard: RefDashboard):
+    """
+    Asynchronously updates the specified dashboard based on its type.
+    Parameters:
+        bot (G0T0Bot): The bot instance.
+        dashboard (RefDashboard): The dashboard to update.
+    Returns:
+        None
+    The function handles different types of dashboards:
+        - "RP": Updates the role-playing dashboard by categorizing channels based on their last message.
+        - "CCENSUS": Updates the class census dashboard with the latest class distribution data.
+        - "LDIST": Updates the level distribution dashboard with the latest level distribution data.
+        - "FINANCIAL": Updates the financial dashboard with the latest financial progress and generates a progress bar image.
+    The function also handles the deletion of the dashboard if the original message is not pinned or does not exist.
+    """
     original_message = await dashboard.get_pinned_post()
 
     if isinstance(original_message, bool):
@@ -94,7 +151,7 @@ async def update_dashboard(bot: G0T0Bot, dashboard: RefDashboard):
         all_fields = [archivist_field, available_field, unavailable_field]
         
         for c in channels:
-            if last_message := await get_last_message(c):
+            if last_message := await get_last_message_in_channel(c):
                 if last_message.content in ["```\n​\n```", "```\n \n```"]:
                     available_field.channels.append(c)
                 elif guild.staff_role and guild.staff_role.mention in last_message.content:
@@ -195,12 +252,12 @@ async def update_dashboard(bot: G0T0Bot, dashboard: RefDashboard):
 
         background.save("progress.png")
 
-        embed = discord.Embed(title="G0-T0 Financial Progress",
+        embed = Embed(title="G0-T0 Financial Progress",
                               description=f"Current Monthly Progress: ${fin.adjusted_total:.2f}\n"
                                             f"Monthly Goal: ${fin.monthly_goal:.2f}\n"
                                             f"Reserve: ${fin.reserve:.2f}",
-                              color=discord.Color.gold(),
-                              timestamp=discord.utils.utcnow())
+                              color=Color.gold(),
+                              timestamp=utils.utcnow())
         
         embed.add_field(name="Stretch Goals",
                         value="If we end up with enough reserve funds, we will look at making a website to house our content rulings / updates and work on better integrations with the bot.")
@@ -208,7 +265,7 @@ async def update_dashboard(bot: G0T0Bot, dashboard: RefDashboard):
         embed.set_image(url="attachment://progress.png")
         embed.set_footer(text="Last Updated")
 
-        file = discord.File("progress.png", filename="progress.png")
+        file = File("progress.png", filename="progress.png")
         original_message.attachments.clear()
         return await original_message.edit(file=file, embed=embed, content="")
 

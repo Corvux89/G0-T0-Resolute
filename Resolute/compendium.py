@@ -23,6 +23,24 @@ async def get_table_values(conn, comp: CompendiumObject) -> list:
     return [d1, d2]
 
 class Compendium:
+    """
+    A class to manage and reload various categories of data for a bot.
+    Attributes:
+    -----------
+    categories : list
+        A list of category objects to be managed by the compendium.
+    Methods:
+    --------
+    __init__() -> None
+        Initializes the Compendium with predefined categories and sets attributes for each category.
+    async reload_categories(bot)
+        Reloads the categories from the database and updates the compendium attributes.
+    get_object(cls, value: str | int = None)
+        Retrieves an object from the categories based on the class and value provided.
+    get_activity(activity: str | int = None)
+        Retrieves an activity object based on the activity name or ID provided.
+    """
+
     def __init__(self) -> None:
         self.categories = [
             rarity, char_class, char_archetype,
@@ -48,6 +66,16 @@ class Compendium:
         bot.dispatch("compendium_loaded")
         
     def get_object(self, cls, value: str | int = None):
+        """
+        Retrieve an object from the compendium based on the provided class and value.
+        Args:
+            cls: The class type of the object to retrieve.
+            value (str | int, optional): The value to search for. Can be a string or an integer. Defaults to None.
+        Returns:
+            The object that matches the provided class and value, or None if no match is found.
+        Raises:
+            ObjectNotFound: If the object is not found in the compendium.
+        """
         try:
             for category in self.categories:
                 if category.obj == cls:
@@ -68,6 +96,16 @@ class Compendium:
         return None
     
     def get_activity(self, activity: str | int = None):
+        """
+        Retrieve an activity by its name or ID.
+        Args:
+            activity (str | int, optional): The name or ID of the activity to retrieve. 
+                                            If not provided, defaults to None.
+        Returns:
+            Activity: The activity object if found.
+        Raises:
+            ActivityNotFound: If the activity is not found.
+        """
         if act := self.get_object(Activity, activity):
             return act
         

@@ -1,14 +1,16 @@
 from typing import Mapping
 
-import discord
-from discord import Embed, SelectOption
-from discord.ui import InputText, Modal
+from discord import (ButtonStyle, Embed, InputTextStyle, Interaction,
+                     SelectOption)
+from discord.ui import Button, InputText, Modal, Select, button, select
 
 from Resolute.bot import G0T0Bot
-from Resolute.helpers.appliations import get_cached_application, upsert_application
+from Resolute.helpers.appliations import (get_cached_application,
+                                          upsert_application)
 from Resolute.helpers.general_helpers import get_webhook
 from Resolute.models.embeds.applications import NewCharacterRequestEmbed
-from Resolute.models.objects.applications import (ApplicationType, LevelUpApplication,
+from Resolute.models.objects.applications import (ApplicationType,
+                                                  LevelUpApplication,
                                                   NewCharacterApplication)
 from Resolute.models.objects.characters import PlayerCharacter
 from Resolute.models.objects.exceptions import G0T0Error
@@ -17,7 +19,19 @@ from Resolute.models.objects.players import Player
 from Resolute.models.views.base import InteractiveView
 
 
-class CharacterSelect(InteractiveView):
+class CharacterView(InteractiveView):
+    """
+    CharacterView class that inherits from InteractiveView.
+    Attributes:
+        __menu_copy_attrs__ (tuple): A tuple of attribute names to be copied in the menu.
+        bot (G0T0Bot): Instance of the bot.
+        player (Player): Instance of the player.
+        character (PlayerCharacter): Instance of the player's character.
+        guild (PlayerGuild): Instance of the player's guild.
+        levelUp (bool): Flag indicating if the character is leveling up.
+        editOnly (bool): Flag indicating if the view is in edit-only mode.
+        application (NewCharacterApplication|LevelUpApplication): Instance of the character application, either new or level-up.
+    """
     __menu_copy_attrs__ = ("bot", "player", "character", "levelUp", "application", "editOnly", "guild")
     bot: G0T0Bot
     player: Player
@@ -28,7 +42,28 @@ class CharacterSelect(InteractiveView):
     application: NewCharacterApplication|LevelUpApplication
 
     
-class CharacterSelectUI(CharacterSelect):
+class CharacterSelectUI(CharacterView):
+    """
+    A UI class for character selection and application management in a bot.
+    Methods
+    -------
+    new(cls, bot, owner, player, levelUp=False, application=None, editOnly=False)
+        Creates a new instance of CharacterSelectUI.
+    application_select(type: Select, interaction: Interaction)
+        Handles the selection of an application type.
+    character_select(char: Select, interaction: Interaction)
+        Handles the selection of a character to manage.
+    application_edit(_: Button, interaction: Interaction)
+        Handles the editing of an application.
+    application_create(_: Button, interaction: Interaction)
+        Handles the creation of a new application.
+    exit(*_)
+        Handles the exit action.
+    _before_send()
+        Prepares the UI before sending it to the user.
+    get_content() -> Mapping
+        Returns the content to be displayed in the UI.
+    """
     @classmethod
     def new(cls, bot, owner, player, levelUp: bool = False, application: NewCharacterApplication | LevelUpApplication = None, editOnly: bool = False):
         inst = cls(owner=owner)
@@ -40,8 +75,8 @@ class CharacterSelectUI(CharacterSelect):
         inst.application = application or (NewCharacterApplication(charcter=inst.character) if not levelUp else LevelUpApplication(character=inst.character))
         return inst
     
-    @discord.ui.select(placeholder="Select an appliation type", custom_id="type_select", row=1)
-    async def application_select(self, type: discord.ui.Select, interaction: discord.Interaction):
+    @select(placeholder="Select an appliation type", custom_id="type_select", row=1)
+    async def application_select(self, type: Select, interaction: Interaction):
         self.application.type = ApplicationType[type.values[0]]
 
         if self.application.type == ApplicationType.new:
@@ -52,14 +87,14 @@ class CharacterSelectUI(CharacterSelect):
 
         await self.refresh_content(interaction)
     
-    @discord.ui.select(placeholder="Select a character to manage", custom_id="char_select", row=2)
-    async def character_select(self, char: discord.ui.Select, interaction: discord.Interaction):
+    @select(placeholder="Select a character to manage", custom_id="char_select", row=2)
+    async def character_select(self, char: Select, interaction: Interaction):
         self.character = self.player.characters[int(char.values[0])]
         self.application.character = self.character
         await self.refresh_content(interaction)
 
-    @discord.ui.button(label="Edit Application", style=discord.ButtonStyle.primary, row=3)
-    async def application_edit(self, _: discord.ui.Button, interaction: discord.Interaction):
+    @button(label="Edit Application", style=ButtonStyle.primary, row=3)
+    async def application_edit(self, _: Button, interaction: Interaction):
         if self.levelUp:
             modal = LevelUpRequestModal(self.player.guild, self.character, self.application)
             await self.prompt_modal(interaction, modal)
@@ -67,8 +102,8 @@ class CharacterSelectUI(CharacterSelect):
         else:
             await self.defer_to(NewCharacterRequestUI, interaction)
 
-    @discord.ui.button(label="New Application", style=discord.ButtonStyle.primary, row=3)
-    async def application_create(self, _: discord.ui.Button, interaction: discord.Interaction):
+    @button(label="New Application", style=ButtonStyle.primary, row=3)
+    async def application_create(self, _: Button, interaction: Interaction):
         if self.levelUp:
             if self.character.level >= self.player.guild.max_level:
                 raise G0T0Error("Character is already at max level for the server")
@@ -80,7 +115,7 @@ class CharacterSelectUI(CharacterSelect):
             self.application = NewCharacterApplication(type=self.application.type, character=self.character if self.application.type in [ApplicationType.death, ApplicationType.freeroll] else None)
             await self.defer_to(NewCharacterRequestUI, interaction)
 
-    @discord.ui.button(label="Exit", style=discord.ButtonStyle.danger, row=3)
+    @button(label="Exit", style=ButtonStyle.danger, row=3)
     async def exit(self, *_):
         await self.on_timeout()
 
@@ -126,7 +161,30 @@ class CharacterSelectUI(CharacterSelect):
         return {"embed": None, "content": str}
     
 
-class NewCharacterRequestUI(CharacterSelect):
+class NewCharacterRequestUI(CharacterView):
+    """
+    A user interface class for handling new character requests in a Discord bot application.
+    Methods
+    -------
+    new(cls, bot, owner, player, levelUp: bool = False, application: NewCharacterApplication = None):
+        Class method to create a new instance of NewCharacterRequestUI.
+    base_scores(self, _: Button, interaction: Interaction):
+        Handles the "Base Scores" button interaction.
+    char(self, _: Button, interaction: Interaction):
+        Handles the "Class/Species/Background" button interaction.
+    misc(self, _: Button, interaction: Interaction):
+        Handles the "Misc." button interaction.
+    submit(self, _: Button, interaction: Interaction):
+        Handles the "Submit" button interaction, submitting the character application.
+    exit(self, *_):
+        Handles the "Exit" button interaction, exiting the interface.
+    _before_send(self):
+        Prepares the interface before sending, enabling or disabling the submit button based on application status.
+    commit(self):
+        Commits the application data to the database.
+    get_content(self) -> Mapping:
+        Returns the content to be displayed in the interface.
+    """
     @classmethod
     def new(cls, bot, owner, player, levelUp: bool = False, application: NewCharacterApplication = None):
         inst = cls(owner=owner)
@@ -137,20 +195,20 @@ class NewCharacterRequestUI(CharacterSelect):
         inst.application = application or NewCharacterApplication()
         return inst
     
-    @discord.ui.button(label="Base Scores", style=discord.ButtonStyle.primary, row=1)
-    async def base_scores(self, _: discord.ui.Button, interaction: discord.Interaction):
+    @button(label="Base Scores", style=ButtonStyle.primary, row=1)
+    async def base_scores(self, _: Button, interaction: Interaction):
         await self.defer_to(_BaseScoresUI, interaction)
 
-    @discord.ui.button(label="Class/Species/Background", style=discord.ButtonStyle.primary, row=1)
-    async def char(self, _: discord.ui.Button, interaction: discord.Interaction):
+    @button(label="Class/Species/Background", style=ButtonStyle.primary, row=1)
+    async def char(self, _: Button, interaction: Interaction):
         await self.defer_to(_CharacterInformationUI, interaction)
 
-    @discord.ui.button(label="Misc.", style=discord.ButtonStyle.primary, row=1)
-    async def misc(self, _: discord.ui.Button, interaction: discord.Interaction):
+    @button(label="Misc.", style=ButtonStyle.primary, row=1)
+    async def misc(self, _: Button, interaction: Interaction):
         await self.defer_to(_MiscuUI, interaction)
 
-    @discord.ui.button(label="Submit", style=discord.ButtonStyle.green, row=2)
-    async def submit(self, _: discord.ui.Button, interaction: discord.Interaction):
+    @button(label="Submit", style=ButtonStyle.green, row=2)
+    async def submit(self, _: Button, interaction: Interaction):
         if self.player.guild.staff_role and self.player.guild.application_channel:
             message = self.application.format_app(self.owner, self.player.guild.staff_role)
             webhook = await get_webhook(self.player.guild.application_channel)
@@ -175,7 +233,7 @@ class NewCharacterRequestUI(CharacterSelect):
             await interaction.response.send_message("Issue submitting request", ephemeral=True)
         await self.on_timeout()
 
-    @discord.ui.button(label="Exit", style=discord.ButtonStyle.danger, row=2)
+    @button(label="Exit", style=ButtonStyle.danger, row=2)
     async def exit(self, *_):
         await self.on_timeout()
 
@@ -191,27 +249,27 @@ class NewCharacterRequestUI(CharacterSelect):
     async def get_content(self) -> Mapping:
         return {"embed": NewCharacterRequestEmbed(self.application), "content": ""}
 
-class _MiscuUI(CharacterSelect):
-    @discord.ui.button(label="Misc. 1", style=discord.ButtonStyle.primary, row=1)
-    async def misc(self, _: discord.ui.Button, interaction: discord.Interaction):
+class _MiscuUI(CharacterView):
+    @button(label="Misc. 1", style=ButtonStyle.primary, row=1)
+    async def misc(self, _: Button, interaction: Interaction):
         modal = MiscModal(self.application)
         await self.prompt_modal(interaction, modal)
         await self.refresh_content(interaction)
     
-    @discord.ui.button(label="Misc. 2", style=discord.ButtonStyle.primary, row=1)
-    async def misc2(self, _: discord.ui.Button, interaction: discord.Interaction):
+    @button(label="Misc. 2", style=ButtonStyle.primary, row=1)
+    async def misc2(self, _: Button, interaction: Interaction):
         modal = MiscModal2(self.application)
         await self.prompt_modal(interaction, modal)
         await self.refresh_content(interaction)
 
-    @discord.ui.button(label="HP/Level", style=discord.ButtonStyle.primary, row=1)
-    async def hp_level(self, _: discord.ui.Button, interaction: discord.Interaction):
+    @button(label="HP/Level", style=ButtonStyle.primary, row=1)
+    async def hp_level(self, _: Button, interaction: Interaction):
         modal = HPLevelModal(self.application)
         await self.prompt_modal(interaction, modal)
         await self.refresh_content(interaction)
 
-    @discord.ui.button(label="Back", style=discord.ButtonStyle.grey, row=2)
-    async def back(self, _: discord.ui.Button, interaction: discord.Interaction):
+    @button(label="Back", style=ButtonStyle.grey, row=2)
+    async def back(self, _: Button, interaction: Interaction):
         await self.defer_to(NewCharacterRequestUI, interaction)
             
     async def commit(self):
@@ -248,27 +306,27 @@ class _MiscuUI(CharacterSelect):
         return {"embed": embed, "content": ""}
 
 
-class _CharacterInformationUI(CharacterSelect):
-    @discord.ui.button(label="Class", style=discord.ButtonStyle.primary, row=1)
-    async def char_class(self, _: discord.ui.Button, interaction: discord.Interaction):
+class _CharacterInformationUI(CharacterView):
+    @button(label="Class", style=ButtonStyle.primary, row=1)
+    async def char_class(self, _: Button, interaction: Interaction):
         modal = ClassModal(self.application)
         await self.prompt_modal(interaction, modal)
         await self.refresh_content(interaction)
 
-    @discord.ui.button(label="Species", style=discord.ButtonStyle.primary, row=1)
-    async def species(self, _: discord.ui.Button, interaction: discord.Interaction):
+    @button(label="Species", style=ButtonStyle.primary, row=1)
+    async def species(self, _: Button, interaction: Interaction):
         modal = SpeciesModal(self.application)
         await self.prompt_modal(interaction, modal)
         await self.refresh_content(interaction)
 
-    @discord.ui.button(label="Background", style=discord.ButtonStyle.primary, row=1)
-    async def background(self, _: discord.ui.Button, interaction: discord.Interaction):
+    @button(label="Background", style=ButtonStyle.primary, row=1)
+    async def background(self, _: Button, interaction: Interaction):
         modal = BackgroundModal(self.application)
         await self.prompt_modal(interaction, modal)
         await self.refresh_content(interaction)
 
-    @discord.ui.button(label="Back", style=discord.ButtonStyle.grey, row=2)
-    async def back(self, _: discord.ui.Button, interaction: discord.Interaction):
+    @button(label="Back", style=ButtonStyle.grey, row=2)
+    async def back(self, _: Button, interaction: Interaction):
         await self.defer_to(NewCharacterRequestUI, interaction)
 
     async def commit(self):
@@ -288,21 +346,21 @@ class _CharacterInformationUI(CharacterSelect):
         
         return {"embed": embed, "content": ""}
 
-class _BaseScoresUI(CharacterSelect):
-    @discord.ui.button(label="STR/DEX/CON", style=discord.ButtonStyle.primary, row=1)
-    async def base_scores_1(self, _: discord.ui.Button, interaction: discord.Interaction):
+class _BaseScoresUI(CharacterView):
+    @button(label="STR/DEX/CON", style=ButtonStyle.primary, row=1)
+    async def base_scores_1(self, _: Button, interaction: Interaction):
         modal = BaseScore1Modal(self.application)
         await self.prompt_modal(interaction, modal)
         await self.refresh_content(interaction)
 
-    @discord.ui.button(label="INT/WIS/CHA", style=discord.ButtonStyle.primary, row=1)
-    async def base_scores_2(self, _: discord.ui.Button, interaction: discord.Interaction):
+    @button(label="INT/WIS/CHA", style=ButtonStyle.primary, row=1)
+    async def base_scores_2(self, _: Button, interaction: Interaction):
         modal = BaseScore2Modal(self.application)
         await self.prompt_modal(interaction, modal)
         await self.refresh_content(interaction)
 
-    @discord.ui.button(label="Back", style=discord.ButtonStyle.grey, row=2)
-    async def back(self, _: discord.ui.Button, interaction: discord.Interaction):
+    @button(label="Back", style=ButtonStyle.grey, row=2)
+    async def back(self, _: Button, interaction: Interaction):
         await self.defer_to(NewCharacterRequestUI, interaction)
 
     async def commit(self):
@@ -325,7 +383,7 @@ class HPLevelModal(Modal):
         self.add_item(InputText(label="Character Level", placeholder="Character Level", value=self.application.level, required=False, max_length=2))
         self.add_item(InputText(label="HP", required=False, placeholder="HP", value=self.application.hp))
 
-    async def callback(self, interaction: discord.Interaction):
+    async def callback(self, interaction: Interaction):
         self.application.level = self.children[0].value
         self.application.hp = self.children[1].value
 
@@ -342,13 +400,13 @@ class MiscModal(Modal):
         self.add_item(InputText(label="Character Name", placeholder="Character Name", value=self.application.name, max_length=2000))
         self.add_item(InputText(label="Starting Credits", placeholder="Starting Credits", value=self.application.credits, max_length=150))
         self.add_item(InputText(label="Homeworld", placeholder="Homeworld", value=self.application.homeworld, max_length=500))
-        self.add_item(InputText(label="Motivation for joining the Wardens of the Sky", style=discord.InputTextStyle.long, placeholder="Motivation", 
+        self.add_item(InputText(label="Motivation for joining the Wardens of the Sky", style=InputTextStyle.long, placeholder="Motivation", 
                                 value=self.application.join_motivation, max_length=1000))
-        self.add_item(InputText(label="Motivation for doing good?", style=discord.InputTextStyle.long, placeholder="Motivation", 
+        self.add_item(InputText(label="Motivation for doing good?", style=InputTextStyle.long, placeholder="Motivation", 
                                 value=self.application.good_motivation, max_length=1000))
         
 
-    async def callback(self, interaction: discord.Interaction):
+    async def callback(self, interaction: Interaction):
         self.application.name = self.children[0].value
         self.application.credits = self.children[1].value
         self.application.homeworld = self.children[2].value
@@ -367,7 +425,7 @@ class MiscModal2(Modal):
 
         self.add_item(InputText(label="Character Sheet Link", placeholder="Character Sheet Link", value=self.application.link))
 
-    async def callback(self, interaction: discord.Interaction):
+    async def callback(self, interaction: Interaction):
         self.application.link = self.children[0].value
 
         await interaction.response.defer()
@@ -387,7 +445,7 @@ class BackgroundModal(Modal):
         self.add_item(InputText(label="Feat", placeholder="Feat", value=self.application.background.feat, max_length=100))
         self.add_item(InputText(label="Equipment", placeholder="Equipment", value=self.application.background.equipment, max_length=1000))
 
-    async def callback(self, interaction: discord.Interaction):
+    async def callback(self, interaction: Interaction):
         self.application.background.background = self.children[0].value
         self.application.background.skills = self.children[1].value
         self.application.background.tools = self.children[2].value
@@ -408,7 +466,7 @@ class SpeciesModal(Modal):
         self.add_item(InputText(label="Ability Score Increase", placeholder="Abilisty Score Increase", value=self.application.species.asi, max_length=100))
         self.add_item(InputText(label="Features", placeholder="Features", value=self.application.species.feats, max_length=1000))    
 
-    async def callback(self, interaction: discord.Interaction):
+    async def callback(self, interaction: Interaction):
         self.application.species.species = self.children[0].value
         self.application.species.asi = self.children[1].value
         self.application.species.feats = self.children[2].value
@@ -429,7 +487,7 @@ class ClassModal(Modal):
         self.add_item(InputText(label="Features", placeholder="Features", value=self.application.char_class.feats, max_length=100))
         self.add_item(InputText(label="Equipment", placeholder="Equipment", value=self.application.char_class.equipment, max_length=1000))
 
-    async def callback(self, interaction: discord.Interaction):
+    async def callback(self, interaction: Interaction):
         self.application.char_class.char_class = self.children[0].value
         self.application.char_class.skills = self.children[1].value
         self.application.char_class.feats = self.children[2].value
@@ -449,7 +507,7 @@ class BaseScore1Modal(Modal):
         self.add_item(InputText(label="Dexterity", placeholder="Dexterity", value=self.appliation.base_scores.dex, max_length=5))
         self.add_item(InputText(label="Constitution", placeholder="Constitution", value=self.appliation.base_scores.con, max_length=5))
 
-    async def callback(self, interaction: discord.Interaction):
+    async def callback(self, interaction: Interaction):
         self.appliation.base_scores.str = self.children[0].value
         self.appliation.base_scores.dex = self.children[1].value
         self.appliation.base_scores.con = self.children[2].value
@@ -469,7 +527,7 @@ class BaseScore2Modal(Modal):
         self.add_item(InputText(label="Wisdom", placeholder="Wisdom", value=self.appliation.base_scores.wis, max_length=5))
         self.add_item(InputText(label="Charisma", placeholder="Charisma", value=self.appliation.base_scores.cha, max_length=5))
 
-    async def callback(self, interaction: discord.Interaction):
+    async def callback(self, interaction: Interaction):
         self.appliation.base_scores.int = self.children[0].value
         self.appliation.base_scores.wis = self.children[1].value
         self.appliation.base_scores.cha = self.children[2].value
@@ -488,12 +546,12 @@ class LevelUpRequestModal(Modal):
 
         self.add_item(InputText(label="Level", placeholder=f"Level", max_length=3, value=self.application.level))
         self.add_item(InputText(label="HP", placeholder="HP", max_length=500, value=self.application.hp))
-        self.add_item(InputText(label="New Features", style=discord.InputTextStyle.long, placeholder="New Features or NA", value=self.application.feats))
+        self.add_item(InputText(label="New Features", style=InputTextStyle.long, placeholder="New Features or NA", value=self.application.feats))
         
-        self.add_item(InputText(label="Changes", style=discord.InputTextStyle.long, max_length=2000, placeholder="Changes or NA", value=self.application.changes))
+        self.add_item(InputText(label="Changes", style=InputTextStyle.long, max_length=2000, placeholder="Changes or NA", value=self.application.changes))
         self.add_item(InputText(label="Link", placeholder="Link to character sheet", max_length=500, value=self.application.link))
 
-    async def callback(self, interaction: discord.Interaction):
+    async def callback(self, interaction: Interaction):
         if self.guild.staff_role and self.guild.application_channel:
             self.application.level = self.children[0].value
             self.application.hp = self.children[1].value

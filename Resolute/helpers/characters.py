@@ -2,9 +2,8 @@ import logging
 import re
 from timeit import default_timer as timer
 
-import discord
+from discord import ApplicationContext, Interaction
 
-from Resolute.bot import G0T0Bot
 from Resolute.helpers.general_helpers import get_selection
 from Resolute.models.objects.applications import ApplicationType
 from Resolute.models.objects.characters import (PlayerCharacter,
@@ -13,19 +12,37 @@ from Resolute.models.objects.players import Player
 
 log = logging.getLogger(__name__)
 
-async def create_new_character(bot: G0T0Bot, type: ApplicationType, player: Player, new_character: PlayerCharacter, new_class: PlayerCharacterClass, **kwargs) -> PlayerCharacter:
+async def create_new_character(type: ApplicationType, player: Player, new_character: PlayerCharacter, new_class: PlayerCharacterClass, **kwargs) -> PlayerCharacter:
+    """
+    Asynchronously creates a new character for a player.
+    Args:
+        type (ApplicationType): The type of application (e.g., 'freeroll', 'death').
+        player (Player): The player creating the new character.
+        new_character (PlayerCharacter): The new character to be created.
+        new_class (PlayerCharacterClass): The class of the new character.
+        **kwargs: Additional keyword arguments, including:
+            - old_character (PlayerCharacter): The player's old character, if applicable.
+    Returns:
+        PlayerCharacter: The newly created character.
+    Raises:
+        Exception: If there is an error during the character creation process.
+    Notes:
+        - If the type is 'freeroll' or 'death', the old character will be deactivated.
+        - If the type is 'freeroll', the new character will reference the old character.
+        - If the type is 'death', the player's handicap amount will be reset.
+        - The function logs the time taken to create the character.
+    """
     start = timer()
 
     old_character: PlayerCharacter = kwargs.get('old_character')
 
     new_character.player_id = player.id
     new_character.guild_id = player.guild_id        
-
-    if type.name in ['freeroll', 'death']:
+    if type in [ApplicationType.freeroll, ApplicationType.death]:
         new_character.reroll = True
         old_character.active = False
 
-        if type == 'freeroll':
+        if type == ApplicationType.freeroll:
             new_character.freeroll_from = old_character.id
         else:
             player.handicap_amount = 0
@@ -46,6 +63,17 @@ async def create_new_character(bot: G0T0Bot, type: ApplicationType, player: Play
     return new_character
 
 def find_character_by_name(name: str, characters: list[PlayerCharacter]) -> list[PlayerCharacter]:
+    """
+    Find characters by their name or nickname from a list of PlayerCharacter objects.
+    This function searches for characters whose name or nickname matches the given name.
+    The search is case-insensitive.
+    Args:
+        name (str): The name or nickname to search for.
+        characters (list[PlayerCharacter]): A list of PlayerCharacter objects to search within.
+    Returns:
+        list[PlayerCharacter]: A list of PlayerCharacter objects that match the given name or nickname.
+                               If no direct matches are found, it returns characters with partial matches.
+    """
     direct_matches = [c for c in characters if c.name.lower() == name.lower()]
 
     # Prioritize main name first
@@ -58,7 +86,19 @@ def find_character_by_name(name: str, characters: list[PlayerCharacter]) -> list
     
     return direct_matches  
 
-async def handle_character_mention(ctx: discord.ApplicationContext | discord.Interaction, content: str, DM: bool = True) -> str:
+async def handle_character_mention(ctx: ApplicationContext | Interaction, content: str, DM: bool = True) -> str:
+    """
+    Handles character mentions in a given content string.
+    This function searches for character mentions in the format `{$character_name}` within the provided content string.
+    It then attempts to match these mentions with characters from the guild's compendium and replaces the mentions with
+    formatted links to the characters. Optionally, it can send a direct message to the mentioned characters' players.
+    Args:
+        ctx (ApplicationContext | Interaction): The context of the command or interaction.
+        content (str): The content string containing potential character mentions.
+        DM (bool, optional): Whether to send a direct message to the mentioned characters' players. Defaults to True.
+    Returns:
+        str: The content string with character mentions replaced by formatted links.
+    """
     mentioned_characters = []
 
     if char_mentions := re.findall(r'{\$([^}]*)}', content):

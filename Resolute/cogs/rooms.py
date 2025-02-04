@@ -15,6 +15,18 @@ def setup(bot: commands.Bot):
 
 
 class Room(commands.Cog):
+    """
+    A Cog that handles room-related commands for the bot.
+    Attributes:
+        bot (G0T0Bot): The bot instance that this cog is attached to.
+        room_commands (SlashCommandGroup): A group of slash commands related to room operations.
+    Methods:
+        __init__(bot):
+            Initializes the Room cog with the given bot instance.
+        room_settings(ctx: ApplicationContext):
+            Handles the room settings command. Checks if the user has the necessary permissions
+            and then provides a UI for managing room settings.
+    """
     bot: G0T0Bot
 
     room_commands = SlashCommandGroup("room", "Room commands", guild_only=True)
@@ -30,6 +42,19 @@ class Room(commands.Cog):
         description="Room settings"
     )
     async def room_settings(self, ctx: ApplicationContext):
+        """
+        Handles the room settings for a given context.
+        This method checks if the author of the context has the necessary permissions
+        to manage the room settings. If the author has the required permissions, it
+        retrieves the relevant roles and initializes the RoomSettingsUI to manage
+        the room settings.
+        Args:
+            ctx (ApplicationContext): The context of the application command.
+        Raises:
+            G0T0Error: If the author does not have the required permissions, if there
+                       are no roles to manage, or if something goes wrong during the
+                       process.
+        """
         channel = ctx.guild.get_channel(ctx.channel.id)
         if (ctx.author in channel.overwrites or is_admin(ctx)):
             roles = []

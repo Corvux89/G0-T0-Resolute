@@ -94,7 +94,7 @@ class AdventureSchema(Schema):
     def load_factions(self, value):
         factions = []
         for f in value:
-            factions.append(self.compendium.get_object(Faction, f))
+            factions.append(self.bot.compendium.get_object(Faction, f))
         return factions
     
     async def get_characters(self, adventure: Adventure):

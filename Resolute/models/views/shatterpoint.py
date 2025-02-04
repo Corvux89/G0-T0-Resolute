@@ -6,7 +6,6 @@ from discord.ui import InputText, Modal
 
 from Resolute.bot import G0T0Bot
 from Resolute.helpers.general_helpers import confirm
-from Resolute.helpers.logs import create_log
 from Resolute.models.categories.categories import CodeConversion, Faction
 from Resolute.models.embeds import ErrorEmbed
 from Resolute.models.embeds.shatterpoint import (ShatterpointEmbed,
@@ -75,28 +74,30 @@ class ShatterpointSettingsUI(ShatterpointSettings):
         else:
             for p in self.shatterpoint.players:
                 player = await self.bot.get_player(p.player_id, interaction.guild.id)
-                await create_log(self.bot, self.owner, "GLOBAL", player, 
-                                 notes=self.shatterpoint.name, 
-                                 cc=p.cc)
+                await self.bot.log(interaction, player, self.owner, "GLOBAL",
+                                   notes=self.shatterpoint.name,
+                                   cc=p.cc,
+                                   silent=True)
                 
                 # Character Rewards
                 for c in p.characters:
                     character = next((ch for ch in player.characters if ch.id == c), None)
                     conversion: CodeConversion = self.bot.compendium.get_object(CodeConversion, character.level)
                     credits = p.cc * conversion.value
-
-                    await create_log(self.bot, self.owner, "GLOBAL", player,
-                                     character=character,
-                                     notes=self.shatterpoint.name,
-                                     credits=credits)
+                    await self.bot.log(interaction, player, self.owner, "GLOBAL",
+                                       character=character,
+                                       notes=self.shatterpoint.name,
+                                       credits=credits,
+                                       silent=True)
                     
                     for renown in self.shatterpoint.renown:
-                        await create_log(self.bot, self.owner, "RENOWN", player,
-                                         character=character,
-                                         notes=f"Global Reward: {self.shatterpoint.name}",
-                                         faction=renown.faction,
-                                         renown=p.renown_override if p.renown_override else renown.renown)
-                        
+                        await self.bot.log(interaction, player, self.owner, "RENOWN",
+                                           character=character,
+                                           notes=self.shatterpoint.name,
+                                           faction=renown.faction,
+                                           renown=p.renown_override if p.renown_override else renown.renown,
+                                           silent=True)
+                                                
             await self.shatterpoint.delete()
             await interaction.channel.send(embed=ShatterpointLogEmbed(self.shatterpoint))
             await self.on_timeout()

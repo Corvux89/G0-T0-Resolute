@@ -3,9 +3,7 @@
 import discord
 from Resolute.bot import G0T0Bot
 from Resolute.constants import APPROVAL_EMOJI, CHANNEL_BREAK
-from Resolute.helpers.logs import create_log
 from Resolute.models.categories.categories import Activity
-from Resolute.models.embeds.logs import LogEmbed
 from Resolute.models.objects.characters import PlayerCharacter
 from Resolute.models.objects.exceptions import CharacterNotFound
 from Resolute.models.objects.players import Player
@@ -114,15 +112,12 @@ class MessageLogUI(MessageLog):
     async def log(self, _: discord.ui.Button, interaction: discord.Interaction):
         for member in self.members:
             if self.activity.value == "RP_HOST":
-                rp_act = self.bot.compendium.get_activity("RP")
-                log_entry = await create_log(self.bot, self.owner, self.activity if member.host else rp_act, member.player,
-                                         character=member.character)
+                await self.bot.log(interaction, member.player, self.owner, self.activity if member.host else "RP",
+                                   character=member.character)
             else:
-                log_entry = await create_log(self.bot, self.owner, self.activity, member.player,
-                                         character=member.character)
-            
-            await interaction.channel.send(embed=LogEmbed(log_entry, self.owner, member.player.member, member.character))
-
+                await self.bot.log(interaction, member.player, self.owner, self.activity,
+                                   character=member.character)
+                
         await self.msg.add_reaction(APPROVAL_EMOJI[0])
         if self.activity.value in ["RP", "RP_HOST"]:
             await interaction.channel.send(CHANNEL_BREAK)

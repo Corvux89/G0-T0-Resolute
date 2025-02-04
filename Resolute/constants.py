@@ -1,6 +1,5 @@
 import json
 import os
-from typing import Dict
 
 # Bot Configuration Stuff
 BOT_OWNERS = json.loads(os.environ["BOT_OWNERS"]) if "BOT_OWNERS" in os.environ else None

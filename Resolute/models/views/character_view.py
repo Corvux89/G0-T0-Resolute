@@ -11,7 +11,7 @@ from Resolute.compendium import Compendium
 from Resolute.constants import ACTIVITY_POINT_MINIMUM
 from Resolute.helpers.characters import create_new_character
 from Resolute.helpers.general_helpers import get_webhook, is_admin, process_message
-from Resolute.helpers.logs import create_log, update_activity_points
+from Resolute.helpers.logs import update_activity_points
 from Resolute.helpers.messages import get_char_name_from_message, get_player_from_say_message
 from Resolute.helpers.players import build_rp_post, manage_player_roles
 from Resolute.models.categories import CharacterClass, CharacterSpecies
@@ -21,7 +21,6 @@ from Resolute.models.embeds.characters import (CharacterEmbed,
                                                CharacterSettingsEmbed,
                                                LevelUpEmbed, NewcharacterEmbed,
                                                NewCharacterSetupEmbed)
-from Resolute.models.embeds.logs import LogEmbed
 from Resolute.models.embeds.players import PlayerOverviewEmbed, RPPostEmbed
 from Resolute.models.objects.applications import ApplicationType
 from Resolute.models.objects.characters import (CharacterRenown,
@@ -133,15 +132,16 @@ class _NewCharacter(CharacterManage):
 
     @discord.ui.button(label="Create Character", style=discord.ButtonStyle.green, row=4, disabled=True)
     async def new_character_create(self, _: discord.ui.Button, interaction: discord.Interaction):
-        self.new_character = await create_new_character(self.bot, self.new_type, self.player, self.new_character, self.new_class,
+        self.new_character = await create_new_character(self.new_type, self.player, self.new_character, self.new_class,
                                                         old_character=self.active_character)
-
-        log_entry = await create_log(self.bot, self.owner, "NEW_CHARACTER", self.player, 
-                                     character=self.new_character, 
-                                     notes="Initial Log",
-                                     cc=self.new_cc, 
-                                     credits=self.new_credits,
-                                     ignore_handicap=True)
+        
+        log_entry = await self.bot.log(interaction, self.player, self.owner, "NEW_CHARACTER",
+                                       character=self.new_character,
+                                       notes="Initial Log",
+                                       cc=self.new_cc,
+                                       credites=self.new_credits,
+                                       ignore_handicap=True,
+                                       silent=True)
         
         self.player = await self.bot.get_player(self.player.id, self.player.guild_id)
 
@@ -196,12 +196,9 @@ class _InactivateCharacter(CharacterManage):
     async def inactivate_character_confirm(self, _: Button, interaction: discord.Interaction):
         self.active_character.active = False
 
-        log_entry = await create_log(self.bot, self.owner, "MOD_CHARACTER", self.player, 
-                                     character=self.active_character, 
-                                     notes="Inactivating Character")
-
-        await interaction.channel.send(embed=LogEmbed(log_entry, self.owner, self.player.member, self.active_character))
-
+        await self.bot.log(interaction, self.player, self.owner, "MOD_CHARACTER",
+                           character=self.active_character,
+                           notes="Inactivating Character")
         await self.on_timeout()
 
 
@@ -229,10 +226,10 @@ class _EditCharacter(CharacterManage):
         response: CharacterInformationModal = await self.prompt_modal(interaction, modal)
 
         if response.update:
-            await create_log(self.bot, self.owner, "MOD_CHARACTER", self.player, 
-                             character=self.active_character,
-                             notes="Character Modification")
-
+            await self.bot.log(interaction, self.player, self.owner, "MOD_CHARACTER",
+                               character=self.active_character,
+                               notes="Character modifcation",
+                               silent=True)
         await self.refresh_content(interaction)
 
     @discord.ui.button(label="Level Up", style=discord.ButtonStyle.primary, row=2)
@@ -244,9 +241,10 @@ class _EditCharacter(CharacterManage):
                             f"Completed Arena Phases: {min(self.player.completed_arenas, self.player.needed_arenas)}/{self.player.needed_arenas}")
         
         self.active_character.level += 1
-        await create_log(self.bot, self.owner, "LEVEL", self.player,
-                            character=self.active_character,
-                            notes="Player level up")
+        await self.bot.log(interaction, self.player, self.owner, "LEVEL",
+                           character=self.active_character,
+                           notes="Player level up",
+                           silent=True)
         await manage_player_roles(self.bot, self.player, "Level up")
 
         await interaction.channel.send(embed=LevelUpEmbed(self.player, self.active_character))
@@ -359,13 +357,12 @@ class _EditCharacterRenown(CharacterManage):
         response = await self.prompt_modal(interaction, modal)
 
         if response.amount != 0:
-            log_entry = await create_log(self.bot, interaction.user, "RENOWN", self.player, 
-                                        character=self.active_character,
-                                        renown=response.amount,
-                                        faction=self.faction)
-
+            await self.bot.log(interaction, self.player, self.owner, "RENOWN",
+                               character=self.active_character,
+                               renown=response.amount,
+                               faction=self.faction,
+                               show_values=True)
             self.active_character = await self.bot.get_character(self.active_character.id)
-            await interaction.channel.send(embed=LogEmbed(log_entry, interaction.user, self.player.member, self.active_character, True))
             await self.on_timeout()
         else:
             self.refresh_content(interaction)

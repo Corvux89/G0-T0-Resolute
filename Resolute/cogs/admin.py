@@ -22,6 +22,31 @@ def setup(bot: commands.Bot):
 
 
 class Admin(commands.Cog):
+    '''
+    A Cog that handles administrative commands and tasks for the bot.
+    Attributes:
+        bot (G0T0Bot): The bot instance.
+        admin_commands (SlashCommandGroup): A group of slash commands for administrative purposes.
+    Methods:
+        __init__(bot):
+            Initializes the Admin cog with the given bot instance.
+        on_db_connected():
+            Listener for the database connection event. Starts the reload_category_task and check_financials tasks if they are not already running.
+        on_refresh_guild_cache(guild: PlayerGuild):
+            Listener for the refresh guild cache event. Fetches and updates the guild cache.
+        automation_request(ctx: ApplicationContext):
+            Slash command for logging an automation request. Sends a modal interaction to gather information about the request.
+        admin_admin(ctx: ApplicationContext):
+            Slash command for handling the main administration command. Creates and sends an AdminMenuUI instance to the context, then deletes the context message.
+        reload_cog(ctx: ApplicationContext, cog: Option):
+            Slash command for reloading a specific cog, refreshing DB information, or reloading all cogs and DB information.
+        _reload_DB(ctx):
+            Private method for reloading the database information.
+        reload_category_task():
+            Task that reloads the compendium categories every 30 minutes.
+        check_financials():
+            Task that checks and updates financial data every 24 hours.
+    '''
     bot: G0T0Bot  # Typing annotation for my IDE's sake
     admin_commands = SlashCommandGroup("admin", "Bot administrative commands", guild_ids=ADMIN_GUILDS)
 
@@ -67,6 +92,14 @@ class Admin(commands.Cog):
     )
     @commands.check(is_admin)
     async def admin_admin(self, ctx: ApplicationContext):
+        """
+        Handles the admin command for the admin cog.
+        This command creates a new instance of AdminMenuUI, sends it to the context,
+        and then deletes the context message.
+        Args:
+            ctx (ApplicationContext): The context in which the command was invoked.
+        """
+
         ui = AdminMenuUI.new(ctx.author, self.bot)
         await ui.send_to(ctx)
         await ctx.delete()

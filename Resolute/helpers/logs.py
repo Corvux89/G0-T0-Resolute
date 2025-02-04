@@ -1,19 +1,14 @@
 import operator
-import re
 
-import discord
-from discord import ClientUser, Member
+from discord import ApplicationContext
 
 from Resolute.bot import G0T0Bot
 from Resolute.constants import ZWSP3
 from Resolute.helpers.general_helpers import confirm
 from Resolute.models.categories import Activity
-from Resolute.models.categories.categories import Faction
 from Resolute.models.embeds.logs import LogEmbed
-from Resolute.models.objects.adventures import Adventure
-from Resolute.models.objects.characters import (PlayerCharacter,
-                                                upsert_character_query)
-from Resolute.models.objects.exceptions import G0T0Error, LogNotFound, TransactionError
+from Resolute.models.objects.characters import (PlayerCharacter)
+from Resolute.models.objects.exceptions import G0T0Error
 from Resolute.models.objects.guilds import PlayerGuild
 from Resolute.models.objects.logs import (DBLog, LogSchema,
                                           character_stats_query,
@@ -22,44 +17,15 @@ from Resolute.models.objects.logs import (DBLog, LogSchema,
                                           player_stats_query, upsert_log)
 from Resolute.models.objects.players import Player, upsert_player_query
 
-
-def get_activity_amount(player: Player, activity: Activity, override_amount: int = 0) -> int:
-    reward_cc = override_amount if override_amount != 0 else activity.cc if activity.cc else 0
-
-    if activity.diversion and (player.div_cc + reward_cc > player.guild.div_limit):
-        reward_cc = 0 if player.guild.div_limit - player.div_cc < 0 else player.guild.div_limit - player.div_cc
-
-    return reward_cc
-
-def handicap_adjustment(player: Player, amount: int, ignore: bool) -> int:
-    if ignore or player.guild.handicap_cc <= player.handicap_amount:
-        return 0
-    
-    return min(amount, player.guild.handicap_cc - player.handicap_amount)
-
-async def author_rewards(bot: G0T0Bot, author: discord.Member, log_entry: DBLog) -> None:
-    player = await bot.get_player(author.id, log_entry.guild_id)
-
-    if not player.guild.reward_threshold or log_entry.activity.value == "LOG_REWARD":
-        return
-
-    player.points += log_entry.activity.points
-
-    if player.points >= player.guild.reward_threshold:
-        activity: Activity = bot.compendium.get_activity("LOG_REWARD")
-        qty = max(1, player.points//player.guild.reward_threshold)        
-        reward_log = await create_log(bot, bot.user, "LOG_REWARD", player,
-                                      cc=activity.cc * qty,
-                                      notes=f"Rewards for {player.guild.reward_threshold * qty} points")
-        player.points = max(0, player.points - (player.guild.reward_threshold * qty))
-
-        if player.guild.staff_channel:
-            await player.guild.staff_channel.send(embed=LogEmbed(reward_log, bot.user, player.member, None, True))
-
-    async with bot.db.acquire() as conn:
-            await conn.execute(upsert_player_query(player))
-
 async def get_log(bot: G0T0Bot, log_id: int) -> DBLog:
+    """
+    Retrieve a log entry from the database by its ID.
+    Args:
+        bot (G0T0Bot): The bot instance containing the database connection and compendium.
+        log_id (int): The ID of the log entry to retrieve.
+    Returns:
+        DBLog: The log entry corresponding to the given ID, or None if no entry is found.
+    """
     async with bot.db.acquire() as conn:
         results = await conn.execute(get_log_by_id(log_id))
         row = await results.first()
@@ -71,97 +37,16 @@ async def get_log(bot: G0T0Bot, log_id: int) -> DBLog:
 
     return log_enty
 
-async def create_log(bot: G0T0Bot, author: Member | ClientUser, activity: Activity | str, player: Player, **kwargs) -> DBLog:    
-    """Create a log entry for a player
-
-    Args:
-        bot (G0T0Bot): Bot
-        author (Member | ClientUser): Who is creating the log
-        activity (Activity): What is the log for
-        player (Player): Who is the log for
-
-    Keyword Args:
-        character (PlayerCharacter): The character the log is for
-        notes (str): Log notes
-        cc (int): Chain Codes
-        credits (int): Credits
-        adventure (Adventure): Adventure the log is for
-        ignore_handicap (bool): Ignore the handicap adjustment
-        renown (int): Renown amount
-        faction (Faction): Faction to log the renown to
-        
-    Returns:
-        DBLog: Log entry
-    """
-
-    # Kwargs stuff
-    character: PlayerCharacter = kwargs.get('character')
-    notes: str = kwargs.get('notes')
-    cc: int = kwargs.get('cc', 0)
-    credits: int = kwargs.get('credits', 0)
-    adventure: Adventure = kwargs.get('adventure')
-    faction: Faction = kwargs.get('faction')
-    renown: int = kwargs.get('renown', 0)
-    ignore_handicap: bool = kwargs.get('ignore_handicap', False)
-
-    if isinstance(activity, str):
-        activity = bot.compendium.get_activity(activity)
-
-    # Get Values
-    activity_cc = get_activity_amount(player, activity, cc)
-    handicap_amount = handicap_adjustment(player, activity_cc, ignore_handicap)
-
-    # Shell Log
-    log_entry = DBLog(author=author.id, 
-                      cc=activity_cc+handicap_amount, 
-                      credits=credits, 
-                      player_id=player.id, 
-                      character_id=character.id if character else None,
-                     activity=activity, 
-                     notes=notes, 
-                     guild_id=player.guild_id,
-                     adventure_id=adventure.id if adventure else None,
-                     faction=faction,
-                     renown=renown)
-    
-    # Validation
-    if character and character.credits + log_entry.credits < 0:
-        raise TransactionError(f"{character.name} cannot afford the {log_entry.credits} credit cost.")
-    elif player.cc + log_entry.cc < 0:
-        raise TransactionError(f"{player.member.mention} cannot afford the {log_entry.cc} CC cost.")
-
-
-    # Updates
-    if character: 
-        character.credits+=log_entry.credits
-
-    player.cc += log_entry.cc
-    player.handicap_amount += handicap_amount
-
-    if activity.diversion:
-        player.div_cc += activity_cc
-
-    if faction:
-        await character.update_renown(faction, renown)
-
-    # Write to DB
-    async with bot.db.acquire() as conn:
-        results = await conn.execute(upsert_log(log_entry))
-        row = await results.first()
-
-        await conn.execute(upsert_player_query(player))
-
-        if character:
-            await conn.execute(upsert_character_query(character))
-
-    log_entry = LogSchema(bot.compendium).load(row)
-
-    # Author Rewards
-    await author_rewards(bot, author, log_entry)
-
-    return log_entry
-
 async def get_n_player_logs(bot: G0T0Bot, player: Player, n: int = 5) -> list[DBLog]:
+    """
+    Fetches the most recent logs for a given player.
+    Args:
+        bot (G0T0Bot): The bot instance containing the database connection and compendium.
+        player (Player): The player whose logs are to be fetched.
+        n (int, optional): The number of logs to fetch. Defaults to 5.
+    Returns:
+        list[DBLog]: A list of the most recent logs for the player, or None if no logs are found.
+    """
     async with bot.db.acquire() as conn:
         results = await conn.execute(get_n_player_logs_query(player.id, player.guild_id, n))
         rows = await results.fetchall()
@@ -175,13 +60,29 @@ async def get_n_player_logs(bot: G0T0Bot, player: Player, n: int = 5) -> list[DB
 
 
 async def get_player_stats(bot: G0T0Bot, player: Player) -> dict:
+    """
+    Retrieve player statistics from the database.
+    Args:
+        bot (G0T0Bot): The bot instance containing the database connection and compendium.
+        player (Player): The player object containing the player's ID and guild ID.
+    Returns:
+        dict: A dictionary containing the player's statistics.
+    """
     async with bot.db.acquire() as conn:
         results = await conn.execute(player_stats_query(bot.compendium, player.id, player.guild_id))
         row = await results.first()
-    
+
     return dict(row)
 
 async def get_character_stats(bot: G0T0Bot, character: PlayerCharacter) -> dict:
+    """
+    Fetches the statistics of a given character from the database.
+    Args:
+        bot (G0T0Bot): The bot instance containing the database connection and compendium.
+        character (PlayerCharacter): The character whose stats are to be fetched.
+    Returns:
+        dict: A dictionary containing the character's stats if found, otherwise None.
+    """
     async with bot.db.acquire() as conn:
         results = await conn.execute(character_stats_query(bot.compendium, character.id))
         row = await results.first()
@@ -191,19 +92,18 @@ async def get_character_stats(bot: G0T0Bot, character: PlayerCharacter) -> dict:
 
     return dict(row)
 
-async def get_log_from_entry(bot: G0T0Bot, message: discord.Message) -> DBLog:
-    try:
-        embed = message.embeds[0]
-        log_id = get_match(f"ID:\s*(\d+)", embed.footer.text)
-
-        log_entry = await get_log(bot, log_id)
-
-    except:
-        raise LogNotFound()
-
-    return log_entry
-
 async def get_last_activity_log(bot: G0T0Bot, player: Player, guild: PlayerGuild, activity: Activity) -> DBLog:
+    """
+    Fetches the last activity log for a given player in a specific guild and activity.
+    Args:
+        bot (G0T0Bot): The bot instance to use for database access.
+        player (Player): The player whose activity log is being fetched.
+        guild (PlayerGuild): The guild in which the activity took place.
+        activity (Activity): The specific activity to fetch the log for.
+    Returns:
+        DBLog: The last activity log entry for the specified player, guild, and activity.
+               Returns None if no log entry is found.
+    """
     async with bot.db.acquire() as conn:
         results = await conn.execute(get_last_log_by_type(player.id, guild.id, activity.id))
         row = await results.first()
@@ -213,12 +113,16 @@ async def get_last_activity_log(bot: G0T0Bot, player: Player, guild: PlayerGuild
     return LogSchema(bot.compendium).load(row)
 
 
-def get_match(pattern, text, group=1, default=None):
-    match = re.search(pattern, text, re.DOTALL)
-    return match.group(group) if match and match.group(group) != 'None' else default
-
-
 async def update_activity_points(bot: G0T0Bot, player: Player, increment: bool = True):
+    """
+    Updates the activity points of a player and adjusts their activity level accordingly.
+    Args:
+        bot (G0T0Bot): The bot instance.
+        player (Player): The player whose activity points are to be updated.
+        increment (bool, optional): If True, increment the activity points by 1. If False, decrement the activity points by 1. Defaults to True.
+    Returns:
+        None
+    """ 
     if increment:
         player.activity_points += 1
     else:
@@ -234,11 +138,11 @@ async def update_activity_points(bot: G0T0Bot, player: Player, increment: bool =
     if activity_point and player.activity_level != activity_point.id:
         revert = True if player.activity_level > activity_point.id else False
         player.activity_level = activity_point.id
-        act_log = await create_log(bot, bot.user, "ACTIVITY_REWARD", player,
-                                   notes=f"Activity Level {player.activity_level}{' [REVERSION]' if revert else ''}",
-                                   cc=-1 if revert else 0
-                                   )
-
+        act_log = await bot.log(None, player, bot.user, "ACTIVITY_REWARD",
+                                notes=f"Activity Level {player.activity_level}{' [REVERSION]' if revert else ''}",
+                                cc=-1 if revert else 0,
+                                silent=True)
+        
         if player.guild.activity_points_channel and not revert:
             await player.guild.activity_points_channel.send(embed=LogEmbed(act_log, bot.user, player.member), content=f"{player.member.mention}")
 
@@ -249,7 +153,21 @@ async def update_activity_points(bot: G0T0Bot, player: Player, increment: bool =
         async with bot.db.acquire() as conn:
             await conn.execute(upsert_player_query(player))
 
-async def null_log(bot: G0T0Bot, ctx: discord.ApplicationContext, log: DBLog, reason: str) -> DBLog:
+async def null_log(bot: G0T0Bot, ctx: ApplicationContext, log: DBLog, reason: str) -> DBLog:
+    """
+    Asynchronously nullifies a log entry for a player and creates a new log entry indicating the nullification.
+    Args:
+        bot (G0T0Bot): The bot instance.
+        ctx (ApplicationContext): The context of the application command.
+        log (DBLog): The log entry to be nullified.
+        reason (str): The reason for nullifying the log.
+    Returns:
+        DBLog: The new log entry created to indicate the nullification.
+    Raises:
+        G0T0Bot: If the log has already been invalidated.
+        TimeoutError: If the confirmation times out.
+        G0T0Error: If the nullification is cancelled by the user.
+    """
     if log.invalid:
         raise G0T0Bot(f"Log [ {log.id} ] has already been invalidated.")
     
@@ -280,13 +198,14 @@ async def null_log(bot: G0T0Bot, ctx: discord.ApplicationContext, log: DBLog, re
     note = (f"{log.activity.value} log # {log.id} nulled by "
             f"{ctx.author} for reason: {reason}")
     
-    log_entry = await create_log(bot, ctx.author, "MOD", player,
-                                 character=character,
-                                 notes=note,
-                                 cc=-log.cc,
-                                 credits=-log.credits,
-                                 renown=-log.renown,
-                                 faction=log.faction if log.faction else None)
+    log_entry = await bot.log(ctx, player, ctx.author, "MOD",
+                  character=character,
+                  notes=note,
+                  cc=-log.cc,
+                  credits=-log.credits,
+                  renown=-log.renown,
+                  raction=log.faction if log.faction else None)
+    
     log.invalid = True
 
     async with bot.db.acquire() as conn:

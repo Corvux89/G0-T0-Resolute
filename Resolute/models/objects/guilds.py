@@ -1,8 +1,6 @@
 import calendar
-import random
 from datetime import datetime, timedelta, timezone
 from math import floor
-from timeit import default_timer as timer
 
 import aiopg.sa
 import discord
@@ -15,8 +13,7 @@ from sqlalchemy.sql import FromClause
 
 from Resolute.compendium import Compendium
 from Resolute.models import metadata
-from Resolute.models.objects.characters import (CharacterSchema,
-                                                get_guild_characters_query)
+from Resolute.models.objects.characters import (CharacterSchema, get_guild_characters_query)
 from Resolute.models.objects.dashboards import (RefDashboard,
                                                 RefDashboardSchema,
                                                 get_dashboards)

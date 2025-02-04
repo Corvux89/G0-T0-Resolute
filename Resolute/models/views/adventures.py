@@ -2,14 +2,13 @@ from datetime import datetime, timezone
 from math import ceil
 from typing import Mapping, Type
 
-import discord
-from discord import SelectOption
-from discord.ui import InputText, Modal
+from discord import ButtonStyle, Interaction, Member, SelectOption
+from discord.ui import (Button, InputText, Modal, Select, button, select,
+                        user_select)
 
 from Resolute.bot import G0T0Bot
 from Resolute.helpers.adventures import update_dm
 from Resolute.helpers.general_helpers import confirm, is_admin
-from Resolute.helpers.logs import create_log
 from Resolute.models.categories.categories import Faction
 from Resolute.models.embeds import ErrorEmbed
 from Resolute.models.embeds.adventures import (AdventureRewardEmbed,
@@ -21,13 +20,30 @@ from Resolute.models.views.base import InteractiveView
 from Resolute.models.views.npc import NPCSettingsUI
 
 
-class AdventureSettings(InteractiveView):
+class AdventureView(InteractiveView):
+    """
+    AdventureView is a subclass of InteractiveView that manages the interaction
+    and display of an adventure within the bot.
+    Attributes:
+        bot (G0T0Bot): The bot instance.
+        owner (Member, optional): The owner of the adventure. Defaults to None.
+        adventure (Adventure): The adventure instance.
+        dm_select (bool, optional): Flag indicating if DM selection is enabled. Defaults to False.
+        member (Member, optional): The member associated with the view. Defaults to None.
+        character (PlayerCharacter, optional): The player character associated with the view. Defaults to None.
+    Methods:
+        commit(): Commits the current state of the adventure to the database.
+        send_to(destination, *args, **kwargs): Sends the view to the specified destination.
+        defer_to(view_type, interaction, stop=True): Defers the interaction to another view type.
+        get_content(interaction): Retrieves the content to be displayed in the view.
+        refresh_content(interaction, **kwargs): Refreshes the content of the view.
+    """
     __menu_copy_attrs__ = ("bot", "adventure", "dm_select")
     bot: G0T0Bot
-    owner: discord.Member = None
+    owner: Member = None
     adventure: Adventure
     dm_select: bool = False
-    member: discord.Member = None
+    member: Member = None
     character: PlayerCharacter = None
     
 
@@ -41,17 +57,17 @@ class AdventureSettings(InteractiveView):
         self.message = message
         return message
 
-    async def defer_to(self, view_type: Type["AdventureSettings"], interaction: discord.Interaction, stop=True):
+    async def defer_to(self, view_type: Type["AdventureView"], interaction: Interaction, stop=True):
         view = view_type.from_menu(self)
         if stop:
             self.stop()
         await view._before_send()
         await view.refresh_content(interaction)
 
-    async def get_content(self, interaction: discord.Interaction) -> Mapping:
+    async def get_content(self, interaction: Interaction) -> Mapping:
         return {"embed": AdventureSettingsEmbed(interaction, self.adventure), "content": ""}
 
-    async def refresh_content(self, interaction: discord.Interaction, **kwargs):
+    async def refresh_content(self, interaction: Interaction, **kwargs):
         content_kwargs = await self.get_content(interaction)
         await self._before_send()
         await self.commit()
@@ -60,27 +76,51 @@ class AdventureSettings(InteractiveView):
         else:
             await interaction.response.edit_message(view=self, **content_kwargs, **kwargs)
     
-class AdventureSettingsUI(AdventureSettings):
+class AdventureSettingsUI(AdventureView):
+    """
+    A user interface class for managing adventure settings in the G0-T0 bot.
+    Methods
+    -------
+    new(cls, bot: G0T0Bot, owner: Member, adventure: Adventure)
+        Class method to create a new instance of AdventureSettingsUI.
+    adventure_dm(self, _: Button, interaction: Interaction)
+        Button callback to manage Dungeon Masters (DMs) for the adventure.
+    adventure_players(self, _: Button, interaction: Interaction)
+        Button callback to manage players for the adventure.
+    adventure_reward(self, _: Button, interaction: Interaction)
+        Button callback to reward Command Credits (CC) to players and DMs.
+    npcs(self, _: Button, interaction: Interaction)
+        Button callback to manage NPC settings for the adventure.
+    factions(self, _: Button, interaction: Interaction)
+        Button callback to manage factions involved in the adventure.
+    adventure_close(self, _: Button, interaction: Interaction)
+        Button callback to close the adventure, with optional renown logging.
+    exit(self, *_)
+        Button callback to exit the adventure settings UI.
+    _before_send(self)
+        Method to perform actions before sending the UI, such as removing buttons for non-DMs.
+    """
+
     @classmethod
-    def new(cls, bot: G0T0Bot, owner: discord.Member, adventure: Adventure):
+    def new(cls, bot: G0T0Bot, owner: Member, adventure: Adventure):
         inst = cls(owner=owner)
         inst.bot = bot
         inst.adventure = adventure
 
         return inst
     
-    @discord.ui.button(label="Manage DM(s)", style=discord.ButtonStyle.primary, row=1)
-    async def adventure_dm(self, _: discord.ui.Button, interaction: discord.Interaction):
+    @button(label="Manage DM(s)", style=ButtonStyle.primary, row=1)
+    async def adventure_dm(self, _: Button, interaction: Interaction):
         self.dm_select = True
         await self.defer_to(_AdventureMemberSelect, interaction)
 
-    @discord.ui.button(label="Manage Player(s)", style=discord.ButtonStyle.primary, row=1)
-    async def adventure_players(self, _: discord.ui.Button, interaction: discord.Interaction):
+    @button(label="Manage Player(s)", style=ButtonStyle.primary, row=1)
+    async def adventure_players(self, _: Button, interaction: Interaction):
         self.dm_select = False
         await self.defer_to(_AdventureMemberSelect, interaction)
 
-    @discord.ui.button(label="Reward CC", style=discord.ButtonStyle.green, row=2)
-    async def adventure_reward(self, _: discord.ui.Button, interaction: discord.Interaction):
+    @button(label="Reward CC", style=ButtonStyle.green, row=2)
+    async def adventure_reward(self, _: Button, interaction: Interaction):
         modal = AdventureRewardModal(self.adventure)
         response = await self.prompt_modal(interaction, modal)
 
@@ -90,37 +130,38 @@ class AdventureSettingsUI(AdventureSettings):
             dm_reward = response.cc + ceil(response.cc * .25)
             for dm in self.adventure.dms:
                 player = await self.bot.get_player(dm, interaction.guild.id)
-                await create_log(self.bot, self.owner, "ADVENTURE_DM", player, 
-                                    notes=f"{self.adventure.name}",
-                                    cc=dm_reward, 
-                                    adventure=self.adventure)
+                await self.bot.log(interaction, player, self.owner, "ADVENTURE_DM",
+                                   notes=f"{self.adventure.name}",
+                                   cc=dm_reward,
+                                   adventure=self.adventure,
+                                   silent=True)
             
             player_reward = response.cc
 
             for character in self.adventure.player_characters:
                 player = await self.bot.get_player(character.player_id, interaction.guild.id)
-                await create_log(self.bot, self.owner, "ADVENTURE", player, 
-                                    character=character, 
-                                    notes=f"{self.adventure.name}", 
-                                    cc=player_reward, 
-                                    adventure=self.adventure)
-            
+                await self.bot.log(interaction, player, self.owner, "ADVENTURE",
+                                   character=character,
+                                   notes=f"{self.adventure.name}",
+                                   cc=player_reward,
+                                   adventure=self.adventure,
+                                   silent=True)            
             await interaction.channel.send(embed=AdventureRewardEmbed(interaction, self.adventure, response.cc))
         await self.refresh_content(interaction)
 
-    @discord.ui.button(label="NPCs", style=discord.ButtonStyle.primary, row=2)
-    async def npcs(self, _: discord.ui.Button, interaction: discord.Interaction):
+    @button(label="NPCs", style=ButtonStyle.primary, row=2)
+    async def npcs(self, _: Button, interaction: Interaction):
         guild = await self.bot.get_player_guild(self.adventure.guild_id)
         view = NPCSettingsUI.new(self.bot, self.owner, guild, AdventureSettingsUI,
                                adventure=self.adventure)
         await view.send_to(interaction)
 
-    @discord.ui.button(label="Factions", style=discord.ButtonStyle.primary, row=2)
-    async def factions(self, _: discord.ui.Button, interaction: discord.Interaction):
+    @button(label="Factions", style=ButtonStyle.primary, row=2)
+    async def factions(self, _: Button, interaction: Interaction):
         await self.defer_to(_AdventureFactions, interaction)
 
-    @discord.ui.button(label="Close Adventure", style=discord.ButtonStyle.danger, row=2)
-    async def adventure_close(self, _: discord.ui.Button, interaction: discord.Interaction):
+    @button(label="Close Adventure", style=ButtonStyle.danger, row=2)
+    async def adventure_close(self, _: Button, interaction: Interaction):
         conf = await confirm(interaction, "Are you sure you want to end this adventure? (Reply with yes/no)", True, self.bot)
 
         if conf is None:
@@ -140,11 +181,12 @@ class AdventureSettingsUI(AdventureSettings):
                     for char in self.adventure.player_characters:
                         player = await self.bot.get_player(char.player_id, self.adventure.guild_id)
                         for faction in self.adventure.factions:
-                            await create_log(self.bot, self.owner, "RENOWN", player,
-                                                        character=char,
-                                                        notes=f"Adventure Reward: {self.adventure.name}",
-                                                        renown=amount,
-                                                        faction=faction)
+                            await self.bot.log(interaction, player, self.owner, "RENOWN",
+                                               character=char,
+                                               notes=f"Adventure Reward: {self.adventure.name}",
+                                               renown=amount,
+                                               faction=faction,
+                                               silent=True)
             
             # Close adventure and clean up role
             self.adventure.end_ts = datetime.now(timezone.utc)
@@ -161,7 +203,7 @@ class AdventureSettingsUI(AdventureSettings):
             await self.on_timeout()
         
 
-    @discord.ui.button(label="Exit", style=discord.ButtonStyle.danger, row=3)
+    @button(label="Exit", style=ButtonStyle.danger, row=3)
     async def exit(self, *_):
         await self.on_timeout()
 
@@ -171,14 +213,31 @@ class AdventureSettingsUI(AdventureSettings):
             self.remove_item(self.adventure_players)
             self.remove_item(self.adventure_close)
     
-class _AdventureMemberSelect(AdventureSettings):
+class _AdventureMemberSelect(AdventureView):
+    """
+    A view for selecting and managing members (players or DMs) in an adventure.
+    Methods
+    -------
+    _before_send():
+        Prepares the view before sending it to the user.
+    member_select(user: Select, interaction: Interaction):
+        Handles the selection of a member (player or DM) from the dropdown.
+    character_select(char: Select, interaction: Interaction):
+        Handles the selection of a character from the dropdown.
+    add_member(_: Button, interaction: Interaction):
+        Adds the selected member (player or DM) to the adventure.
+    remove_member(_: Button, interaction: Interaction):
+        Removes the selected member (player or DM) from the adventure.
+    back(_: Button, interaction: Interaction):
+        Navigates back to the AdventureSettingsUI.
+    """
     async def _before_send(self):
         self.add_member.disabled = False if self.character else True
         self.remove_member.disabled = False if self.character else True
 
-    @discord.ui.user_select(placeholder="Select a Player", row=1)
-    async def member_select(self, user: discord.ui.Select, interaction: discord.Interaction):
-        member: discord.Member = user.values[0]
+    @user_select(placeholder="Select a Player", row=1)
+    async def member_select(self, user: Select, interaction: Interaction):
+        member: Member = user.values[0]
         self.member = member
         self.player = await self.bot.get_player(self.member.id, interaction.guild.id)
         self.character = None
@@ -186,13 +245,13 @@ class _AdventureMemberSelect(AdventureSettings):
             self.add_item(self.character_select)
         await self.refresh_content(interaction)
 
-    @discord.ui.select(placeholder="Select a character", options=[SelectOption(label="You should never see me")], row=2, custom_id="char_select")
-    async def character_select(self, char: discord.ui.Select, interaction: discord.Interaction):
+    @select(placeholder="Select a character", options=[SelectOption(label="You should never see me")], row=2, custom_id="char_select")
+    async def character_select(self, char: Select, interaction: Interaction):
         self.character = self.player.characters[int(char.values[0])]
         await self.refresh_content(interaction)
 
-    @discord.ui.button(label="Add Player", row=3)
-    async def add_member(self, _: discord.ui.Button, interaction: discord.Interaction):
+    @button(label="Add Player", row=3)
+    async def add_member(self, _: Button, interaction: Interaction):
         if self.dm_select:
             if self.member.id in self.adventure.dms:
                 await interaction.channel.send(embed=ErrorEmbed(f"{self.member.mention} is already a DM of this adventure"), delete_after=5)
@@ -225,8 +284,8 @@ class _AdventureMemberSelect(AdventureSettings):
 
         await self.refresh_content(interaction)
         
-    @discord.ui.button(label="Remove Player", row=3)
-    async def remove_member(self, _: discord.ui.Button, interaction: discord.Interaction):
+    @button(label="Remove Player", row=3)
+    async def remove_member(self, _: Button, interaction: Interaction):
         if self.dm_select:
             if self.member.id not in self.adventure.dms:
                 await interaction.channel.send(embed=ErrorEmbed(f"{self.member.mention} is not a DM of this adventure"), delete_after=5)
@@ -256,8 +315,8 @@ class _AdventureMemberSelect(AdventureSettings):
         await self.refresh_content(interaction)
 
 
-    @discord.ui.button(label="Back", style=discord.ButtonStyle.grey, row=4)
-    async def back(self, _: discord.ui.Button, interaction: discord.Interaction):
+    @button(label="Back", style=ButtonStyle.grey, row=4)
+    async def back(self, _: Button, interaction: Interaction):
         self.character = None
         self.player = None
         self.member = None
@@ -287,7 +346,23 @@ class _AdventureMemberSelect(AdventureSettings):
             self.add_member.label = "Add Player"
             self.remove_member.label = "Remove Player"    
 
-class _AdventureFactions(AdventureSettings):
+class _AdventureFactions(AdventureView):
+    """
+    _AdventureFactions is a subclass of AdventureView that manages the selection and manipulation of factions within an adventure.
+    Attributes:
+        faction (Faction): The currently selected faction.
+    Methods:
+        _before_send():
+            Prepares the faction selection options and updates the state of the add and remove faction buttons.
+        faction_select(f: Select, interaction: Interaction):
+            Handles the selection of a faction from the dropdown menu and refreshes the content.
+        add_faction(_: Button, interaction: Interaction):
+            Adds the selected faction to the adventure if it is not already present and the user has the necessary permissions.
+        remove_faction(_: Button, interaction: Interaction):
+            Removes the selected faction from the adventure if it is present.
+        back(_: Button, interaction: Interaction):
+            Resets the selected faction and defers to the AdventureSettingsUI.
+    """
     faction: Faction = None
 
     async def _before_send(self):
@@ -298,13 +373,13 @@ class _AdventureFactions(AdventureSettings):
         self.add_faction.disabled = False if self.faction else True
         self.remove_faction.disabled = False if self.faction else True
 
-    @discord.ui.select(placeholder="Select a faction", row=1)
-    async def faction_select(self, f: discord.ui.Select, interaction: discord.Interaction):
+    @select(placeholder="Select a faction", row=1)
+    async def faction_select(self, f: Select, interaction: Interaction):
         self.faction = self.bot.compendium.get_object(Faction, int(f.values[0]))
         await self.refresh_content(interaction)
 
-    @discord.ui.button(label="Add Faction", style=discord.ButtonStyle.primary, row=2)
-    async def add_faction(self, _: discord.ui.Button, interaction: discord.Interaction):
+    @button(label="Add Faction", style=ButtonStyle.primary, row=2)
+    async def add_faction(self, _: Button, interaction: Interaction):
         if self.faction and self.faction.id not in [f.id for f in self.adventure.factions]:
             if len(self.adventure.factions) >= 2 and not is_admin:
                 await interaction.channel.send(embed=ErrorEmbed(f"You do not have the ability to add more than 2 factions to an adventure"), delete_after=5)
@@ -312,19 +387,30 @@ class _AdventureFactions(AdventureSettings):
                 self.adventure.factions.append(self.faction)
         await self.refresh_content(interaction)
 
-    @discord.ui.button(label="Remove Faction", style=discord.ButtonStyle.primary, row=2)
-    async def remove_faction(self, _: discord.ui.Button, interaction: discord.Interaction):
+    @button(label="Remove Faction", style=ButtonStyle.primary, row=2)
+    async def remove_faction(self, _: Button, interaction: Interaction):
         if self.faction and self.faction.id in [f.id for f in self.adventure.factions]:
             faction = next((f for f in self.adventure.factions if f.id == self.faction.id), None)
             self.adventure.factions.remove(faction)
         await self.refresh_content(interaction)
 
-    @discord.ui.button(label="Back", style=discord.ButtonStyle.grey, row=3)
-    async def back(self, _: discord.ui.Button, interaction: discord.Interaction):
+    @button(label="Back", style=ButtonStyle.grey, row=3)
+    async def back(self, _: Button, interaction: Interaction):
         self.faction = None
         await self.defer_to(AdventureSettingsUI, interaction)   
     
 class AdventureRewardModal(Modal):
+    """
+    A modal dialog for inputting and handling adventure rewards.
+    Attributes:
+        adventure (Adventure): The adventure associated with the rewards.
+        cc (int): The chain code amount, default is 0.
+    Methods:
+        __init__(adventure: Adventure):
+            Initializes the modal with the given adventure and sets up the input field for chain code amount.
+        callback(interaction: Interaction):
+            Handles the interaction when the modal is submitted. Parses the chain code amount from the input and handles errors if the input is not a valid number.
+    """
     adventure: Adventure
     cc: int = 0
 
@@ -334,7 +420,7 @@ class AdventureRewardModal(Modal):
 
         self.add_item(InputText(label="CC Amount", required=True, placeholder="CC Amount", max_length=3))
 
-    async def callback(self, interaction: discord.Interaction):
+    async def callback(self, interaction: Interaction):
         try:
             self.cc = int(self.children[0].value)
         except:

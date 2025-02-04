@@ -1,14 +1,26 @@
 import re
 
-import discord
+from discord import Message
 
 from Resolute.bot import G0T0Bot
 from Resolute.models.categories.categories import (TransactionSubType,
                                                    TransactionType)
 from Resolute.models.objects.market import MarketTransaction
 
+# TODO: Move this to the MarketTransaction Object
 
-async def get_market_request(bot: G0T0Bot, message: discord.Message) -> MarketTransaction:
+async def get_market_request(bot: G0T0Bot, message: Message) -> MarketTransaction:
+    """
+    Asynchronously processes a market request from a Discord message embed and returns a MarketTransaction object.
+    Args:
+        bot (G0T0Bot): The bot instance to use for fetching player and character data.
+        message (Message): The Discord message containing the market request embed.
+    Returns:
+        MarketTransaction: The processed market transaction containing player, character, type, subtype, notes, cc, and credits.
+        None: If required information (player_id, char_id, or type) is missing from the embed.
+    Raises:
+        ValueError: If the embed does not contain the necessary information to create a MarketTransaction.
+    """
     embed = message.embeds[0]
     
     player_id = get_match(r"\*\*Player\*\*:\s*<@(\d+)>\n", embed.description)

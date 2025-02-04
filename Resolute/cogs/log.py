@@ -1,16 +1,13 @@
 import logging
-import math
 
-import discord
-from discord import ApplicationContext, Option, SlashCommandGroup
+from discord import ApplicationContext, Member, Option, SlashCommandGroup, SlashCommandOptionType
 from discord.ext import commands
 
 from Resolute.bot import G0T0Bot
 from Resolute.constants import ZWSP3
 from Resolute.helpers.general_helpers import is_admin, is_staff
-from Resolute.helpers.logs import create_log, get_character_stats, get_log, get_n_player_logs, get_player_stats, null_log
-from Resolute.models.categories import CodeConversion
-from Resolute.models.embeds.logs import LogEmbed, LogHxEmbed, LogStatsEmbed
+from Resolute.helpers.logs import get_character_stats, get_log, get_n_player_logs, get_player_stats, null_log
+from Resolute.models.embeds.logs import LogHxEmbed, LogStatsEmbed
 from Resolute.models.objects.exceptions import (CharacterNotFound, G0T0Error,
                                                 InvalidCurrencySelection,
                                                 LogNotFound)
@@ -23,6 +20,34 @@ def setup(bot: commands.Bot):
     bot.add_cog(Log(bot))
 
 class Log(commands.Cog):
+    """
+    A Discord Cog for logging various activities and actions within the bot.
+    Attributes:
+        bot (G0T0Bot): The bot instance.
+        log_commands (SlashCommandGroup): The slash command group for logging commands.
+    Methods:
+        __init__(bot):
+            Initializes the Log cog.
+        rp_log(ctx, member, host):
+            Logs a completed RP.
+        snapshot_log(ctx, member):
+            Logs a completed snapshot.
+        bonus_log(ctx, member, reason, cc, credits):
+            Gives bonus gold and/or XP to a player.
+        buy_log(ctx, member, item, cost, currency):
+            Logs the sale of an item to a player.
+        sell_log(ctx, member, item, cost, currency):
+            Logs the sale of an item from a player.
+        null_log(ctx, log_id, reason):
+            Nullifies a log.
+        log_stats(ctx, member):
+            Logs statistics for a character.
+        get_log_hx(ctx, member, num_logs):
+            Gets the last week's worth of logs for a player.
+    Private Methods:
+        prompt_log(ctx, member, activity, notes, cc, credits, ignore_handicap, conversion, show_values):
+            Prompts the user to log an activity.
+    """
     bot: G0T0Bot
     log_commands = SlashCommandGroup("log", "Logging commands for staff", guild_only=True)
 
@@ -36,24 +61,31 @@ class Log(commands.Cog):
     )
     @commands.check(is_staff)
     async def rp_log(self, ctx: ApplicationContext,
-                     member: Option(discord.SlashCommandOptionType(6),description="Player who participated in the RP", required=True),
+                     member: Option(SlashCommandOptionType(6),description="Player who participated in the RP", required=True),
                      host: Option(bool, description="Host of the RP or not", required=True, default=False)):
+        """
+        Logs a role-playing (RP) event.
+        Parameters:
+            ctx (ApplicationContext): The context in which the command was invoked.
+            member (Option): The player who participated in the RP.
+            host (Option): Indicates whether the member is the host of the RP.
+        Returns:
+            None
+        """
 
         if host:
-            player = await self.bot.get_player(member.id, ctx.guild.id)
-            log_entry = await create_log(self.bot, ctx.author, "RP_HOST", player)
-            return await ctx.respond(embed=LogEmbed(log_entry, ctx.author, member))
+            await self.bot.log(ctx, member, ctx.author, "RP_HOST")
         else:
-            await self.prompt_log(ctx, member, "RP")
+            await self._prompt_log(ctx, member, "RP")
         
     @log_commands.command(
         name="snapshot",
         description="Logs a completed snapshot"
     )
     @commands.check(is_staff)
-    async def rp_log(self, ctx: ApplicationContext,
-                     member: Option(discord.SlashCommandOptionType(6),description="Player who participated in the snapshot", required=True)):
-        await self.prompt_log(ctx, member, "SNAPSHOT")
+    async def snapshot_log(self, ctx: ApplicationContext,
+                     member: Option(SlashCommandOptionType(6),description="Player who participated in the snapshot", required=True)):
+        await self._prompt_log(ctx, member, "SNAPSHOT")
 
     @log_commands.command(
         name="bonus",
@@ -61,13 +93,25 @@ class Log(commands.Cog):
     )
     @commands.check(is_staff)
     async def bonus_log(self, ctx: ApplicationContext,
-                        member: Option(discord.SlashCommandOptionType(6), description="Player receiving the bonus", required=True),
+                        member: Option(SlashCommandOptionType(6), description="Player receiving the bonus", required=True),
                         reason: Option(str, description="The reason for the bonus", required=True),
                         cc: Option(int, description="The amount of Chain Codes", default=0, min_value=0, max_value=50),
-                        credits: Option(int, description="The amount of Credits", default=0, min_value=0, max_value=20000)):
-        
+                        credits: Option(int, description="The amount of Credits", default=0, min_value=0, max_value=20000)):        
+        """
+        Logs a bonus for a specified member with a given reason and amounts of Chain Codes and Credits.
+
+        Args:
+            ctx (ApplicationContext): The context in which the command was invoked.
+            member (Option): The player receiving the bonus.
+            reason (Option): The reason for the bonus.
+            cc (Option, optional): The amount of Chain Codes to be awarded (default is 0, with a minimum of 0 and a maximum of 50).
+            credits (Option, optional): The amount of Credits to be awarded (default is 0, with a minimum of 0 and a maximum of 20000).
+
+        Raises:
+            G0T0Error: If neither Chain Codes nor Credits are specified.
+        """
         if credits > 0 or cc > 0:
-            await self.prompt_log(ctx, member, "BONUS", reason, cc, credits, False, False, True)
+            await self._prompt_log(ctx, member, "BONUS", reason, cc, credits, False, False, True)
         else:
             raise G0T0Error(f"You need to specify some sort of amount")
         
@@ -77,28 +121,36 @@ class Log(commands.Cog):
     )
     @commands.check(is_staff)
     async def buy_log(self, ctx: ApplicationContext,
-                      member: Option(discord.SlashCommandOptionType(6), description="Player who bought the item", required=True),
+                      member: Option(SlashCommandOptionType(6), description="Player who bought the item", required=True),
                       item: Option(str, description="The item being bought", required=True),
                       cost: Option(int, description="The cost of the item", min_value=0, max_value=9999999,
                                    required=True),
                       currency: Option(str, description="Credits or Chain Codes. Default: Credits",
                                        choices=['Credits', 'CC'], default="Credits", required=False)):
-        
-        if activity := self.bot.compendium.get_activity("BUY"):
-            if currency == 'Credits':
-                await self.prompt_log(ctx, member, "BUY", item, 0, -cost, True, False, True)
-            elif currency == "CC":
-                await ctx.defer()
-                player = await self.bot.get_player(member.id, ctx.guild.id)
-                
-                log_entry = await create_log(self.bot, ctx.author, "BUY", player,
-                                             notes=item,
-                                              cc=-cost,
-                                              ignore_handicap=True)
-                
-                return await ctx.respond(embed=LogEmbed(log_entry, ctx.author, member, None, True))
-            else:
-                raise InvalidCurrencySelection()
+        """
+        Handles the logging of a purchase made by a player.
+        Parameters:
+            ctx (ApplicationContext): The context in which the command was invoked.
+            member (Option): The player who bought the item.
+            item (Option): The item being bought.
+            cost (Option): The cost of the item.
+            currency (Option): The currency used for the purchase, either 'Credits' or 'CC'. Default is 'Credits'.
+        Raises:
+            InvalidCurrencySelection: If the currency selected is not 'Credits' or 'CC'.
+        Returns:
+            None
+        """
+        if currency == 'Credits':
+            await self._prompt_log(ctx, member, "BUY", item, 0, -cost, True, False, True)
+        elif currency == "CC":
+            await ctx.defer()
+            await self.bot.log(ctx, member, ctx.author, "BUY", 
+                               cc=-cost,
+                               notes=item,
+                               ignore_handicap=True,
+                               show_values=True)
+        else:
+            raise InvalidCurrencySelection()
             
     @log_commands.command(
         name="sell",
@@ -106,26 +158,36 @@ class Log(commands.Cog):
     )
     @commands.check(is_staff)
     async def sell_log(self, ctx: ApplicationContext,
-                       member: Option(discord.SlashCommandOptionType(6), description="Player who bought the item", required=True),
+                       member: Option(SlashCommandOptionType(6), description="Player who bought the item", required=True),
                        item: Option(str, description="The item being sold", required=True),
                        cost: Option(int, description="The cost of the item", min_value=0, max_value=9999999,
                                     required=True),
                        currency: Option(str, description="Credits or Chain Codes. Default: Credits",
                                         choices=['Credits', 'CC'], default="Credits", required=False)):
-        
-        
+        """
+        Handles the logging of a sell transaction.
+        Parameters:
+            ctx (ApplicationContext): The context of the command invocation.
+            member (Option): The player who bought the item.
+            item (Option): The item being sold.
+            cost (Option): The cost of the item.
+            currency (Option): The currency used for the transaction, either 'Credits' or 'CC'. Default is 'Credits'.
+        Raises:
+            InvalidCurrencySelection: If an invalid currency is selected.
+        Returns:
+            None
+        """        
         if currency == 'Credits':
-            await self.prompt_log(ctx, member, "SELL", item, 0, cost, True, False, True)
+            await self._prompt_log(ctx, member, "SELL", item, 0, cost, True, False, True)
 
         elif currency == "CC":
             await ctx.defer()
-            player = await self.bot.get_player(member.id, ctx.guild.id)
-            log_entry = await create_log(self.bot, ctx.author, "SELL", player,
-                                            notes=item,
-                                            cc=cost,
-                                            ignore_handicap=True)
-            
-            return await ctx.respond(embed=LogEmbed(log_entry, ctx.author, member, None, True))
+            await self.bot.log(ctx, member, ctx.author, "SELL",
+                               notes=item,
+                               cc=cost,
+                               ignore_handicap=True,
+                               show_values=True)
+
         else:
             raise InvalidCurrencySelection()
 
@@ -138,33 +200,38 @@ class Log(commands.Cog):
     async def null_log(self, ctx: ApplicationContext,
                        log_id: Option(int, description="ID of the log to modify", required=True),
                        reason: Option(str, description="Reason for nulling the log", required=True)):
-        
+        """
+        Nullifies a log entry by its ID and provides a reason for the action.
+        Args:
+            ctx (ApplicationContext): The context in which the command is being invoked.
+            log_id (Option[int]): The ID of the log to modify.
+            reason (Option[str]): The reason for nulling the log.
+        Raises:
+            LogNotFound: If the log entry with the specified ID is not found.
+        Returns:
+            None: Responds to the context with an embedded log entry.
+        """
         await ctx.defer()
         log_entry = await get_log(self.bot, log_id)
 
         if log_entry is None:
             raise LogNotFound(log_id)
-        
-        player = await self.bot.get_player(log_entry.player_id, log_entry.guild_id, 
-                                           inactive=True)
-        character = next((c for c in player.characters if c.id == log_entry.character_id), None) if log_entry.character_id else None
-        mod_log = await null_log(self.bot, ctx, log_entry, reason)
-        
-        return await ctx.respond(embed=LogEmbed(mod_log, ctx.author, player.member, character))
+        await null_log(self.bot, ctx, log_entry, reason)
 
     @log_commands.command(
         name="stats",
         description="Log statistics for a character"
     )
     async def log_stats(self, ctx: ApplicationContext,
-                        member: Option(discord.SlashCommandOptionType(6), description="Player to view stats for", required=True)):
+                        member: Option(SlashCommandOptionType(6), description="Player to view stats for", required=True)):
         await ctx.defer()
 
-        player = await self.bot.get_player(member.id, ctx.guild.id, True)
+        player = await self.bot.get_player(member.id, ctx.guild.id, 
+                                           inactive=True)
         player_stats = await get_player_stats(self.bot, player)
 
         embeds = []
-        embed = LogStatsEmbed(self.bot, player, player_stats)
+        embed = LogStatsEmbed(player, player_stats)
         if player.characters:
             sorted_characters = sorted(player.characters, key=lambda c: c.active, reverse=True)
             for character in sorted_characters:
@@ -200,9 +267,18 @@ class Log(commands.Cog):
         description="Get the last weeks worth of logs for a player"
     )
     async def get_log_hx(self, ctx: ApplicationContext,
-                         member: Option(discord.SlashCommandOptionType(6), description="Player to get logs for", required=True),
+                         member: Option(SlashCommandOptionType(6), description="Player to get logs for", required=True),
                          num_logs: Option(int, description="Number of logs to get",
                                           min_value=1, max_value=20, default=5)):
+        """
+        Retrieves and responds with a specified number of logs for a given player.
+        Args:
+            ctx (ApplicationContext): The context in which the command was invoked.
+            member (Option): The player to get logs for.
+            num_logs (Option): The number of logs to retrieve, with a minimum of 1 and a maximum of 20. Defaults to 5.
+        Returns:
+            None
+        """
         await ctx.defer()
 
         player = await self.bot.get_player(member.id, ctx.guild.id, 
@@ -210,48 +286,31 @@ class Log(commands.Cog):
 
         logs = await get_n_player_logs(self.bot, player, num_logs)
 
-        await ctx.respond(embed=LogHxEmbed(self.bot, player, logs))
+        await ctx.respond(embed=LogHxEmbed(player, logs))
          
     # --------------------------- #
     # Private Methods
     # --------------------------- #
 
-    async def prompt_log(self, ctx: ApplicationContext, member: discord.Member, activity: str, notes: str = None, 
+    async def _prompt_log(self, ctx: ApplicationContext, member: Member, activity: str, notes: str = None, 
                          cc: int = 0, credits: int = 0, ignore_handicap: bool = False, conversion: bool = False, show_values: bool = False) -> None:
         await ctx.defer()
 
         player = await self.bot.get_player(member.id, ctx.guild_id)
+
 
         if not player.characters:
             raise CharacterNotFound(player.member)
 
         if len(player.characters) == 1:
             character = player.characters[0]
-            rate: CodeConversion = self.bot.compendium.get_object(CodeConversion, character.level)
-            if conversion:
-                credits = abs(cc) * rate.value
-                ignore_handicap = True
-
-            if (character.credits + credits) < 0:
-                convertedCC = math.ceil((abs(credits) - character.credits) / rate.value)
-    
-                converted_entry = await create_log(self.bot, ctx.author, "CONVERSION", player, 
-                                                   character=character, 
-                                                   notes=notes, 
-                                                   cc=-convertedCC, 
-                                                   credits=convertedCC*rate.value, 
-                                                   ignore_handicap=True)  
-                
-                await ctx.send(embed=LogEmbed(converted_entry, ctx.author, member, player.characters[0], show_values))
-            
-            log_entry = await create_log(self.bot, ctx.author, activity, player, 
-                                         character=character, 
-                                         notes=notes, 
-                                         cc=cc, 
-                                         credits=credits, 
-                                         ignore_handicap=ignore_handicap)
-            
-            return await ctx.respond(embed=LogEmbed(log_entry, ctx.author, member, player.characters[0],show_values))
+            await self.bot.log(ctx, player, ctx.author, activity,
+                               cc=cc,
+                               credits=credits,
+                               notes=notes,
+                               character=character,
+                               ignore_handicap=ignore_handicap,
+                               show_values=show_values)
         else:
             ui = LogPromptUI.new(self.bot, ctx.author, member, player, activity, credits=credits, cc=cc, notes=notes,
                                  ignore_handicap=ignore_handicap, show_values=show_values)    

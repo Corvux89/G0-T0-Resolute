@@ -1,5 +1,5 @@
 import logging
-import math
+import re
 
 import discord
 from discord.ext import commands
@@ -8,13 +8,13 @@ from Resolute.bot import G0T0Bot
 from Resolute.constants import (ACTIVITY_POINT_MINIMUM, APPROVAL_EMOJI, DENIED_EMOJI, EDIT_EMOJI,
                                 NULL_EMOJI)
 from Resolute.helpers.general_helpers import confirm, is_admin, is_staff
-from Resolute.helpers.logs import create_log, get_log_from_entry, null_log, update_activity_points
+from Resolute.helpers.logs import get_log, null_log, update_activity_points
 from Resolute.helpers.market import get_market_request
 from Resolute.helpers.messages import get_char_name_from_message, get_player_from_say_message, is_adventure_npc_message, is_player_say_message
-from Resolute.models.categories.categories import CodeConversion
 from Resolute.models.embeds.logs import LogEmbed
 from Resolute.models.objects.applications import ArenaPost
-from Resolute.models.objects.exceptions import G0T0Error, TransactionError
+from Resolute.models.objects.exceptions import G0T0Error, LogNotFound
+from Resolute.models.objects.logs import DBLog
 from Resolute.models.views.arena_view import ArenaRequestCharacterSelect
 from Resolute.models.views.character_view import RPPostUI, SayEditModal
 from Resolute.models.views.market import TransactionPromptUI
@@ -191,49 +191,31 @@ class Messages(commands.Cog):
                 # Selling items
                 if transaction.type.value == "Sell Items":
                     await message.add_reaction(APPROVAL_EMOJI[0])
-                    
-                    log_entry = await create_log(self.bot, ctx.author, "SELL", transaction.player,
-                                                 character=transaction.character,
-                                                 notes=transaction.log_notes,
-                                                 cc=transaction.cc,
-                                                 credits=transaction.credits,
-                                                 ignore_handicap=True) 
-                    
+                    log_entry = await self.bot.log(ctx, transaction.player, ctx.author, "SELL",
+                                                   character=transaction.character,
+                                                   notes=transaction.log_notes,
+                                                   cc=transaction.cc,
+                                                   credits=transaction.credits,
+                                                   ignore_handicap=True,
+                                                   show_values=True,
+                                                   silent=True)                    
                     await message.edit(content=None, embed=LogEmbed(log_entry, ctx.author, transaction.player.member, transaction.character, True))
 
                 else:
-                    if transaction.player.cc - transaction.cc < 0:
-                        await message.clear_reactions()
+                    try:
+                        log_entry = await self.bot.log(ctx, transaction.player, ctx.author, "BUY",
+                                                       character=transaction.character,
+                                                       notes=transaction.log_notes,
+                                                       cc=-transaction.cc,
+                                                       credits=-transaction.credits,
+                                                       show_values=True,
+                                                       ignore_handicap=True)
+                        await message.add_reaction(APPROVAL_EMOJI[0])
+                        await message.edit(content="", embed=LogEmbed(log_entry, ctx.author, transaction.player.member, transaction.character, True))
+                    except Exception as error:
+                        await message.clear_reactions
                         await message.add_reaction(DENIED_EMOJI[0])
-                        raise TransactionError(f"{transaction.player.member.mention} cannot afford the {transaction.cc:,} CC cost.")
-                        
-                    if transaction.credits > 0 and transaction.character.credits - transaction.credits < 0:
-                        rate: CodeConversion = self.bot.compendium.get_object(CodeConversion, transaction.character.level)
-                        convertedCC = math.ceil((abs(transaction.credits) - transaction.character.credits) / rate.value)
-
-                        if transaction.player.cc < convertedCC:
-                            raise TransactionError(f"{transaction.character.name} cannot afford the {transaction.credits:,} credit cost or to convert the {convertedCC:,} needed.")
-    
-                        else: 
-                            converted_entry = await create_log(self.bot, ctx.author, "CONVERSION", transaction.player,
-                                                                character=transaction.character,
-                                                                notes=transaction.log_notes,
-                                                                cc=-convertedCC,
-                                                                credits=convertedCC*rate.value,
-                                                                ignore_handicap=True)
-                            
-                            await guild.market_channel.send(embed=LogEmbed(converted_entry, ctx.author, transaction.player.member, transaction.character, True))
-
-                    await message.add_reaction(APPROVAL_EMOJI[0])
-
-                    log_entry = await create_log(self.bot, ctx.author, "BUY", transaction.player,
-                                                    character=transaction.character,
-                                                    notes=transaction.log_notes,
-                                                    cc=-transaction.cc,
-                                                    credits=-transaction.credits,
-                                                    ignore_handicap=True)
-                    
-                    await message.edit(content="", embed=LogEmbed(log_entry, ctx.author, transaction.player.member, transaction.character, True))
+                        raise error                    
 
         # RP
         elif guild.staff_role and guild.staff_role.mention in message.content and len(message.mentions) > 0:
@@ -250,17 +232,29 @@ class Messages(commands.Cog):
     )
     @commands.check(is_admin)
     async def message_null(self, ctx: discord.ApplicationContext, message: discord.Message):
-        log_entry = await get_log_from_entry(self.bot, message)
         await ctx.defer()
+        log_entry = await self._get_log_from_entry(message)
         
-        reason = await confirm(ctx, f"What is the reason for nulling the log?", True, self.bot, response_check=None)
-
-        player = await self.bot.get_player(log_entry.player_id, log_entry.guild_id, 
-                                           inactive=True)
-        character = next((c for c in player.characters if c.id == log_entry.character_id), None) if log_entry.character_id else None
-        mod_log = await null_log(self.bot, ctx, log_entry, reason)
-        
-
+        reason = await confirm(ctx, f"What is the reason for nulling the log?", True, self.bot, response_check=None)        
+        await null_log(self.bot, ctx, log_entry, reason)
         await message.add_reaction(NULL_EMOJI[0])
-        await message.edit(embed=LogEmbed)
-        return await ctx.respond(content=None, embed=LogEmbed(mod_log, ctx.author, player.member, character))
+        
+    
+    # --------------------------- #
+    # Private Methods
+    # --------------------------- #
+    async def _get_log_from_entry(self, message: discord.Message) -> DBLog:
+        try:
+            embed = message.embeds[0]
+            log_id = self._get_match(f"ID:\s*(\d+)", embed.footer.text)
+
+            log_entry = await get_log(self.bot, log_id)
+
+        except:
+            raise LogNotFound()
+
+        return log_entry
+    
+    def _get_match(self, pattern, text, group=1, default=None):
+        match = re.search(pattern, text, re.DOTALL)
+        return match.group(group) if match and match.group(group) != 'None' else default

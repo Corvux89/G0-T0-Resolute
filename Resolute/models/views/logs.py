@@ -1,14 +1,9 @@
-import math
 from typing import Mapping
 
 import discord
 
 from Resolute.bot import G0T0Bot
-from Resolute.helpers.logs import create_log
-from Resolute.models.categories import CodeConversion
-from Resolute.models.embeds.logs import LogEmbed
 from Resolute.models.objects.characters import PlayerCharacter
-from Resolute.models.objects.exceptions import TransactionError
 from Resolute.models.objects.players import Player
 from Resolute.models.views.base import InteractiveView
 
@@ -53,34 +48,13 @@ class LogPromptUI(LogPrompt):
 
     @discord.ui.button(label="Confirm", style=discord.ButtonStyle.green, row=2)
     async def confirm_log(self, _: discord.ui.Button, interaction: discord.Interaction):
-        if (self.character.credits + self.credits) < 0:
-            rate: CodeConversion = self.bot.compendium.get_object(CodeConversion, self.character.level)
-            convertedCC = math.ceil((self.credits - self.character.credits) / rate.value)
-            if self.player.cc < convertedCC:
-                raise TransactionError(f"{self.character.name} cannot afford the {self.credits} credit cost or to convert the {convertedCC} needed.")
-            else:
-                converted_entry = await create_log(self.bot, self.owner, "CONVERSION", self.player, 
-                                                   character=self.character, 
-                                                   notes=self.notes, 
-                                                   cc=-convertedCC, 
-                                                   credits=convertedCC*rate.value, 
-                                                   ignore_handicap=True)
-                await interaction.channel.send(embed=LogEmbed(converted_entry, self.owner, self.member, self.character, self.show_values))
-                log_entry = await create_log(self.bot, self.owner, self.activity, self.player, 
-                                             character=self.character, 
-                                             notes=self.notes, 
-                                             cc=self.cc, 
-                                             credits=self.credits, 
-                                             ignore_handicap=self.ignore_handicap)
-                await interaction.channel.send(embed=LogEmbed(log_entry, self.owner, self.member, self.character, self.show_values))
-        else:
-            log_entry = await create_log(self.bot, self.owner, self.activity, self.player, 
-                                         character=self.character, 
-                                         notes=self.notes, 
-                                         cc=self.cc, 
-                                         credits=self.credits, 
-                                         ignore_handicap=self.ignore_handicap)
-            await interaction.channel.send(embed=LogEmbed(log_entry, self.owner, self.member, self.character, self.show_values))
+        await self.bot.log(interaction, self.player, self.owner, self.activity,
+                           character=self.character,
+                           notes=self.notes,
+                           cc=self.cc,
+                           credits=self.credits,
+                           ignore_handicap=self.ignore_handicap,
+                           show_values=self.show_values)
         await self.on_timeout()
 
     @discord.ui.button(label="Cancel", style=discord.ButtonStyle.grey, row=2)

@@ -1,13 +1,13 @@
-import asyncio
 import logging
 import sys
-import discord
-
+from asyncio import WindowsSelectorEventLoopPolicy, set_event_loop_policy
 from os import listdir
-from discord import Intents
+
+from discord import Color, Embed, Intents
 from discord.ext import commands
+
 from Resolute.bot import G0T0Bot
-from Resolute.constants import BOT_TOKEN, DEFAULT_PREFIX, DEBUG_GUILDS
+from Resolute.constants import BOT_TOKEN, DEBUG_GUILDS, DEFAULT_PREFIX
 
 intents = Intents.default()
 intents.members = True
@@ -16,7 +16,7 @@ intents.message_content = True
 class MyHelpCommand(commands.MinimalHelpCommand):
     async def send_pages(self):
         destination = self.get_destination()
-        e = discord.Embed(color=discord.Color.blurple(), description='')
+        e = Embed(color=Color.blurple(), description='')
         for page in self.paginator.pages:
             e.description += page
         await destination.send(embed=e)
@@ -31,7 +31,7 @@ log = logging.getLogger("bot")
 
 # Because Windows is terrible
 if sys.version_info >= (3, 8) and sys.platform.lower().startswith("win"):
-    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+    set_event_loop_policy(WindowsSelectorEventLoopPolicy())
 
 bot = G0T0Bot(command_prefix=DEFAULT_PREFIX,
               description='Resolute - Created and maintained by Corvux',

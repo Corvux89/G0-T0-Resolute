@@ -150,8 +150,8 @@ def get_n_player_logs_query(player_id: int, guild_id: int, n : int) -> FromClaus
 
 def player_stats_query(compendium: Compendium, player_id: int, guild_id: int):
     new_character_activity = compendium.get_activity("NEW_CHARACTER")
-    activities = [x.id for x in compendium.activity[0].values() if x.value in ["RP", "ARENA", "ARENA_HOST", "GLOBAL", "SNAPSHOT"]]
-    activity_columns = [func.sum(case([(log_table.c.activity == act, 1)], else_=0)).label(f"Activity {act}") for act in activities]
+    activities = [x for x in compendium.activity[0].values() if x.value in ["RP", "ARENA", "ARENA_HOST", "GLOBAL", "SNAPSHOT"]]
+    activity_columns = [func.sum(case([(log_table.c.activity == act.id, 1)], else_=0)).label(f"Activity {act.value}") for act in activities]
 
     query = select(log_table.c.player_id,
                    func.count(log_table.c.id).label("#"),

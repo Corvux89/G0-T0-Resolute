@@ -1,6 +1,6 @@
 import logging
 import sys
-from asyncio import WindowsSelectorEventLoopPolicy, set_event_loop_policy
+import asyncio
 from os import listdir
 
 from discord import Color, Embed, Intents
@@ -31,7 +31,7 @@ log = logging.getLogger("bot")
 
 # # Because Windows is terrible
 if sys.version_info >= (3, 8) and sys.platform.lower().startswith("win"):
-    set_event_loop_policy(WindowsSelectorEventLoopPolicy())
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 bot = G0T0Bot(command_prefix=DEFAULT_PREFIX,
               description='Resolute - Created and maintained by Corvux',

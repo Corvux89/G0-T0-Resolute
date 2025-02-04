@@ -97,14 +97,14 @@ class Dashboards(commands.Cog):
 
                 staff_field = RPDashboardCategory(title="Archivist",
                                                       name="<:pencil:989284061786808380> -- Awaiting Archivist",
-                                                      channels=[self.bot.get_channel(self.strip_field(x))  for x in [x.value if "Archivist" in x.name else "" for x in embed.fields][0].split('\n') if x is not ""])
+                                                      channels=[self.bot.get_channel(self.strip_field(x))  for x in [x.value if "Archivist" in x.name else "" for x in embed.fields][0].split('\n') if x != ""])
                 available_field = RPDashboardCategory(title="Available",
                                                      name="<:white_check_mark:983576747381518396> -- Available",
-                                                     channels=[self.bot.get_channel(self.strip_field(x)) for x in [x.value for x in embed.fields if "Available" in x.name][0].split('\n') if x is not ""])
+                                                     channels=[self.bot.get_channel(self.strip_field(x)) for x in [x.value for x in embed.fields if "Available" in x.name][0].split('\n') if x != ""])
                 
                 unavailable_field = RPDashboardCategory(title="Unavailable",
                                                        name="<:x:983576786447245312> -- Unavailable",
-                                                       channels=[self.bot.get_channel(self.strip_field(x)) for x in [x.value for x in embed.fields if "Unavailable" in x.name][0].split('\n') if x is not ""])
+                                                       channels=[self.bot.get_channel(self.strip_field(x)) for x in [x.value for x in embed.fields if "Unavailable" in x.name][0].split('\n') if x != ""])
                 
                 all_fields = [staff_field, available_field, unavailable_field]
                 node = ""

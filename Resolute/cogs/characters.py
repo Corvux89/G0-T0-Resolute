@@ -12,7 +12,6 @@ from Resolute.helpers.appliations import (get_cached_application,
                                           get_new_character_application)
 from Resolute.helpers.characters import handle_character_mention
 from Resolute.helpers.general_helpers import split_content
-from Resolute.helpers.logs import update_activity_points
 from Resolute.helpers.messages import get_player_from_say_message
 from Resolute.models.embeds.players import PlayerOverviewEmbed
 from Resolute.models.objects.exceptions import (ApplicationNotFound,
@@ -123,7 +122,7 @@ class Character(commands.Cog):
                     await player.update_post_stats(character, ctx.message, content=chunk)
 
                     if len(chunk) >= ACTIVITY_POINT_MINIMUM:
-                        await update_activity_points(self.bot, player)
+                        await self.bot.update_player_activity_points(player)
             except:
                 await player.member.send(f"Error sending message in {ctx.channel.jump_url}. Try again: ")
                 await player.member.send(f"```{content}```")

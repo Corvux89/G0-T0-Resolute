@@ -70,18 +70,18 @@ class WebCog(commands.Cog):
         """
         # Reload the compendium
         @bot.web_app.route('/reload', methods=['POST'])
-        async def reload(self):
+        async def reload():
             try:
                 data = await request.json
             except:
                 return abort(401)
             
-            await bot.compendium.reload_categories(self.bot)
+            await bot.compendium.reload_categories(bot)
             await bot.get_channel(int(ERROR_CHANNEL)).send(data['text'])
             return jsonify({'text': 'Compendium Reloaded!'}), 200
         
         @bot.web_app.route('/guild_update', methods=['POST'])
-        async def reload_guild(self):
+        async def reload_guild():
             try:
                 data = await request.json
             except:

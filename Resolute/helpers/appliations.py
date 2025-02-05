@@ -14,6 +14,16 @@ from Resolute.models.objects.applications import (AppBackground, AppBaseScores,
 
 
 async def upsert_application(db: aiopg.sa.Engine, player_id: int, application: str = None) -> None:
+    """
+    Asynchronously upserts a player's application in the database.
+    This function deletes any existing application for the given player and inserts a new application if provided.
+    Args:
+        db (aiopg.sa.Engine): The database engine to use for the operation.
+        player_id (int): The ID of the player whose application is being upserted.
+        application (str, optional): The new application to insert. If None, only the deletion will occur.
+    Returns:
+        None
+    """
     async with db.acquire() as conn:
         await conn.execute(delete_player_application(player_id))
         if application:
@@ -33,6 +43,31 @@ async def get_cached_application(db: aiopg.sa.Engine, player_id: int) -> str:
     return application["application"]
 
 async def get_new_character_application(bot: G0T0Bot, application_text: str = None, message: discord.Message = None) -> NewCharacterApplication:
+    """
+    Parses a new character application from the provided text or message content.
+    Args:
+        bot (G0T0Bot): The bot instance used to fetch character details if needed.
+        application_text (str, optional): The text of the application. Defaults to None.
+        message (discord.Message, optional): The Discord message containing the application. Defaults to None.
+    Returns:
+        NewCharacterApplication: An object containing the parsed application details.
+    The function extracts various details from the application text such as:
+        - Name
+        - Type
+        - Base scores (STR, DEX, CON, INT, WIS, CHA)
+        - Species, ASIs, and Features
+        - Class, Skills, and Features
+        - Background, Skills, Tools/Languages, and Feat
+        - Equipment (Class and Background)
+        - Credits
+        - Homeworld
+        - Motivation for joining the Wardens of the Sky
+        - Motivation for doing good
+        - Link
+        - Level
+        - HP
+    If a character ID is found in the application, the function fetches the character details using the bot instance.
+    """
     app_text = application_text or message.content
 
     def get_match(pattern, text, group=1, default=None):
@@ -113,6 +148,21 @@ async def get_new_character_application(bot: G0T0Bot, application_text: str = No
     return application
 
 async def get_level_up_application(bot: G0T0Bot, application_text: str = None, message: discord.Message = None) -> LevelUpApplication:
+    """
+    Asynchronously retrieves a LevelUpApplication object from the provided application text or message.
+    Args:
+        bot (G0T0Bot): The bot instance used to retrieve character information.
+        application_text (str, optional): The text of the application. Defaults to None.
+        message (discord.Message, optional): The Discord message containing the application text. Defaults to None.
+    Returns:
+        LevelUpApplication: An object containing the parsed application details.
+    Raises:
+        None
+    Notes:
+        If both application_text and message are provided, application_text takes precedence.
+        The function extracts various details from the application text using regular expressions.
+        If a character ID is found, the corresponding character information is retrieved using the bot instance.
+    """
     app_text = application_text or message.content
 
     def get_match(pattern, text, group=1, default=None):

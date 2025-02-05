@@ -8,7 +8,6 @@ from Resolute.bot import G0T0Bot
 from Resolute.constants import (ACTIVITY_POINT_MINIMUM, APPROVAL_EMOJI, DENIED_EMOJI, EDIT_EMOJI,
                                 NULL_EMOJI)
 from Resolute.helpers.general_helpers import confirm, is_admin, is_staff
-from Resolute.helpers.logs import get_log, null_log, update_activity_points
 from Resolute.helpers.market import get_market_request
 from Resolute.helpers.messages import get_char_name_from_message, get_player_from_say_message, is_adventure_npc_message, is_player_say_message
 from Resolute.models.embeds.logs import LogEmbed
@@ -132,14 +131,14 @@ class Messages(commands.Cog):
                 if (char := next((c for c in player.characters if c.name ==  get_char_name_from_message(message)), None)):
                     await player.update_post_stats(char, message, retract=True)
                 if len(message.content) >= ACTIVITY_POINT_MINIMUM:
-                    await update_activity_points(self.bot, player, False)
+                    await self.bot.update_player_activity_points(player, False)
             await message.delete()
 
         # Staff Say Delete
         elif message.author.bot and is_staff and (orig_player := await get_player_from_say_message(self.bot, message)):
             if not player.guild.is_dev_channel(ctx.channel):
                 if len(message.content) >= ACTIVITY_POINT_MINIMUM:
-                    await update_activity_points(self.bot, orig_player, False)
+                    await self.bot.update_player_activity_points(orig_player, False)
                 if (char := next((c for c in orig_player.characters if c.name == get_char_name_from_message(message)), None)):
                     await orig_player.update_post_stats(char, message, retract=True)
             await message.delete()
@@ -148,7 +147,7 @@ class Messages(commands.Cog):
         elif ctx.channel.category and (adventure := await self.bot.get_adventure_from_category(ctx.channel.category.id)) and ctx.author.id in adventure.dms and is_adventure_npc_message(adventure, message):
             if not player.guild.is_dev_channel(ctx.channel):
                 if len(message.content) >= ACTIVITY_POINT_MINIMUM:
-                    await update_activity_points(self.bot, player, False)
+                    await self.bot.update_player_activity_points(player, False)
                 if npc := next((npc for npc in adventure.npcs if npc.name.lower() == message.author.name.lower()), None):
                     await player.update_post_stats(npc, message, retract=True)
             await message.delete()
@@ -157,8 +156,8 @@ class Messages(commands.Cog):
         elif message.author.bot and (npc := next((n for n in player.guild.npcs if n.name == message.author.name), None)):
             if not player.guild.is_dev_channel(ctx.channel):
                 if len(message.content) >= ACTIVITY_POINT_MINIMUM:
-                    await update_activity_points(self.bot, player, False)
-                
+                    await self.bot.update_player_activity_points(player, False)
+                                    
                 await player.update_post_stats(npc, message, retract=True)
 
             await message.delete()
@@ -199,7 +198,7 @@ class Messages(commands.Cog):
                                                    ignore_handicap=True,
                                                    show_values=True,
                                                    silent=True)                    
-                    await message.edit(content=None, embed=LogEmbed(log_entry, ctx.author, transaction.player.member, transaction.character, True))
+                    await message.edit(content=None, embed=LogEmbed(log_entry, True))
 
                 else:
                     try:
@@ -211,7 +210,7 @@ class Messages(commands.Cog):
                                                        show_values=True,
                                                        ignore_handicap=True)
                         await message.add_reaction(APPROVAL_EMOJI[0])
-                        await message.edit(content="", embed=LogEmbed(log_entry, ctx.author, transaction.player.member, transaction.character, True))
+                        await message.edit(content="", embed=LogEmbed(log_entry, True))
                     except Exception as error:
                         await message.clear_reactions
                         await message.add_reaction(DENIED_EMOJI[0])
@@ -235,8 +234,8 @@ class Messages(commands.Cog):
         await ctx.defer()
         log_entry = await self._get_log_from_entry(message)
         
-        reason = await confirm(ctx, f"What is the reason for nulling the log?", True, self.bot, response_check=None)        
-        await null_log(self.bot, ctx, log_entry, reason)
+        reason = await confirm(ctx, f"What is the reason for nulling the log?", True, self.bot, response_check=None)
+        await log_entry.null(ctx, reason)        
         await message.add_reaction(NULL_EMOJI[0])
         
     
@@ -248,7 +247,7 @@ class Messages(commands.Cog):
             embed = message.embeds[0]
             log_id = self._get_match(f"ID:\s*(\d+)", embed.footer.text)
 
-            log_entry = await get_log(self.bot, log_id)
+            log_entry = await self.bot.get_log(log_id)
 
         except:
             raise LogNotFound()

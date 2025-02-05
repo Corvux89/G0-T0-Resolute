@@ -6,7 +6,6 @@ from discord.ext import commands
 from Resolute.bot import G0T0Bot
 from Resolute.constants import ZWSP3
 from Resolute.helpers.general_helpers import is_admin, is_staff
-from Resolute.helpers.logs import get_character_stats, get_log, get_n_player_logs, get_player_stats, null_log
 from Resolute.models.embeds.logs import LogHxEmbed, LogStatsEmbed
 from Resolute.models.objects.exceptions import (CharacterNotFound, G0T0Error,
                                                 InvalidCurrencySelection,
@@ -212,11 +211,12 @@ class Log(commands.Cog):
             None: Responds to the context with an embedded log entry.
         """
         await ctx.defer()
-        log_entry = await get_log(self.bot, log_id)
+        log_entry = await self.bot.get_log(log_id)
 
         if log_entry is None:
             raise LogNotFound(log_id)
-        await null_log(self.bot, ctx, log_entry, reason)
+        
+        await log_entry.null(ctx, reason)
 
     @log_commands.command(
         name="stats",
@@ -228,14 +228,14 @@ class Log(commands.Cog):
 
         player = await self.bot.get_player(member.id, ctx.guild.id, 
                                            inactive=True)
-        player_stats = await get_player_stats(self.bot, player)
+        player_stats = await self.bot.get_player_stats(player)
 
         embeds = []
         embed = LogStatsEmbed(player, player_stats)
         if player.characters:
             sorted_characters = sorted(player.characters, key=lambda c: c.active, reverse=True)
             for character in sorted_characters:
-                char_stats = await get_character_stats(self.bot, character)
+                char_stats = await self.bot.get_character_stats(character)
                 if char_stats:
                     embed.add_field(name=f"{character.name}{' (*inactive*)' if not character.active else ''}",
                                     value=f"{ZWSP3}**Starting Credits**: {char_stats['credit starting']:,}\n"
@@ -284,7 +284,7 @@ class Log(commands.Cog):
         player = await self.bot.get_player(member.id, ctx.guild.id, 
                                            inactive=True)
 
-        logs = await get_n_player_logs(self.bot, player, num_logs)
+        logs = await self.bot.get_n_player_logs(player, num_logs)
 
         await ctx.respond(embed=LogHxEmbed(player, logs))
          

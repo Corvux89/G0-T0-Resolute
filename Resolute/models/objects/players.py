@@ -17,7 +17,7 @@ from Resolute.models.objects.adventures import Adventure, AdventureSchema, get_a
 from Resolute.models.objects.arenas import Arena, ArenaSchema, get_arena_by_host_query, get_character_arena_query
 from Resolute.models.objects.characters import CharacterSchema, PlayerCharacter, PlayerCharacterClassSchema, RenownSchema, get_active_player_characters, get_all_player_characters, get_character_class, get_character_renown
 from Resolute.models.objects.guilds import PlayerGuild
-from Resolute.models.objects.logs import get_log_count_by_player_and_activity
+import Resolute.models.objects.logs as l
 from Resolute.models.objects.ref_objects import NPC
 
 log = logging.getLogger(__name__)
@@ -261,9 +261,9 @@ class PlayerSchema(Schema):
         arena_host_activity = self.bot.compendium.get_activity("ARENA_HOST")
 
         async with self.bot.db.acquire() as conn:
-            rp_result = await conn.execute(get_log_count_by_player_and_activity(player.id, player.guild_id, rp_activity.id))
-            areana_result = await conn.execute(get_log_count_by_player_and_activity(player.id, player.guild_id, arena_activity.id))
-            arena_host_result = await conn.execute(get_log_count_by_player_and_activity(player.id, player.guild_id, arena_host_activity.id))
+            rp_result = await conn.execute(l.get_log_count_by_player_and_activity(player.id, player.guild_id, rp_activity.id))
+            areana_result = await conn.execute(l.get_log_count_by_player_and_activity(player.id, player.guild_id, arena_activity.id))
+            arena_host_result = await conn.execute(l.get_log_count_by_player_and_activity(player.id, player.guild_id, arena_host_activity.id))
             player.completed_rps = await rp_result.scalar()
             player.completed_arenas = await areana_result.scalar() + await arena_host_result.scalar()
 

@@ -11,7 +11,6 @@ from Resolute.compendium import Compendium
 from Resolute.constants import ACTIVITY_POINT_MINIMUM
 from Resolute.helpers.characters import create_new_character
 from Resolute.helpers.general_helpers import get_webhook, is_admin, process_message
-from Resolute.helpers.logs import update_activity_points
 from Resolute.helpers.messages import get_char_name_from_message, get_player_from_say_message
 from Resolute.helpers.players import build_rp_post, manage_player_roles
 from Resolute.models.categories import CharacterClass, CharacterSpecies
@@ -597,9 +596,9 @@ class SayEditModal(Modal):
                 await player.update_post_stats(char, self.message, content=content)
 
                 if len(content) <= ACTIVITY_POINT_MINIMUM and len(self.message.content) >= ACTIVITY_POINT_MINIMUM:
-                    await update_activity_points(self.bot, player, False)
+                    await self.bot.update_player_activity_points(player, False)
                 elif len(content) >= ACTIVITY_POINT_MINIMUM and len(self.message.content) <= ACTIVITY_POINT_MINIMUM:
-                    await update_activity_points(self.bot, player, False)
+                    await self.bot.update_player_activity_points(player)
                     
             await webook.edit_message(self.message.id, content=content)
         except:

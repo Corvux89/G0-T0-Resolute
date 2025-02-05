@@ -1,23 +1,23 @@
 from datetime import datetime, timezone
-from discord import Embed, Member, Color
+from discord import Embed, Color
 
+from Resolute.constants import THUMBNAIL
 from Resolute.models.objects.logs import DBLog
 from Resolute.models.objects.players import Player
-from Resolute.models.objects.characters import PlayerCharacter
 
 
 class LogEmbed(Embed):
-    def __init__(self, log_entry: DBLog, author: Member, member: Member, character: PlayerCharacter = None, show_values: bool = False):
-        super().__init__(title=f"{log_entry.activity.value} Logged - {character.name if character else member.display_name}",
+    def __init__(self, log_entry: DBLog, show_values: bool = False):
+        super().__init__(title=f"{log_entry.activity.value} Logged - {log_entry.character.name if log_entry.character else log_entry.player.member.display_name}",
                          color=Color.random(),
-                         timestamp=log_entry.created_ts)
+                         timestamp=log_entry.created_ts.replace(tzinfo=None))
         
-        self.set_thumbnail(url=member.display_avatar.url if member else THUMBNAIL)
-        self.set_footer(text=f"Logged by {author.name} - ID: {log_entry.id}",
-                        icon_url=author.display_avatar.url)
-        self.description = f"**Player**: {member.mention if member else 'Player not found'}\n"
+        self.set_thumbnail(url=log_entry.player.member.display_avatar.url if log_entry.player.member else THUMBNAIL)
+        self.set_footer(text=f"Logged by {log_entry.author.member.name} - ID: {log_entry.id}",
+                        icon_url=log_entry.author.member.display_avatar.url)
+        self.description = f"**Player**: {log_entry.player.member.mention if log_entry.player.member else 'Player not found'}\n"
 
-        self.description += f"**Character**: {character.name}\n" if character else ''
+        self.description += f"**Character**: {log_entry.character.name}\n" if log_entry.character else ''
 
         self.description += f"**Faction**: {log_entry.faction.value}\n" if log_entry.faction else ''
 
@@ -65,12 +65,8 @@ class LogHxEmbed(Embed):
             self.description = f"No logs for this player"
 
         for log in logs:
-            
-            author = player.guild.guild.get_member(log.author).mention if player.guild.guild.get_member(log.author) else "`Not found`"
-            character = next((c for c in player.characters if c.id == log.character_id), None)
-
-            value = f"**Author**: {author}\n"\
-                    f"**Character**: {character.name if character else 'None'}{' (*inactive*)' if character and not character.active else ''}\n"\
+            value = f"**Author**: {log.author.member.mention if log.author.member else '`Not found`'}\n"\
+                    f"**Character**: {log.character.name if log.character else 'None'}{' (*inactive*)' if log.character and not log.character.active else ''}\n"\
                     f"**Activity:** {log.activity.value}\n"\
                     f"**Chain Codes**: {log.cc:,}\n"\
                     f"**Credits**: {log.credits:,}\n"

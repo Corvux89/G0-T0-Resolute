@@ -12,7 +12,6 @@ from Resolute.helpers.adventures import update_dm
 from Resolute.helpers.autocomplete import get_faction_autocomplete
 from Resolute.helpers.characters import handle_character_mention
 from Resolute.helpers.general_helpers import get_webhook, split_content
-from Resolute.helpers.logs import update_activity_points
 from Resolute.models.embeds.adventures import AdventuresEmbed
 from Resolute.models.objects.adventures import (Adventure,
                                                 upsert_adventure_query)
@@ -88,7 +87,7 @@ class Adventures(commands.Cog):
                             await player.update_post_stats(npc, ctx.message, content=chunk)
 
                             if len(chunk)>=ACTIVITY_POINT_MINIMUM:
-                                await update_activity_points(self.bot, player)
+                                await self.bot.update_player_activity_points(player)
 
                     await ctx.message.delete()
 

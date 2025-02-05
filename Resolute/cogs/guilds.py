@@ -1,4 +1,4 @@
-from asyncio import ensure_future, gather
+import asyncio
 import logging
 import random
 from datetime import datetime, timedelta, timezone
@@ -11,7 +11,6 @@ from Resolute.bot import G0T0Bot
 from Resolute.constants import ACTIVITY_POINT_MINIMUM
 from Resolute.helpers.characters import handle_character_mention
 from Resolute.helpers.general_helpers import confirm, get_webhook, is_admin, split_content
-from Resolute.helpers.logs import update_activity_points
 from Resolute.models.embeds.guilds import ResetEmbed
 from Resolute.models.objects.guilds import GuildSchema, PlayerGuild, get_guilds_with_reset_query
 from Resolute.models.objects.players import reset_div_cc
@@ -73,10 +72,10 @@ class Guilds(commands.Cog):
         """
 
         if not self.schedule_weekly_reset.is_running():
-            ensure_future(self.schedule_weekly_reset.start())
+            asyncio.ensure_future(self.schedule_weekly_reset.start())
 
         if not self.cleanup_rp_posts.is_running():
-            ensure_future(self.cleanup_rp_posts.start())
+            asyncio.ensure_future(self.cleanup_rp_posts.start())
 
     @commands.Cog.listener()
     async def on_command_error(self, ctx: commands.Context, error):
@@ -107,7 +106,7 @@ class Guilds(commands.Cog):
                         if not guild.is_dev_channel(ctx.channel):
                             await player.update_post_stats(npc, ctx.message, content=chunk)
                             if len(chunk) > ACTIVITY_POINT_MINIMUM:
-                                await update_activity_points(self.bot, player)
+                                await self.bot.update_player_activity_points(player)
                     await ctx.message.delete()
     
     @guilds_commands.command(
@@ -267,7 +266,7 @@ class Guilds(commands.Cog):
                     members = list(filter(lambda m: m.id not in leadership_stipend_players, members))
                     leadership_stipend_players.update(m.id for m in stipend_role.members)
 
-                player_list = await gather(*(self.bot.get_player(m.id, g.id) for m in members))
+                player_list = await asyncio.gather(*(self.bot.get_player(m.id, g.id) for m in members))
                 
                 for player in player_list:
                     stipend_task.append(self.bot.log(None, player, self.bot.user, "STIPEND",
@@ -277,7 +276,7 @@ class Guilds(commands.Cog):
             else:
                 await stipend.delete()
 
-        await gather(*stipend_task)                 
+        await asyncio.gather(*stipend_task)                 
 
         end = timer()
 

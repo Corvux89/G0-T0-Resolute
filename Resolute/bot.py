@@ -1,6 +1,7 @@
 import logging
-from asyncio import CancelledError, create_task, get_event_loop
+import asyncio
 from math import ceil
+import operator
 from signal import SIGINT, SIGTERM
 from timeit import default_timer as timer
 
@@ -14,7 +15,7 @@ from Resolute.compendium import Compendium
 from Resolute.constants import DB_URL, PORT
 from Resolute.helpers.general_helpers import get_selection
 from Resolute.models import metadata
-from Resolute.models.categories.categories import Activity, CodeConversion, Faction
+from Resolute.models.categories.categories import Activity, ActivityPoints, CodeConversion, Faction
 from Resolute.models.embeds.logs import LogEmbed
 from Resolute.models.objects.adventures import (
     Adventure, AdventureSchema, get_adventure_by_category_channel_query,
@@ -30,7 +31,7 @@ from Resolute.models.objects.dashboards import (
     get_dashboard_by_post_id)
 from Resolute.models.objects.exceptions import G0T0Error, TransactionError
 from Resolute.models.objects.guilds import PlayerGuild
-from Resolute.models.objects.logs import DBLog, LogSchema, upsert_log
+from Resolute.models.objects.logs import DBLog, LogSchema, character_stats_query, get_last_log_by_type, get_log_by_id, get_n_player_logs_query, player_stats_query, upsert_log
 from Resolute.models.objects.players import (Player, PlayerSchema,
                                              get_player_query,
                                              upsert_player_query)
@@ -119,7 +120,7 @@ class G0T0Bot(commands.Bot):
             await create_tables(conn)
 
         web_start = timer()        
-        loop = get_event_loop()
+        loop = asyncio.get_event_loop()
         loop.create_task(self.web_app.run_task(host="0.0.0.0", port=PORT))
         web_end = timer()
 
@@ -145,7 +146,7 @@ class G0T0Bot(commands.Bot):
             self.web_task.cancel()  
             try:
                 await self.web_task
-            except CancelledError:
+            except asyncio.CancelledError:
                 pass
 
         if hasattr(self, 'db'):
@@ -157,7 +158,7 @@ class G0T0Bot(commands.Bot):
     def run(self, *args, **kwargs):
         for sig in (SIGINT, SIGTERM):
             try:
-                self.loop.add_signal_handler(sig, lambda: create_task(self.close()))
+                self.loop.add_signal_handler(sig, lambda: asyncio.create_task(self.close()))
             except (NotImplementedError, RuntimeError):
                 pass
         super().run(*args, **kwargs)
@@ -452,6 +453,32 @@ class G0T0Bot(commands.Bot):
         return d
     
     async def log(self, ctx: ApplicationContext|Interaction|None, player: Member|ClientUser|Player, author: Member|ClientUser|Player, activity: Activity|str, **kwargs) -> DBLog:
+        """
+        Logs an activity for a player and updates the database accordingly.
+        Args:
+            ctx (ApplicationContext | Interaction | None): The context of the command or interaction.
+            player (Member | ClientUser | Player): The player involved in the activity.
+            author (Member | ClientUser | Player): The author of the log entry.
+            activity (Activity | str): The activity being logged.
+            **kwargs: Additional keyword arguments for the log entry.
+        Keyword Args:
+            cc (int): The amount of CC (currency) involved in the activity.
+            credits (int): The amount of credits involved in the activity.
+            renown (int): The amount of renown involved in the activity.
+            notes (str): Additional notes for the log entry.
+            character (PlayerCharacter): The character involved in the activity.
+            ignore_handicap (bool): Whether to ignore handicap adjustments.
+            faction (Faction): The faction involved in the activity.
+            adventure (Adventure): The adventure involved in the activity.
+            silent (bool): Whether to suppress output messages.
+            respond (bool): Whether to respond to the context.
+            show_values (bool): Whether to show values in the output.
+        Returns:
+            DBLog: The log entry created.
+        Raises:
+            G0T0Error: If the guild ID cannot be determined or required parameters are missing.
+            TransactionError: If the player cannot afford the transaction.
+        """
         guild_id = ctx.guild.id if ctx else player.guild.id if player.guild else author.guild.id if author.guild else None
 
         if not guild_id:
@@ -519,9 +546,9 @@ class G0T0Bot(commands.Bot):
             await character.update_renown(faction, renown)
 
         # Log Entry
-        log_entry = DBLog(
+        log_entry = DBLog(self,
             guild_id=player.guild.id,
-            author=author.id,
+            author=author,
             player_id=player.id,
             activity=activity,
             notes=notes,
@@ -542,7 +569,7 @@ class G0T0Bot(commands.Bot):
             if character:
                 await conn.execute(upsert_character_query(character))
 
-        log_entry = LogSchema(self.compendium).load(row)
+        log_entry = await LogSchema(self).load(row)
 
         # Author Rewards
         if author.guild.reward_threshold and activity.value != "LOG_REWARD":
@@ -559,21 +586,146 @@ class G0T0Bot(commands.Bot):
                 author.points = max(0, author.points - (author.guild.reward_threshold * qty))
 
                 if author.guild.staff_channel:
-                    await author.guild.staff_channel.send(embed=LogEmbed(reward_log, self.user, author.member, None, True))
+                    await author.guild.staff_channel.send(embed=LogEmbed(reward_log, True))
 
                 async with self.db.acquire() as conn:
                     await conn.execute(upsert_player_query(author))
 
         # Send output
         if silent is False and ctx:
-            embed = LogEmbed(log_entry, author.member, player.member, character, show_values)
+            embed = LogEmbed(log_entry, show_values)
             if respond:
                 await ctx.respond(embed=embed)
             else:
                 await ctx.channel.send(embed=embed)
 
         return log_entry
-                    
+    
+    async def get_log(self, log_id: int) -> DBLog:
+        """
+        Retrieve a log entry from the database by its ID.
+        Args:
+            log_id (int): The ID of the log entry to retrieve.
+        Returns:
+            DBLog: The log entry corresponding to the given ID, or None if no entry is found.
+        """
+        async with self.db.acquire() as conn:
+            results = await conn.execute(get_log_by_id(log_id))
+            row = await results.first()
+
+        if not row: 
+            return None
+        
+        log_entry = await LogSchema(self).load(row)
+
+        return log_entry
+        
+    async def get_n_player_logs(self, player: Player, n: int = 5) -> list[DBLog]:
+        """
+        Retrieve the most recent logs for a given player.
+        Args:
+            player (Player): The player whose logs are to be retrieved.
+            n (int, optional): The number of logs to retrieve. Defaults to 5.
+        Returns:
+            list[DBLog]: A list of the most recent logs for the given player.
+        """
+        async with self.db.acquire() as conn:
+            results = await conn.execute(get_n_player_logs_query(player.id, player.guild.id, n))
+            rows = await results.fetchall()
+
+        if not rows:
+            return None
+
+        logs = [await LogSchema(self).load(row) for row in rows]
+
+        return logs
+    
+    async def get_player_stats(self, player: Player) -> dict:
+        """
+        Asynchronously retrieves player statistics from the database.
+        Args:
+            player (Player): The player object containing the player's ID and guild ID.
+        Returns:
+            dict: A dictionary containing the player's statistics.
+        """
+        async with self.db.acquire() as conn:
+            results = await conn.execute(player_stats_query(self.compendium, player.id, player.guild_id))
+            row = await results.first()
+
+        return dict(row)
+    
+    async def get_character_stats(self, character: PlayerCharacter) -> dict:
+        """
+        Asynchronously retrieves the statistics for a given character from the database.
+        Args:
+            character (PlayerCharacter): The character whose statistics are to be retrieved.
+        Returns:
+            dict: A dictionary containing the character's statistics if found, otherwise None.
+        """
+        async with self.db.acquire() as conn:
+            results = await conn.execute(character_stats_query(self.compendium, character.id))
+            row = await results.first()
+
+        if row is None:
+            return None
+        
+        return dict(row)
+    
+    async def update_player_activity_points(self, player: Player, increment: bool  = True):
+        """
+        Updates the activity points of a player and adjusts their activity level accordingly.
+        Args:
+            player (Player): The player whose activity points are to be updated.
+            increment (bool, optional): If True, increment the player's activity points by 1. 
+                                        If False, decrement the player's activity points by 1, 
+                                        but not below 0. Defaults to True.
+        Updates:
+            player.activity_points (int): The updated activity points of the player.
+            player.activity_level (int): The updated activity level of the player if it changes.
+        Sends:
+            A message to the player's guild activity points channel if the activity level increases.
+            A message to the player's guild staff channel and a direct message to the player if the activity level decreases.
+        Logs:
+            An activity log entry for the activity level change.
+        Database:
+            Updates the player's activity points in the database.
+        """
+        if increment:
+            player.activity_points += 1 
+        else:
+            player.activity_points = max(player.activity_points-1, 0)
+
+        activity_point: ActivityPoints = None
+
+        for point in sorted(self.compendium.activity_points[0].values(), key=operator.attrgetter('id')):
+            point: ActivityPoints
+            if player.activity_points >= point.points:
+                activity_point = point
+            elif player.activity_points < point.points:
+                break
+
+        if activity_point and player.activity_level != activity_point.id:
+            revert = True if player.activity_level > activity_point.id else False
+            player.activity_level = activity_point.id
+
+            activity_log = self.log(None, player, self.user, "ACTIVITY_REWARD",
+                                    notes=f"Activity Level {player.activity_level}{' [REVERSION]' if revert else ''}",
+                                    cc=-1 if revert else 0,
+                                    silent=True)
+            
+            if player.guild.activity_points_channel and not revert:
+                await player.guild.activity_points_channel.send(embed=LogEmbed(activity_log), content=f"{player.member.mention}")
+
+            if player.guild.staff_channel and revert:
+                await player.guild.staff_channel.send(embed=LogEmbed(activity_log))
+                await player.member.send(embed=LogEmbed(activity_log))
+
+        else:
+            async with self.db.acquire() as conn:
+                await conn.execute(upsert_player_query(player))
+            
+
+
             
         
 

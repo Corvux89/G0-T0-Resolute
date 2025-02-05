@@ -55,7 +55,7 @@ class CharacterEmbed(Embed):
                             f"**Faction**: {character.faction.value if character.faction else '*None*'}\n"
                             f"**Total Renown**: {character.total_renown}\n"
                             f"**Species**: {character.species.value}\n"
-                            f"**Credits**: {character.credits}\n"
+                            f"**Credits**: {character.credits:,}\n"
                             f"**Class{'es' if len(character.classes) > 1 else ''}**: {class_str}\n"
                             )
         
@@ -84,3 +84,5 @@ class CharacterSettingsEmbed(Embed):
 
         self.add_field(name="Active RP Channels",
                        value="\n".join([player.member.guild.get_channel(c).mention if player.member.guild.get_channel(c) else '' for c in character.channels]))
+
+

@@ -1,66 +1,12 @@
 import logging
 import re
-from timeit import default_timer as timer
 
 from discord import ApplicationContext, Interaction
 
 from Resolute.helpers.general_helpers import get_selection
-from Resolute.models.objects.applications import ApplicationType
-from Resolute.models.objects.characters import (PlayerCharacter,
-                                                PlayerCharacterClass)
-from Resolute.models.objects.players import Player
+from Resolute.models.objects.characters import (PlayerCharacter)
 
 log = logging.getLogger(__name__)
-
-async def create_new_character(type: ApplicationType, player: Player, new_character: PlayerCharacter, new_class: PlayerCharacterClass, **kwargs) -> PlayerCharacter:
-    """
-    Asynchronously creates a new character for a player.
-    Args:
-        type (ApplicationType): The type of application (e.g., 'freeroll', 'death').
-        player (Player): The player creating the new character.
-        new_character (PlayerCharacter): The new character to be created.
-        new_class (PlayerCharacterClass): The class of the new character.
-        **kwargs: Additional keyword arguments, including:
-            - old_character (PlayerCharacter): The player's old character, if applicable.
-    Returns:
-        PlayerCharacter: The newly created character.
-    Raises:
-        Exception: If there is an error during the character creation process.
-    Notes:
-        - If the type is 'freeroll' or 'death', the old character will be deactivated.
-        - If the type is 'freeroll', the new character will reference the old character.
-        - If the type is 'death', the player's handicap amount will be reset.
-        - The function logs the time taken to create the character.
-    """
-    start = timer()
-
-    old_character: PlayerCharacter = kwargs.get('old_character')
-
-    new_character.player_id = player.id
-    new_character.guild_id = player.guild_id        
-    if type in [ApplicationType.freeroll, ApplicationType.death]:
-        new_character.reroll = True
-        old_character.active = False
-
-        if type == ApplicationType.freeroll:
-            new_character.freeroll_from = old_character.id
-        else:
-            player.handicap_amount = 0
-
-        await old_character.upsert()
-
-    new_character = await new_character.upsert()
-
-    new_class.character_id = new_character.id
-    new_class = await new_class.upsert()
-
-    new_character.classes.append(new_class)
-
-    end = timer()
-
-    log.info(f"Time to create character {new_character.id}: [ {end-start:.2f} ]s")
-
-    return new_character
 
 def find_character_by_name(name: str, characters: list[PlayerCharacter]) -> list[PlayerCharacter]:
     """

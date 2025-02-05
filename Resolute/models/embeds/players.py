@@ -1,9 +1,9 @@
-from discord import Embed, Color
+from discord import Color, Embed
 
 from Resolute.compendium import Compendium
 from Resolute.constants import ZWSP3
-from Resolute.models.objects.guilds import PlayerGuild
-from Resolute.models.objects.players import Player, RPPost
+from Resolute.helpers.general_helpers import get_webhook
+from Resolute.models.objects.players import ArenaPost, Player, RPPost
 
 class PlayerOverviewEmbed(Embed):
     def __init__(self, player: Player, compendium: Compendium):
@@ -45,6 +45,38 @@ class PlayerOverviewEmbed(Embed):
 
             self.add_field(name=f"Character Information",value=val_str,inline=False)
 
+
+class ArenaPostEmbed(Embed):
+    def __init__(self, post: ArenaPost):
+        super().__init__(
+            title=f"{post.type.value} Arena Request",
+            color=Color.random()
+        )
+        self.post = post
+
+        self.set_thumbnail(url=post.player.member.avatar.url)
+
+        char_str = "\n\n".join([f'[{post.characters.index(c)+1}] {c.inline_class_description()}' for c in post.characters])
+
+        self.add_field(name="Character Priority",
+                       value=char_str,
+                       inline=False)
+
+        self.set_footer(text=f"{post.player.member.id}")
+
+    async def build(self) -> bool:
+        if self.post.player.guild.arena_board_channel:
+            webhook = await get_webhook(self.post.player.guild.arena_board_channel)
+            if self.post.message:
+                await webhook.edit_message(self.post.message.id, embed=self)
+            else:
+                await webhook.send(username=self.post.player.member.display_name,
+                                   avatar_url=self.post.player.member.display_avatar.url,
+                                   embed=self)
+            return True
+        return False
+
+
 class RPPostEmbed(Embed):
     def __init__(self, player: Player, posts: list[RPPost]):
         super().__init__(
@@ -58,5 +90,11 @@ class RPPostEmbed(Embed):
             self.add_field(name=f"{post.character.name}",
                            value=f"{post.note}",
                            inline=False)
-            
+
         self.set_footer(text=f"{player.member.id}")
+
+
+
+
+
+

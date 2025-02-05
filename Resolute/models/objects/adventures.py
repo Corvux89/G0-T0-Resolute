@@ -9,14 +9,55 @@ from sqlalchemy import (TIMESTAMP, BigInteger, Column, Integer, String, and_,
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.sql import FromClause
 
-from Resolute.compendium import Compendium
 from Resolute.models import metadata
 from Resolute.models.categories.categories import Faction
-from Resolute.models.objects.characters import CharacterSchema, PlayerCharacter, get_character_from_id
+from Resolute.models.objects.characters import PlayerCharacter
 from Resolute.models.objects.ref_objects import NPC, NPCSchema, get_adventure_npcs_query
 
 
 class Adventure(object):
+    """
+    A class to represent an adventure in a guild.
+    Attributes:
+    -----------
+    id : int
+        The unique identifier of the adventure.
+    guild_id : int
+        The unique identifier of the guild.
+    name : str
+        The name of the adventure.
+    role_id : int
+        The unique identifier of the role associated with the adventure.
+    category_channel_id : int
+        The unique identifier of the category channel associated with the adventure.
+    dms : list[int]
+        A list of IDs of the dungeon masters for the adventure.
+    characters : list[int]
+        A list of IDs of the characters in the adventure.
+    cc : Any
+        Custom attribute, purpose unspecified.
+    player_characters : list[PlayerCharacter]
+        A list of player characters in the adventure.
+    created_ts : datetime
+        The timestamp when the adventure was created.
+    end_ts : datetime
+        The timestamp when the adventure ended.
+    factions : list[Faction]
+        A list of factions involved in the adventure.
+    npcs : list[NPC]
+        A list of non-player characters in the adventure.
+    category_channel : discord.CategoryChannel
+        The Discord category channel associated with the adventure.
+    role : discord.Role
+        The Discord role associated with the adventure.
+    Methods:
+    --------
+    __init__(self, db: aiopg.sa.Engine, guild_id: int, name: str, role_id: int, category_channel_id: int, **kwargs):
+        Constructs all the necessary attributes for the adventure object.
+    async upsert(self):
+        Inserts or updates the adventure in the database.
+    """
+    
     def __init__(self, db: aiopg.sa.Engine, guild_id: int, name: str, role_id: int, category_channel_id: int, **kwargs):
         self._db = db
 

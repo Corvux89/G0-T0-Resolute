@@ -123,18 +123,18 @@ class Character(commands.Cog):
 
                     if len(chunk) >= ACTIVITY_POINT_MINIMUM:
                         await self.bot.update_player_activity_points(player)
+
+                 # Message response ping
+                if ctx.message.reference is not None:
+                    try:
+                        if ctx.message.reference.resolved and ctx.message.reference.resolved.author.bot and (orig_player := await get_player_from_say_message(self.bot, ctx.message.reference.resolved)):
+                            await orig_player.member.send(f"{ctx.author.mention} replied to your message in:\n{ctx.channel.jump_url}")
+                    except Exception as error:
+                        log.error(f"Error replying to message {error}")
+                        
             except:
                 await player.member.send(f"Error sending message in {ctx.channel.jump_url}. Try again: ")
                 await player.member.send(f"```{content}```")
-                return
-
-        # Message response ping
-        if ctx.message.reference is not None:
-            try:
-                if ctx.message.reference.resolved and ctx.message.reference.resolved.author.bot and (orig_player := await get_player_from_say_message(self.bot, ctx.message.reference.resolved)):
-                    await orig_player.member.send(f"{ctx.author.mention} replied to your message in:\n{ctx.channel.jump_url}")
-            except Exception as error:
-                log.error(f"Error replying to message {error}")
 
         
 

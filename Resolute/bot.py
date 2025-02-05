@@ -1,7 +1,7 @@
-import logging
 import asyncio
-from math import ceil
+import logging
 import operator
+from math import ceil
 from signal import SIGINT, SIGTERM
 from timeit import default_timer as timer
 
@@ -15,7 +15,8 @@ from Resolute.compendium import Compendium
 from Resolute.constants import DB_URL, PORT
 from Resolute.helpers.general_helpers import get_selection
 from Resolute.models import metadata
-from Resolute.models.categories.categories import Activity, ActivityPoints, CodeConversion, Faction
+from Resolute.models.categories.categories import (Activity, ActivityPoints,
+                                                   CodeConversion, Faction)
 from Resolute.models.embeds.logs import LogEmbed
 from Resolute.models.objects.adventures import (
     Adventure, AdventureSchema, get_adventure_by_category_channel_query,
@@ -25,13 +26,17 @@ from Resolute.models.objects.arenas import (Arena, ArenaSchema,
 from Resolute.models.objects.characters import (CharacterSchema,
                                                 PlayerCharacter,
                                                 PlayerCharacterClass,
-                                                get_character_from_id, upsert_character_query)
+                                                get_character_from_id,
+                                                upsert_character_query)
 from Resolute.models.objects.dashboards import (
     RefDashboard, RefDashboardSchema, get_dashboard_by_category_channel_query,
     get_dashboard_by_post_id)
 from Resolute.models.objects.exceptions import G0T0Error, TransactionError
 from Resolute.models.objects.guilds import PlayerGuild
-from Resolute.models.objects.logs import DBLog, LogSchema, character_stats_query, get_last_log_by_type, get_log_by_id, get_n_player_logs_query, player_stats_query, upsert_log
+from Resolute.models.objects.logs import (DBLog, LogSchema,
+                                          character_stats_query, get_log_by_id,
+                                          get_n_player_logs_query,
+                                          player_stats_query, upsert_log)
 from Resolute.models.objects.players import (Player, PlayerSchema,
                                              get_player_query,
                                              upsert_player_query)
@@ -723,7 +728,56 @@ class G0T0Bot(commands.Bot):
         else:
             async with self.db.acquire() as conn:
                 await conn.execute(upsert_player_query(player))
-            
+        
+    async def manage_player_tier_roles(self, player: Player, reason: str = None):
+         # Primary Role handling
+        if player.highest_level_character and player.highest_level_character.level >= 3:
+            if player.guild.member_role and player.guild.member_role not in player.member.roles:
+                await player.member.add_roles(player.guild.member_role, reason=reason)
+
+        # Character Tier Roles
+        if player.guild.entry_role:
+            if player.has_character_in_tier(self.compendium, 1):
+                if player.guild.entry_role not in player.member.roles:
+                    await player.member.add_roles(player.guild.entry_role, reason=reason)
+            elif player.guild.entry_role in player.member.roles:
+                await player.member.remove_roles(player.guild.entry_role, reason=reason)
+
+        if player.guild.tier_2_role:
+            if player.has_character_in_tier(self.compendium, 2):
+                if player.guild.tier_2_role not in player.member.roles:
+                    await player.member.add_roles(player.guild.tier_2_role, reason=reason)
+            elif player.guild.tier_2_role in player.member.roles:
+                await player.member.remove_roles(player.guild.tier_2_role, reason=reason)
+        
+        if player.guild.tier_3_role:
+            if player.has_character_in_tier(self.compendium, 3):
+                if player.guild.tier_3_role not in player.member.roles:
+                    await player.member.add_roles(player.guild.tier_3_role, reason=reason)
+            elif player.guild.tier_3_role in player.member.roles:
+                await player.member.remove_roles(player.guild.tier_3_role, reason=reason)
+
+        if player.guild.tier_4_role:
+            if player.has_character_in_tier(self.compendium, 4):
+                if player.guild.tier_4_role not in player.member.roles:
+                    await player.member.add_roles(player.guild.tier_4_role, reason=reason)
+            elif player.guild.tier_4_role in player.member.roles:
+                await player.member.remove_roles(player.guild.tier_4_role, reason=reason)
+
+        if player.guild.tier_5_role:
+            if player.has_character_in_tier(self.compendium, 5):
+                if player.guild.tier_5_role not in player.member.roles:
+                    await player.member.add_roles(player.guild.tier_5_role, reason=reason)
+            elif player.guild.tier_5_role in player.member.roles:
+                await player.member.remove_roles(player.guild.tier_5_role, reason=reason)
+
+        if player.guild.tier_6_role:
+            if player.has_character_in_tier(self.compendium, 6):
+                if player.guild.tier_6_role not in player.member.roles:
+                    await player.member.add_roles(player.guild.tier_6_role, reason=reason)
+            elif player.guild.tier_6_role in player.member.roles:
+                await player.member.remove_roles(player.guild.tier_6_role, reason=reason)
+
 
 
             

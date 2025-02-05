@@ -65,7 +65,7 @@ class CharacterSelectUI(CharacterView):
         Returns the content to be displayed in the UI.
     """
     @classmethod
-    def new(cls, bot, owner, player, levelUp: bool = False, application: NewCharacterApplication | LevelUpApplication = None, editOnly: bool = False):
+    def new(cls, bot, owner, player: Player, levelUp: bool = False, application: NewCharacterApplication | LevelUpApplication = None, editOnly: bool = False):
         inst = cls(owner=owner)
         inst.bot = bot
         inst.player = player

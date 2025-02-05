@@ -1,13 +1,14 @@
 from enum import Enum
 import discord
 import sqlalchemy as sa
+import aiopg.sa
 from marshmallow import Schema, fields
+from discord import Member, User
 from sqlalchemy import BigInteger, Column, String
 from sqlalchemy.sql.selectable import FromClause, TableClause
 
 from Resolute.models import metadata
 from Resolute.models.objects.characters import PlayerCharacter
-from Resolute.models.objects.players import Player
 
 class ApplicationType(Enum):
     new = "New Character"
@@ -226,18 +227,19 @@ class LevelUpApplication(object):
             f"**Changes:** {self.changes}\n"
             f"**Link:** {self.link}\n\n"
         )
+
+class PlayerApplication(object):
+    def __init__(self, db: aiopg.sa.Engine, owner: Member | User, application: LevelUpApplication | NewCharacterApplication):
+        self._db = db
+        self.owner = owner
+        self.application: LevelUpApplication | NewCharacterApplication = application
+
+    async def upsert(self):
+        async with self._db.acquire() as conn:
+            await conn.execute(insert_player_application(self.owner.id, self.application.format_app(self.owner)))
+
+    async def delete(self):
+        async with self._db.acquire() as conn:
+            await conn.execute(delete_player_application(self.owner.id))
+
     
-
-class ArenaPostType(Enum):
-    COMBAT = 'Combat'
-    NARRATIVE = 'Narrative'
-    BOTH = 'Combat or Narrative'
-    
-
-class ArenaPost(object):
-    def __init__(self, player: Player, characters: list[PlayerCharacter] = [], *args, **kwargs):
-        self.player = player
-        self.characters = characters
-        self.type: ArenaPostType = kwargs.get('type', ArenaPostType.COMBAT)
-
-        self.message: discord.Message = kwargs.get("message")

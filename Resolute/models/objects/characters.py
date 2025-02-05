@@ -399,3 +399,4 @@ def upsert_character_query(character: PlayerCharacter):
 
     return insert_statement
 
+

@@ -9,18 +9,17 @@ from discord.ui.button import Button
 from Resolute.bot import G0T0Bot
 from Resolute.compendium import Compendium
 from Resolute.constants import ACTIVITY_POINT_MINIMUM
-from Resolute.helpers.characters import create_new_character
 from Resolute.helpers.general_helpers import get_webhook, is_admin, process_message
 from Resolute.helpers.messages import get_char_name_from_message, get_player_from_say_message
-from Resolute.helpers.players import build_rp_post, manage_player_roles
 from Resolute.models.categories import CharacterClass, CharacterSpecies
 from Resolute.models.categories.categories import CharacterArchetype, Faction
 from Resolute.models.embeds import ErrorEmbed
+from Resolute.models.embeds.players import RPPostEmbed
 from Resolute.models.embeds.characters import (CharacterEmbed,
                                                CharacterSettingsEmbed,
                                                LevelUpEmbed, NewcharacterEmbed,
                                                NewCharacterSetupEmbed)
-from Resolute.models.embeds.players import PlayerOverviewEmbed, RPPostEmbed
+from Resolute.models.embeds.players import PlayerOverviewEmbed
 from Resolute.models.objects.applications import ApplicationType
 from Resolute.models.objects.characters import (CharacterRenown,
                                                 PlayerCharacterClass)
@@ -131,9 +130,8 @@ class _NewCharacter(CharacterManage):
 
     @discord.ui.button(label="Create Character", style=discord.ButtonStyle.green, row=4, disabled=True)
     async def new_character_create(self, _: discord.ui.Button, interaction: discord.Interaction):
-        self.new_character = await create_new_character(self.new_type, self.player, self.new_character, self.new_class,
-                                                        old_character=self.active_character)
-        
+        self.new_character = await self.player.create_character(self.new_type, self.new_character, self.new_class,
+                                                                old_character=self.active_character)        
         log_entry = await self.bot.log(interaction, self.player, self.owner, "NEW_CHARACTER",
                                        character=self.new_character,
                                        notes="Initial Log",
@@ -143,12 +141,11 @@ class _NewCharacter(CharacterManage):
                                        silent=True)
         
         self.player = await self.bot.get_player(self.player.id, self.player.guild_id)
-
-        await manage_player_roles(self.bot, self.player, "Character Created!")
+        await self.bot.manage_player_tier_roles(self.player, "Character Created!")
 
         await interaction.channel.send(embed=NewcharacterEmbed(self.owner, self.player, self.new_character, log_entry, self.bot.compendium))
 
-        if self.player.guild.first_character_message and self.player.guild.first_character_message != "" and self.player.guild.first_character_message is not None and len(self.player.characters) == 1:
+        if self.player.guild.first_character_message and self.player.guild.first_character_message != "" and self.player.guild.first_character_message is not None and len(self.player.characters) == 1 and not self.active_character:
             mappings = {"character.name": self.new_character.name,
                         "character.level": str(self.new_character.level)}
             await interaction.channel.send(process_message(self.player.guild.first_character_message, self.player.guild, self.player.member, mappings))
@@ -198,6 +195,8 @@ class _InactivateCharacter(CharacterManage):
         await self.bot.log(interaction, self.player, self.owner, "MOD_CHARACTER",
                            character=self.active_character,
                            notes="Inactivating Character")
+        
+        await self.bot.manage_player_tier_roles(self.player, "Inactivating character")
         await self.on_timeout()
 
 
@@ -244,7 +243,8 @@ class _EditCharacter(CharacterManage):
                            character=self.active_character,
                            notes="Player level up",
                            silent=True)
-        await manage_player_roles(self.bot, self.player, "Level up")
+        
+        await self.bot.manage_player_tier_roles(self.player, "Level up")
 
         await interaction.channel.send(embed=LevelUpEmbed(self.player, self.active_character))
 
@@ -897,7 +897,7 @@ class RPPostUI(RPPostView):
         
     @discord.ui.button(label="Accept", style=discord.ButtonStyle.primary, row=3)
     async def next_application(self, _: discord.ui.Button, interaction: discord.Interaction):
-        if await build_rp_post(self.player, self.posts, self.orig_message.id if self.orig_message else None):
+        if await self._build_rp_post():
             await interaction.respond("Request Submitted!", ephemeral=True)
         else:
             await interaction.channel.send("Something went wrong posting. Your message may be too long. Shorten it up an try it again.", delete_after=5)
@@ -907,6 +907,21 @@ class RPPostUI(RPPostView):
     @discord.ui.button(label="Exit", style=discord.ButtonStyle.red, row=3)
     async def exit_application(self, _: discord.ui.Button, interaction: discord.Interaction):
         await self.on_timeout()
+
+    async def _build_rp_post(self) -> bool:
+        if self.player.guild.rp_post_channel:
+            try:
+                webhook = await get_webhook(self.player.guild.rp_post_channel)
+                if self.orig_message:
+                    await webhook.edit_message(self.orig_message.id, embed=RPPostEmbed(self.player, self.posts))
+                else:
+                    await webhook.send(username=self.player.member.display_name, avatar_url=self.player.member.display_avatar.url,
+                                        embed=RPPostEmbed(self.player, self.posts))
+            except:
+                return False
+            return True
+        return False
+
 
 class RPPostNoteModal(Modal):
     post: RPPost

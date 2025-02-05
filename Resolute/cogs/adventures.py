@@ -3,7 +3,7 @@ import logging
 from discord import (ApplicationContext, CategoryChannel, Forbidden,
                      HTTPException, InvalidArgument, Option,
                      PermissionOverwrite, Role, SlashCommandGroup,
-                     SlashCommandOptionType, Thread, utils)
+                     SlashCommandOptionType, TextChannel, Thread, User, utils)
 from discord.ext import commands
 
 from Resolute.bot import G0T0Bot
@@ -13,8 +13,7 @@ from Resolute.helpers.autocomplete import get_faction_autocomplete
 from Resolute.helpers.characters import handle_character_mention
 from Resolute.helpers.general_helpers import get_webhook, split_content
 from Resolute.models.embeds.adventures import AdventuresEmbed
-from Resolute.models.objects.adventures import (Adventure,
-                                                upsert_adventure_query)
+from Resolute.models.objects.adventures import (Adventure)
 from Resolute.models.objects.exceptions import (AdventureNotFound,
                                                 CharacterNotFound, G0T0Error)
 from Resolute.models.views.adventures import AdventureSettingsUI
@@ -164,7 +163,7 @@ class Adventures(commands.Cog):
             raise G0T0Error(f"Role `@{role_name}` already exists")
         else:
             g = await self.bot.get_player_guild(ctx.guild.id)
-            adventure_role = await ctx.guild.create_role(name=role_name, mentionable=True,
+            adventure_role: Role = await ctx.guild.create_role(name=role_name, mentionable=True,
                                                          reason=f"Created by {ctx.author.nick} for adventure"
                                                                 f"{adventure_name}")
             
@@ -207,13 +206,13 @@ class Adventures(commands.Cog):
                     send_messages=True
                 )
 
-            new_adventure_category = await ctx.guild.create_category_channel(
+            new_adventure_category: CategoryChannel = await ctx.guild.create_category_channel(
                 name=adventure_name,
                 overwrites=category_permissions,
                 reason=f"Creating category for {adventure_name}"
             )
 
-            ic_channel = await ctx.guild.create_text_channel(
+            ic_channel: TextChannel = await ctx.guild.create_text_channel(
                 name=adventure_name,
                 category=new_adventure_category,
                 overwrites=ic_overwrites,
@@ -221,7 +220,7 @@ class Adventures(commands.Cog):
                 reason=f"Creating adventure {adventure_name} IC Room"
             )
 
-            ooc_channel = await ctx.guild.create_text_channel(
+            ooc_channel: TextChannel = await ctx.guild.create_text_channel(
                 name=f"{adventure_name}-ooc",
                 category=new_adventure_category,
                 overwrites=ooc_overwrites,
@@ -229,11 +228,10 @@ class Adventures(commands.Cog):
                 reason=f"Creating adventure {adventure_name} OOC Room"
             )
 
-            adventure = Adventure(guild_id=ctx.guild.id,name=adventure_name, role_id=adventure_role.id, dms=[dm.id],
+            adventure: Adventure = Adventure(guild_id=ctx.guild.id,name=adventure_name, role_id=adventure_role.id, dms=[dm.id],
                                   category_channel_id=new_adventure_category.id, cc=0)
             
-            async with self.bot.db.acquire() as conn:
-                await conn.execute(upsert_adventure_query(adventure))
+            await adventure.upsert()
 
             await ooc_channel.send(f"Adventure {adventure.name} successfully created!\n"
                                    f"Role: {adventure_role.mention}\n"

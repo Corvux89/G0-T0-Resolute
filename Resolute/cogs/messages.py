@@ -8,10 +8,10 @@ from Resolute.bot import G0T0Bot
 from Resolute.constants import (ACTIVITY_POINT_MINIMUM, APPROVAL_EMOJI, DENIED_EMOJI, EDIT_EMOJI,
                                 NULL_EMOJI)
 from Resolute.helpers.general_helpers import confirm, is_admin, is_staff
-from Resolute.helpers.market import get_market_request
 from Resolute.helpers.messages import get_char_name_from_message, get_player_from_say_message, is_adventure_npc_message, is_player_say_message
 from Resolute.models.embeds.logs import LogEmbed
-from Resolute.models.objects.applications import ArenaPost
+from Resolute.models.objects.market import MarketTransaction
+from Resolute.models.objects.players import ArenaPost
 from Resolute.models.objects.exceptions import G0T0Error, LogNotFound
 from Resolute.models.objects.logs import DBLog
 from Resolute.models.views.arena_view import ArenaRequestCharacterSelect
@@ -40,7 +40,8 @@ class Messages(commands.Cog):
 
         # Market
         if player.guild.market_channel and message.channel.id == player.guild.market_channel.id:
-            if transaction := await get_market_request(self.bot, message):
+            if transaction := await MarketTransaction.get_request(self.bot, message):
+                transaction: MarketTransaction
 
                 # Check if transaction was denied previously
                 if len(message.reactions) > 0:
@@ -103,7 +104,8 @@ class Messages(commands.Cog):
 
         # Market
         elif player.guild.market_channel and message.channel.id == player.guild.market_channel.id:
-            if transaction := await get_market_request(self.bot, message):
+            if transaction := await MarketTransaction.get_request(self.bot, message):
+                transaction: MarketTransaction
                 if len(message.reactions) > 0:
                     for reaction in message.reactions:
                         if reaction.emoji in DENIED_EMOJI:
@@ -176,8 +178,8 @@ class Messages(commands.Cog):
 
         # Market Transactions
         if guild.market_channel and message.channel.id == guild.market_channel.id:
-            if transaction := await get_market_request(self.bot, message):
-
+            if transaction := await MarketTransaction.get_request(self.bot, message):
+                transaction: MarketTransaction
                 # Check if transaction was denied previously
                 if len(message.reactions) > 0:
                     for reaction in message.reactions:

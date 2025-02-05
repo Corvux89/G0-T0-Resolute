@@ -1,23 +1,39 @@
+from enum import Enum
 import json
 import logging
 
 import aiopg.sa
 import discord
 import sqlalchemy as sa
+from discord import ApplicationContext, Interaction, Message
 from marshmallow import Schema, fields, post_load
 from sqlalchemy import BigInteger, Column, Integer, String, and_, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.sql import FromClause
+from timeit import default_timer as timer
 
+from Resolute.models.embeds.arenas import ArenaStatusEmbed
+from Resolute.models.objects.applications import ApplicationType
+from Resolute.models.objects.exceptions import G0T0Error
+import Resolute.models.objects.logs as l
 from Resolute.compendium import Compendium
 from Resolute.helpers.general_helpers import get_webhook
 from Resolute.models import metadata
-from Resolute.models.categories.categories import LevelTier
-from Resolute.models.objects.adventures import Adventure, AdventureSchema, get_adventures_by_dm_query, get_character_adventures_query
-from Resolute.models.objects.arenas import Arena, ArenaSchema, get_arena_by_host_query, get_character_arena_query
-from Resolute.models.objects.characters import CharacterSchema, PlayerCharacter, PlayerCharacterClassSchema, RenownSchema, get_active_player_characters, get_all_player_characters, get_character_class, get_character_renown
+from Resolute.models.categories.categories import ArenaType, LevelTier
+from Resolute.models.objects.adventures import (Adventure, AdventureSchema,
+                                                get_adventures_by_dm_query,
+                                                get_character_adventures_query)
+from Resolute.models.objects.arenas import (Arena, ArenaSchema,
+                                            get_arena_by_host_query,
+                                            get_character_arena_query)
+from Resolute.models.objects.characters import (CharacterSchema,
+                                                PlayerCharacter, PlayerCharacterClass,
+                                                PlayerCharacterClassSchema, RenownSchema,
+                                                get_active_player_characters,
+                                                get_all_player_characters,
+                                                get_character_class,
+                                                get_character_renown)
 from Resolute.models.objects.guilds import PlayerGuild
-import Resolute.models.objects.logs as l
 from Resolute.models.objects.ref_objects import NPC
 
 log = logging.getLogger(__name__)
@@ -185,6 +201,82 @@ class Player(object):
                     await ctx.send(f'Warning: deleting users\'s post(s) from {self.guild.arena_board_channel.mention} failed')
                 else:
                     log.error(error)
+
+    async def add_to_arena(self, interaction: Interaction | ApplicationContext, character: PlayerCharacter, arena: Arena):
+        if character.id in arena.characters:
+            raise G0T0Error("character already in the arena")
+        elif not self.can_join_arena(self, arena.type, character):
+            raise G0T0Error(f"Character is already in an {arena.type.value.lower()} arena")
+        
+        if self.id in {c.player_id for c in arena.characters}:
+            remove_char = next((c for c in arena.player_characters if c.player_id == self.id), None)
+            arena.player_characters.remove(remove_char)
+            arena.characters.remove(remove_char.id)
+
+        await self.remove_arena_board_post(interaction)
+        await interaction.response.send_message(f"{self.member.mention} has joined the arena with {character.name}")
+
+        arena.player_characters.append(character)
+        arena.characters.append(character.id)
+
+        arena.update_tier()
+
+        await arena.upsert()
+        await ArenaStatusEmbed(interaction, arena).update()
+
+    def can_join_arena(self, arena_type: ArenaType = None, character: PlayerCharacter = None) -> bool:
+        participating_arenas = [a for a in self.arenas if any([c.id in a.characters for c in self.characters])]
+        filtered_arenas = []
+
+        if len(participating_arenas) >= 2:
+            return False
+        elif arena_type and arena_type.value == "NARRATIVE" and self.guild.member_role and self.guild.member_role not in self.member.roles:
+            return False
+        
+        if arena_type:
+            filtered_arenas = [a for a in participating_arenas if a.type.id == arena_type.id]
+        
+        if character and (arena := next((a for a in filtered_arenas if character.id in a.characters), None)):
+            return False
+        
+        return True
+    
+    async def create_character(self, type: ApplicationType, new_character: PlayerCharacter, new_class: PlayerCharacterClass, **kwargs) -> PlayerCharacter:
+        start = timer()
+
+        old_character: PlayerCharacter = kwargs.get('old_character')
+
+        # Character Setup
+        new_character.player_id = self.id
+        new_character.guild_id = self.guild_id
+
+        if type in [ApplicationType.freeroll ,ApplicationType.death]:
+            if not old_character:
+                raise G0T0Error("Missing required information to process this request")
+            
+            new_character.reroll = True
+            old_character.active = False
+
+            if type == ApplicationType.freeroll:
+                new_character.freeroll_from = old_character.id
+            else:
+                self.handicap_amount = 0
+
+            await old_character.upsert()
+
+        new_character = await new_character.upsert()
+
+        # Class setup
+        new_class.character_id = new_character.id
+        new_class = await new_class.upsert()
+
+        new_character.classes.append(new_class)
+
+        end = timer()
+
+        log.info(f"Time to create character {new_character.id}: [ {end-start:.2f} ]s")
+
+        return new_character        
     
 player_table = sa.Table(
     "players",
@@ -345,6 +437,20 @@ def upsert_player_query(player: Player):
     )
 
     return upsert_statement
+
+class ArenaPostType(Enum):
+    COMBAT = 'Combat'
+    NARRATIVE = 'Narrative'
+    BOTH = 'Combat or Narrative'
+
+
+class ArenaPost(object):
+    def __init__(self, player: Player, characters: list[PlayerCharacter] = [], *args, **kwargs):
+        self.player = player
+        self.characters = characters
+        self.type: ArenaPostType = kwargs.get('type', ArenaPostType.COMBAT)
+
+        self.message: Message = kwargs.get("message")
 
 
 class RPPost(object):

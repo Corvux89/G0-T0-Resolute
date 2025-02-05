@@ -7,13 +7,12 @@ from discord.ext import commands
 
 from Resolute.bot import G0T0Bot
 from Resolute.constants import CHANNEL_BREAK
-from Resolute.helpers.arenas import add_player_to_arena, can_join_arena
 from Resolute.helpers.autocomplete import get_arena_type_autocomplete
 from Resolute.helpers.general_helpers import confirm
 from Resolute.models.categories import ArenaTier, ArenaType
-from Resolute.models.embeds.arenas import (ArenaPhaseEmbed, ArenaPostEmbed,
-                                           ArenaStatusEmbed)
-from Resolute.models.objects.applications import ArenaPost
+from Resolute.models.embeds.arenas import (ArenaPhaseEmbed, ArenaStatusEmbed)
+from Resolute.models.embeds.players import ArenaPostEmbed
+from Resolute.models.objects.players import ArenaPost
 from Resolute.models.objects.arenas import Arena
 from Resolute.models.objects.exceptions import (ArenaNotFound,
                                                 CharacterNotFound, G0T0Error)
@@ -104,7 +103,7 @@ class Arenas(commands.Cog):
 
         if len(player.characters) == 0:
             raise CharacterNotFound(ctx.author)
-        elif not await can_join_arena(player):
+        elif not player.can_join_arena():
             raise G0T0Error(f"You or your characters are already in the maximum allowed arenas.")
         elif len(player.characters) == 1:
             post = ArenaPost(player, player.characters)
@@ -113,7 +112,7 @@ class Arenas(commands.Cog):
                 ui = ArenaRequestCharacterSelect.new(self.bot, player, post)
                 await ui.send_to(ctx)
                 return await ctx.delete()
-            elif await can_join_arena(player, self.bot.compendium.get_object(ArenaType, "COMBAT"), player.characters[0]):
+            elif player.can_join_arena(self.bot.compendium.get_object(ArenaType, "COMBAT"), player.characters[0]):
                 if await ArenaPostEmbed(post).build():
                     return await ctx.respond(f"Request submitted!", ephemeral=True)
             else:
@@ -227,7 +226,7 @@ class Arenas(commands.Cog):
         if not player.characters:
             raise CharacterNotFound(member)
         elif len(player.characters) == 1:
-            await add_player_to_arena(ctx, player, player.characters[0], arena)
+            await player.add_to_arena(ctx, player.characters[0], arena)
         else:
             ui = ArenaCharacterSelect.new(self.bot, player, ctx.author.id)
             await ui.send_to(ctx)

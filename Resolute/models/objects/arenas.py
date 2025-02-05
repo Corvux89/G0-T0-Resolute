@@ -2,9 +2,9 @@ import bisect
 from datetime import datetime, timezone
 from statistics import mode
 
-import discord
-import sqlalchemy as sa
 import aiopg.sa
+import sqlalchemy as sa
+from discord import TextChannel
 from marshmallow import Schema, fields, post_load
 from sqlalchemy import TIMESTAMP, BigInteger, Column, Integer, and_, null
 from sqlalchemy.dialects.postgresql import ARRAY
@@ -33,7 +33,7 @@ class Arena(object):
         self.player_characters: list[PlayerCharacter] = []
         self.pin_message_id = kwargs.get('pin_message_id')
 
-        self.channel: discord.TextChannel = kwargs.get('channel')
+        self.channel: TextChannel = kwargs.get('channel')
 
     def update_tier(self):
         if self.player_characters:

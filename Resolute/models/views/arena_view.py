@@ -3,11 +3,11 @@ from typing import Type
 import discord
 
 from Resolute.bot import G0T0Bot
-from Resolute.helpers.arenas import add_player_to_arena, can_join_arena
 from Resolute.models.categories.categories import ArenaType
 from Resolute.models.embeds import ErrorEmbed
-from Resolute.models.embeds.arenas import ArenaPostEmbed
-from Resolute.models.objects.applications import ArenaPost, ArenaPostType
+from Resolute.models.objects.players import ArenaPostType
+from Resolute.models.embeds.players import ArenaPostEmbed
+from Resolute.models.objects.players import ArenaPost
 from Resolute.models.objects.characters import PlayerCharacter
 from Resolute.models.objects.exceptions import (ArenaNotFound,
                                                 CharacterNotFound, G0T0Error)
@@ -90,7 +90,7 @@ class CharacterArenaViewUI(ArenaView):
         if not self.player.characters:
             raise CharacterNotFound(self.player.member)
         elif len(self.player.characters) == 1:
-            await add_player_to_arena(interaction, self.player, self.player.characters[0], arena)
+            await self.player.add_to_arena(interaction, self.player.characters[0], arena)
         else:
             await self.defer_to(ArenaCharacterSelect, interaction)
 
@@ -127,7 +127,7 @@ class ArenaCharacterSelect(ArenaView):
         if character.player_id != interaction.user.id and interaction.user.id != arena.host_id and interaction.user.id != self.owner_id:
             raise G0T0Error("Thats not your character")
 
-        await add_player_to_arena(interaction, self.player, character, arena)
+        await self.player.add_to_arena(interaction, character, arena)
 
         await self.defer_to(CharacterArenaViewUI, interaction)
 
@@ -146,7 +146,7 @@ class ArenaCharacterSelect(ArenaView):
         if not self.player.characters:
             raise CharacterNotFound(self.player.member)
         elif len(self.player.characters) == 1:
-            await add_player_to_arena(interaction, self.player, self.player.characters[0], arena)
+            await self.player.add_to_arena(interaction, self.player.characters[0], arena)
         else:
             await self.defer_to(ArenaCharacterSelect, interaction)
 
@@ -223,7 +223,7 @@ class ArenaRequestCharacterSelect(ArenaRequest):
     
     @discord.ui.button(label="Add", style=discord.ButtonStyle.primary, custom_id="add_character", row=3)
     async def queue_character(self, _: discord.ui.Button, interaction: discord.Interaction):
-        if self.post.type.name != "BOTH" and  not await can_join_arena(self.post.player, self.bot.compendium.get_object(ArenaType, self.post.type.name), self.character):
+        if self.post.type.name != "BOTH" and  not self.post.player.can_join_arena(self.bot.compendium.get_object(ArenaType, self.post.type.name), self.character):
             raise G0T0Error(f"{self.character.name} can't queue up for another {self.post.type.name.lower()} arena.")
 
         if self.character.id not in [c.id for c in self.post.characters]:
@@ -242,7 +242,7 @@ class ArenaRequestCharacterSelect(ArenaRequest):
     async def next_application(self, _: discord.ui.Button, interaction: discord.Interaction):
         if self.post.type.name != "BOTH":
             for character in self.post.characters:
-                if not await can_join_arena(self.post.player, self.bot.compendium.get_object(ArenaType, self.post.type.name), character):
+                if not self.post.player.can_join_arena(self.bot.compendium.get_object(ArenaType, self.post.type.name), character):
                     raise G0T0Error(f"{character.name} can't queue up for another {self.post.type.name.lower()} arena.\nPlease update and try to resubmit")
 
         if await ArenaPostEmbed(self.post).build():

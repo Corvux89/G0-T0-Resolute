@@ -39,4 +39,10 @@ class NewCharacterRequestEmbed(Embed):
                              "or 'NA' if the specific section is not applicatble.\n"
                              "Review the appliation then submit when ready.",
                              inline=False)
+
+
+
+
+
+
         

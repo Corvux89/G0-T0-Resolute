@@ -702,21 +702,22 @@ class G0T0Bot(commands.Bot):
         else:
             player.activity_points = max(player.activity_points-1, 0)
 
+        points = sorted(self.compendium.activity_points[0].values(), key=operator.attrgetter('id'))
         activity_point: ActivityPoints = None
 
-        for point in sorted(self.compendium.activity_points[0].values(), key=operator.attrgetter('id')):
+        for point in points:
             point: ActivityPoints
             if player.activity_points >= point.points:
                 activity_point = point
             elif player.activity_points < point.points:
                 break
 
-        if activity_point and player.activity_level != activity_point.id:
-            revert = True if player.activity_level > activity_point.id else False
-            player.activity_level = activity_point.id
+        if (activity_point and player.activity_level != activity_point.id) or (increment == False and not activity_point):
+            revert = True if not activity_point or  (activity_point and player.activity_level > activity_point.id) else False
+            player.activity_level = activity_point.id if activity_point else 0
 
             activity_log = await self.log(None, player, self.user, "ACTIVITY_REWARD",
-                                    notes=f"Activity Level {player.activity_level}{' [REVERSION]' if revert else ''}",
+                                    notes=f"Activity Level {player.activity_level+1 if revert else player.activity_level}{' [REVERSION]' if revert else ''}",
                                     cc=-1 if revert else 0,
                                     silent=True)
             

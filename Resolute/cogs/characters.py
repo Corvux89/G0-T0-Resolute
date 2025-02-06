@@ -16,6 +16,7 @@ from Resolute.helpers.messages import get_player_from_say_message
 from Resolute.models.embeds.players import PlayerOverviewEmbed
 from Resolute.models.objects.exceptions import (ApplicationNotFound,
                                                 CharacterNotFound, G0T0Error)
+from Resolute.models.objects.webhook import G0T0Webhook, WebhookType
 from Resolute.models.views.applications import (CharacterSelectUI,
                                                 LevelUpRequestModal,
                                                 NewCharacterRequestUI)
@@ -88,54 +89,7 @@ class Character(commands.Cog):
             9. Updates post stats and activity points if applicable.
             10. Sends a response ping if the message is a reply to another message.
         """
-        content = ctx.message.content
-
-        content = content[5:]
-        await ctx.message.delete()
-
-        if content == "" or content.lower() == ">say":
-            return
-        
-        player = await self.bot.get_player(ctx.author.id, ctx.guild.id)
-        character = None
-
-        if not player.characters:
-            raise CharacterNotFound(player.member)
-        
-        if match := re.match(r"^(['\"“”])(.*?)['\"“”]", content):
-            search = match.group(2)
-            character = next((c for c in player.characters if search.lower() in c.name.lower()), None)
-            if character:
-                content = re.sub(r"^(['\"“”])(.*?)['\"“”]\s*", "", content, count=1)
-            
-        if not character:
-            character = await player.get_webhook_character(ctx.channel)
-
-        content = await handle_character_mention(ctx, content)        
-
-        chunks = split_content(content)
-        for chunk in chunks:
-            try:
-                await player.send_webhook_message(ctx, character, chunk)
-
-                if not player.guild.is_dev_channel(ctx.channel):
-                    await player.update_post_stats(character, ctx.message, content=chunk)
-
-                    if len(chunk) >= ACTIVITY_POINT_MINIMUM:
-                        await self.bot.update_player_activity_points(player)
-
-                 # Message response ping
-                if ctx.message.reference is not None:
-                    try:
-                        if ctx.message.reference.resolved and ctx.message.reference.resolved.author.bot and (orig_player := await get_player_from_say_message(self.bot, ctx.message.reference.resolved)):
-                            await orig_player.member.send(f"{ctx.author.mention} replied to your message in:\n{ctx.channel.jump_url}")
-                    except Exception as error:
-                        log.error(f"Error replying to message {error}")
-                        
-            except:
-                await player.member.send(f"Error sending message in {ctx.channel.jump_url}. Try again: ")
-                await player.member.send(f"```{content}```")
-
+        await G0T0Webhook(ctx, WebhookType.say).run()
         
 
                 

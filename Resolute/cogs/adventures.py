@@ -3,19 +3,17 @@ import logging
 from discord import (ApplicationContext, CategoryChannel, Forbidden,
                      HTTPException, InvalidArgument, Option,
                      PermissionOverwrite, Role, SlashCommandGroup,
-                     SlashCommandOptionType, TextChannel, Thread, User, utils)
+                     SlashCommandOptionType, TextChannel, utils)
 from discord.ext import commands
 
 from Resolute.bot import G0T0Bot
-from Resolute.constants import ACTIVITY_POINT_MINIMUM
 from Resolute.helpers.adventures import update_dm
 from Resolute.helpers.autocomplete import get_faction_autocomplete
-from Resolute.helpers.characters import handle_character_mention
-from Resolute.helpers.general_helpers import get_webhook, split_content
 from Resolute.models.embeds.adventures import AdventuresEmbed
-from Resolute.models.objects.adventures import (Adventure)
+from Resolute.models.objects.adventures import Adventure
 from Resolute.models.objects.exceptions import (AdventureNotFound,
                                                 CharacterNotFound, G0T0Error)
+from Resolute.models.objects.webhook import G0T0Webhook, WebhookType
 from Resolute.models.views.adventures import AdventureSettingsUI
 
 log = logging.getLogger(__name__)
@@ -50,45 +48,17 @@ class Adventures(commands.Cog):
     @commands.Cog.listener()
     async def on_command_error(self, ctx: commands.Context, error):
         """
-        Handles errors that occur when a command is invoked.
-        This function checks if the context has a bot with a database, and if the command was invoked in a guild and a channel category.
-        If an adventure is found for the category, and the author is a DM in the adventure, it processes the command as an NPC command.
+        Handles errors that occur during command execution.
+        This function is called when an error is raised while invoking a command.
+        It checks if the context has a bot with a database, and if the command was
+        executed in a guild and within a channel category. If these conditions are
+        met, it sends a webhook notification.
         Args:
             ctx (commands.Context): The context in which the command was invoked.
-            error (Exception): The error that was raised.
-        Returns:
-            None
+            error (Exception): The error that was raised during command execution.
         """
-
         if hasattr(ctx, "bot") and hasattr(ctx.bot, "db") and ctx.guild and ctx.channel.category:
-            if adventure := await self.bot.get_adventure_from_category(ctx.channel.category.id):
-                if ctx.author.id in adventure.dms and (npc := next((npc for npc in adventure.npcs if npc.key == ctx.invoked_with), None)):
-                    player = await self.bot.get_player(ctx.author.id, ctx.guild.id)
-                    content = ctx.message.content.replace(f'>{npc.key}', '')
-                    content = await handle_character_mention(ctx, content)
-
-                    await player.update_command_count("npc")
-                    webhook = await get_webhook(ctx.channel)
-                    chunks = split_content(content)
-
-                    for chunk in chunks:
-                        if isinstance(ctx.channel, Thread):
-                            await webhook.send(username=npc.name,
-                                                avatar_url=npc.avatar_url if npc.avatar_url else None,
-                                                content=chunk,
-                                                thread=ctx.channel)
-                        else:
-                            await webhook.send(username=npc.name,
-                                            avatar_url=npc.avatar_url if npc.avatar_url else None,
-                                            content=chunk)
-                            
-                        if not player.guild.is_dev_channel(ctx.channel):
-                            await player.update_post_stats(npc, ctx.message, content=chunk)
-
-                            if len(chunk)>=ACTIVITY_POINT_MINIMUM:
-                                await self.bot.update_player_activity_points(player)
-
-                    await ctx.message.delete()
+            await G0T0Webhook(ctx, WebhookType.adventure).run()
 
     @commands.slash_command(
         name="adventures",

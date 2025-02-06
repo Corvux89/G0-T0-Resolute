@@ -6,8 +6,6 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.sql import FromClause, TableClause
 
 from Resolute.models import metadata
-from Resolute.models.objects.NPC import npc_table
-
 
 class RefWeeklyStipend(object):
     def __init__(self, db: aiopg.sa.Engine, guild_id: int, role_id: int, amount: int = 1, reason: str = None, leadership: bool = False):

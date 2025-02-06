@@ -8,7 +8,7 @@ from Resolute.models.embeds import ErrorEmbed
 from Resolute.models.embeds.npc import NPCEmbed
 from Resolute.models.objects.adventures import Adventure
 from Resolute.models.objects.guilds import PlayerGuild
-from Resolute.models.objects.NPC import NPC
+from Resolute.models.objects.npc import NPC
 from Resolute.models.views.base import InteractiveView
 
 

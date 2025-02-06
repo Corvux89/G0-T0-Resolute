@@ -4,16 +4,15 @@ import random
 from datetime import datetime, timedelta, timezone
 from timeit import default_timer as timer
 
-from discord import ApplicationContext, HTTPException, Message, SlashCommandGroup, Thread
+from discord import ApplicationContext, HTTPException, Message, SlashCommandGroup
 from discord.ext import commands, tasks
 
 from Resolute.bot import G0T0Bot
-from Resolute.constants import ACTIVITY_POINT_MINIMUM
-from Resolute.helpers.characters import handle_character_mention
-from Resolute.helpers.general_helpers import confirm, get_webhook, is_admin, split_content
+from Resolute.helpers.general_helpers import confirm, is_admin
 from Resolute.models.embeds.guilds import ResetEmbed
 from Resolute.models.objects.guilds import GuildSchema, PlayerGuild, get_guilds_with_reset_query
 from Resolute.models.objects.players import reset_div_cc
+from Resolute.models.objects.webhook import G0T0Webhook, WebhookType
 from Resolute.models.views.guild_settings import GuildSettingsUI
 
 log = logging.getLogger(__name__)
@@ -80,34 +79,7 @@ class Guilds(commands.Cog):
     @commands.Cog.listener()
     async def on_command_error(self, ctx: commands.Context, error):
         if hasattr(ctx, "bot") and hasattr(ctx.bot, "db") and ctx.guild:
-            guild = await self.bot.get_player_guild(ctx.guild.id)
-            if npc := next((npc for npc in guild.npcs if npc.key == ctx.invoked_with), None):
-                user_roles = [role.id for role in ctx.author.roles]
-                if bool(set(user_roles) & set(npc.roles)) or await is_admin(ctx):
-                    player = await self.bot.get_player(ctx.author.id, ctx.guild.id)
-                    content = ctx.message.content.replace(f'>{npc.key}', '')
-                    content = await handle_character_mention(ctx, content)
-
-                    await player.update_command_count("npc")
-                    webhook = await get_webhook(ctx.channel)
-                    chunks = split_content(content)
-                    
-                    for chunk in chunks:
-                        if isinstance(ctx.channel, Thread):
-                            await webhook.send(username=npc.name,
-                                                avatar_url=npc.avatar_url if npc.avatar_url else None,
-                                                content=chunk,
-                                                thread=ctx.channel)
-                        else:
-                            await webhook.send(username=npc.name,
-                                            avatar_url=npc.avatar_url if npc.avatar_url else None,
-                                            content=chunk)
-                        
-                        if not guild.is_dev_channel(ctx.channel):
-                            await player.update_post_stats(npc, ctx.message, content=chunk)
-                            if len(chunk) > ACTIVITY_POINT_MINIMUM:
-                                await self.bot.update_player_activity_points(player)
-                    await ctx.message.delete()
+            await G0T0Webhook(ctx, WebhookType.npc).run()
     
     @guilds_commands.command(
             name="settings",

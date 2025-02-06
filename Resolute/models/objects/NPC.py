@@ -1,9 +1,12 @@
+from discord import ApplicationContext, Thread
 from marshmallow import Schema, fields, post_load
 import sqlalchemy as sa
 from sqlalchemy import BigInteger, Column, Integer, String, and_, null
 from sqlalchemy.dialects.postgresql import ARRAY, insert
 from sqlalchemy.sql import FromClause, TableClause
+import Resolute.helpers.general_helpers as gh
 from Resolute.models import metadata
+
 
 
 import aiopg.sa
@@ -26,8 +29,19 @@ class NPC(object):
         async with self._db.acquire() as conn:
             await conn.execute(upsert_npc_query(self))
 
-    # async def send_webhook_message(self, ctx: ApplicationContext, content: str):
-    #     webhook = await get_webhook(ctx.channel)
+    async def send_webhook_message(self, ctx: ApplicationContext, content: str):
+        webhook = await gh.get_webhook(ctx.channel)
+
+        if isinstance(ctx.channel, Thread):
+            await webhook.send(username=self.name,
+                               avatar_url=self.avatar_url if self.avatar_url else None,
+                               content=content,
+                               thread=ctx.channel)
+            
+        else:
+            await webhook.send(username=self.name,
+                               avatar_url=self.avatar_url if self.avatar_url else None,
+                               content=content)
 
 
 npc_table = sa.Table(

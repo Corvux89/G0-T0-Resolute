@@ -34,7 +34,7 @@ from Resolute.models.objects.characters import (CharacterSchema,
                                                 get_character_class,
                                                 get_character_renown)
 from Resolute.models.objects.guilds import PlayerGuild
-from Resolute.models.objects.NPC import NPC
+import Resolute.models.objects.npc as npc
 
 log = logging.getLogger(__name__)
 
@@ -131,7 +131,7 @@ class Player(object):
         async with self._db.acquire() as conn:
             await conn.execute(upsert_player_query(self))
     
-    async def update_post_stats(self, character: PlayerCharacter | NPC, post: discord.Message, **kwargs):
+    async def update_post_stats(self, character: PlayerCharacter | npc.NPC, post: discord.Message, **kwargs):
         content = kwargs.get('content', post.content)
         retract = kwargs.get('retract', False)
 

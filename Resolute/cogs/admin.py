@@ -3,13 +3,12 @@ import datetime
 import logging
 from os import listdir
 
-from discord import (ApplicationContext, ExtensionNotFound, ExtensionNotLoaded, Option, SlashCommandGroup, Embed)
+from discord import (ApplicationContext, ExtensionNotFound, ExtensionNotLoaded, Option, SlashCommandGroup)
 from discord.ext import commands, tasks
 
 from Resolute.bot import G0T0Bot
 from Resolute.constants import ADMIN_GUILDS
 from Resolute.helpers.dashboards import update_financial_dashboards
-from Resolute.helpers.financial import get_financial_data, update_financial_data
 from Resolute.helpers.general_helpers import is_admin, is_owner
 from Resolute.models.objects.guilds import PlayerGuild
 from Resolute.models.views.admin import AdminMenuUI
@@ -162,7 +161,7 @@ class Admin(commands.Cog):
 
     @tasks.loop(hours=24)
     async def check_financials(self):
-        fin = await get_financial_data(self.bot)
+        fin = await self.bot.get_financial_data()
         current_time = datetime.datetime.now(datetime.timezone.utc)
 
         if fin.last_reset is None or fin.last_reset.month != current_time.month:
@@ -175,7 +174,7 @@ class Admin(commands.Cog):
                 fin.reserve = max(fin.reserve - goal, 0)
             fin.monthly_total = 0
             fin.month_count += 1
-            await update_financial_data(self.bot, fin)
+            await fin.update()
             await update_financial_dashboards(self.bot)
             log.info("Finanical month reset")
 

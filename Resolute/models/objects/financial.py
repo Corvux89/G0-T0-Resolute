@@ -1,5 +1,6 @@
 import datetime
 import sqlalchemy as sa
+import aiopg.sa
 from marshmallow import Schema, fields, post_load
 from sqlalchemy import Column, Numeric, Integer, TIMESTAMP, null
 from sqlalchemy.sql.selectable import TableClause
@@ -8,7 +9,8 @@ from Resolute.models import metadata
 
 
 class Financial(object):
-    def __init__(self, **kwargs):
+    def __init__(self, db, **kwargs):
+        self._db: aiopg.sa.Engine = db
         self.month_count = kwargs.get('month_count', 0)
         self.monthly_goal = kwargs.get('monthly_goal', 0)
         self.monthly_total = kwargs.get('monthly_total', 0)
@@ -19,6 +21,10 @@ class Financial(object):
     def adjusted_total(self):
         # Adjusted for what Discord takes
         return self.monthly_total*.9
+    
+    async def update(self):
+        async with self._db.acquire() as conn:
+            await conn.execute(update_financial_query(self))
 
 financial_table = sa.Table(
     "financial",
@@ -31,13 +37,15 @@ financial_table = sa.Table(
 )
 
 class FinancialSchema(Schema):
+    db: aiopg.sa.Engine = None
     month_count = fields.Integer(required=True)
     monthly_goal = fields.Number(required=True)
     monthly_total = fields.Number(required=True)
     reserve = fields.Number(required=True)
     last_reset = fields.Method(None, "load_timestamp", allow_none=True)
 
-    def __init__(self, **kwargs):
+    def __init__(self, db: aiopg.sa.Engine, **kwargs):
+        self.db = db
         super().__init__(**kwargs)
 
     def load_timestamp(self, value):  # Marshmallow doesn't like loading DateTime for some reason. This is a workaround
@@ -45,7 +53,7 @@ class FinancialSchema(Schema):
     
     @post_load
     def make_finance(self, data, **kwargs):
-        return Financial(**data)
+        return Financial(self.db, **data)
     
 def get_financial_query() -> TableClause:
     return financial_table.select()

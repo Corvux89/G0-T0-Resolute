@@ -11,8 +11,9 @@ from sqlalchemy.sql import FromClause
 
 from Resolute.models import metadata
 from Resolute.models.categories.categories import Faction
+from Resolute.models.objects.NPC import NPC, NPCSchema
 from Resolute.models.objects.characters import PlayerCharacter
-from Resolute.models.objects.ref_objects import NPC, NPCSchema, get_adventure_npcs_query
+from Resolute.models.objects.NPC import get_adventure_npcs_query
 
 
 class Adventure(object):

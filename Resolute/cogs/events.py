@@ -10,8 +10,6 @@ from Resolute.bot import G0T0Bot
 from Resolute.constants import ERROR_CHANNEL
 from Resolute.helpers.appliations import upsert_application
 from Resolute.helpers.dashboards import update_financial_dashboards
-from Resolute.helpers.financial import (get_financial_data,
-                                        update_financial_data)
 from Resolute.helpers.general_helpers import process_message
 from Resolute.models.embeds import ErrorEmbed
 from Resolute.models.embeds.events import MemberLeaveEmbed
@@ -312,7 +310,7 @@ class Events(commands.Cog):
         """
         store_items = await self.bot.get_store_items()
 
-        fin = await get_financial_data(self.bot)
+        fin = await self.bot.get_financial_data()
 
         if store := next((s for s in store_items if s.sku == entitlement.sku_id), None):
             fin.monthly_total += store.user_cost
@@ -320,7 +318,7 @@ class Events(commands.Cog):
             if fin.adjusted_total > fin.monthly_goal:
                 fin.reserve += max(0, min(store.user_cost, fin.adjusted_total - fin.monthly_goal))
 
-        await update_financial_data(self.bot, fin)
+        await fin.update()
         await update_financial_dashboards(self.bot)
         
 

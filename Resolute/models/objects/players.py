@@ -34,7 +34,7 @@ from Resolute.models.objects.characters import (CharacterSchema,
                                                 get_character_class,
                                                 get_character_renown)
 from Resolute.models.objects.guilds import PlayerGuild
-from Resolute.models.objects.ref_objects import NPC
+from Resolute.models.objects.NPC import NPC
 
 log = logging.getLogger(__name__)
 

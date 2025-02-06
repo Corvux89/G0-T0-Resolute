@@ -32,6 +32,8 @@ from Resolute.models.objects.dashboards import (
     RefDashboard, RefDashboardSchema, get_dashboard_by_category_channel_query,
     get_dashboard_by_post_id)
 from Resolute.models.objects.exceptions import G0T0Error, TransactionError
+from Resolute.models.objects.financial import (Financial, FinancialSchema,
+                                               get_financial_query)
 from Resolute.models.objects.guilds import PlayerGuild
 from Resolute.models.objects.logs import (DBLog, LogSchema,
                                           character_stats_query, get_log_by_id,
@@ -713,7 +715,7 @@ class G0T0Bot(commands.Bot):
             revert = True if player.activity_level > activity_point.id else False
             player.activity_level = activity_point.id
 
-            activity_log = self.log(None, player, self.user, "ACTIVITY_REWARD",
+            activity_log = await self.log(None, player, self.user, "ACTIVITY_REWARD",
                                     notes=f"Activity Level {player.activity_level}{' [REVERSION]' if revert else ''}",
                                     cc=-1 if revert else 0,
                                     silent=True)
@@ -777,7 +779,18 @@ class G0T0Bot(commands.Bot):
                     await player.member.add_roles(player.guild.tier_6_role, reason=reason)
             elif player.guild.tier_6_role in player.member.roles:
                 await player.member.remove_roles(player.guild.tier_6_role, reason=reason)
+    
+    async def get_financial_data(self) -> Financial:
+        async with self.db.acquire() as conn:
+            results = await conn.execute(get_financial_query())
+            row = await results.first()
 
+        if row is None:
+            return None
+        
+        fin = FinancialSchema(self.db).load(row)
+
+        return fin
 
 
             

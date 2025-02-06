@@ -8,7 +8,6 @@ from PIL import Image, ImageDraw, ImageFilter
 from texttable import Texttable
 
 from Resolute.bot import G0T0Bot
-from Resolute.helpers.financial import get_financial_data
 from Resolute.models.categories.categories import DashboardType
 from Resolute.models.embeds.dashboards import RPDashboardEmbed
 from Resolute.models.objects.dashboards import (RefDashboard,
@@ -195,7 +194,7 @@ async def update_dashboard(bot: G0T0Bot, dashboard: RefDashboard):
         return await original_message.edit(content=f"```\n{dist_table.draw()}```{footer}", embed=None)
     
     elif dashboard.dashboard_type.value.upper() == "FINANCIAL":
-        fin: Financial = await get_financial_data(bot)
+        fin: Financial = await bot.get_financial_data()
 
         res = requests.get("https://res.cloudinary.com/jerrick/image/upload/d_642250b563292b35f27461a7.png,f_jpg,fl_progressive,q_auto,w_1024/y3mdgvccfyvmemabidd0.jpg")
         if res.status_code != 200:

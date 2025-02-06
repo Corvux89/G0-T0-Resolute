@@ -13,14 +13,14 @@ from sqlalchemy.sql import FromClause
 
 from Resolute.compendium import Compendium
 from Resolute.models import metadata
+from Resolute.models.objects.NPC import NPC, NPCSchema, get_guild_npcs_query
 from Resolute.models.objects.characters import (CharacterSchema, get_guild_characters_query)
 from Resolute.models.objects.dashboards import (RefDashboard,
                                                 RefDashboardSchema,
                                                 get_dashboards)
 from Resolute.models.objects.ref_objects import (
-    NPC, NPCSchema, RefServerCalendar, RefServerCalendarSchema,
-    RefWeeklyStipend, RefWeeklyStipendSchema, get_guild_npcs_query,
-    get_guild_weekly_stipends_query, get_server_calendar)
+    RefServerCalendar, RefServerCalendarSchema,
+    RefWeeklyStipend, RefWeeklyStipendSchema, get_guild_weekly_stipends_query, get_server_calendar)
 
 
 class PlayerGuild(object):

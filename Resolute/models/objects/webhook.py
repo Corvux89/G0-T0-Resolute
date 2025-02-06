@@ -116,7 +116,7 @@ class G0T0Webhook(object):
             return await get_player_from_say_message(self.ctx.bot, self.ctx.message.reference.resolved)
 
 
-    def _find_character_by_name(name: str, characters: list[PlayerCharacter]) -> list[PlayerCharacter]:
+    def _find_character_by_name(self, name: str, characters: list[PlayerCharacter]) -> list[PlayerCharacter]:
         direct_matches = [c for c in characters if c.name.lower() == name.lower()]
 
         # Prioritize main name first
@@ -133,7 +133,7 @@ class G0T0Webhook(object):
         mentioned_characters = []
 
         if char_mentions := re.findall(r'{\$([^}]*)}', self.content):
-            guild_characters = self.player.guild.get_all_characters(self.ctx.bot.compendium)
+            guild_characters = await self.player.guild.get_all_characters(self.ctx.bot.compendium)
 
             for mention in char_mentions:
                 matches = self._find_character_by_name(mention, guild_characters)
@@ -143,8 +143,9 @@ class G0T0Webhook(object):
                     mention_char = matches[0]
                 elif len(matches) > 1:
                     choices = [f"{c.name} [{self.ctx.guild.get_member(c.player_id).display_name}]" for c in matches]
-                if choice := await get_selection(self.ctx, choices, True, True, f"Type your choice in {self.ctx.channel.jump_url}", True, f"Found multiple matches for `{mention}`"):
-                    mention_char = matches[choices.index(choice)]
+
+                    if choice := await get_selection(self.ctx, choices, True, True, f"Type your choice in {self.ctx.channel.jump_url}", True, f"Found multiple matches for `{mention}`"):
+                        mention_char = matches[choices.index(choice)]
 
                 if mention_char:
                     if mention_char not in mentioned_characters:

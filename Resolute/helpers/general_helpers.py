@@ -254,8 +254,9 @@ async def get_selection(ctx: discord.ApplicationContext, choices: list[str], del
         else:
             break
 
-    if delete and not dm:
-        await try_delete(select_msg)
+    if delete:
+        if not dm:
+            await try_delete(select_msg)
         if m is not None:
             await try_delete(m)
 

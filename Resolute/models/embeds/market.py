@@ -1,4 +1,4 @@
-from discord import Embed, Color
+from discord import Color, Embed
 
 from Resolute.models.objects.market import MarketTransaction
 

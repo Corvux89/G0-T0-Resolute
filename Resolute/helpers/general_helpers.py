@@ -1,7 +1,8 @@
 import re
 
-import discord
-from discord import ApplicationContext, Interaction, Member
+from discord import (ApplicationContext, Color, Embed, ForumChannel,
+                     Interaction, Member, Message, TextChannel, Thread,
+                     Webhook, utils)
 from sqlalchemy.util import asyncio
 
 from Resolute.constants import BOT_OWNERS
@@ -49,6 +50,15 @@ async def is_admin(ctx: ApplicationContext | Interaction) -> bool:
         return False
     
 async def is_staff(ctx: ApplicationContext | Interaction) -> bool:
+    """
+    Check if the user is a staff member.
+    This function checks if the user who initiated the context is a staff member
+    by verifying their roles against the admin and staff roles defined in the guild.
+    Args:
+        ctx (ApplicationContext | Interaction): The context of the command or interaction.
+    Returns:
+        bool: True if the user is a staff member or the owner, False otherwise.
+    """
     g = await ctx.bot.get_player_guild(ctx.guild.id)
     
     r_list = []
@@ -74,6 +84,15 @@ async def is_staff(ctx: ApplicationContext | Interaction) -> bool:
 
 
 def get_positivity(string) -> bool:
+    """
+    Determines the positivity of a given string.
+    Args:
+        string (str or bool): The input string or boolean to evaluate.
+    Returns:
+        bool: True if the input represents a positive value (e.g., "yes", "true", "1", "enable", "on").
+              False if the input represents a negative value (e.g., "no", "false", "0", "disable", "off", "cancel").
+              None if the input does not match any recognized positive or negative values.
+    """
     if isinstance(string, bool):  # oi!
         return string
     lowered = string.lower()
@@ -86,6 +105,18 @@ def get_positivity(string) -> bool:
 
 
 async def confirm(ctx, message, delete_msgs=False, bot = None, response_check=get_positivity, full_reply: bool = False) -> bool|str:
+    """
+    Asks for user confirmation by sending a message and waiting for a response.
+    Args:
+        ctx (Context): The context in which the command was invoked.
+        message (str): The message to send to the user.
+        delete_msgs (bool, optional): Whether to delete the sent and received messages after processing. Defaults to False.
+        bot (Bot, optional): The bot instance to use for waiting for the response. Defaults to None.
+        response_check (callable, optional): A function to check the positivity of the response. Defaults to get_positivity.
+        full_reply (bool, optional): Whether to return the full reply object instead of just the content. Defaults to False.
+    Returns:
+        bool | str: The result of the response check, the full reply, or the reply content, depending on the parameters.
+    """
     msg = await ctx.channel.send(message)
     
     if bot is None:
@@ -111,6 +142,14 @@ async def confirm(ctx, message, delete_msgs=False, bot = None, response_check=ge
 
 
 def auth_and_chan(ctx) -> bool:
+    """
+    Checks if a message is from the same author and channel as the context.
+    Args:
+        ctx: The context object which contains information about the command invocation.
+    Returns:
+        bool: A function that takes a message as an argument and returns True if the message
+              is from the same author and channel as the context, otherwise False.
+    """
     if hasattr(ctx, 'author'):
         author = ctx.author
     else:
@@ -122,6 +161,15 @@ def auth_and_chan(ctx) -> bool:
     return chk
 
 def find_character(name: str, characters: list[PlayerCharacter]) -> list[PlayerCharacter]:
+    """
+    Finds characters in a list of PlayerCharacter objects that match a given name.
+    Args:
+        name (str): The name to search for.
+        characters (list[PlayerCharacter]): The list of PlayerCharacter objects to search within.
+    Returns:
+        list[PlayerCharacter]: A list of PlayerCharacter objects that match the given name.
+        If no direct match is found, returns a list of PlayerCharacter objects that partially match the given name.
+    """
     direct_match = [c for c in characters if c.name.lower() == name.lower()]
 
     if not direct_match:
@@ -132,15 +180,26 @@ def find_character(name: str, characters: list[PlayerCharacter]) -> list[PlayerC
 
 
 def process_message(message: str, g: PlayerGuild,  member: Member = None, mappings: dict = None) -> str:
+    def process_message(message: str, g: PlayerGuild, member: Member = None, mappings: dict = None) -> str:
+        """
+        Processes a message by replacing placeholders with actual mentions and values.
+        Args:
+            message (str): The message containing placeholders to be replaced.
+            g (PlayerGuild): The guild object containing channels and roles.
+            member (Member, optional): The member to mention in the message. Defaults to None.
+            mappings (dict, optional): A dictionary of additional placeholders and their replacements. Defaults to None.
+        Returns:
+            str: The processed message with placeholders replaced by actual mentions and values.
+        """
     channel_mentions = re.findall(r'{#([^}]*)}', message)
     role_mentions = re.findall(r'{@([^}]*)}', message)
 
     for chan in channel_mentions:
-        if (channel := discord.utils.get(g.guild.channels, name=chan)):
+        if (channel := utils.get(g.guild.channels, name=chan)):
             message = message.replace("{#"+chan+"}", f"{channel.mention}")
 
     for r in role_mentions:
-        if (role := discord.utils.get(g.guild.roles, name=r)):
+        if (role := utils.get(g.guild.roles, name=r)):
             message = message.replace("{@"+r+"}", f"{role.mention}")
 
     if mappings:
@@ -152,8 +211,18 @@ def process_message(message: str, g: PlayerGuild,  member: Member = None, mappin
 
     return message
 
-async def get_webhook(channel: discord.TextChannel) -> discord.Webhook:
-    if isinstance(channel, (discord.Thread, discord.ForumChannel)):
+async def get_webhook(channel: TextChannel) -> Webhook:
+    """
+    Asynchronously retrieves or creates a webhook for the given channel.
+    If the channel is a Thread or ForumChannel, it retrieves the parent text channel.
+    It then checks for existing webhooks in the text channel and returns the first one with a token.
+    If no such webhook exists, it creates a new webhook with the name "G0T0 Hook".
+    Args:
+        channel (TextChannel): The channel to retrieve or create the webhook for.
+    Returns:
+        Webhook: The existing or newly created webhook for the channel.
+    """
+    if isinstance(channel, (Thread, ForumChannel)):
         text_channel = channel.parent
     else:
         text_channel = channel
@@ -170,18 +239,50 @@ async def get_webhook(channel: discord.TextChannel) -> discord.Webhook:
     return hook
 
 def paginate(choices: list[str], per_page: int) -> list[list[str]]:
+    """
+    Splits a list of choices into a list of lists, each containing a maximum number of items specified by per_page.
+    Args:
+        choices (list[str]): The list of items to be paginated.
+        per_page (int): The maximum number of items per page.
+    Returns:
+        list[list[str]]: A list of lists, where each sublist represents a page of items.
+    """
     out = []
     for idx in range(0, len(choices), per_page):
         out.append(choices[idx:idx+per_page])
     return out
 
-async def try_delete(message: discord.Message):
+async def try_delete(message: Message):
+    """
+    Attempts to delete a given message asynchronously.
+    Args:
+        message (Message): The message object to be deleted.
+    Returns:
+        None
+    Note:
+        If an exception occurs during the deletion process, it is silently ignored.
+    """
     try:
         await message.delete()
     except:
         pass
 
-async def get_selection(ctx: discord.ApplicationContext, choices: list[str], delete: bool = True, dm: bool=False, message: str = None, force_select: bool = False, query_message: str = None):
+async def get_selection(ctx: ApplicationContext, choices: list[str], delete: bool = True, dm: bool=False, message: str = None, force_select: bool = False, query_message: str = None):
+    """
+    Asynchronously prompts the user to select an option from a list of choices.
+    Parameters:
+        ctx (ApplicationContext): The context in which the command was invoked.
+        choices (list[str]): A list of string choices for the user to select from.
+        delete (bool, optional): Whether to delete the selection message after selection. Defaults to True.
+        dm (bool, optional): Whether to send the selection message as a direct message. Defaults to False.
+        message (str, optional): An additional message to display in the embed. Defaults to None.
+        force_select (bool, optional): Forces the selection prompt even if there is only one choice. Defaults to False.
+        query_message (str, optional): A custom query message to display in the embed. Defaults to None.
+    Returns:
+        str or None: The selected choice as a string, or None if the selection was cancelled or timed out.
+    Raises:
+        ValueError: If the user input is not a valid choice number.
+    """
     if len(choices) == 1 and not force_select:
         return choices[0]
     
@@ -203,7 +304,7 @@ async def get_selection(ctx: discord.ApplicationContext, choices: list[str], del
 
     for n in range(200):
         _choices = pages[page]
-        embed = discord.Embed(title="Multiple Matches Found")
+        embed = Embed(title="Multiple Matches Found")
         select_str = (
             f"{query_message}\n"
             f"Which one were you looking for? (Type the number or `c` to cancel)\n"
@@ -217,7 +318,7 @@ async def get_selection(ctx: discord.ApplicationContext, choices: list[str], del
             select_str += f"**[{i+1+page*10}]** - {r}\n"
         
         embed.description = select_str
-        embed.color = discord.Color.random()
+        embed.color = Color.random()
 
         if message:
             embed.add_field(
@@ -268,6 +369,14 @@ async def get_selection(ctx: discord.ApplicationContext, choices: list[str], del
     return choices[idx]
 
 def split_content(content: str, chunk_size: int = 2000) -> list[str]:
+    """
+    Splits the given content into chunks of specified size.
+    Args:
+        content (str): The content to be split.
+        chunk_size (int, optional): The maximum size of each chunk. Defaults to 2000.
+    Returns:
+        list[str]: A list of content chunks, each with a size up to the specified chunk size.
+    """
     lines = content.splitlines(keepends=True)
     out = []
     current_chunk = ""

@@ -1,5 +1,6 @@
-import discord
 import re
+
+from discord import Message
 
 from Resolute.bot import G0T0Bot
 from Resolute.models.categories.categories import (TransactionSubType,
@@ -10,6 +11,23 @@ from Resolute.models.objects.players import Player
 
 
 class MarketTransaction(object):
+    """
+    Represents a market transaction in the game.
+    Attributes:
+        player (Player): The player involved in the transaction.
+        type (TransactionType): The type of the transaction.
+        subtype (TransactionSubType): The subtype of the transaction.
+        notes (str): Additional notes about the transaction.
+        cc (int): The amount of CC (in-game currency) involved in the transaction.
+        credits (int): The amount of credits involved in the transaction.
+        character (PlayerCharacter): The character involved in the transaction.
+        message (Message): The message associated with the transaction.
+    Methods:
+        format_type: Returns a formatted string representation of the transaction type and subtype.
+        log_notes: Returns a formatted string of the transaction type and notes.
+        get_request(bot, message): Asynchronously parses a message to create a MarketTransaction instance.
+    """
+
     def __init__(self, player: Player, **kwargs):
         self.player = player
 
@@ -19,7 +37,7 @@ class MarketTransaction(object):
         self.cc: int = kwargs.get('cc', 0)
         self.credits: int = kwargs.get('credits', 0)
         self.character: PlayerCharacter = kwargs.get('character')
-        self.message: discord.Message = kwargs.get('message')
+        self.message: Message = kwargs.get('message')
 
     @property
     def format_type(self):
@@ -31,7 +49,7 @@ class MarketTransaction(object):
     def log_notes(self):
         return f"{self.format_type}\n\n{self.notes}"
     
-    async def get_request(bot: G0T0Bot, message: discord.Message):
+    async def get_request(bot: G0T0Bot, message: Message):
 
         def get_match(pattern, text, group=1, default=None):
             match = re.search(pattern, text, re.DOTALL)

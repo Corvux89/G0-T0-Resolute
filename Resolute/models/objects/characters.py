@@ -10,9 +10,24 @@ from Resolute.models import metadata
 from Resolute.models.categories import (CharacterArchetype, CharacterClass,
                                         CharacterSpecies)
 from Resolute.models.categories.categories import Faction
-        
+
 
 class CharacterRenown(object):
+    """
+    A class to represent a character's renown within a faction.
+    Attributes:
+        _db (aiopg.sa.Engine): The database engine.
+        _compendium (Compendium): The compendium object.
+        id (int): The unique identifier of the character renown.
+        character_id (int): The unique identifier of the character.
+        faction (Faction): The faction associated with the renown.
+        renown (int): The renown value of the character within the faction.
+    Methods:
+        get_formatted_renown():
+            Returns the formatted renown string.
+        async upsert():
+            Inserts or updates the character renown in the database and returns the updated renown object.
+    """
     def __init__(self, db: aiopg.sa.Engine, compendium: Compendium, **kwargs):
         self._db = db
         self._compendium = compendium
@@ -24,9 +39,24 @@ class CharacterRenown(object):
         self.renown = kwargs.get("renown", 0)
 
     def get_formatted_renown(self):
+        """
+        Returns the formatted renown of the character.
+        The renown is formatted as a string with the faction name in bold,
+        followed by the renown value. The renown value is guaranteed to be
+        non-negative.
+        Returns:
+            str: The formatted renown string in the format "**<faction>**: <renown>".
+        """
         return f"**{self.faction.value}**: {max(0, self.renown)}"
     
     async def upsert(self):
+        """
+        Asynchronously upserts a character's renown data into the database.
+        This method acquires a database connection, executes the upsert query for the character's renown,
+        and loads the resulting data into a RenownSchema object.
+        Returns:
+            RenownSchema: The renown data loaded from the database.
+        """
         async with self._db.acquire() as conn:
             results = await conn.execute(upsert_character_renown_query(self))
             row = await results.first()
@@ -91,6 +121,27 @@ def upsert_character_renown_query(renown: CharacterRenown):
     return insert_statement
 
 class PlayerCharacterClass(object):
+    """
+    Represents a player character class in the game.
+    Attributes:
+        _db (aiopg.sa.Engine): The database engine.
+        _compendium (Compendium): The compendium containing game data.
+        id (Any): The unique identifier of the player character class.
+        character_id (Any): The unique identifier of the character.
+        primary_class (CharacterClass): The primary class of the character.
+        archetype (CharacterArchetype): The archetype of the character.
+        active (bool): Indicates whether the character class is active.
+    Methods:
+        __init__(db: aiopg.sa.Engine, compendium: Compendium, **kwargs):
+            Initializes a new instance of the PlayerCharacterClass.
+        is_valid() -> bool:
+            Checks if the player character class is valid.
+        get_formatted_class() -> str:
+            Returns the formatted class string.
+        upsert() -> PlayerCharacterClassSchema:
+            Inserts or updates the player character class in the database.
+    """
+
     def __init__(self,db: aiopg.sa.Engine, compendium: Compendium, **kwargs):
         self._db = db
         self._compendium = compendium
@@ -102,10 +153,27 @@ class PlayerCharacterClass(object):
         self.active = kwargs.get('active', True)
 
     def is_valid(self):
+        """
+        Checks if the character object is valid.
+        This method sets the `active` attribute to True if it does not already exist.
+        It then checks if the `primary_class` attribute exists and is not None.
+        Returns:
+            bool: True if the character object has a `primary_class` attribute that is not None, False otherwise.
+        """
         self.active = True if not hasattr(self, "active") else self.active
         return (hasattr(self, "primary_class") and self.primary_class is not None)
 
     def get_formatted_class(self):
+        """
+        Returns a formatted string representing the character's class.
+        The format of the returned string depends on the presence and value of the 
+        `archetype` and `primary_class` attributes of the character object.
+        Returns:
+            str: A formatted string combining the `archetype` and `primary_class` 
+                 values if both are present, or just the `primary_class` value if 
+                 `archetype` is not present. Returns an empty string if neither 
+                 attribute is present or both are None.
+        """
         if hasattr(self, "archetype") and self.archetype is not None:
             return f"{self.archetype.value} {self.primary_class.value}"
         elif hasattr(self, "primary_class") and self.primary_class is not None:
@@ -114,6 +182,14 @@ class PlayerCharacterClass(object):
             return ""
         
     async def upsert(self):
+        """
+        Asynchronously upserts the current player character class into the database.
+        This method acquires a database connection, executes an upsert query for the 
+        current player character class, and loads the resulting row into a new 
+        PlayerCharacterClassSchema instance.
+        Returns:
+            PlayerCharacterClassSchema: The newly upserted player character class.
+        """
         async with self._db.acquire() as conn:
             results = await conn.execute(upsert_class_query(self))
             row = await results.first()
@@ -185,6 +261,35 @@ def upsert_class_query(char_class: PlayerCharacterClass):
     return insert_statement
 
 class PlayerCharacter(object): 
+    """
+    Represents a player character in the game.
+    Attributes:
+        id (int): The unique identifier of the character.
+        name (str): The name of the character.
+        species (CharacterSpecies): The species of the character.
+        credits (int): The amount of credits the character has.
+        level (int): The level of the character.
+        player_id (int): The unique identifier of the player.
+        guild_id (int): The unique identifier of the guild.
+        reroll (bool): Indicates if the character has been rerolled.
+        active (bool): Indicates if the character is active.
+        freeroll_from (datetime): The date from which the character can be rerolled for free.
+        primary_character (bool): Indicates if this is the primary character.
+        channels (list): The list of channels associated with the character.
+        faction (Faction): The faction of the character.
+        avatar_url (str): The URL of the character's avatar.
+        nickname (str): The nickname of the character.
+        classes (list[PlayerCharacterClass]): The list of classes the character belongs to.
+        renown (list[CharacterRenown]): The list of renown records for the character.
+    Methods:
+        total_renown: Calculates the total renown of the character.
+        inline_description(compendium: Compendium): Returns an inline description of the character.
+        inline_class_description: Returns an inline class description of the character.
+        is_valid(max_level: int): Checks if the character is valid based on the given max level.
+        upsert: Inserts or updates the character in the database.
+        update_renown(faction: Faction, renown: int): Updates the renown of the character for a given faction.
+    """
+
     def __init__(self, db: aiopg.sa.Engine, compendium: Compendium, **kwargs):
         self._db = db
         self._compendium = compendium
@@ -218,22 +323,51 @@ class PlayerCharacter(object):
         return total
     
     def inline_description(self, compendium: Compendium):
+        """
+        Generates an inline description of the character.
+        Args:
+            compendium (Compendium): The compendium containing additional information about the character.
+        Returns:
+            str: A formatted string containing the character's name, level, species, classes, and credits.
+        """
+
         class_str = "".join([f" {c.get_formatted_class()}" for c in self.classes])
         str = f"**{self.name}** - Level {self.level} {self.species.value} [{class_str}] ({self.credits:,} credits)" 
 
         return str
     
     def inline_class_description(self):
+        """
+        Generates a formatted string that describes the character's name, level, species, and classes.
+        Returns:
+            str: A string in the format "**<name>** - Level <level> <species> [<class1> <class2> ...]"
+        """
         class_str = "".join([f" {c.get_formatted_class()}" for c in self.classes])
         return f"**{self.name}** - Level {self.level} {self.species.value} [{class_str}]" 
 
 
     def is_valid(self, max_level: int):
+        """
+        Check if the character object is valid.
+        A character is considered valid if it has the attributes 'name', 'species', and 'level',
+        and if 'level' is within the range from 1 to max_level (inclusive).
+        Args:
+            max_level (int): The maximum level a character can have.
+        Returns:
+            bool: True if the character is valid, False otherwise.
+        """
         return (hasattr(self, "name") and self.name is not None and 
                 hasattr(self, "species") and self.species is not None and
                 hasattr(self, "level") and 0 < self.level <= max_level)
 
     async def upsert(self):
+        """
+        Asynchronously upserts (updates or inserts) a character record in the database.
+        This method acquires a database connection, executes an upsert query for the character,
+        and then loads the resulting character data into a PlayerCharacter object.
+        Returns:
+            PlayerCharacter: The upserted character object.
+        """
         async with self._db.acquire() as conn:
             results = await conn.execute(upsert_character_query(self))
             row = await results.first()
@@ -244,6 +378,16 @@ class PlayerCharacter(object):
 
     
     async def update_renown(self, faction: Faction, renown: int) -> CharacterRenown:
+        """
+        Updates the renown of the character for a given faction.
+        If the character already has renown with the specified faction, the renown value is updated.
+        If the character does not have renown with the specified faction, a new CharacterRenown is created.
+        Args:
+            faction (Faction): The faction for which the renown is to be updated.
+            renown (int): The amount of renown to be added.
+        Returns:
+            CharacterRenown: The updated or newly created CharacterRenown object.
+        """
         character_renown = next((r for r in self.renown if r.faction.id == faction.id), 
                                 CharacterRenown(self._db, self._compendium,
                                     faction=faction,

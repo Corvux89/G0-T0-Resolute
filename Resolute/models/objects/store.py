@@ -7,6 +7,20 @@ from Resolute.models import metadata
 
 
 class Store(object):
+    """
+    A class used to represent a Store.
+    Attributes
+    ----------
+    sku : str
+        The stock keeping unit identifier for the store item.
+    user_cost : int
+        The cost to the user for the store item. Defaults to 0.
+    Methods
+    -------
+    __init__(**kwargs)
+        Initializes the Store object with the given keyword arguments.
+    """
+
     def __init__(self, **kwargs):
         self.sku = kwargs.get('sku')
         self.user_cost: int = kwargs.get('user_cost', 0)

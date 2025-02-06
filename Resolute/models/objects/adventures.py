@@ -1,8 +1,8 @@
 from datetime import datetime, timezone
 
 import aiopg.sa
-import discord
 import sqlalchemy as sa
+from discord import CategoryChannel, Member, Role, PermissionOverwrite
 from marshmallow import Schema, fields, post_load
 from sqlalchemy import (TIMESTAMP, BigInteger, Column, Integer, String, and_,
                         null)
@@ -11,9 +11,9 @@ from sqlalchemy.sql import FromClause
 
 from Resolute.models import metadata
 from Resolute.models.categories.categories import Faction
-from Resolute.models.objects.npc import NPC, NPCSchema
 from Resolute.models.objects.characters import PlayerCharacter
-from Resolute.models.objects.npc import get_adventure_npcs_query
+from Resolute.models.objects.npc import (NPC, NPCSchema,
+                                         get_adventure_npcs_query)
 
 
 class Adventure(object):
@@ -47,9 +47,9 @@ class Adventure(object):
         A list of factions involved in the adventure.
     npcs : list[NPC]
         A list of non-player characters in the adventure.
-    category_channel : discord.CategoryChannel
+    category_channel : CategoryChannel
         The Discord category channel associated with the adventure.
-    role : discord.Role
+    role : Role
         The Discord role associated with the adventure.
     Methods:
     --------
@@ -59,17 +59,19 @@ class Adventure(object):
         Inserts or updates the adventure in the database.
     """
     
-    def __init__(self, db: aiopg.sa.Engine, guild_id: int, name: str, role_id: int, category_channel_id: int, **kwargs):
+    def __init__(self, db: aiopg.sa.Engine, guild_id: int, name: str, role: Role, category_channel: CategoryChannel, **kwargs):
         self._db = db
 
         self.id = kwargs.get('id')
         self.guild_id = guild_id
         self.name: str = name
-        self.role_id = role_id
-        self.category_channel_id = category_channel_id
+        self.category_channel: CategoryChannel = category_channel
+        self.role: Role = role
+        self.role_id = role.id
+        self.category_channel_id = category_channel.id
         self.dms: list[int] = kwargs.get('dms', [])
         self.characters: list[int] = kwargs.get('characters', [])
-        self.cc = kwargs.get('cc')
+        self.cc = kwargs.get('cc', 0)
         self.player_characters: list[PlayerCharacter] = []
         self.created_ts = kwargs.get('created_ts', datetime.now(timezone.utc))
         self.end_ts = kwargs.get('end_ts')
@@ -77,12 +79,57 @@ class Adventure(object):
 
         # Virtual attributes
         self.npcs: list[NPC] = []
-        self.category_channel: discord.CategoryChannel = None
-        self.role: discord.Role = None
+        
 
     async def upsert(self):
+        """
+        Asynchronously upserts an adventure record in the database.
+        This method acquires a connection from the database pool and executes
+        an upsert query to insert or update the adventure record.
+        Returns:
+            None
+        """
         async with self._db.acquire() as conn:
             await conn.execute(upsert_adventure_query(self))
+
+    async def update_dm_permissions(self, member: Member, remove: bool = False):
+        """
+        Updates the Dungeon Master's permissions for the adventure.
+        This method adds or removes the specified role and permissions for the given member
+        in the adventure's category and its channels.
+        Args:
+            member (Member): The member whose permissions are to be updated.
+            remove (bool, optional): If True, removes the role and permissions from the member.
+                                     If False, adds the role and permissions to the member.
+                                     Defaults to False.
+        Returns:
+            None
+        """
+        if remove:
+            if self.role in member.roles:
+                await member.remove_roles(self.role, reason=f"Removed from adventure {self.name}")
+        else:
+            if self.role not in member.roles:
+                await member.add_roles(self.role, reason=f"Creating/Modifying adventure {self.name}")
+
+        category_overwrites = self.category_channel.overwrites
+        if remove:
+            del category_overwrites[member]
+        else:
+            category_overwrites[member] = PermissionOverwrite(manage_messages=True)
+
+        await self.category_channel.edit(overwrites=category_overwrites)
+
+        for channel in self.category_channel.channels:
+            overwrites = channel.overwrites
+            if remove:
+                del overwrites[member]
+            else:
+                overwrites[member] = PermissionOverwrite(manage_messages=True)
+            await channel.edit(overwrites=overwrites)
+
+            
+                
 
 
 adventures_table = sa.Table(
@@ -122,12 +169,12 @@ class AdventureSchema(Schema):
 
     @post_load
     async def make_adventure(self, data, **kwargs):
-        adventure = Adventure(self.bot.db, **data)
+        guild = self.bot.get_guild(data["guild_id"])
+        adventure = Adventure(self.bot.db, **data,
+                              role=guild.get_role(data["role_id"]),
+                              category_channel=self.bot.get_channel(data["category_channel_id"]))
         await self.get_characters(adventure)
         await self.get_npcs(adventure)
-        adventure.category_channel = self.bot.get_channel(adventure.category_channel_id)
-        guild = self.bot.get_guild(adventure.guild_id)
-        adventure.role = guild.get_role(adventure.role_id)
         return adventure
 
     def load_timestamp(self, value):  # Marshmallow doesn't like loading DateTime for some reason. This is a workaround

@@ -1,9 +1,11 @@
 from enum import Enum
-import sqlalchemy as sa
+
 import aiopg.sa
-from discord import TextChannel, User, Message, Thread, ForumChannel
+import sqlalchemy as sa
+from discord import ForumChannel, Message, TextChannel, Thread, User
 from marshmallow import Schema, fields, post_load
-from sqlalchemy import BOOLEAN, BigInteger, Column, Integer, String, and_, cast, Boolean, update
+from sqlalchemy import (BOOLEAN, BigInteger, Boolean, Column, Integer, String,
+                        and_, cast, update)
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.sql.selectable import FromClause, TableClause
 
@@ -13,12 +15,42 @@ from Resolute.models.categories.categories import Faction
 from Resolute.models.objects.characters import PlayerCharacter
 from Resolute.models.objects.guilds import PlayerGuild
 
+
 class AdjustOperator(Enum):
+    """
+    Enum class representing adjustment operators.
+    Attributes:
+        less (str): Represents the less than or equal to operator ("<=").
+        greater (str): Represents the greater than or equal to operator (">=").
+    """
+
     less = "<="
     greater = ">="
 
 
 class Shatterpoint(object):
+    """
+    Represents a Shatterpoint object which is used to manage and interact with shatterpoints in a Discord guild.
+    Attributes:
+        _db (aiopg.sa.Engine): The database engine used for database operations.
+        guild_id (int): The ID of the Discord guild.
+        name (str): The name of the shatterpoint.
+        base_cc (int): The base command currency (cc) for the shatterpoint.
+        channels (list[int]): A list of channel IDs associated with the shatterpoint.
+        busy (bool): A flag indicating whether the shatterpoint is busy.
+        players (list[ShatterpointPlayer]): A list of players associated with the shatterpoint.
+        renown (list[ShatterpointRenown]): A list of renown objects associated with the shatterpoint.
+    Methods:
+        __init__(db: aiopg.sa.Engine, **kwargs):
+            Initializes a new instance of the Shatterpoint class.
+        upsert():
+            Asynchronously inserts or updates the shatterpoint in the database.
+        delete():
+            Asynchronously deletes the shatterpoint and its associated players and renown from the database.
+        scrape_channel(bot, channel: TextChannel|Thread|ForumChannel, guild: PlayerGuild, user: User):
+            Asynchronously scrapes messages from a specified channel, updates player data, and persists changes to the database.
+    """
+
     def __init__(self, db: aiopg.sa.Engine, **kwargs):
         self._db = db
         self.guild_id = kwargs.get('guild_id')
@@ -187,6 +219,24 @@ def delete_shatterpoint_query(guild_id: int) -> TableClause:
 
 
 class ShatterpointPlayer(object):
+    """
+    Represents a player in the Shatterpoint game.
+    Attributes:
+        _db (aiopg.sa.Engine): The database engine.
+        guild_id (Optional[int]): The ID of the guild the player belongs to.
+        player_id (Optional[int]): The ID of the player.
+        cc (Optional[int]): The player's command center level.
+        update (bool): Flag indicating whether the player should be updated. Defaults to True.
+        active (bool): Flag indicating whether the player is active. Defaults to True.
+        num_messages (int): The number of messages the player has sent. Defaults to 0.
+        channels (list[int]): List of channel IDs the player is associated with. Defaults to an empty list.
+        characters (list[int]): List of character IDs the player owns. Defaults to an empty list.
+        renown_override (Optional[int]): Override value for the player's renown.
+        player_characters (list[PlayerCharacter]): List of PlayerCharacter objects associated with the player. Defaults to an empty list.
+    Methods:
+        upsert(): Inserts or updates the player record in the database.
+    """
+
     def __init__(self, db: aiopg.sa.Engine, **kwargs):
         self._db = db
 

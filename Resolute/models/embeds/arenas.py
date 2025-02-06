@@ -1,6 +1,8 @@
-from discord import Embed, ApplicationContext, Interaction, Color
+from discord import ApplicationContext, Color, Embed, Interaction
+
 from Resolute.constants import THUMBNAIL, ZWSP3
 from Resolute.models.objects.arenas import Arena
+
 
 class ArenaStatusEmbed(Embed):
     def __init__(self, ctx: ApplicationContext | Interaction, arena: Arena):

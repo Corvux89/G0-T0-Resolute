@@ -16,7 +16,30 @@ from Resolute.models.categories import ArenaTier, ArenaType
 from Resolute.models.objects.characters import PlayerCharacter
 
 
-class Arena(object):    
+class Arena(object):
+    """
+    Represents an arena in the game.
+    Attributes:
+        _db (aiopg.sa.Engine): The database engine.
+        _compendium (Compendium): The compendium containing game data.
+        id (int): The unique identifier of the arena.
+        channel_id (int): The ID of the channel associated with the arena.
+        tier (ArenaTier): The tier of the arena.
+        type (ArenaType): The type of the arena.
+        host_id (int): The ID of the host of the arena.
+        completed_phases (int): The number of completed phases in the arena.
+        characters (list[int]): The list of character IDs in the arena.
+        created_ts (datetime): The timestamp when the arena was created.
+        end_ts (datetime): The timestamp when the arena ended.
+        player_characters (list[PlayerCharacter]): The list of player characters in the arena.
+        pin_message_id (int): The ID of the pinned message in the channel.
+        channel (TextChannel): The text channel associated with the arena.
+    Methods:
+        update_tier(): Updates the tier of the arena based on the average level of player characters.
+        upsert(): Inserts or updates the arena in the database.
+        close(): Closes the arena, updates the end timestamp, and deletes the pinned message in the channel.
+    """
+
     def __init__(self, db: aiopg.sa.Engine, compendium: Compendium, channel_id: int, host_id: int, tier: ArenaTier, type: ArenaType, **kwargs):
         self._db = db
         self._compendium = compendium
@@ -36,6 +59,15 @@ class Arena(object):
         self.channel: TextChannel = kwargs.get('channel')
 
     def update_tier(self):
+        """
+        Updates the tier of the arena based on the average level of player characters.
+        The method calculates the average level of the player characters using the mode of their levels.
+        It then determines the appropriate tier from the compendium based on this average level.
+        If the average level exceeds the highest tier level, the highest tier is assigned.
+        Otherwise, it finds the closest tier that matches or exceeds the average level and assigns it.
+        Raises:
+            ValueError: If there are no player characters to calculate the average level.
+        """
         if self.player_characters:
             avg_level = mode(c.level for c in self.player_characters)
             tiers = list(self._compendium.arena_tier[0].values())
@@ -48,10 +80,30 @@ class Arena(object):
                 self.tier = self._compendium.get_object(ArenaTier, tier)
 
     async def upsert(self):
+        """
+        Asynchronously upserts the current arena object into the database.
+        This method acquires a connection from the database pool and executes
+        an upsert operation using the `upsert_arena_query` function, which
+        ensures that the current arena object is either inserted or updated
+        in the database.
+        Raises:
+            Exception: If the database operation fails.
+        """
         async with self._db.acquire() as conn:
             await conn.execute(upsert_arena_query(self))
     
     async def close(self):
+        """
+        Asynchronously closes the arena.
+        This method performs the following actions:
+        1. Sets the end timestamp to the current UTC time.
+        2. Upserts the current state to the database.
+        3. Fetches and deletes the pinned message in the channel, if it exists.
+        Raises:
+            discord.NotFound: If the pinned message is not found.
+            discord.Forbidden: If the bot does not have permission to delete the message.
+            discord.HTTPException: If deleting the message fails.
+        """
         self.end_ts = datetime.now(timezone.utc)
 
         await self.upsert()

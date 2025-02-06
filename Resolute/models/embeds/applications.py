@@ -1,11 +1,12 @@
 from discord import Embed
 
-from Resolute.models.objects.applications import NewCharacterApplication, status
+from Resolute.models.objects.applications import (NewCharacterApplication,
+                                                  status)
 
 
 class NewCharacterRequestEmbed(Embed):
     def __init__(self, application: NewCharacterApplication):
-        super().__init__(title=f"{application.type} Application")
+        super().__init__(title=f"{application.type.value} Application")
 
         self.add_field(name="__Character Name__",
                        value=f"{status([application.name])}")

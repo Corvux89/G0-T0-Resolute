@@ -1,8 +1,9 @@
 import logging
 from typing import Mapping
 
-import discord
-from discord import ChannelType, SelectOption
+from discord import (ButtonStyle, ChannelType, Interaction, Member,
+                     SelectOption, TextChannel)
+from discord.ui import Button, Select, button, channel_select, select
 
 from Resolute.bot import G0T0Bot
 from Resolute.helpers.dashboards import update_dashboard
@@ -14,7 +15,6 @@ from Resolute.models.views.base import InteractiveView
 
 log = logging.getLogger(__name__)
 
-
 class DashboardSettings(InteractiveView):
     __menu_copy_attrs__ = ("bot", "dashboard")
     bot: G0T0Bot
@@ -22,25 +22,25 @@ class DashboardSettings(InteractiveView):
 
 class DashboardSettingsUI(DashboardSettings):
     @classmethod
-    def new(cls, bot: G0T0Bot, owner: discord.Member):
+    def new(cls, bot: G0T0Bot, owner: Member):
         inst = cls(owner=owner)
         inst.bot = bot
         return inst
     
-    @discord.ui.select(placeholder="Select a dashboard", options=[SelectOption(label="Dummy Dashboard")], custom_id="d_select")
-    async def dashboard_select(self, dashboard: discord.ui.Select, interaction: discord.Interaction):
+    @select(placeholder="Select a dashboard", options=[SelectOption(label="Dummy Dashboard")], custom_id="d_select")
+    async def dashboard_select(self, dashboard: Select, interaction: Interaction):
         self.dashboard = await self.bot.get_dashboard_from_message(dashboard.values[0])
         await self.refresh_content(interaction)
 
-    @discord.ui.button(label="New Dashboard", style=discord.ButtonStyle.primary, row=2)
-    async def new_dashboard(self, _: discord.ui.Select, interaction: discord.Interaction):
+    @button(label="New Dashboard", style=ButtonStyle.primary, row=2)
+    async def new_dashboard(self, _: Select, interaction: Interaction):
         await self.defer_to(_NewDashboardUI, interaction)
 
-    @discord.ui.button(label="Manage Dashboard", style=discord.ButtonStyle.primary, row=2)
-    async def manage_dashboard(self, _: discord.ui.Select, interaction: discord.Interaction):
+    @button(label="Manage Dashboard", style=ButtonStyle.primary, row=2)
+    async def manage_dashboard(self, _: Select, interaction: Interaction):
         await self.defer_to(_ManageDashboardUI, interaction)
 
-    @discord.ui.button(label="Exit", style=discord.ButtonStyle.red, row=3)
+    @button(label="Exit", style=ButtonStyle.red, row=3)
     async def exit(self, *_):
         await self.on_timeout()
 
@@ -71,8 +71,8 @@ class DashboardSettingsUI(DashboardSettings):
 class _NewDashboardUI(DashboardSettings):
     new_dashboard: RefDashboard = None
 
-    @discord.ui.select(placeholder="Dashboard Type")
-    async def dashboard_type(self, d_type: discord.ui.Select, interaction: discord.Interaction):
+    @select(placeholder="Dashboard Type")
+    async def dashboard_type(self, d_type: Select, interaction: Interaction):
         if type := self.bot.compendium.get_object(DashboardType, int(d_type.values[0])):
             self.new_dashboard.dashboard_type = type
 
@@ -83,19 +83,19 @@ class _NewDashboardUI(DashboardSettings):
                 self.remove_item(self.dashboard_category)
         await self.refresh_content(interaction)
 
-    @discord.ui.channel_select(placeholder="Category to represent", channel_types=[ChannelType(4)], custom_id="cat_select")
-    async def dashboard_category(self, category: discord.ui.Select, interaction: discord.Interaction):
+    @channel_select(placeholder="Category to represent", channel_types=[ChannelType(4)], custom_id="cat_select")
+    async def dashboard_category(self, category: Select, interaction: Interaction):
         self.new_dashboard.category_channel_id = category.values[0].id
         await self.refresh_content(interaction)
 
-    @discord.ui.channel_select(placeholder="Channel to display in", channel_types=[ChannelType(0)])
-    async def dashboard_channel(self, channel: discord.ui.Select, interaction: discord.Interaction):
+    @channel_select(placeholder="Channel to display in", channel_types=[ChannelType(0)])
+    async def dashboard_channel(self, channel: Select, interaction: Interaction):
         self.new_dashboard.channel_id = channel.values[0].id
 
         await self.refresh_content(interaction)
 
-    @discord.ui.button(label="Create Dashboard", style=discord.ButtonStyle.primary, row=4)
-    async def dashboard_create(self, _: discord.ui.Button, interaction: discord.Interaction):
+    @button(label="Create Dashboard", style=ButtonStyle.primary, row=4)
+    async def dashboard_create(self, _: Button, interaction: Interaction):
         channel = interaction.guild.get_channel(self.new_dashboard.channel_id)
         d_message = await channel.send(f"Fetching dashboard data. This may take a moment.")
         await d_message.pin(reason=f"{self.new_dashboard.dashboard_type.value} dashboard created by {self.owner.name}")
@@ -109,8 +109,8 @@ class _NewDashboardUI(DashboardSettings):
 
         await self.defer_to(DashboardSettingsUI, interaction)
     
-    @discord.ui.button(label="Back", style=discord.ButtonStyle.grey, row=4)
-    async def back(self, _: discord.ui.Button, interaction: discord.Interaction):
+    @button(label="Back", style=ButtonStyle.grey, row=4)
+    async def back(self, _: Button, interaction: Interaction):
         await self.defer_to(DashboardSettingsUI, interaction)
 
     async def _before_send(self):
@@ -138,11 +138,11 @@ class _NewDashboardUI(DashboardSettings):
         return {"embed": None, "content": "Setup a new dashboard: \n"}
     
 class _ManageDashboardUI(DashboardSettings):
-    channel: discord.TextChannel = None
+    channel: TextChannel = None
 
-    @discord.ui.channel_select(placeholder="Channel", channel_types=[ChannelType(0)])
-    async def channel_select(self, chan: discord.ui.Select, interaction: discord.Interaction):
-        channel: discord.TextChannel = chan.values[0]
+    @channel_select(placeholder="Channel", channel_types=[ChannelType(0)])
+    async def channel_select(self, chan: Select, interaction: Interaction):
+        channel: TextChannel = chan.values[0]
 
         if hasattr(channel, "category_id") and channel.category_id != self.dashboard.category_channel_id:
             await interaction.channel.send(embed=ErrorEmbed(f"Channel not in this dashbaords category"), delete_after=5)
@@ -150,8 +150,8 @@ class _ManageDashboardUI(DashboardSettings):
             self.channel = channel
         await self.refresh_content(interaction)
 
-    @discord.ui.button(label="Add Exclusion", style=discord.ButtonStyle.primary, row=2)
-    async def add_exclusion(self, _: discord.ui.Button, interaction: discord.Interaction):
+    @button(label="Add Exclusion", style=ButtonStyle.primary, row=2)
+    async def add_exclusion(self, _: Button, interaction: Interaction):
         if not self.channel:
             await interaction.channel.send(embed=ErrorEmbed(f"Select a channel to exclude"), delete_after=5)
         elif self.channel.id in self.dashboard.excluded_channel_ids:
@@ -161,8 +161,8 @@ class _ManageDashboardUI(DashboardSettings):
             await self.dashboard.upsert()
         await self.refresh_content(interaction)
 
-    @discord.ui.button(label="Remove Exclusion", style=discord.ButtonStyle.primary, row=2)
-    async def remove_exclusion(self, _: discord.ui.Button, interaction: discord.Interaction):
+    @button(label="Remove Exclusion", style=ButtonStyle.primary, row=2)
+    async def remove_exclusion(self, _: Button, interaction: Interaction):
         if not self.channel:
             await interaction.channel.send(embed=ErrorEmbed(f"Select a channel to exclude"), delete_after=5)
         elif self.channel.id not in self.dashboard.excluded_channel_ids:
@@ -172,8 +172,8 @@ class _ManageDashboardUI(DashboardSettings):
             await self.dashboard.upsert()
         await self.refresh_content(interaction)
     
-    @discord.ui.button(label="Back", style=discord.ButtonStyle.grey, row=4)
-    async def back(self, _: discord.ui.Button, interaction: discord.Interaction):
+    @button(label="Back", style=ButtonStyle.grey, row=4)
+    async def back(self, _: Button, interaction: Interaction):
         await self.defer_to(DashboardSettingsUI, interaction)
 
     async def _before_send(self):

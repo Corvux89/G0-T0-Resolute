@@ -1,11 +1,9 @@
 import discord
-
 from discord import Color, Embed
+
 from Resolute.constants import THUMBNAIL
 from Resolute.helpers.general_helpers import process_message
 from Resolute.models.objects.guilds import PlayerGuild
-from Resolute.models.objects.ref_objects import RefWeeklyStipend
-
 
 
 class GuildEmbed(Embed):

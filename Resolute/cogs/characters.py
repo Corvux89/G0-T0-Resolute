@@ -1,25 +1,18 @@
 import logging
-import re
 
 from discord import (ApplicationContext, NotFound, Option, SlashCommandGroup,
                      SlashCommandOptionType)
 from discord.ext import commands
 
 from Resolute.bot import G0T0Bot
-from Resolute.constants import ACTIVITY_POINT_MINIMUM, APPROVAL_EMOJI, DENIED_EMOJI
-from Resolute.helpers.appliations import (get_cached_application,
-                                          get_level_up_application,
-                                          get_new_character_application)
-from Resolute.helpers.characters import handle_character_mention
-from Resolute.helpers.general_helpers import split_content
-from Resolute.helpers.messages import get_player_from_say_message
+from Resolute.constants import APPROVAL_EMOJI, DENIED_EMOJI
 from Resolute.models.embeds.players import PlayerOverviewEmbed
+from Resolute.models.objects.applications import ApplicationType, PlayerApplication
 from Resolute.models.objects.exceptions import (ApplicationNotFound,
                                                 CharacterNotFound, G0T0Error)
 from Resolute.models.objects.webhook import G0T0Webhook, WebhookType
 from Resolute.models.views.applications import (CharacterSelectUI,
-                                                LevelUpRequestModal,
-                                                NewCharacterRequestUI)
+                                                LevelUpRequestModal, NewCharacterRequestUI)
 from Resolute.models.views.character_view import (CharacterGetUI,
                                                   CharacterManageUI,
                                                   CharacterSettingsUI,
@@ -218,16 +211,17 @@ class Character(commands.Cog):
         """
         player = await self.bot.get_player(ctx.author.id, ctx.guild.id if ctx.guild else None,
                                            ctx=ctx)
-
+        application = PlayerApplication(self.bot, ctx.author, type=ApplicationType.level)
         if not player.characters:
             raise CharacterNotFound(player.member)
         elif len(player.characters) == 1:
             if player.characters[0].level >= player.guild.max_level:
                 raise G0T0Error("Character is already at max level for the server")
-            modal = LevelUpRequestModal(player.guild, player.characters[0])
+            application.application.character = player.characters[0]
+            modal = LevelUpRequestModal(player.guild, application)
             return await ctx.send_modal(modal)
         else:
-            ui = CharacterSelectUI.new(self.bot, ctx.author, player, True)
+            ui = CharacterSelectUI.new(application, player)
             await ui.send_to(ctx)
             await ctx.delete()
 
@@ -245,18 +239,19 @@ class Character(commands.Cog):
         Returns:
             None
         """
+        application: PlayerApplication = PlayerApplication(self.bot, ctx.author)
+        await application.load()
+        if application.application and application.application.type not in [ApplicationType.death, ApplicationType.freeroll, ApplicationType.new]:
+            application.application = PlayerApplication(self.bot, ctx.author)
+            application.cached = False
+
         player = await self.bot.get_player(ctx.author.id, ctx.guild.id if ctx.guild else None,
                                            ctx=ctx)
-        application_text = await get_cached_application(self.bot.db, player.id)
-        application = None
-
-        if application_text:
-            application = await get_new_character_application(self.bot, application_text)
-
+        
         if player.characters:
-            ui = CharacterSelectUI.new(self.bot, ctx.author, player, False, application)
+            ui = CharacterSelectUI.new(application, player)
         else:
-            ui = NewCharacterRequestUI.new(self.bot, ctx.author, player, False, application)
+            ui = NewCharacterRequestUI.new(application, player)
 
         await ui.send_to(ctx)
         await ctx.delete()
@@ -273,11 +268,9 @@ class Character(commands.Cog):
             ctx (ApplicationContext): The context of the command invocation.
             application_id (Option[str], optional): The ID of the application to edit. Defaults to None.
         Raises:
-            G0T0Error: If the application identifier is invalid, the application is already approved,
-                        the application is marked as invalid, the application type is unknown, or the
-                        application does not belong to the user.
+            G0T0Error: If the application identifier is invalid or the application is already approved or denied.
             ApplicationNotFound: If the application message is not found.
-            CharacterNotFound: If no characters are found for the player during a level-up application.
+            CharacterNotFound: If no characters are found for the player.
         Returns:
             None
         """
@@ -305,37 +298,26 @@ class Character(commands.Cog):
         elif any(e in DENIED_EMOJI for e in emoji):
             raise G0T0Error("Application marked as invalid and cannot me modified")
         
-        appliation_text = message.content
-        player_match = re.search(r"^\*\*Player:\*\* (.+)", appliation_text, re.MULTILINE)
-        type_match = re.search(r"^\*\*(.*?)\*\*\s\|", appliation_text, re.MULTILINE)
-        type = type_match.group(1).strip().replace('*', '') if type_match else None
+        application = PlayerApplication(self.bot, ctx.author, edit=True)
+        await application.load(message)
 
-        if player_match and str(ctx.author.id) in player_match.group(1):
-            if type and type in ["New Character", "Reroll", "Free Reroll"]:
-                application = await get_new_character_application(self.bot, None, message)
+        if application.application.type in [ApplicationType.new, ApplicationType.death, ApplicationType.freeroll]:
+            if player.characters:
+                ui = CharacterSelectUI.new(application, player)
+            else:
+                ui = NewCharacterRequestUI.new(application, player)
 
-                if player.characters:
-                    ui = CharacterSelectUI.new(self.bot, ctx.author, player, False, application, True)
-                else:
-                    ui = NewCharacterRequestUI.new(self.bot, ctx.author, player, False, application)
-                
+            await ui.send_to(ctx)
+            await ctx.delete()
+
+        else:
+            if not player.characters:
+                raise CharacterNotFound(player.member)
+            elif len(player.characters) == 1:
+                modal = LevelUpRequestModal(player.guild, application.application)
+                return await ctx.send_modal(modal)
+            else:
+                ui = CharacterSelectUI.new(application, player)
                 await ui.send_to(ctx)
                 await ctx.delete()
-
-            elif type and type == "Level Up":
-                application = await get_level_up_application(self.bot, None, message)
-
-                if not player.characters:
-                    raise CharacterNotFound(player.member)
-                elif len(player.characters) == 1:
-                    modal = LevelUpRequestModal(player.guild, player.characters[0], application)
-                    return await ctx.send_modal(modal)
-                else:
-                    ui = CharacterSelectUI.new(self.bot, ctx.author, player, True, application, True)
-                    await ui.send_to(ctx)
-                    await ctx.delete()
-            
-            else:
-                raise G0T0Error("Unsure what type of application this is")
-        else:
-            raise G0T0Error("Not your application")
+        

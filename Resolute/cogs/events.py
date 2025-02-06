@@ -8,11 +8,11 @@ from discord.ext.commands import CommandNotFound
 
 from Resolute.bot import G0T0Bot
 from Resolute.constants import ERROR_CHANNEL
-from Resolute.helpers.appliations import upsert_application
 from Resolute.helpers.dashboards import update_financial_dashboards
 from Resolute.helpers.general_helpers import process_message
 from Resolute.models.embeds import ErrorEmbed
 from Resolute.models.embeds.events import MemberLeaveEmbed
+from Resolute.models.objects.applications import PlayerApplication
 from Resolute.models.objects.exceptions import G0T0CommandError, G0T0Error
 from Resolute.models.objects.guilds import PlayerGuild
 from Resolute.models.objects.players import Player
@@ -69,7 +69,7 @@ class Events(commands.Cog):
             payload (RawMemberRemoveEvent): The event payload containing information about the removed member.
         """
         # Reference Table Cleanup
-        await upsert_application(self.bot.db, int(payload.user.id))
+        await PlayerApplication(self.bot, payload.user).delete()
 
         if player := await self.bot.get_player(int(payload.user.id), payload.guild_id, 
                                                lookup_only=True):

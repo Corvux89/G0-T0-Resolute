@@ -7,8 +7,8 @@ from discord import (ApplicationContext, CategoryChannel, Forbidden,
 from discord.ext import commands
 
 from Resolute.bot import G0T0Bot
-from Resolute.helpers.adventures import update_dm
 from Resolute.helpers.autocomplete import get_faction_autocomplete
+from Resolute.models.categories.categories import Faction
 from Resolute.models.embeds.adventures import AdventuresEmbed
 from Resolute.models.objects.adventures import Adventure
 from Resolute.models.objects.exceptions import (AdventureNotFound,
@@ -109,8 +109,8 @@ class Adventures(commands.Cog):
                                role_name: Option(str, description="The name of the Role to be created for adventure"
                                                                   "participants", required=True),
                                dm: Option(SlashCommandOptionType(6), description="The DM of the adventure.", required=True),
-                               faction1: Option(str, description="First faction this adventure is for", autocomplete=get_faction_autocomplete, required=True),
-                               faction2: Option(str, description="Second faction this adventure is for", autocomplete=get_faction_autocomplete, required=True)):
+                               faction1: Option(str, description="First faction this adventure is for", autocomplete=get_faction_autocomplete, required=False),
+                               faction2: Option(str, description="Second faction this adventure is for", autocomplete=get_faction_autocomplete, required=False)):
         """
         Creates a new adventure with the specified parameters.
         Args:
@@ -158,9 +158,6 @@ class Adventures(commands.Cog):
                 send_messages=False
             )
 
-            # Add DM to the role and let them manage messages in their channels
-            category_permissions = await update_dm(dm, category_permissions, adventure_role, adventure_name)
-
             # Copy Overwrites
             ic_overwrites = category_permissions.copy()
             ooc_overwrites = category_permissions.copy()
@@ -198,8 +195,10 @@ class Adventures(commands.Cog):
                 reason=f"Creating adventure {adventure_name} OOC Room"
             )
 
-            adventure: Adventure = Adventure(guild_id=ctx.guild.id,name=adventure_name, role_id=adventure_role.id, dms=[dm.id],
-                                  category_channel_id=new_adventure_category.id, cc=0)
+            adventure: Adventure = Adventure(self.bot.db, ctx.guild.id, adventure_name, adventure_role, new_adventure_category, dms=[dm.id],
+                                            factions=[self.bot.compendium.get_object(Faction, f) for f in (faction1, faction2) if f])
+            
+            await adventure.update_dm_permissions(dm)
             
             await adventure.upsert()
 

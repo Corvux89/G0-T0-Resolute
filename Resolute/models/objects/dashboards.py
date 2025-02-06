@@ -1,16 +1,33 @@
-import sqlalchemy as sa
 import aiopg.sa
-from discord import CategoryChannel, HTTPException, TextChannel, Message
+import sqlalchemy as sa
+from discord import CategoryChannel, HTTPException, Message, TextChannel
 from marshmallow import Schema, fields, post_load
 from sqlalchemy import BigInteger, Column, Integer, String
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.sql.selectable import FromClause, TableClause
+
 from Resolute.constants import ZWSP3
 from Resolute.models import metadata
 from Resolute.models.categories.categories import DashboardType
 
 
 class RPDashboardCategory(object):
+    """
+    A class to represent a dashboard category in the RP system.
+    Attributes
+    ----------
+    title : str
+        The title of the dashboard category.
+    name : str
+        The name of the dashboard category.
+    channels : list[TextChannel]
+        A list of TextChannel objects associated with the dashboard category.
+    Methods
+    -------
+    channel_output():
+        Returns a string of mentions for the sorted channels in the category.
+    """
+
     def __init__(self, **kwargs):
         self.title = kwargs.get('title')
         self.name = kwargs.get('name')
@@ -25,6 +42,38 @@ class RPDashboardCategory(object):
         return ZWSP3
 
 class RefDashboard(object):
+    """
+    A class to represent a reference dashboard.
+    Attributes:
+    -----------
+    _db : aiopg.sa.Engine
+        The database engine.
+    category_channel_id : int
+        The ID of the category channel.
+    channel_id : int
+        The ID of the channel.
+    post_id : int
+        The ID of the post.
+    excluded_channel_ids : list[int]
+        A list of IDs of channels to be excluded.
+    dashboard_type : DashboardType
+        The type of the dashboard.
+    channel : TextChannel
+        The text channel associated with the dashboard.
+    category_channel : CategoryChannel
+        The category channel associated with the dashboard.
+    Methods:
+    --------
+    channels_to_search() -> list[TextChannel]:
+        Returns a list of text channels to search, excluding the ones in excluded_channel_ids.
+    get_pinned_post() -> Message:
+        Asynchronously fetches the pinned post message from the channel.
+    upsert():
+        Asynchronously inserts or updates the dashboard in the database.
+    delete():
+        Asynchronously deletes the dashboard from the database.
+    """
+
     def __init__(self, db: aiopg.sa.Engine, **kwargs):
         self._db = db
 

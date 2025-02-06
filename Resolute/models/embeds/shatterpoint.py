@@ -1,8 +1,10 @@
-from discord import Embed, Color
+from discord import Color, Embed
 
 from Resolute.bot import G0T0Bot
 from Resolute.constants import THUMBNAIL, ZWSP3
-from Resolute.models.objects.shatterpoint import Shatterpoint, ShatterpointPlayer
+from Resolute.models.objects.shatterpoint import (Shatterpoint,
+                                                  ShatterpointPlayer)
+
 
 class ShatterpointEmbed(Embed):
     def __init__(self, bot: G0T0Bot, shatterpoint: Shatterpoint, player_list: bool = False, player: ShatterpointPlayer = None):

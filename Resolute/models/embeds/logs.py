@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
-from discord import Embed, Color
+
+from discord import Color, Embed
 
 from Resolute.constants import THUMBNAIL
 from Resolute.models.objects.logs import DBLog

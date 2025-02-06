@@ -1,8 +1,9 @@
 import re
 
-import discord
-from discord import SelectOption
-from discord.ui import InputText, Modal
+from discord import (ButtonStyle, InputTextStyle, Interaction, Member, Role,
+                     SelectOption)
+from discord.ui import (Button, InputText, Modal, Select, button, role_select,
+                        select)
 
 from Resolute.bot import G0T0Bot
 from Resolute.constants import DAYS_OF_WEEK
@@ -16,9 +17,20 @@ from Resolute.models.views.npc import NPCSettingsUI
 
 
 class GuildSettings(InteractiveView):
+    """
+    GuildSettings is a class that represents the settings for a guild in the application.
+    Attributes:
+        __menu_copy_attrs__ (tuple): A tuple containing the attributes to be copied in the menu.
+        bot (G0T0Bot): An instance of the bot.
+        owner (Member, optional): The owner of the guild. Defaults to None.
+        guild (PlayerGuild, optional): The guild associated with the settings. Defaults to None.
+    Methods:
+        commit: Asynchronously commits the current settings to the guild and dispatches a refresh event.
+    """
+
     __menu_copy_attrs__ = ("guild", "bot")
     bot: G0T0Bot
-    owner: discord.Member = None
+    owner: Member = None
     guild: PlayerGuild = None
 
     async def commit(self):
@@ -26,6 +38,26 @@ class GuildSettings(InteractiveView):
         self.bot.dispatch("refresh_guild_cache", self.guild)
     
 class GuildSettingsUI(GuildSettings):
+    """
+    A user interface class for managing guild settings in a Discord bot.
+    Methods
+    -------
+    new(cls, bot, owner, guild)
+        Class method to create a new instance of GuildSettingsUI.
+    async get_content()
+        Asynchronously retrieves the content to be displayed in the UI.
+    async guild_limits(self, _: Button, interaction: Interaction)
+        Handles the "Guild Limits" button click event, prompting a modal for guild limits settings.
+    async guild_update_reset(self, _: Button, interaction: Interaction)
+        Handles the "Update Reset" button click event, deferring to the _GuildResetView.
+    async guild_update_stipend(self, _: Button, interaction: Interaction)
+        Handles the "Update Stipends" button click event, deferring to the _GuildStipendView.
+    async more_settings(self, _: Button, interaction: Interaction)
+        Handles the "More Settings" button click event, deferring to the _GuildSettings2 view.
+    async exit(self, *_)
+        Handles the "Exit" button click event, triggering the timeout behavior.
+    """
+
     @classmethod
     def new(cls, bot, owner, guild):
         inst = cls(owner=owner)
@@ -38,32 +70,32 @@ class GuildSettingsUI(GuildSettings):
 
         return {"embed": embed, "content": None}
     
-    @discord.ui.button(label="Guild Limits", style=discord.ButtonStyle.primary, row=1)
-    async def guild_limits(self, _: discord.ui.Button, interaction: discord.Interaction):
+    @button(label="Guild Limits", style=ButtonStyle.primary, row=1)
+    async def guild_limits(self, _: Button, interaction: Interaction):
         modal = GuildLimitsModal(self.guild)
         response = await self.prompt_modal(interaction, modal)
         self.guild = response.guild
         await self.refresh_content(interaction)
 
-    @discord.ui.button(label="Update Reset", style=discord.ButtonStyle.primary, row=1)
-    async def guild_update_reset(self, _:discord.ui.Button, interaction: discord.Interaction):
+    @button(label="Update Reset", style=ButtonStyle.primary, row=1)
+    async def guild_update_reset(self, _:Button, interaction: Interaction):
         await self.defer_to(_GuildResetView, interaction)
 
-    @discord.ui.button(label="Update Stipends", style=discord.ButtonStyle.primary, row=1)
-    async def guild_update_stipend(self, _:discord.ui.Button, interaction: discord.Interaction):
+    @button(label="Update Stipends", style=ButtonStyle.primary, row=1)
+    async def guild_update_stipend(self, _:Button, interaction: Interaction):
         await self.defer_to(_GuildStipendView, interaction)
 
-    @discord.ui.button(label="More Settings", style=discord.ButtonStyle.primary, row=2)
-    async def more_settings(self, _:discord.ui.Button, interaction: discord.Interaction):
+    @button(label="More Settings", style=ButtonStyle.primary, row=2)
+    async def more_settings(self, _:Button, interaction: Interaction):
         await self.defer_to(_GuildSettings2, interaction)
     
-    @discord.ui.button(label="Exit", style=discord.ButtonStyle.danger, row=2)
+    @button(label="Exit", style=ButtonStyle.danger, row=2)
     async def exit(self, *_):
         await self.on_timeout()
 
 class _GuildSettings2(GuildSettings):
-    @discord.ui.button(label="Server Date", style=discord.ButtonStyle.primary, row=1)
-    async def update_server_date(self, _: discord.ui.Button, interaction: discord.Interaction):
+    @button(label="Server Date", style=ButtonStyle.primary, row=1)
+    async def update_server_date(self, _: Button, interaction: Interaction):
         modal = ServerDateModal(self.guild)
 
         response = await self.prompt_modal(interaction, modal)
@@ -73,19 +105,19 @@ class _GuildSettings2(GuildSettings):
 
         await self.refresh_content(interaction)
 
-    @discord.ui.button(label="New Player Messages", style=discord.ButtonStyle.primary, row=1)
-    async def new_player_messages(self, _: discord.ui.Button, interaction: discord.Interaction):
+    @button(label="New Player Messages", style=ButtonStyle.primary, row=1)
+    async def new_player_messages(self, _: Button, interaction: Interaction):
         modal = NewPlayerMessageModal(self.guild)
         await self.prompt_modal(interaction, modal)
         await self.refresh_content(interaction)
 
-    @discord.ui.button(label="NPCs", style=discord.ButtonStyle.primary, row=1)
-    async def npcs(self, _: discord.ui.Button, interaction: discord.Interaction):
+    @button(label="NPCs", style=ButtonStyle.primary, row=1)
+    async def npcs(self, _: Button, interaction: Interaction):
         view = NPCSettingsUI.new(self.bot, self.owner, self.guild, _GuildSettings2)
         await view.send_to(interaction)
 
-    @discord.ui.button(label="Back", style=discord.ButtonStyle.grey, row=3)
-    async def back(self, _: discord.ui.Button, interaction: discord.Interaction):
+    @button(label="Back", style=ButtonStyle.grey, row=3)
+    async def back(self, _: Button, interaction: Interaction):
         await self.defer_to(GuildSettingsUI, interaction)
 
     async def get_content(self):
@@ -94,8 +126,8 @@ class _GuildSettings2(GuildSettings):
         return {"embed": embed, "content": None}
 
 class _GuildResetView(GuildSettings):
-    @discord.ui.button(label="Update Announcements", style=discord.ButtonStyle.primary, row=1)
-    async def reset_announcements(self, _: discord.ui.Button, interaction: discord.Interaction):
+    @button(label="Update Announcements", style=ButtonStyle.primary, row=1)
+    async def reset_announcements(self, _: Button, interaction: Interaction):
         modal = GuildAnnouncementModal(self.guild)
         response = await self.prompt_modal(interaction, modal)
 
@@ -104,13 +136,13 @@ class _GuildResetView(GuildSettings):
 
         await self.refresh_content(interaction)
 
-    @discord.ui.button(label="Preview Reset", style=discord.ButtonStyle.primary, row=1)
-    async def preview_reset(self, _: discord.ui.Button, interaction: discord.Interaction):
+    @button(label="Preview Reset", style=ButtonStyle.primary, row=1)
+    async def preview_reset(self, _: Button, interaction: Interaction):
         await interaction.channel.send(embed=ResetEmbed(self.guild, 1.23), content=f"{f'{self.guild.entry_role.name} {self.guild.member_role.name}' if self.guild.ping_announcement else ''}", delete_after=5)
         await self.refresh_content(interaction)
 
-    @discord.ui.select(placeholder="Reset Day", row=2)
-    async def reset_day(self, day: discord.ui.Select, interaction: discord.Interaction):
+    @select(placeholder="Reset Day", row=2)
+    async def reset_day(self, day: Select, interaction: Interaction):
         if day.values[0] == "None":
             self.guild._reset_day = None
             self.guild._reset_hour = None
@@ -118,13 +150,13 @@ class _GuildResetView(GuildSettings):
             self.guild._reset_day = int(day.values[0])
         await self.refresh_content(interaction)
 
-    @discord.ui.select(placeholder="Reset Time (GMT)", row=3)
-    async def reset_time(self, time: discord.ui.Select, interaction: discord.Interaction):
+    @select(placeholder="Reset Time (GMT)", row=3)
+    async def reset_time(self, time: Select, interaction: Interaction):
         self.guild._reset_hour = int(time.values[0])
         await self.refresh_content(interaction)
 
-    @discord.ui.button(label="Back", style=discord.ButtonStyle.grey, row=4)
-    async def back(self, _: discord.ui.Button, interaction: discord.Interaction):
+    @button(label="Back", style=ButtonStyle.grey, row=4)
+    async def back(self, _: Button, interaction: Interaction):
         await self.defer_to(GuildSettingsUI, interaction)
 
     async def _before_send(self):
@@ -142,15 +174,15 @@ class _GuildResetView(GuildSettings):
         return {"embed": embed, "content": None}
     
 class _GuildStipendView(GuildSettings):
-    role: discord.Role
+    role: Role
 
-    @discord.ui.role_select(placeholder="Stipend Role", row=1)
-    async def guild_role_select(self, role : discord.ui.Select, interaction: discord.Interaction):
+    @role_select(placeholder="Stipend Role", row=1)
+    async def guild_role_select(self, role : Select, interaction: Interaction):
         self.role = role.values[0]
         await self.refresh_content(interaction)
 
-    @discord.ui.button(label="Add/Modify Stipend", style=discord.ButtonStyle.primary, row=2)
-    async def guild_edit_stipend(self, _: discord.ui.Button, interaction: discord.Interaction):
+    @button(label="Add/Modify Stipend", style=ButtonStyle.primary, row=2)
+    async def guild_edit_stipend(self, _: Button, interaction: Interaction):
         stipend: RefWeeklyStipend = next((s for s in self.guild.stipends if s.role_id == self.role.id),
                                          RefWeeklyStipend(self.bot.db, role_id=self.role.id, guild_id=self.guild.id))
         
@@ -162,8 +194,8 @@ class _GuildStipendView(GuildSettings):
         await stipend.upsert()
         await self.refresh_content(interaction)
 
-    @discord.ui.button(label="Remove Stipend", style=discord.ButtonStyle.red, row=2)
-    async def guild_remove_stipend(self, _:discord.ui.Button, interaction: discord.Interaction):
+    @button(label="Remove Stipend", style=ButtonStyle.red, row=2)
+    async def guild_remove_stipend(self, _:Button, interaction: Interaction):
         stipend: RefWeeklyStipend = next((s for s in self.guild.stipends if s.role_id == self.role.id),None)
 
         if stipend is None:
@@ -174,8 +206,8 @@ class _GuildStipendView(GuildSettings):
 
         await self.refresh_content(interaction)
 
-    @discord.ui.button(label="Back", style=discord.ButtonStyle.grey, row=3)
-    async def back(self, _: discord.ui.Button, interaction: discord.Interaction):
+    @button(label="Back", style=ButtonStyle.grey, row=3)
+    async def back(self, _: Button, interaction: Interaction):
         await self.defer_to(GuildSettingsUI, interaction)
 
     async def get_content(self):
@@ -197,7 +229,7 @@ class GuildLimitsModal(Modal):
         self.add_item(InputText(label="Diversion Limit (CC)", required=True, placeholder="Diversion Limit", max_length=3, value=self.guild.div_limit))
         self.add_item(InputText(label="Log Reward Points Threshold", required=False, placeholder="Log Reward Points Threshold", max_length=3, value=self.guild.reward_threshold))
 
-    async def callback(self, interaction: discord.Interaction):
+    async def callback(self, interaction: Interaction):
         err_str = []
         values = [
             (self.children[0].value, "max_level", "Max level must be a number!"),
@@ -231,7 +263,7 @@ class GuildLimitsModal(Modal):
 class GuildStipendModal(Modal):
     stipend: RefWeeklyStipend
 
-    def __init__(self, stipend: RefWeeklyStipend, role: discord.Role):
+    def __init__(self, stipend: RefWeeklyStipend, role: Role):
         super().__init__(title=f"Stipend for {role.name}")
         self.stipend = stipend
 
@@ -239,7 +271,7 @@ class GuildStipendModal(Modal):
         self.add_item(InputText(label="Reason", required=False, placeholder="Reason", value=self.stipend.reason))
         self.add_item(InputText(label="Leadership Stipend", required=False, max_length=5, placeholder="Leadership Stipend", value=self.stipend.leadership if self.stipend.leadership else False))
     
-    async def callback(self, interaction: discord.Interaction):
+    async def callback(self, interaction: Interaction):
         self.stipend.amount = self.children[0].value
         self.stipend.reason = self.children[1].value
 
@@ -266,11 +298,11 @@ class GuildAnnouncementModal(Modal):
 
         announcement_string = ",".join(['"' + x + '"' for x in self.guild.weekly_announcement])
 
-        self.add_item(InputText(label="Reset Message", style=discord.InputTextStyle.long, required=False, placeholder="Reset Message", max_length=3500, value=self.guild.reset_message))
-        self.add_item(InputText(label="Weekly Announcements", style=discord.InputTextStyle.long, required=False, placeholder="Weekly Announcements", value=announcement_string))
+        self.add_item(InputText(label="Reset Message", style=InputTextStyle.long, required=False, placeholder="Reset Message", max_length=3500, value=self.guild.reset_message))
+        self.add_item(InputText(label="Weekly Announcements", style=InputTextStyle.long, required=False, placeholder="Weekly Announcements", value=announcement_string))
         self.add_item(InputText(label="Ping on announcement?", required=False, placeholder="Ping on announcement?", value=f"{guild.ping_announcement}"))
 
-    async def callback(self, interaction: discord.Interaction):    
+    async def callback(self, interaction: Interaction):    
         self.guild.reset_message = self.children[0].value or None
         self.guild.weekly_announcement = self.split_string(self.children[1].value)
         self.guild.ping_announcement = True if self.children[2] and get_positivity(self.children[2].value.lower()) else False
@@ -290,7 +322,7 @@ class ServerDateModal(Modal):
         self.add_item(InputText(label="Day", required=False, placeholder="Day", max_length=3, value=self.guild.server_day))
         self.add_item(InputText(label="Notation", required=False, placeholder="Notation", max_length=20, value=guild.epoch_notation))
 
-    async def callback(self, interaction: discord.Interaction):
+    async def callback(self, interaction: Interaction):
         self.guild.epoch_notation = self.children[3].value or None
 
         month = next((month for month in self.guild.calendar if month.display_name.lower() == self.children[1].value.lower()), None)
@@ -311,10 +343,10 @@ class NewPlayerMessageModal(Modal):
         super().__init__(title=f"New Player Messages")
         self.guild = guild
 
-        self.add_item(InputText(label="New Member Greeting", style=discord.InputTextStyle.long, max_length=1000, required=False, value=self.guild.greeting))
-        self.add_item(InputText(label="New Character Message", style=discord.InputTextStyle.multiline, max_length=500, required=False, value=self.guild.first_character_message))
+        self.add_item(InputText(label="New Member Greeting", style=InputTextStyle.long, max_length=1000, required=False, value=self.guild.greeting))
+        self.add_item(InputText(label="New Character Message", style=InputTextStyle.multiline, max_length=500, required=False, value=self.guild.first_character_message))
 
-    async def callback(self, interaction: discord.Interaction):
+    async def callback(self, interaction: Interaction):
         self.guild.greeting = self.children[0].value
         self.guild.first_character_message = self.children[1].value
 

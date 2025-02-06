@@ -3,8 +3,8 @@ from datetime import datetime, timedelta, timezone
 from math import floor
 
 import aiopg.sa
-import discord
 import sqlalchemy as sa
+from discord import Guild, Role, TextChannel
 from marshmallow import Schema, fields, post_load
 from sqlalchemy import (BOOLEAN, TIMESTAMP, BigInteger, Column, Integer,
                         String, and_)
@@ -26,6 +26,76 @@ from Resolute.models.objects.ref_objects import (
 
 
 class PlayerGuild(object):
+    """
+    Represents a player's guild with various attributes and methods to manage the guild.
+    Attributes:
+        _db (aiopg.sa.Engine): The database engine.
+        id (int): The guild ID.
+        max_level (int): The maximum level of the guild.
+        weeks (int): The number of weeks the guild has been active.
+        _reset_day (int): The day of the week the guild resets.
+        _reset_hour (int): The hour of the day the guild resets.
+        _last_reset (datetime): The last reset time of the guild.
+        greeting (str): The greeting message of the guild.
+        handicap_cc (int): The handicap CC value.
+        max_characters (int): The maximum number of characters in the guild.
+        div_limit (int): The division limit.
+        reset_message (str): The reset message.
+        weekly_announcement (list[str]): The weekly announcement messages.
+        server_date (int): The server date.
+        epoch_notation (str): The epoch notation.
+        first_character_message (str): The first character message.
+        ping_announcement (bool): Whether to ping announcements.
+        reward_threshold (int): The reward threshold.
+        calendar (list[RefServerCalendar]): The server calendar.
+        guild (Guild): The guild object.
+        npcs (list[NPC]): The list of NPCs in the guild.
+        stipends (list[RefWeeklyStipend]): The list of weekly stipends.
+        entry_role (Role): The entry role.
+        member_role (Role): The member role.
+        tier_2_role (Role): The tier 2 role.
+        tier_3_role (Role): The tier 3 role.
+        tier_4_role (Role): The tier 4 role.
+        tier_5_role (Role): The tier 5 role.
+        tier_6_role (Role): The tier 6 role.
+        admin_role (Role): The admin role.
+        staff_role (Role): The staff role.
+        bot_role (Role): The bot role.
+        quest_role (Role): The quest role.
+        application_channel (TextChannel): The application channel.
+        market_channel (TextChannel): The market channel.
+        announcement_channel (TextChannel): The announcement channel.
+        staff_channel (TextChannel): The staff channel.
+        help_channel (TextChannel): The help channel.
+        arena_board_channel (TextChannel): The arena board channel.
+        exit_channel (TextChannel): The exit channel.
+        entrance_channel (TextChannel): The entrance channel.
+        activity_points_channel (TextChannel): The activity points channel.
+        rp_post_channel (TextChannel): The RP post channel.
+        dev_channels (list[TextChannel]): The list of development channels.
+    Properties:
+        get_reset_day: Returns the reset day of the week as a string.
+        get_next_reset: Returns the next reset time as a timestamp.
+        get_last_reset: Returns the last reset time as a timestamp.
+        formatted_server_date: Returns the formatted server date.
+        server_year: Returns the server year.
+        server_month: Returns the server month.
+        server_day: Returns the server day.
+        days_in_server_year: Returns the number of days in a server year.
+    Methods:
+        get_internal_date(day: int, month: int, year: int) -> int:
+            Returns the internal date based on the given day, month, and year.
+        is_dev_channel(channel: TextChannel) -> bool:
+            Checks if the given channel is a development channel.
+        async upsert():
+            Inserts or updates the guild in the database.
+        async fetch():
+            Fetches the guild from the database.
+        async get_all_characters(compendium: Compendium) -> list:
+            Returns a list of all characters in the guild.
+        async get_dashboards(bot) -> list[RefDashboard]:
+            Returns a list of dashboards for the guild.
+    """
 
     def __init__(self, db: aiopg.sa.Engine, **kwargs):
         self._db = db
@@ -50,35 +120,35 @@ class PlayerGuild(object):
 
         # Virtual attributes
         self.calendar: list[RefServerCalendar] = None
-        self.guild: discord.Guild = kwargs.get('guild')
+        self.guild: Guild = kwargs.get('guild')
         self.npcs: list[NPC] = []
         self.stipends: list[RefWeeklyStipend] = []
 
         # Roles
-        self.entry_role: discord.Role = kwargs.get('entry_role')
-        self.member_role: discord.Role = kwargs.get('member_role')
-        self.tier_2_role: discord.Role = kwargs.get('tier_2_role')
-        self.tier_3_role: discord.Role = kwargs.get('tier_3_role')
-        self.tier_4_role: discord.Role = kwargs.get('tier_4_role')
-        self.tier_5_role: discord.Role = kwargs.get('tier_5_role')
-        self.tier_6_role: discord.Role = kwargs.get('tier_6_role')
-        self.admin_role: discord.Role = kwargs.get('admin_role')
-        self.staff_role: discord.Role = kwargs.get('staff_role')
-        self.bot_role: discord.Role = kwargs.get('bot_role')
-        self.quest_role: discord.Role = kwargs.get('quest_role')
+        self.entry_role: Role = kwargs.get('entry_role')
+        self.member_role: Role = kwargs.get('member_role')
+        self.tier_2_role: Role = kwargs.get('tier_2_role')
+        self.tier_3_role: Role = kwargs.get('tier_3_role')
+        self.tier_4_role: Role = kwargs.get('tier_4_role')
+        self.tier_5_role: Role = kwargs.get('tier_5_role')
+        self.tier_6_role: Role = kwargs.get('tier_6_role')
+        self.admin_role: Role = kwargs.get('admin_role')
+        self.staff_role: Role = kwargs.get('staff_role')
+        self.bot_role: Role = kwargs.get('bot_role')
+        self.quest_role: Role = kwargs.get('quest_role')
         
         # Channels
-        self.application_channel: discord.TextChannel = kwargs.get('application_channel')
-        self.market_channel: discord.TextChannel = kwargs.get('market_channel')
-        self.announcement_channel: discord.TextChannel = kwargs.get('announcement_channel')
-        self.staff_channel: discord.TextChannel = kwargs.get('staff_channel')
-        self.help_channel: discord.TextChannel = kwargs.get('help_channel')
-        self.arena_board_channel: discord.TextChannel = kwargs.get('arena_board_channel')
-        self.exit_channel: discord.TextChannel = kwargs.get('exit_channel')
-        self.entrance_channel: discord.TextChannel = kwargs.get('entrance_channel')
-        self.activity_points_channel: discord.TextChannel = kwargs.get('activity_points_channel')
-        self.rp_post_channel: discord.TextChannel = kwargs.get('rp_post_channel')
-        self.dev_channels: list[discord.TextChannel] = kwargs.get('dev_channels', [])
+        self.application_channel: TextChannel = kwargs.get('application_channel')
+        self.market_channel: TextChannel = kwargs.get('market_channel')
+        self.announcement_channel: TextChannel = kwargs.get('announcement_channel')
+        self.staff_channel: TextChannel = kwargs.get('staff_channel')
+        self.help_channel: TextChannel = kwargs.get('help_channel')
+        self.arena_board_channel: TextChannel = kwargs.get('arena_board_channel')
+        self.exit_channel: TextChannel = kwargs.get('exit_channel')
+        self.entrance_channel: TextChannel = kwargs.get('entrance_channel')
+        self.activity_points_channel: TextChannel = kwargs.get('activity_points_channel')
+        self.rp_post_channel: TextChannel = kwargs.get('rp_post_channel')
+        self.dev_channels: list[TextChannel] = kwargs.get('dev_channels', [])
 
 
         if not self.id and self.guild:
@@ -157,7 +227,7 @@ class PlayerGuild(object):
 
         return epoch_time
     
-    def is_dev_channel(self, channel: discord.TextChannel):
+    def is_dev_channel(self, channel: TextChannel):
         if not self.dev_channels:
             return False
         return channel in self.dev_channels
@@ -251,7 +321,7 @@ guilds_table = sa.Table(
 
 class GuildSchema(Schema):
     _db: aiopg.sa.Engine
-    _guild: discord.Guild
+    _guild: Guild
 
     id = fields.Integer(required=True)
     max_level = fields.Integer()
@@ -293,7 +363,7 @@ class GuildSchema(Schema):
     rp_post_channel = fields.Method(None, "load_channel", allow_none=True)
     dev_channels = fields.Method(None, "load_channels", allow_none=True)
 
-    def __init__(self, db: aiopg.sa.Engine, guild: discord.Guild, **kwargs):
+    def __init__(self, db: aiopg.sa.Engine, guild: Guild, **kwargs):
         super().__init__(**kwargs)
         self._db = db
         self._guild = guild

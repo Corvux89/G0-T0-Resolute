@@ -1,25 +1,27 @@
 import re
 from typing import Mapping
 
-import discord
-from discord import ForumChannel, SelectOption, Thread
-from discord.ui import InputText, Modal
-from discord.ui.button import Button
+from discord import (ButtonStyle, ChannelType, ForumChannel, HTTPException,
+                     InputTextStyle, Interaction, Member, Message,
+                     SelectOption, TextChannel, Thread)
+from discord.ui import (Button, InputText, Modal, Select, button,
+                        channel_select, select)
 
 from Resolute.bot import G0T0Bot
 from Resolute.compendium import Compendium
 from Resolute.constants import ACTIVITY_POINT_MINIMUM
-from Resolute.helpers.general_helpers import get_webhook, is_admin, process_message
-from Resolute.helpers.messages import get_char_name_from_message, get_player_from_say_message
+from Resolute.helpers.general_helpers import (get_webhook, is_admin,
+                                              process_message)
+from Resolute.helpers.messages import (get_char_name_from_message,
+                                       get_player_from_say_message)
 from Resolute.models.categories import CharacterClass, CharacterSpecies
 from Resolute.models.categories.categories import CharacterArchetype, Faction
 from Resolute.models.embeds import ErrorEmbed
-from Resolute.models.embeds.players import RPPostEmbed
 from Resolute.models.embeds.characters import (CharacterEmbed,
                                                CharacterSettingsEmbed,
                                                LevelUpEmbed, NewcharacterEmbed,
                                                NewCharacterSetupEmbed)
-from Resolute.models.embeds.players import PlayerOverviewEmbed
+from Resolute.models.embeds.players import PlayerOverviewEmbed, RPPostEmbed
 from Resolute.models.objects.applications import ApplicationType
 from Resolute.models.objects.characters import (CharacterRenown,
                                                 PlayerCharacterClass)
@@ -30,17 +32,49 @@ from Resolute.models.views.base import InteractiveView
 
 # Character Manage Base setup
 class CharacterManage(InteractiveView):
+    """
+    CharacterManage class that inherits from InteractiveView.
+    Attributes:
+        __menu_copy_attrs__ (tuple): A tuple containing attribute names to be copied in the menu.
+        bot (G0T0Bot): An instance of the G0T0Bot.
+        owner (Member, optional): The owner of the character. Defaults to None.
+        player (Player): The player associated with the character.
+        active_character (PlayerCharacter, optional): The currently active character. Defaults to None.
+    """
+
     __menu_copy_attrs__ = ("bot", "player", "active_character")
     bot: G0T0Bot
-    owner: discord.Member = None
+    owner: Member = None
     player: Player
     active_character: PlayerCharacter = None
 
 
 # Main Character Manage UI
 class CharacterManageUI(CharacterManage):
+    """
+    A user interface class for managing player characters in the G0-T0-Resolute game.
+    Methods
+    -------
+    new(cls, bot: G0T0Bot, owner: Member, player: Player) -> CharacterManageUI
+        Class method to create a new instance of CharacterManageUI.
+    character_select(self, char: Select, interaction: Interaction)
+        Async method to handle character selection from a dropdown menu.
+    edit_character(self, _: Button, interaction: Interaction)
+        Async method to handle the edit character button click.
+    new_character_create(self, _: Button, interaction: Interaction)
+        Async method to handle the new/reroll character button click.
+    inactivate_character(self, _: Button, interaction: Interaction)
+        Async method to handle the inactivate character button click.
+    exit(self, *_)
+        Async method to handle the exit button click.
+    _before_send(self)
+        Async method to prepare the UI before sending it to the user.
+    get_content(self) -> Mapping
+        Async method to get the content to be displayed in the UI.
+    """
+
     @classmethod
-    def new(cls, bot: G0T0Bot, owner: discord.Member, player: Player):
+    def new(cls, bot: G0T0Bot, owner: Member, player: Player):
         inst = cls(owner = owner)
         inst.bot = bot
         inst.player = player
@@ -51,24 +85,24 @@ class CharacterManageUI(CharacterManage):
 
         return inst
     
-    @discord.ui.select(placeholder="Select a character to manage", row=1)
-    async def character_select(self, char: discord.ui.Select, interaction: discord.Interaction):
+    @select(placeholder="Select a character to manage", row=1)
+    async def character_select(self, char: Select, interaction: Interaction):
         self.active_character = next((c for c in self.player.characters if c.id == int(char.values[0])), None)
         await self.refresh_content(interaction)
 
-    @discord.ui.button(label="Edit", style=discord.ButtonStyle.primary, row=2)
-    async def edit_character(self, _: discord.ui.Button, interaction: discord.Interaction):
+    @button(label="Edit", style=ButtonStyle.primary, row=2)
+    async def edit_character(self, _: Button, interaction: Interaction):
         await self.defer_to(_EditCharacter, interaction)
 
-    @discord.ui.button(label="New/Reroll", style=discord.ButtonStyle.green, row=2)
-    async def new_character_create(self, _: discord.ui.Button, interaction: discord.Interaction):
+    @button(label="New/Reroll", style=ButtonStyle.green, row=2)
+    async def new_character_create(self, _: Button, interaction: Interaction):
         await self.defer_to(_NewCharacter, interaction)
 
-    @discord.ui.button(label="Inactivate", style=discord.ButtonStyle.danger, row=2)
-    async def inactivate_character(self, _: discord.ui.Button, interaction: discord.Interaction):
+    @button(label="Inactivate", style=ButtonStyle.danger, row=2)
+    async def inactivate_character(self, _: Button, interaction: Interaction):
         await self.defer_to(_InactivateCharacter, interaction)
 
-    @discord.ui.button(label="Exit", style=discord.ButtonStyle.danger, row=3)
+    @button(label="Exit", style=ButtonStyle.danger, row=3)
     async def exit(self, *_):
         await self.on_timeout()
         
@@ -102,13 +136,13 @@ class _NewCharacter(CharacterManage):
     new_credits: int = 0
 
 
-    @discord.ui.select(placeholder="Select new type", row=1)
-    async def new_character_type(self, type: discord.ui.Select, interaction: discord.Interaction):
+    @select(placeholder="Select new type", row=1)
+    async def new_character_type(self, type: Select, interaction: Interaction):
         self.new_type = ApplicationType[type.values[0]]
         await self.refresh_content(interaction)
 
-    @discord.ui.button(label="Basic Information", style=discord.ButtonStyle.primary, row=3)
-    async def new_character_information(self, _: discord.ui.Button, interaction: discord.Interaction):
+    @button(label="Basic Information", style=ButtonStyle.primary, row=3)
+    async def new_character_information(self, _: Button, interaction: Interaction):
         modal = NewCharacterInformationModal(self.new_character, self.active_character, self.new_cc, self.new_credits, self.new_type)
         response = await self.prompt_modal(interaction, modal)
 
@@ -118,8 +152,8 @@ class _NewCharacter(CharacterManage):
 
         await self.refresh_content(interaction)
 
-    @discord.ui.button(label="Species/Class Information", style=discord.ButtonStyle.primary, row=3)
-    async def new_character_species(self, _: discord.ui.Button, interaction: discord.Interaction):
+    @button(label="Species/Class Information", style=ButtonStyle.primary, row=3)
+    async def new_character_species(self, _: Button, interaction: Interaction):
         modal = NewCharacterClassSpeciesModal(self.new_character, self.new_class, self.bot.compendium)
         response = await self.prompt_modal(interaction, modal)
 
@@ -128,8 +162,8 @@ class _NewCharacter(CharacterManage):
 
         await self.refresh_content(interaction)
 
-    @discord.ui.button(label="Create Character", style=discord.ButtonStyle.green, row=4, disabled=True)
-    async def new_character_create(self, _: discord.ui.Button, interaction: discord.Interaction):
+    @button(label="Create Character", style=ButtonStyle.green, row=4, disabled=True)
+    async def new_character_create(self, _: Button, interaction: Interaction):
         self.new_character = await self.player.create_character(self.new_type, self.new_character, self.new_class,
                                                                 old_character=self.active_character)        
         log_entry = await self.bot.log(interaction, self.player, self.owner, "NEW_CHARACTER",
@@ -152,8 +186,8 @@ class _NewCharacter(CharacterManage):
 
         await self.on_timeout()
 
-    @discord.ui.button(label="Back", style=discord.ButtonStyle.grey, row=4)
-    async def back(self, _: discord.ui.Button, interaction: discord.Interaction):
+    @button(label="Back", style=ButtonStyle.grey, row=4)
+    async def back(self, _: Button, interaction: Interaction):
         await self.defer_to(CharacterManageUI, interaction)
 
     async def _before_send(self):
@@ -188,8 +222,8 @@ class _NewCharacter(CharacterManage):
 
 # Character Manage - Inactivate Character
 class _InactivateCharacter(CharacterManage):
-    @discord.ui.button(label="Confirm", style=discord.ButtonStyle.red)
-    async def inactivate_character_confirm(self, _: Button, interaction: discord.Interaction):
+    @button(label="Confirm", style=ButtonStyle.red)
+    async def inactivate_character_confirm(self, _: Button, interaction: Interaction):
         self.active_character.active = False
 
         await self.bot.log(interaction, self.player, self.owner, "MOD_CHARACTER",
@@ -200,8 +234,8 @@ class _InactivateCharacter(CharacterManage):
         await self.on_timeout()
 
 
-    @discord.ui.button(label="Back", style=discord.ButtonStyle.grey)
-    async def back(self, _: discord.ui.Button, interaction: discord.Interaction):
+    @button(label="Back", style=ButtonStyle.grey)
+    async def back(self, _: Button, interaction: Interaction):
         await self.defer_to(CharacterManageUI, interaction)
         
 
@@ -210,16 +244,16 @@ class _InactivateCharacter(CharacterManage):
 
 # Character Manage - Edit Character
 class _EditCharacter(CharacterManage):
-    @discord.ui.button(label="Manage Classes", style=discord.ButtonStyle.primary, row=1)
-    async def manage_class(self, _: discord.ui.Button, interaction: discord.Interaction):
+    @button(label="Manage Classes", style=ButtonStyle.primary, row=1)
+    async def manage_class(self, _: Button, interaction: Interaction):
         await self.defer_to(_EditCharacterClass, interaction)
 
-    @discord.ui.button(label="Manage Renown", style=discord.ButtonStyle.primary, row=1)
-    async def manage_renown(self, _: discord.ui.Button, interaction: discord.Interaction):
+    @button(label="Manage Renown", style=ButtonStyle.primary, row=1)
+    async def manage_renown(self, _: Button, interaction: Interaction):
         await self.defer_to(_EditCharacterRenown, interaction)
 
-    @discord.ui.button(label="Edit Information", style=discord.ButtonStyle.primary, row=2)
-    async def edit_character_information(self, _: discord.ui.Button, interaction: discord.Interaction):
+    @button(label="Edit Information", style=ButtonStyle.primary, row=2)
+    async def edit_character_information(self, _: Button, interaction: Interaction):
         modal = CharacterInformationModal(self.active_character, self.bot.compendium)
         response: CharacterInformationModal = await self.prompt_modal(interaction, modal)
 
@@ -230,8 +264,8 @@ class _EditCharacter(CharacterManage):
                                silent=True)
         await self.refresh_content(interaction)
 
-    @discord.ui.button(label="Level Up", style=discord.ButtonStyle.primary, row=2)
-    async def level_character(self, _: discord.ui.Button, interaction: discord.Interaction):
+    @button(label="Level Up", style=ButtonStyle.primary, row=2)
+    async def level_character(self, _: Button, interaction: Interaction):
         if self.player.highest_level_character.level < 3 and (self.player.needed_rps > self.player.completed_rps or self.player.needed_arenas > self.player.completed_arenas):
 
             raise G0T0Error(f"{self.player.member.mention} has not completed their requirements to level up.\n"
@@ -250,8 +284,8 @@ class _EditCharacter(CharacterManage):
 
         await self.on_timeout()
 
-    @discord.ui.button(label="Back", style=discord.ButtonStyle.grey, row=3)
-    async def back(self, _: discord.ui.Button, interaction: discord.Interaction):
+    @button(label="Back", style=ButtonStyle.grey, row=3)
+    async def back(self, _: Button, interaction: Interaction):
         await self.defer_to(CharacterManageUI, interaction)
 
     async def _before_send(self):
@@ -272,13 +306,13 @@ class _EditCharacter(CharacterManage):
 class _EditCharacterClass(CharacterManage):
     active_class: PlayerCharacterClass = None
 
-    @discord.ui.select(placeholder="Select class", row=1)
-    async def select_class(self, char_class: discord.ui.Select, interaction: discord.Interaction):
+    @select(placeholder="Select class", row=1)
+    async def select_class(self, char_class: Select, interaction: Interaction):
         self.active_class = self.active_character.classes[int(char_class.values[0])]
         await self.refresh_content(interaction)
 
-    @discord.ui.button(label="Add Class", style=discord.ButtonStyle.grey, row=2)
-    async def new_class(self, _: discord.ui.Button, interaction: discord.Interaction):
+    @button(label="Add Class", style=ButtonStyle.grey, row=2)
+    async def new_class(self, _: Button, interaction: Interaction):
         modal = CharacterClassModal(self.active_character, self.bot)
         response: CharacterClassModal = await self.prompt_modal(interaction, modal)
         new_class = PlayerCharacterClass(self.bot.db, self.bot.compendium,
@@ -292,8 +326,8 @@ class _EditCharacterClass(CharacterManage):
            
         await self.refresh_content(interaction)
 
-    @discord.ui.button(label="Edit Class", style=discord.ButtonStyle.grey, row=2)
-    async def edit_class(self, _: discord.ui.Button, interaction: discord.Interaction):
+    @button(label="Edit Class", style=ButtonStyle.grey, row=2)
+    async def edit_class(self, _: Button, interaction: Interaction):
         modal = CharacterClassModal(self.active_character, self.bot, self.active_class)
         response = await self.prompt_modal(interaction, modal)
 
@@ -304,8 +338,8 @@ class _EditCharacterClass(CharacterManage):
 
         await self.refresh_content(interaction)
 
-    @discord.ui.button(label="Delete Class", style=discord.ButtonStyle.red, row=2)
-    async def delete_class(self, _: discord.ui.Button, interaction: discord.Interaction):
+    @button(label="Delete Class", style=ButtonStyle.red, row=2)
+    async def delete_class(self, _: Button, interaction: Interaction):
         if len(self.active_character.classes) == 1:
             raise G0T0Error(f"Character only has one class")
         else:
@@ -315,8 +349,8 @@ class _EditCharacterClass(CharacterManage):
             self.active_class = self.active_character.classes[0]
         await self.refresh_content(interaction)
 
-    @discord.ui.button(label="Back", style=discord.ButtonStyle.grey, row=3)
-    async def back(self, _: discord.ui.Button, interaction: discord.Interaction):
+    @button(label="Back", style=ButtonStyle.grey, row=3)
+    async def back(self, _: Button, interaction: Interaction):
         await self.defer_to(_EditCharacter, interaction)
 
     async def _before_send(self):
@@ -342,13 +376,13 @@ class _EditCharacterRenown(CharacterManage):
 
         self.select_faction.options = faction_list
 
-    @discord.ui.select(placeholder="Select a faction", row=1)
-    async def select_faction(self, fac: discord.ui.Select, interaction: discord.Interaction):
+    @select(placeholder="Select a faction", row=1)
+    async def select_faction(self, fac: Select, interaction: Interaction):
         self.faction = self.bot.compendium.get_object(Faction, int(fac.values[0]))
         await self.refresh_content(interaction)
 
-    @discord.ui.button(label="Add/Remove Renown", style=discord.ButtonStyle.primary, row=2)
-    async def modify_renown(self, _: discord.ui.Button, interaction: discord.Interaction):
+    @button(label="Add/Remove Renown", style=ButtonStyle.primary, row=2)
+    async def modify_renown(self, _: Button, interaction: Interaction):
         renown = next((r for r in self.active_character.renown if r.faction.id == self.faction.id), CharacterRenown(self.bot.db, self.bot.compendium, 
                                                                                                                     faction=self.faction, 
                                                                                                                     character_id=self.active_character.id))
@@ -366,8 +400,8 @@ class _EditCharacterRenown(CharacterManage):
         else:
             self.refresh_content(interaction)
       
-    @discord.ui.button(label="Back", style=discord.ButtonStyle.grey, row=2)
-    async def back(self, _: discord.ui.Button, interaction: discord.Interaction):
+    @button(label="Back", style=ButtonStyle.grey, row=2)
+    async def back(self, _: Button, interaction: Interaction):
         await self.defer_to(_EditCharacter, interaction)
 
 # Character Manage Modals    
@@ -386,13 +420,13 @@ class NewCharacterInformationModal(Modal):
         self.new_credits = new_credits
         self.new_type=new_type
 
-        self.add_item(InputText(label="Character Name", style=discord.InputTextStyle.short, required=True, placeholder="Character Name", max_length=2000, value=self.character.name if self.character.name else ''))
-        self.add_item(InputText(label="Level", style=discord.InputTextStyle.short, required=True, placeholder="Level", max_length=2, value=str(self.character.level)))
-        self.add_item(InputText(label="Credits", style=discord.InputTextStyle.short, required=True, placeholder="Credits", max_length=7, value=str(self.new_credits)))
-        self.add_item(InputText(label="CC Refund/Adjustment", style=discord.InputTextStyle.short, required=False, placeholder="Chain Codes", max_length=7, value=str(self.new_cc)))
+        self.add_item(InputText(label="Character Name", style=InputTextStyle.short, required=True, placeholder="Character Name", max_length=2000, value=self.character.name if self.character.name else ''))
+        self.add_item(InputText(label="Level", style=InputTextStyle.short, required=True, placeholder="Level", max_length=2, value=str(self.character.level)))
+        self.add_item(InputText(label="Credits", style=InputTextStyle.short, required=True, placeholder="Credits", max_length=7, value=str(self.new_credits)))
+        self.add_item(InputText(label="CC Refund/Adjustment", style=InputTextStyle.short, required=False, placeholder="Chain Codes", max_length=7, value=str(self.new_cc)))
 
     
-    async def callback(self, interaction: discord.Interaction):        
+    async def callback(self, interaction: Interaction):        
         err_str = []
         self.character.name = self.children[0].value
         int_values = [
@@ -428,11 +462,11 @@ class NewCharacterClassSpeciesModal(Modal):
         self.char_class = char_class
         self.compendium = compendium
 
-        self.add_item(InputText(label="Species", style=discord.InputTextStyle.short, required=True, placeholder="Species", max_length=100, value=self.character.species.value if hasattr(self.character.species, "value") else ''))
-        self.add_item(InputText(label="Class", style=discord.InputTextStyle.short, required=True, placeholder="Class", max_length=100, value=self.char_class.primary_class.value if hasattr(self.char_class, "primary_class") and self.char_class.primary_class else ''))
-        self.add_item(InputText(label="Archetype", style=discord.InputTextStyle.short, required=False, placeholder="Archetype", max_length=100, value=self.char_class.archetype.value if hasattr(self.char_class, "archetype") and self.char_class.archetype else ''))
+        self.add_item(InputText(label="Species", style=InputTextStyle.short, required=True, placeholder="Species", max_length=100, value=self.character.species.value if hasattr(self.character.species, "value") else ''))
+        self.add_item(InputText(label="Class", style=InputTextStyle.short, required=True, placeholder="Class", max_length=100, value=self.char_class.primary_class.value if hasattr(self.char_class, "primary_class") and self.char_class.primary_class else ''))
+        self.add_item(InputText(label="Archetype", style=InputTextStyle.short, required=False, placeholder="Archetype", max_length=100, value=self.char_class.archetype.value if hasattr(self.char_class, "archetype") and self.char_class.archetype else ''))
 
-    async def callback(self, interaction: discord.Interaction):
+    async def callback(self, interaction: Interaction):
         err_str = []
 
         if species := self.compendium.get_object(CharacterSpecies, self.children[0].value):
@@ -470,10 +504,10 @@ class CharacterClassModal(Modal):
         self.archetype = self.char_class.archetype or None
         self.compendium = bot.compendium
 
-        self.add_item(InputText(label="Class", style=discord.InputTextStyle.short, required=True, placeholder="Class", max_length=100, value=self.primary_class.value if self.primary_class else ''))
-        self.add_item(InputText(label="Archetype", style=discord.InputTextStyle.short, required=False, placeholder="Archetype", max_length=100, value=self.archetype.value if self.archetype else ''))
+        self.add_item(InputText(label="Class", style=InputTextStyle.short, required=True, placeholder="Class", max_length=100, value=self.primary_class.value if self.primary_class else ''))
+        self.add_item(InputText(label="Archetype", style=InputTextStyle.short, required=False, placeholder="Archetype", max_length=100, value=self.archetype.value if self.archetype else ''))
     
-    async def callback(self, interaction: discord.Interaction):            
+    async def callback(self, interaction: Interaction):            
         err_str = []
         if primary_class := get_primary_class(self.children[0].value, self.compendium, err_str):
             self.primary_class = primary_class
@@ -511,10 +545,10 @@ class CharacterInformationModal(Modal):
         self.compendium = compendium
         self.update = False
 
-        self.add_item(InputText(label="Character Name", style=discord.InputTextStyle.short, required=True, placeholder="Character Name", max_length=2000, value=self.character.name if self.character.name else ''))
-        self.add_item(InputText(label="Species", style=discord.InputTextStyle.short, required=True, placeholder="Species", max_length=100, value=self.character.species.value if hasattr(self.character.species, "value") else ''))
+        self.add_item(InputText(label="Character Name", style=InputTextStyle.short, required=True, placeholder="Character Name", max_length=2000, value=self.character.name if self.character.name else ''))
+        self.add_item(InputText(label="Species", style=InputTextStyle.short, required=True, placeholder="Species", max_length=100, value=self.character.species.value if hasattr(self.character.species, "value") else ''))
 
-    async def callback(self, interaction: discord.Interaction):
+    async def callback(self, interaction: Interaction):
         if self.character.name != self.children[0].value:
                 self.character.name = self.children[0].value
                 self.update = True
@@ -536,7 +570,7 @@ class CharacterRenownModal(Modal):
 
         self.add_item(InputText(label="Renown Amount (+/-)", placeholder="Renown Amount (+/-)", max_length=4))
     
-    async def callback(self, interaction: discord.Interaction):
+    async def callback(self, interaction: Interaction):
         try:
             amount = max(0, self.renown.renown + int(self.children[0].value))
             if amount == 0:
@@ -576,17 +610,29 @@ def get_archetype(archetype_value: str, primary_class: CharacterClass, compendiu
 
 # Say Edit
 class SayEditModal(Modal):
-    message: discord.Message
+    """
+    A modal dialog for editing a message.
+    Attributes:
+        message (Message): The message to be edited.
+        bot (G0T0Bot): The bot instance.
+    Methods:
+        __init__(bot: G0T0Bot, message: Message = None):
+            Initializes the modal with the given bot and message.
+        callback(interaction: Interaction):
+            Handles the interaction when the modal is submitted.
+    """
+
+    message: Message
     bot: G0T0Bot
 
-    def __init__(self, bot: G0T0Bot, message: discord.Message = None):
+    def __init__(self, bot: G0T0Bot, message: Message = None):
         super().__init__(title="Edit Message")
         self.bot = bot
         self.message = message
 
-        self.add_item(InputText(label="Message", placeholder="", value=message.content, style=discord.InputTextStyle.long, max_length=2000))
+        self.add_item(InputText(label="Message", placeholder="", value=message.content, style=InputTextStyle.long, max_length=2000))
 
-    async def callback(self, interaction: discord.Interaction):
+    async def callback(self, interaction: Interaction):
         webook = await get_webhook(interaction.channel)
         content = self.children[0].value            
 
@@ -612,12 +658,25 @@ class SayEditModal(Modal):
 
 # Character Settings
 class CharacterSettings(InteractiveView):
+    """
+    CharacterSettings is an interactive view for managing character settings in the G0-T0 Resolute bot.
+    Attributes:
+        __menu_copy_attrs__ (tuple): Attributes to copy when creating a new menu instance.
+        bot (G0T0Bot): The bot instance.
+        player (Player): The player instance.
+        active_character (PlayerCharacter): The currently active character.
+        active_channel (TextChannel): The currently active text channel.
+    Methods:
+        commit(): Commits the current character settings to the database and updates the player instance.
+        get_content() -> Mapping: Generates the content to be displayed in the character settings view.
+    """
+
     __menu_copy_attrs__ = ("bot", "player", "active_character")
 
     bot: G0T0Bot
     player: Player
     active_character: PlayerCharacter = None
-    active_channel: discord.TextChannel = None
+    active_channel: TextChannel = None
 
     async def commit(self):
         await self.active_character.upsert()
@@ -629,6 +688,32 @@ class CharacterSettings(InteractiveView):
         return {"embed": embed, "content": ""}
 
 class CharacterSettingsUI(CharacterSettings):
+    """
+    A user interface class for managing character settings in a bot application.
+    Methods
+    -------
+    new(cls, bot, owner, player: Player):
+        Creates a new instance of CharacterSettingsUI.
+    async _before_send(self):
+        Prepares the character selection options and updates the state of channel buttons before sending the UI.
+    async character_select(self, char: Select, interaction: Interaction):
+        Handles character selection from the dropdown and refreshes the UI content.
+    async character_channel(self, chan: Select, interaction: Interaction):
+        Handles channel selection for the active character and updates the character's channel list.
+    async add_channel(self, _: Button, interaction: Interaction):
+        Adds the active channel to the active character's channel list and refreshes the UI content.
+    async remove_channel(self, _: Button, interaction: Interaction):
+        Removes the active channel from the active character's channel list and refreshes the UI content.
+    async remove_all_channels(self, _: Button, interaction: Interaction):
+        Removes all channels from the active character's channel list and refreshes the UI content.
+    async set_default(self, _: Button, interaction: Interaction):
+        Sets the active character as the default character and refreshes the UI content.
+    async more_settings(self, _: Button, interaction: Interaction):
+        Defers to another settings UI for additional settings.
+    async exit(self, *_):
+        Exits the UI and handles timeout.
+    """
+
     @classmethod
     def new(cls, bot, owner, player: Player):
         inst = cls(owner = owner)
@@ -647,13 +732,13 @@ class CharacterSettingsUI(CharacterSettings):
         self.add_channel.disabled = False if self.active_channel else True
         self.remove_channel.disabled = False if self.active_channel else True
     
-    @discord.ui.select(placeholder="Select a character", row=1)
-    async def character_select(self, char: discord.ui.Select, interaction: discord.Interaction):
+    @select(placeholder="Select a character", row=1)
+    async def character_select(self, char: Select, interaction: Interaction):
         self.active_character = next((c for c in self.player.characters if c.id == int(char.values[0])), None)
         await self.refresh_content(interaction)
 
-    @discord.ui.channel_select(channel_types=[discord.ChannelType(0)], placeholder="Select Channel to use character in", row=2)
-    async def character_channel(self, chan: discord.ui.Select, interaction: discord.Interaction):
+    @channel_select(channel_types=[ChannelType(0)], placeholder="Select Channel to use character in", row=2)
+    async def character_channel(self, chan: Select, interaction: Interaction):
         channel = chan.values[0]
         self.active_channel = channel
         for char in self.player.characters:
@@ -666,8 +751,8 @@ class CharacterSettingsUI(CharacterSettings):
 
         await self.refresh_content(interaction)
 
-    @discord.ui.button(label="Add Channel", style=discord.ButtonStyle.primary, row=3)
-    async def add_channel(self, _: discord.ui.Button, interaction: discord.Interaction):
+    @button(label="Add Channel", style=ButtonStyle.primary, row=3)
+    async def add_channel(self, _: Button, interaction: Interaction):
         for char in self.player.characters:
             if self.active_channel.id in char.channels:
                 char.channels.remove(self.active_channel.id)
@@ -678,19 +763,19 @@ class CharacterSettingsUI(CharacterSettings):
 
         await self.refresh_content(interaction)
 
-    @discord.ui.button(label="Remove Channel", style=discord.ButtonStyle.secondary, row=3)
-    async def remove_channel(self, _: discord.ui.Button, interaction: discord.Interaction):
+    @button(label="Remove Channel", style=ButtonStyle.secondary, row=3)
+    async def remove_channel(self, _: Button, interaction: Interaction):
         if self.active_channel.id in self.active_character.channels:
             self.active_character.channels.remove(self.active_channel.id)
         await self.refresh_content(interaction)
 
-    @discord.ui.button(label="Remove All", style=discord.ButtonStyle.danger, row=3)
-    async def remove_all_channels(self, _: discord.ui.Button, interaction: discord.Interaction):
+    @button(label="Remove All", style=ButtonStyle.danger, row=3)
+    async def remove_all_channels(self, _: Button, interaction: Interaction):
         self.active_character.channels = []
         await self.refresh_content(interaction)
 
-    @discord.ui.button(label="Toggle Default Character", style=discord.ButtonStyle.primary, row=4)
-    async def set_default(self, _: discord.ui.Button, interaction: discord.Interaction):
+    @button(label="Toggle Default Character", style=ButtonStyle.primary, row=4)
+    async def set_default(self, _: Button, interaction: Interaction):
         for char in self.player.characters:
             if char.primary_character:
                 char.primary_character = False
@@ -699,12 +784,12 @@ class CharacterSettingsUI(CharacterSettings):
         self.active_character.primary_character = True
         await self.refresh_content(interaction)
 
-    @discord.ui.button(label="More Settings", style=discord.ButtonStyle.primary, row=4)
-    async def more_settings(self, _: discord.ui.button, interaction: discord.Interaction):
+    @button(label="More Settings", style=ButtonStyle.primary, row=4)
+    async def more_settings(self, _: button, interaction: Interaction):
         await self.defer_to(_CharacterSettings2UI, interaction)
 
 
-    @discord.ui.button(label="Exit", style=discord.ButtonStyle.danger, row=4)
+    @button(label="Exit", style=ButtonStyle.danger, row=4)
     async def exit(self, *_):
         await self.on_timeout()
 
@@ -719,29 +804,29 @@ class _CharacterSettings2UI(CharacterSettings):
         else:
             self.remove_item(self.faction_select)
 
-    @discord.ui.select(placeholder="Select a faction", row=1)
-    async def faction_select(self, faction: discord.ui.Select, interaction: discord.Interaction):
+    @select(placeholder="Select a faction", row=1)
+    async def faction_select(self, faction: Select, interaction: Interaction):
         self.active_character.faction = self.bot.compendium.get_object(Faction, int(faction.values[0]))
         await self.active_character.upsert()
         await self.refresh_content(interaction)  
 
-    @discord.ui.button(label="Update Avatar", style=discord.ButtonStyle.primary, row=2)
-    async def update_avatar(self, _: discord.ui.Button, interaction: discord.Interaction):
+    @button(label="Update Avatar", style=ButtonStyle.primary, row=2)
+    async def update_avatar(self, _: Button, interaction: Interaction):
         modal = CharacterAvatarModal(self.bot, self.active_character)
         await self.prompt_modal(interaction, modal)
         await self.refresh_content(interaction)
 
-    @discord.ui.button(label="Update Mention Name", style=discord.ButtonStyle.primary, row=2)
-    async def update_nickname(self, _: discord.ui.Button, interaction: discord.Interaction):
+    @button(label="Update Mention Name", style=ButtonStyle.primary, row=2)
+    async def update_nickname(self, _: Button, interaction: Interaction):
         modal = CharacterNicknameModal(self.bot, self.active_character)
         await self.prompt_modal(interaction, modal)
         await self.refresh_content(interaction)
 
-    @discord.ui.button(label="Back", style=discord.ButtonStyle.secondary, row=3)
-    async def back(self, _: discord.ui.Button, interaction: discord.Interaction):
+    @button(label="Back", style=ButtonStyle.secondary, row=3)
+    async def back(self, _: Button, interaction: Interaction):
         await self.defer_to(CharacterSettingsUI, interaction)
 
-    @discord.ui.button(label="Exit", style=discord.ButtonStyle.danger, row=3)
+    @button(label="Exit", style=ButtonStyle.danger, row=3)
     async def exit(self, *_):
         await self.on_timeout()
 
@@ -757,7 +842,7 @@ class CharacterAvatarModal(Modal):
 
         self.add_item(InputText(label="Avatar Image URL", placeholder="", value=character.avatar_url, required=False))
 
-    async def callback(self, interaction: discord.Interaction):
+    async def callback(self, interaction: Interaction):
         self.character.avatar_url = self.children[0].value
         await self.character.upsert()
 
@@ -775,7 +860,7 @@ class CharacterNicknameModal(Modal):
 
         self.add_item(InputText(label="Mention Name", placeholder="", value=character.nickname, required=False))
 
-    async def callback(self, interaction: discord.Interaction):
+    async def callback(self, interaction: Interaction):
         self.character.nickname = self.children[0].value
         await self.character.upsert()
 
@@ -784,6 +869,21 @@ class CharacterNicknameModal(Modal):
 
 # Character Get View
 class CharacterGet(InteractiveView):
+    """
+    CharacterGet is an interactive view that displays character information.
+    Attributes:
+        __menu_copy_attrs__ (tuple): Attributes to copy when creating a new menu instance.
+        bot (G0T0Bot): The bot instance.
+        player (Player): The player instance.
+        active_character (PlayerCharacter, optional): The currently active character. Defaults to None.
+    Methods:
+        get_content() -> Mapping:
+            Asynchronously retrieves the content to be displayed in the view.
+            Returns a dictionary with the content and embed.
+        on_timeout() -> None:
+            Asynchronously handles the timeout event by editing the message to display the player overview embed.
+    """
+
     __menu_copy_attrs__ = ("bot", "player", "active_character")
 
     bot: G0T0Bot
@@ -803,10 +903,23 @@ class CharacterGet(InteractiveView):
             return
         try:
             await self.message.edit(view=None, embed=PlayerOverviewEmbed(self.player, self.bot.compendium))
-        except discord.HTTPException:
+        except HTTPException:
             pass
 
 class CharacterGetUI(CharacterGet):
+    """
+    CharacterGetUI is a subclass of CharacterGet that provides a user interface for character selection and management.
+    Methods:
+        new(cls, bot, owner, player: Player) -> CharacterGetUI:
+            Class method to create a new instance of CharacterGetUI with the specified bot, owner, and player.
+        async _before_send(self):
+            Prepares the character selection options before sending the UI. It creates a list of SelectOption objects
+            representing the player's characters and sets the default selection based on the active character.
+        async character_select(self, char: Select, interaction: Interaction):
+            Handles the character selection event. It updates the active character based on the selected value and
+            refreshes the UI content.
+    """
+
     @classmethod
     def new(cls, bot, owner, player: Player):
         inst = cls(owner = owner)
@@ -821,8 +934,8 @@ class CharacterGetUI(CharacterGet):
                 char_list.append(SelectOption(label=f"{char.name}", value=f"{char.id}", default=True if self.active_character and char.id == self.active_character.id else False))
         self.character_select.options = char_list
 
-    @discord.ui.select(placeholder="Select a character", row=1)
-    async def character_select(self, char: discord.ui.Select, interaction: discord.Interaction):
+    @select(placeholder="Select a character", row=1)
+    async def character_select(self, char: Select, interaction: Interaction):
         try:
             self.active_character = next((c for c in self.player.characters if c.id == int(char.values[0])), None)
         except:
@@ -832,21 +945,68 @@ class CharacterGetUI(CharacterGet):
 
 # Character RP Post Request View
 class RPPostView(InteractiveView):
+    """
+    RPPostView class that inherits from InteractiveView.
+    Attributes:
+        bot (G0T0Bot): The bot instance.
+        player (Player): The player instance.
+        posts (list[RPPost]): A list of RPPost instances.
+        orig_message (Message): The original message instance.
+    Methods:
+        get_content():
+            Asynchronously retrieves the content for the view.
+            Returns a dictionary with an empty content string and an RPPostEmbed instance.
+    """
+
     __menu_copy_attrs__ = ("bot", "player", "posts", "message")
 
     bot: G0T0Bot
     player: Player
     posts: list[RPPost] = []
-    orig_message: discord.Message = None
+    orig_message: Message = None
 
     async def get_content(self):
         return {"content": "", "embed": RPPostEmbed(self.player, self.posts)}
     
 class RPPostUI(RPPostView):
+    """
+    A class to represent the UI for creating and managing role-playing posts.
+    Attributes
+    ----------
+    character : PlayerCharacter
+        The currently selected character for the post.
+    bot : G0T0Bot
+        The bot instance.
+    player : Player
+        The player creating the post.
+    orig_message : Message
+        The original message being edited, if any.
+    posts : list
+        A list of RPPost instances representing the posts.
+    Methods
+    -------
+    new(cls, bot: G0T0Bot, owner: Member, player: Player, orig_message: Message = None):
+        Creates a new instance of RPPostUI.
+    async _before_send(self):
+        Prepares the UI elements before sending the message.
+    async character_select(self, char: Select, interaction: Interaction):
+        Handles the character selection from the dropdown.
+    async queue_character(self, _: Button, interaction: Interaction):
+        Sets up a post for the selected character.
+    async remove_character(self, _: Button, interaction: Interaction):
+        Removes the selected character's post.
+    async next_application(self, _: Button, interaction: Interaction):
+        Submits the RP post.
+    async exit_application(self, _: Button, interaction: Interaction):
+        Exits the application.
+    async _build_rp_post(self) -> bool:
+        Builds and sends the RP post using a webhook.
+    """
+
     character: PlayerCharacter = None
 
     @classmethod
-    def new(cls, bot: G0T0Bot, owner: discord.Member, player: Player, orig_message: discord.Message = None):
+    def new(cls, bot: G0T0Bot, owner: Member, player: Player, orig_message: Message = None):
         inst = cls(owner=owner)
         inst.bot = bot
         inst.player = player
@@ -862,7 +1022,7 @@ class RPPostUI(RPPostView):
     async def _before_send(self):
         char_list = []
         for char in self.player.characters:
-            char_list.append(discord.SelectOption(label=f"{char.name}", value=f"{char.id}", default=True if self.character and char.id == self.character.id else False))
+            char_list.append(SelectOption(label=f"{char.name}", value=f"{char.id}", default=True if self.character and char.id == self.character.id else False))
         self.character_select.options = char_list
 
         self.queue_character.disabled = False if self.character else True
@@ -870,8 +1030,8 @@ class RPPostUI(RPPostView):
         self.remove_character.disabled = False if self.character and next((p for p in self.posts if p.character.id == self.character.id), None) else True
 
     
-    @discord.ui.select(placeholder="Select a character", row=1, custom_id="character_select")
-    async def character_select(self, char: discord.ui.Select, interaction: discord.Interaction):
+    @select(placeholder="Select a character", row=1, custom_id="character_select")
+    async def character_select(self, char: Select, interaction: Interaction):
         character = await self.bot.get_character(char.values[0])
  
         if character.player_id != interaction.user.id and interaction.user.id != self.owner.id:
@@ -881,8 +1041,8 @@ class RPPostUI(RPPostView):
         
         await self.refresh_content(interaction)
 
-    @discord.ui.button(label="Setup Post", style=discord.ButtonStyle.primary, custom_id="add_character", row=2)
-    async def queue_character(self, _: discord.ui.Button, interaction: discord.Interaction):
+    @button(label="Setup Post", style=ButtonStyle.primary, custom_id="add_character", row=2)
+    async def queue_character(self, _: Button, interaction: Interaction):
         post = next((p for p in self.posts if p.character.id == self.character.id), RPPost(self.character))
         modal = RPPostNoteModal(post)
         await self.prompt_modal(interaction, modal)
@@ -892,14 +1052,14 @@ class RPPostUI(RPPostView):
 
         await self.refresh_content(interaction)
 
-    @discord.ui.button(label="Remove", style=discord.ButtonStyle.red, custom_id="remove_character", row=2)
-    async def remove_character(self, _: discord.ui.Button, interaction: discord.Interaction):
+    @button(label="Remove", style=ButtonStyle.red, custom_id="remove_character", row=2)
+    async def remove_character(self, _: Button, interaction: Interaction):
         if post := next((p for p in self.posts if p.character.id == self.character.id), None):
             self.posts.remove(post)
         await self.refresh_content(interaction)
         
-    @discord.ui.button(label="Accept", style=discord.ButtonStyle.primary, row=3)
-    async def next_application(self, _: discord.ui.Button, interaction: discord.Interaction):
+    @button(label="Accept", style=ButtonStyle.primary, row=3)
+    async def next_application(self, _: Button, interaction: Interaction):
         if await self._build_rp_post():
             await interaction.respond("Request Submitted!", ephemeral=True)
         else:
@@ -907,8 +1067,8 @@ class RPPostUI(RPPostView):
 
         await self.on_timeout()
 
-    @discord.ui.button(label="Exit", style=discord.ButtonStyle.red, row=3)
-    async def exit_application(self, _: discord.ui.Button, interaction: discord.Interaction):
+    @button(label="Exit", style=ButtonStyle.red, row=3)
+    async def exit_application(self, _: Button, interaction: Interaction):
         await self.on_timeout()
 
     async def _build_rp_post(self) -> bool:
@@ -927,15 +1087,26 @@ class RPPostUI(RPPostView):
 
 
 class RPPostNoteModal(Modal):
+    """
+    A modal dialog for adding or editing a note on an RPPost.
+    Attributes:
+        post (RPPost): The post to which the note is being added or edited.
+    Methods:
+        __init__(post: RPPost):
+            Initializes the modal with the given post and adds an input field for the note.
+        callback(interaction: Interaction):
+            Handles the interaction when the modal is submitted, updates the post's note, and stops the modal.
+    """
+
     post: RPPost
 
     def __init__(self, post: RPPost):
         super().__init__(title="Post Note")
         self.post = post
 
-        self.add_item(InputText(label="Note", placeholder="", value=self.post.note or "", required=False, style=discord.InputTextStyle.long, max_length=1000))
+        self.add_item(InputText(label="Note", placeholder="", value=self.post.note or "", required=False, style=InputTextStyle.long, max_length=1000))
 
-    async def callback(self, interaction: discord.Interaction):
+    async def callback(self, interaction: Interaction):
         note = self.children[0].value
 
         self.post.note = note

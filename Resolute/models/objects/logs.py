@@ -10,15 +10,15 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.sql import FromClause
 
 import Resolute.bot as b
-from Resolute.constants import ZWSP3
-from Resolute.helpers.general_helpers import confirm
 import Resolute.models.objects.characters as c
-from Resolute.models.objects.exceptions import G0T0Error
 import Resolute.models.objects.players as p
 from Resolute.compendium import Compendium
+from Resolute.constants import ZWSP3
+from Resolute.helpers.general_helpers import confirm
 from Resolute.models import metadata
 from Resolute.models.categories import Activity
 from Resolute.models.categories.categories import Faction
+from Resolute.models.objects.exceptions import G0T0Error
 
 
 class DBLog(object):

@@ -1,12 +1,14 @@
-from discord import Embed, Member, Color
+from discord import Color, Embed, Member
+
 from Resolute.compendium import Compendium
 from Resolute.constants import ZWSP3
-from Resolute.models.objects.players import Player
+from Resolute.models.objects.characters import (PlayerCharacter,
+                                                PlayerCharacterClass)
 from Resolute.models.objects.guilds import PlayerGuild
-from Resolute.models.objects.characters import PlayerCharacter, PlayerCharacterClass
 from Resolute.models.objects.logs import DBLog
-                
-            
+from Resolute.models.objects.players import Player
+
+
 class NewCharacterSetupEmbed(Embed):
     def __init__(self, player: Player, guild: PlayerGuild, new_character: PlayerCharacter, newClass: PlayerCharacterClass, 
                  starting_credits: int = 0, cc_credit: int = 0):

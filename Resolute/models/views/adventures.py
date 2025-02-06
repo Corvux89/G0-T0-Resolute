@@ -7,7 +7,6 @@ from discord.ui import (Button, InputText, Modal, Select, button, select,
                         user_select)
 
 from Resolute.bot import G0T0Bot
-from Resolute.helpers.adventures import update_dm
 from Resolute.helpers.general_helpers import confirm, is_admin
 from Resolute.models.categories.categories import Faction
 from Resolute.models.embeds import ErrorEmbed
@@ -81,24 +80,24 @@ class AdventureSettingsUI(AdventureView):
     A user interface class for managing adventure settings in the G0-T0 bot.
     Methods
     -------
-    new(cls, bot: G0T0Bot, owner: Member, adventure: Adventure)
-        Class method to create a new instance of AdventureSettingsUI.
-    adventure_dm(self, _: Button, interaction: Interaction)
-        Button callback to manage Dungeon Masters (DMs) for the adventure.
-    adventure_players(self, _: Button, interaction: Interaction)
-        Button callback to manage players for the adventure.
-    adventure_reward(self, _: Button, interaction: Interaction)
-        Button callback to reward Command Credits (CC) to players and DMs.
-    npcs(self, _: Button, interaction: Interaction)
-        Button callback to manage NPC settings for the adventure.
-    factions(self, _: Button, interaction: Interaction)
-        Button callback to manage factions involved in the adventure.
-    adventure_close(self, _: Button, interaction: Interaction)
-        Button callback to close the adventure, with optional renown logging.
-    exit(self, *_)
-        Button callback to exit the adventure settings UI.
-    _before_send(self)
-        Method to perform actions before sending the UI, such as removing buttons for non-DMs.
+    new(cls, bot: G0T0Bot, owner: Member, adventure: Adventure):
+        Creates a new instance of AdventureSettingsUI.
+    adventure_dm(self, _: Button, interaction: Interaction):
+        Handles the "Manage DM(s)" button click event.
+    adventure_players(self, _: Button, interaction: Interaction):
+        Handles the "Manage Player(s)" button click event.
+    adventure_reward(self, _: Button, interaction: Interaction):
+        Handles the "Reward CC" button click event and rewards players and DMs with CC.
+    npcs(self, _: Button, interaction: Interaction):
+        Handles the "NPCs" button click event and opens the NPC settings UI.
+    factions(self, _: Button, interaction: Interaction):
+        Handles the "Factions" button click event and defers to the adventure factions view.
+    adventure_close(self, _: Button, interaction: Interaction):
+        Handles the "Close Adventure" button click event and closes the adventure after confirmation.
+    exit(self, *_):
+        Handles the "Exit" button click event and exits the UI.
+    _before_send(self):
+        Removes certain buttons if the user is not a DM or admin.
     """
 
     @classmethod
@@ -214,23 +213,6 @@ class AdventureSettingsUI(AdventureView):
             self.remove_item(self.adventure_close)
     
 class _AdventureMemberSelect(AdventureView):
-    """
-    A view for selecting and managing members (players or DMs) in an adventure.
-    Methods
-    -------
-    _before_send():
-        Prepares the view before sending it to the user.
-    member_select(user: Select, interaction: Interaction):
-        Handles the selection of a member (player or DM) from the dropdown.
-    character_select(char: Select, interaction: Interaction):
-        Handles the selection of a character from the dropdown.
-    add_member(_: Button, interaction: Interaction):
-        Adds the selected member (player or DM) to the adventure.
-    remove_member(_: Button, interaction: Interaction):
-        Removes the selected member (player or DM) from the adventure.
-    back(_: Button, interaction: Interaction):
-        Navigates back to the AdventureSettingsUI.
-    """
     async def _before_send(self):
         self.add_member.disabled = False if self.character else True
         self.remove_member.disabled = False if self.character else True
@@ -259,13 +241,7 @@ class _AdventureMemberSelect(AdventureView):
                 await interaction.channel.send(embed=ErrorEmbed(f"{self.member.mention} can't be a player and a DM"), delete_after=5)
             else:
                 self.adventure.dms.append(self.member.id)
-
-                category_overwrites = await update_dm(self.member, self.adventure.category_channel.overwrites, self.adventure.role, self.adventure.name)
-                await self.adventure.category_channel.edit(overwrites=category_overwrites)
-
-                for channel in self.adventure.category_channel.channels:
-                    channel_overwrites = await update_dm(self.member, channel.overwrites, self.adventure.role, self.adventure.name)
-                    await channel.edit(overwrites=channel_overwrites)
+                await self.adventure.update_dm_permissions(self.member)
         else:
             if self.adventure.characters and self.character.id in self.adventure.characters:
                 await interaction.channel.send(embed=ErrorEmbed(f"{self.character.name} is already in the adventure"), delete_after=5)
@@ -293,13 +269,7 @@ class _AdventureMemberSelect(AdventureView):
                 await interaction.channel.send(embed=ErrorEmbed(f"Cannot remove the last DM. Either add another one first, or close the adventure"), delete_after=5)
             else:
                 self.adventure.dms.remove(self.member.id)
-
-                category_overwrites = await update_dm(self.member, self.adventure.category_channel.overwrites, self.adventure.role, self.adventure.name, True)
-                await self.adventure.category_channel.edit(overwrites=category_overwrites)
-
-                for channel in self.adventure.category_channel.channels:
-                    channel_overwrites = await update_dm(self.member, channel.overwrites, self.adventure.role, self.adventure.name, True)
-                    await channel.edit(overwrites=channel_overwrites)
+                await self.adventure.update_dm_permissions(self.member, True)
                 await self.adventure.upsert()
         else:
             if character := next((ch for ch in self.adventure.player_characters if ch.player_id == self.player.id), None):
@@ -347,22 +317,6 @@ class _AdventureMemberSelect(AdventureView):
             self.remove_member.label = "Remove Player"    
 
 class _AdventureFactions(AdventureView):
-    """
-    _AdventureFactions is a subclass of AdventureView that manages the selection and manipulation of factions within an adventure.
-    Attributes:
-        faction (Faction): The currently selected faction.
-    Methods:
-        _before_send():
-            Prepares the faction selection options and updates the state of the add and remove faction buttons.
-        faction_select(f: Select, interaction: Interaction):
-            Handles the selection of a faction from the dropdown menu and refreshes the content.
-        add_faction(_: Button, interaction: Interaction):
-            Adds the selected faction to the adventure if it is not already present and the user has the necessary permissions.
-        remove_faction(_: Button, interaction: Interaction):
-            Removes the selected faction from the adventure if it is present.
-        back(_: Button, interaction: Interaction):
-            Resets the selected faction and defers to the AdventureSettingsUI.
-    """
     faction: Faction = None
 
     async def _before_send(self):
@@ -400,17 +354,6 @@ class _AdventureFactions(AdventureView):
         await self.defer_to(AdventureSettingsUI, interaction)   
     
 class AdventureRewardModal(Modal):
-    """
-    A modal dialog for inputting and handling adventure rewards.
-    Attributes:
-        adventure (Adventure): The adventure associated with the rewards.
-        cc (int): The chain code amount, default is 0.
-    Methods:
-        __init__(adventure: Adventure):
-            Initializes the modal with the given adventure and sets up the input field for chain code amount.
-        callback(interaction: Interaction):
-            Handles the interaction when the modal is submitted. Parses the chain code amount from the input and handles errors if the input is not a valid number.
-    """
     adventure: Adventure
     cc: int = 0
 

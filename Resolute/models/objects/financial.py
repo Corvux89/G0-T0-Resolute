@@ -1,14 +1,39 @@
 import datetime
-import sqlalchemy as sa
+
 import aiopg.sa
+import sqlalchemy as sa
 from marshmallow import Schema, fields, post_load
-from sqlalchemy import Column, Numeric, Integer, TIMESTAMP, null
+from sqlalchemy import TIMESTAMP, Column, Integer, Numeric, null
 from sqlalchemy.sql.selectable import TableClause
 
 from Resolute.models import metadata
 
 
 class Financial(object):
+    """
+    A class to represent financial information and operations.
+    Attributes:
+    -----------
+    _db : aiopg.sa.Engine
+        The database engine used for database operations.
+    month_count : int
+        The number of months counted.
+    monthly_goal : float
+        The financial goal for the month.
+    monthly_total : float
+        The total amount for the month.
+    reserve : float
+        The reserve amount.
+    last_reset : datetime.datetime
+        The last reset date and time.
+    Methods:
+    --------
+    adjusted_total:
+        Returns the monthly total adjusted for Discord's fee.
+    update:
+        Asynchronously updates the financial information in the database.
+    """
+
     def __init__(self, db, **kwargs):
         self._db: aiopg.sa.Engine = db
         self.month_count = kwargs.get('month_count', 0)

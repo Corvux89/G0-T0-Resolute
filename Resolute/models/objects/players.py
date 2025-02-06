@@ -1,44 +1,82 @@
-from enum import Enum
 import json
 import logging
+from enum import Enum
+from timeit import default_timer as timer
 
 import aiopg.sa
-import discord
 import sqlalchemy as sa
-from discord import ApplicationContext, Interaction, Message
+from discord import (ApplicationContext, ForumChannel, HTTPException,
+                     Interaction, Member, Message, TextChannel, Thread)
 from marshmallow import Schema, fields, post_load
 from sqlalchemy import BigInteger, Column, Integer, String, and_, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.sql import FromClause
-from timeit import default_timer as timer
 
-from Resolute.models.embeds.arenas import ArenaStatusEmbed
-from Resolute.models.objects.applications import ApplicationType
-from Resolute.models.objects.exceptions import G0T0Error
 import Resolute.models.objects.logs as l
+import Resolute.models.objects.npc as npc
 from Resolute.compendium import Compendium
 from Resolute.helpers.general_helpers import get_webhook
 from Resolute.models import metadata
 from Resolute.models.categories.categories import ArenaType, LevelTier
+from Resolute.models.embeds.arenas import ArenaStatusEmbed
 from Resolute.models.objects.adventures import (Adventure, AdventureSchema,
                                                 get_adventures_by_dm_query,
                                                 get_character_adventures_query)
+from Resolute.models.objects.applications import ApplicationType
 from Resolute.models.objects.arenas import (Arena, ArenaSchema,
                                             get_arena_by_host_query,
                                             get_character_arena_query)
 from Resolute.models.objects.characters import (CharacterSchema,
-                                                PlayerCharacter, PlayerCharacterClass,
-                                                PlayerCharacterClassSchema, RenownSchema,
+                                                PlayerCharacter,
+                                                PlayerCharacterClass,
+                                                PlayerCharacterClassSchema,
+                                                RenownSchema,
                                                 get_active_player_characters,
                                                 get_all_player_characters,
                                                 get_character_class,
                                                 get_character_renown)
+from Resolute.models.objects.exceptions import G0T0Error
 from Resolute.models.objects.guilds import PlayerGuild
-import Resolute.models.objects.npc as npc
 
 log = logging.getLogger(__name__)
 
 class Player(object):
+    """
+    Represents a player in the game.
+    Attributes:
+        id (int): The player's ID.
+        guild_id (int): The ID of the guild the player belongs to.
+        handicap_amount (int): The player's handicap amount. Defaults to 0.
+        cc (int): The player's CC. Defaults to 0.
+        div_cc (int): The player's division CC. Defaults to 0.
+        points (int): The player's points. Defaults to 0.
+        activity_points (int): The player's activity points. Defaults to 0.
+        activity_level (int): The player's activity level. Defaults to 0.
+        statistics (str): The player's statistics in JSON format. Defaults to "{}".
+        characters (list[PlayerCharacter]): The player's characters.
+        member (Member): The player's member object.
+        completed_rps (int): The number of completed RPs by the player.
+        completed_arenas (int): The number of completed arenas by the player.
+        needed_rps (int): The number of RPs needed by the player.
+        needed_arenas (int): The number of arenas needed by the player.
+        guild (PlayerGuild): The player's guild object.
+        arenas (list[Arena]): The player's arenas.
+        adventures (list[Adventure]): The player's adventures.
+    Methods:
+        highest_level_character: Returns the player's highest level character.
+        has_character_in_tier(compendium, tier): Checks if the player has a character in the specified tier.
+        get_channel_character(channel): Returns the player's character associated with the specified channel.
+        get_primary_character: Returns the player's primary character.
+        get_webhook_character(channel): Returns the player's character associated with the specified channel or the primary character.
+        send_webhook_message(ctx, character, content): Sends a webhook message as the specified character.
+        update_command_count(command): Updates the player's command count statistics.
+        update_post_stats(character, post, **kwargs): Updates the player's post statistics.
+        remove_arena_board_post(ctx): Removes the player's arena board post.
+        add_to_arena(interaction, character, arena): Adds the player's character to the specified arena.
+        can_join_arena(arena_type, character): Checks if the player can join the specified arena.
+        create_character(type, new_character, new_class, **kwargs): Creates a new character for the player.
+    """
+
     def __init__(self, id: int, guild_id: int, **kwargs):
         self._db: aiopg.sa.Engine
 
@@ -54,7 +92,7 @@ class Player(object):
 
         # Virtual Attributes
         self.characters: list[PlayerCharacter] = []
-        self.member: discord.Member = kwargs.get('member', None)
+        self.member: Member = kwargs.get('member', None)
         self.completed_rps: int = None
         self.completed_arenas: int = None
         self.needed_rps: int = None
@@ -77,7 +115,7 @@ class Player(object):
                     return True
         return False
     
-    def get_channel_character(self, channel: discord.TextChannel | discord.Thread | discord.ForumChannel) -> PlayerCharacter:
+    def get_channel_character(self, channel: TextChannel | Thread | ForumChannel) -> PlayerCharacter:
         for char in self.characters:
             if channel.id in char.channels:
                 return char
@@ -87,7 +125,7 @@ class Player(object):
             if char.primary_character:
                 return char
             
-    async def get_webhook_character(self, channel: discord.TextChannel | discord.Thread | discord.ForumChannel) -> PlayerCharacter:
+    async def get_webhook_character(self, channel: TextChannel | Thread | ForumChannel) -> PlayerCharacter:
         if character := self.get_channel_character(channel):
             return character
         elif character := self.get_primary_character():
@@ -102,10 +140,10 @@ class Player(object):
         return character
 
 
-    async def send_webhook_message(self, ctx: discord.ApplicationContext, character: PlayerCharacter, content: str):
+    async def send_webhook_message(self, ctx: ApplicationContext, character: PlayerCharacter, content: str):
         webhook = await get_webhook(ctx.channel)
         
-        if isinstance(ctx.channel, discord.Thread):
+        if isinstance(ctx.channel, Thread):
             await webhook.send(username=f"[{character.level}] {character.name} // {self.member.display_name}",
                             avatar_url=self.member.display_avatar.url if not character.avatar_url else character.avatar_url,
                             content=content,
@@ -131,7 +169,7 @@ class Player(object):
         async with self._db.acquire() as conn:
             await conn.execute(upsert_player_query(self))
     
-    async def update_post_stats(self, character: PlayerCharacter | npc.NPC, post: discord.Message, **kwargs):
+    async def update_post_stats(self, character: PlayerCharacter | npc.NPC, post: Message, **kwargs):
         content = kwargs.get('content', post.content)
         retract = kwargs.get('retract', False)
 
@@ -182,8 +220,8 @@ class Player(object):
         async with self._db.acquire() as conn:
             await conn.execute(upsert_player_query(self))
 
-    async def remove_arena_board_post(self, ctx: discord.ApplicationContext | discord.Interaction):
-        def predicate(message: discord.Message):
+    async def remove_arena_board_post(self, ctx: ApplicationContext | Interaction):
+        def predicate(message: Message):
             if message.author.bot:
                 return message.embeds[0].footer.text == f"{self.id}"
             
@@ -197,7 +235,7 @@ class Player(object):
                 deleted_message = await self.guild.arena_board_channel.purge(check=predicate)
                 log.info(f"{len(deleted_message)} message{'s' if len(deleted_message)>1 else ''} by {self.member.name} deleted from #{self.guild.arena_board_channel.name}")
             except Exception as error:
-                if isinstance(error, discord.errors.HTTPException):
+                if isinstance(error, HTTPException):
                     await ctx.send(f'Warning: deleting users\'s post(s) from {self.guild.arena_board_channel.mention} failed')
                 else:
                     log.error(error)
@@ -439,12 +477,34 @@ def upsert_player_query(player: Player):
     return upsert_statement
 
 class ArenaPostType(Enum):
+    """
+    Enum class representing the types of posts that can be made in an arena.
+    Attributes:
+        COMBAT (str): Represents a combat post type.
+        NARRATIVE (str): Represents a narrative post type.
+        BOTH (str): Represents a post type that can be either combat or narrative.
+    """
+
     COMBAT = 'Combat'
     NARRATIVE = 'Narrative'
     BOTH = 'Combat or Narrative'
 
 
 class ArenaPost(object):
+    """
+    Represents a post in the arena associated with a player and their characters.
+    Attributes:
+        player (Player): The player associated with the arena post.
+        characters (list[PlayerCharacter]): A list of characters associated with the player.
+        type (ArenaPostType): The type of the arena post. Defaults to ArenaPostType.COMBAT.
+        message (Message): An optional message associated with the arena post.
+    Args:
+        player (Player): The player associated with the arena post.
+        characters (list[PlayerCharacter], optional): A list of characters associated with the player. Defaults to an empty list.
+        *args: Additional positional arguments.
+        **kwargs: Additional keyword arguments.
+    """
+
     def __init__(self, player: Player, characters: list[PlayerCharacter] = [], *args, **kwargs):
         self.player = player
         self.characters = characters
@@ -454,6 +514,20 @@ class ArenaPost(object):
 
 
 class RPPost(object):
+    """
+    A class to represent a role-playing post.
+    Attributes
+    ----------
+    character : PlayerCharacter
+        The character associated with the post.
+    note : str, optional
+        An optional note associated with the post.
+    Methods
+    -------
+    __init__(character: PlayerCharacter, *args, **kwargs)
+        Initializes the RPPost with a character and optional note.
+    """
+    
     def __init__(self, character: PlayerCharacter, *args, **kwargs):
         self.character = character
         self.note = kwargs.get('note')

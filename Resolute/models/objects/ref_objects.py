@@ -1,5 +1,5 @@
-import sqlalchemy as sa
 import aiopg.sa
+import sqlalchemy as sa
 from marshmallow import Schema, fields, post_load
 from sqlalchemy import BOOLEAN, BigInteger, Column, Integer, String
 from sqlalchemy.dialects.postgresql import insert
@@ -7,7 +7,32 @@ from sqlalchemy.sql import FromClause, TableClause
 
 from Resolute.models import metadata
 
+
 class RefWeeklyStipend(object):
+    """
+    A class to represent a weekly stipend for a specific role in a guild.
+    Attributes:
+    -----------
+    db : aiopg.sa.Engine
+        The database engine for executing queries.
+    guild_id : int
+        The ID of the guild.
+    role_id : int
+        The ID of the role.
+    amount : int, optional
+        The amount of the stipend (default is 1).
+    reason : str, optional
+        The reason for the stipend (default is None).
+    leadership : bool, optional
+        Indicates if the stipend is for a leadership role (default is False).
+    Methods:
+    --------
+    upsert():
+        Inserts or updates the weekly stipend in the database.
+    delete():
+        Deletes the weekly stipend from the database.
+    """
+
     def __init__(self, db: aiopg.sa.Engine, guild_id: int, role_id: int, amount: int = 1, reason: str = None, leadership: bool = False):
         self._db = db
         self.guild_id = guild_id
@@ -110,6 +135,19 @@ ref_server_calendar_table = sa.Table(
 )
 
 class RefServerCalendarSchema(Schema):
+    """
+    RefServerCalendarSchema is a Marshmallow schema for validating and deserializing
+    data related to a server calendar.
+    Attributes:
+        day_start (int): The start of the day, required.
+        day_end (int): The end of the day, required.
+        display_name (str): The display name of the calendar, required.
+        guild_id (int): The ID of the guild, required.
+    Methods:
+        make_stipend(data, **kwargs): Post-load method to create a RefServerCalendar
+        instance from the deserialized data.
+    """
+    
     day_start = fields.Integer(required=True)
     day_end = fields.Integer(required=True)
     display_name = fields.String(required=True)

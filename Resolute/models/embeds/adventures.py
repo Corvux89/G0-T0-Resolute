@@ -1,8 +1,9 @@
-from discord import Embed, ApplicationContext, Color, Interaction
+from discord import ApplicationContext, Color, Embed, Interaction
 
 from Resolute.constants import THUMBNAIL, ZWSP3
 from Resolute.models.objects.adventures import Adventure
 from Resolute.models.objects.players import Player
+
 
 class AdventuresEmbed(Embed):
     def __init__(self, player: Player, phrases: list[str]):

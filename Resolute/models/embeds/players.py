@@ -5,6 +5,7 @@ from Resolute.constants import ZWSP3
 from Resolute.helpers.general_helpers import get_webhook
 from Resolute.models.objects.players import ArenaPost, Player, RPPost
 
+
 class PlayerOverviewEmbed(Embed):
     def __init__(self, player: Player, compendium: Compendium):
         super().__init__(title=f"Information for {player.member.display_name}")

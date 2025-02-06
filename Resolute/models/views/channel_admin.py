@@ -37,11 +37,38 @@ readonly_overwrites = PermissionOverwrite(view_channel=True,
 
 
 class ChannelAdmin(InteractiveView):
+    """
+    ChannelAdmin class for handling administrative interactions within a specific channel.
+    Attributes:
+        __menu_copy_attrs__ (tuple): Attributes to be copied in the menu.
+        bot (G0T0Bot): Instance of the bot.
+        channel (TextChannel): The text channel associated with this admin view.
+    """
+
     __menu_copy_attrs__ = ("bot", "channel")
     bot: G0T0Bot
     channel: TextChannel = None
 
 class ChannelAdminUI(ChannelAdmin):
+    """
+    ChannelAdminUI class provides a user interface for managing Discord channels.
+    Methods:
+        new(cls, bot, owner):
+            Creates a new instance of ChannelAdminUI with the given bot and owner.
+        _before_send(self):
+            Prepares the UI before sending by enabling or disabling the player channel based on the selected channel.
+        channel_select(self, c: Select, interaction: Interaction):
+            Handles the selection of a channel to manage and refreshes the content accordingly.
+        new_player_channel(self, _: Button, interaction: Interaction):
+            Initiates the process to create a new player channel.
+        player_channel(self, _: Button, interaction: Interaction):
+            Checks if the selected channel is managed by a player and defers to the edit player channel process if true.
+        exit(self, *_):
+            Exits the UI and handles timeout.
+        get_content(self) -> Mapping:
+            Returns the content to be displayed in the UI, including an embed for the selected channel or a prompt to pick an option.
+    """
+
     @classmethod
     def new(cls, bot, owner):
         inst = cls(owner=owner)
@@ -193,8 +220,6 @@ class _NewPlayerchannel(ChannelAdmin):
         )
 
         return channel
-
-
 
 class ChannelInfoModal(Modal):
     name = None

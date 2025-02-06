@@ -1,17 +1,35 @@
+import aiopg.sa
+import sqlalchemy as sa
 from discord import ApplicationContext, Thread
 from marshmallow import Schema, fields, post_load
-import sqlalchemy as sa
 from sqlalchemy import BigInteger, Column, Integer, String, and_, null
 from sqlalchemy.dialects.postgresql import ARRAY, insert
 from sqlalchemy.sql import FromClause, TableClause
+
 import Resolute.helpers.general_helpers as gh
 from Resolute.models import metadata
 
 
-
-import aiopg.sa
-
 class NPC(object):
+    """
+    Represents a Non-Player Character (NPC) in the system.
+    Attributes:
+        _db (aiopg.sa.Engine): The database engine.
+        guild_id (int): The ID of the guild the NPC belongs to.
+        key (str): A unique key identifier for the NPC.
+        name (str): The name of the NPC.
+        avatar_url (str, optional): The URL of the NPC's avatar image.
+        roles (list[int], optional): A list of role IDs associated with the NPC.
+        adventure_id (int, optional): The ID of the adventure the NPC is part of.
+    Methods:
+        delete():
+            Deletes the NPC from the database.
+        upsert():
+            Inserts or updates the NPC in the database.
+        send_webhook_message(ctx: ApplicationContext, content: str):
+            Sends a message via webhook to the specified context.
+    """
+
     def __init__(self, db: aiopg.sa.Engine, guild_id: int, key: str, name: str, **kwargs):
         self._db = db
         self.guild_id: int = guild_id

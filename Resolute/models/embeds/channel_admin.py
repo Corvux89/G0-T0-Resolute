@@ -1,8 +1,8 @@
 import discord
-
 from discord import Embed, Member, PermissionOverwrite, Role
 
 from Resolute.constants import ZWSP3
+
 
 class ChannelEmbed(Embed):
     def __init__(self, channel: discord.TextChannel):

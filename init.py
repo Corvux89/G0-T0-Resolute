@@ -1,6 +1,6 @@
+import asyncio
 import logging
 import sys
-import asyncio
 from os import listdir
 
 from discord import Color, Embed, Intents

@@ -1,30 +1,67 @@
 
 
-from enum import Enum
-import re
 import logging
+import re
+from enum import Enum
 
-from discord import ApplicationContext, Webhook
+from discord import ApplicationContext
 from discord.ext import commands
 
 from Resolute.constants import ACTIVITY_POINT_MINIMUM
-from Resolute.helpers.general_helpers import get_selection, is_admin, split_content
+from Resolute.helpers.general_helpers import (get_selection, is_admin,
+                                              split_content)
 from Resolute.helpers.messages import get_player_from_say_message
 from Resolute.models.objects.adventures import Adventure
 from Resolute.models.objects.characters import PlayerCharacter
 from Resolute.models.objects.exceptions import CharacterNotFound
-from Resolute.models.objects.players import Player
 from Resolute.models.objects.npc import NPC
+from Resolute.models.objects.players import Player
 
 log = logging.getLogger(__name__)
 
 class WebhookType(Enum):
+    """
+    Enum representing different types of webhooks.
+    Attributes:
+        npc (str): Represents a non-player character webhook.
+        adventure (str): Represents an adventure webhook.
+        say (str): Represents a say webhook.
+    """
+
     npc = "npc"
     adventure = "adventure"
     say = "say"
 
 
 class G0T0Webhook(object):
+    """
+    A class to handle webhook interactions for the G0-T0 Resolute project.
+    Attributes:
+        player (Player): The player associated with the webhook.
+        ctx (ApplicationContext | commands.Context): The context of the application or command.
+        type (WebhookType): The type of webhook.
+        npc (NPC): The NPC associated with the webhook, if any.
+        character (PlayerCharacter): The player character associated with the webhook, if any.
+        content (str): The content of the webhook message.
+    Methods:
+        __init__(ctx: ApplicationContext | commands.Context, type: WebhookType, **kwargs):
+            Initializes the G0T0Webhook instance with the given context and type.
+        run():
+            Executes the webhook logic based on its type and context.
+        _get_reply_player() -> Player:
+            Retrieves the player who is being replied to, if any.
+        _find_character_by_name(name: str, characters: list[PlayerCharacter]) -> list[PlayerCharacter]:
+            Finds characters by name from a list of player characters.
+        _handle_character_mention():
+            Handles character mentions within the webhook content.
+        _get_npc_from_guild():
+            Retrieves an NPC from the guild based on the invoked command.
+        _get_npc_from_adventure(adventure: Adventure):
+            Retrieves an NPC from an adventure based on the invoked command.
+        is_authorized(npc):
+            Checks if the player is authorized to interact with the given NPC.
+    """
+
     player: Player = None
     ctx: ApplicationContext | commands.Context
     type: WebhookType

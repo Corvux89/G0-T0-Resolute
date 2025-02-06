@@ -2,9 +2,9 @@
 import logging
 from typing import Mapping
 
-from discord.ui import button, Button, channel_select, Select, InputText, Modal
-
-from discord import Interaction, ButtonStyle, TextChannel, ChannelType, InputTextStyle
+from discord import (ButtonStyle, ChannelType, InputTextStyle, Interaction,
+                     TextChannel)
+from discord.ui import Button, InputText, Modal, Select, button, channel_select
 
 from Resolute.bot import G0T0Bot
 from Resolute.models.views.base import InteractiveView

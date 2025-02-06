@@ -2,7 +2,7 @@ import re
 from typing import Mapping
 
 import discord
-from discord import SelectOption
+from discord import ForumChannel, SelectOption, Thread
 from discord.ui import InputText, Modal
 from discord.ui.button import Button
 
@@ -599,9 +599,12 @@ class SayEditModal(Modal):
                     await self.bot.update_player_activity_points(player, False)
                 elif len(content) >= ACTIVITY_POINT_MINIMUM and len(self.message.content) <= ACTIVITY_POINT_MINIMUM:
                     await self.bot.update_player_activity_points(player)
-                    
-            await webook.edit_message(self.message.id, content=content)
-        except:
+            if isinstance(interaction.channel, (Thread, ForumChannel)):
+                await webook.edit_message(self.message.id, content=content, thread=interaction.channel)
+            else:
+                await webook.edit_message(self.message.id, content=content)
+        except Exception as e:
+            print(e)
             pass
 
         await interaction.response.defer()

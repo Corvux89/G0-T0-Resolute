@@ -90,6 +90,10 @@ class Character(commands.Cog):
             10. Sends a response ping if the message is a reply to another message.
         """
         await G0T0Webhook(ctx, WebhookType.say).run()
+        try:
+            await ctx.message.delete()
+        except:
+            pass
         
 
                 

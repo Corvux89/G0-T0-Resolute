@@ -2,8 +2,8 @@ import calendar
 from datetime import datetime, timezone
 from io import BytesIO
 
+import discord
 import requests
-from discord import Color, Embed, File, Message, TextChannel, utils
 from PIL import Image, ImageDraw, ImageFilter
 from texttable import Texttable
 
@@ -19,7 +19,7 @@ from Resolute.models.objects.dashboards import (RefDashboard,
 from Resolute.models.objects.financial import Financial
 
 
-async def get_last_message_in_channel(channel: TextChannel) -> Message:
+async def get_last_message_in_channel(channel: discord.TextChannel) -> discord.Message:
     """
     Retrieve the last message in a given text channel.
     This function attempts to get the last message in the specified channel.
@@ -97,7 +97,7 @@ async def get_level_distribution_data(bot: G0T0Bot) -> []:
             data.append([result['level'], result['#']])
     return data
 
-async def update_financial_dashboards(bot: G0T0Bot):
+async def update_financial_dashboards(bot: G0T0Bot) -> None:
     """
     Asynchronously updates financial dashboards.
     This function retrieves a list of financial dashboards and updates each one using the provided bot instance.
@@ -111,7 +111,7 @@ async def update_financial_dashboards(bot: G0T0Bot):
     for d in dashboards:
         await update_dashboard(bot, d)
 
-async def update_dashboard(bot: G0T0Bot, dashboard: RefDashboard):
+async def update_dashboard(bot: G0T0Bot, dashboard: RefDashboard) -> None:
     """
     Asynchronously updates the specified dashboard based on its type.
     Parameters:
@@ -251,12 +251,12 @@ async def update_dashboard(bot: G0T0Bot, dashboard: RefDashboard):
 
         background.save("progress.png")
 
-        embed = Embed(title="G0-T0 Financial Progress",
+        embed = discord.Embed(title="G0-T0 Financial Progress",
                               description=f"Current Monthly Progress: ${fin.adjusted_total:.2f}\n"
                                             f"Monthly Goal: ${fin.monthly_goal:.2f}\n"
                                             f"Reserve: ${fin.reserve:.2f}",
-                              color=Color.gold(),
-                              timestamp=utils.utcnow())
+                              color=discord.Color.gold(),
+                              timestamp=discord.utils.utcnow())
         
         embed.add_field(name="Stretch Goals",
                         value="If we end up with enough reserve funds, we will look at making a website to house our content rulings / updates and work on better integrations with the bot.")
@@ -264,7 +264,7 @@ async def update_dashboard(bot: G0T0Bot, dashboard: RefDashboard):
         embed.set_image(url="attachment://progress.png")
         embed.set_footer(text="Last Updated")
 
-        file = File("progress.png", filename="progress.png")
+        file = discord.File("progress.png", filename="progress.png")
         original_message.attachments.clear()
         return await original_message.edit(file=file, embed=embed, content="")
 

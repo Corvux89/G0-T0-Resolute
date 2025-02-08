@@ -1,6 +1,6 @@
 import logging
 
-from discord import ApplicationContext, SlashCommandGroup
+import discord
 from discord.ext import commands
 
 from Resolute.bot import G0T0Bot
@@ -10,7 +10,7 @@ from Resolute.models.views.market import MarketPromptUI, TransactionPromptUI
 log = logging.getLogger(__name__)
 
 
-def setup(bot: commands.Bot):
+def setup(bot: G0T0Bot):
     bot.add_cog(Market(bot))
     pass
 
@@ -27,7 +27,7 @@ class Market(commands.Cog):
             Handles the market request command. Sets up a market request for the user.
     """
     bot: G0T0Bot
-    market_commands = SlashCommandGroup("market", "Market commands")
+    market_commands = discord.SlashCommandGroup("market", "Market commands")
 
     def __init__(self, bot):
         self.bot = bot
@@ -37,7 +37,7 @@ class Market(commands.Cog):
         name="request",
         description="Setup a market request"
     )
-    async def market_request(self, ctx: ApplicationContext):
+    async def market_request(self, ctx: discord.ApplicationContext):
         """
         Handles a market request from a user.
         This function defers the context, retrieves the player associated with the user,

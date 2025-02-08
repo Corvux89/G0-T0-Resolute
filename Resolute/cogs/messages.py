@@ -21,7 +21,7 @@ from Resolute.models.views.messages import MessageLogUI
 
 log = logging.getLogger(__name__)
 
-def setup(bot: commands.Bot):
+def setup(bot: G0T0Bot):
     bot.add_cog(Messages(bot))
 
 

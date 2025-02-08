@@ -1,13 +1,14 @@
-
-from discord import Message, utils
+import discord
 
 from Resolute.bot import G0T0Bot
 from Resolute.models.objects.adventures import Adventure
 from Resolute.models.objects.guilds import PlayerGuild
 from Resolute.models.objects.players import Player
 
+# TODO: Merge all these into the G0T0Webhook object
 
-def is_player_say_message(player: Player, message: Message) -> bool:
+
+def is_player_say_message(player: Player, message: discord.Message) -> bool:
         """
         Determines if a given message is a "say" message from one of the player's characters.
         Args:
@@ -22,7 +23,7 @@ def is_player_say_message(player: Player, message: Message) -> bool:
                     return True
         return False
 
-async def get_player_from_say_message(bot: G0T0Bot, message: Message) -> Player:
+async def get_player_from_say_message(bot: G0T0Bot, message: discord.Message) -> Player:
         """
         Extracts player information from a message and retrieves the corresponding Player object.
         Args:
@@ -33,12 +34,12 @@ async def get_player_from_say_message(bot: G0T0Bot, message: Message) -> Player:
         Raises:
             ValueError: If the player name or character name cannot be extracted from the message.
         """
-        if (player_name := get_player_name_from_message(message)) and (char_name := get_char_name_from_message(message)) and (member := utils.get(message.guild.members, display_name=player_name)):
+        if (player_name := get_player_name_from_message(message)) and (char_name := get_char_name_from_message(message)) and (member := discord.utils.get(message.guild.members, display_name=player_name)):
             player = await bot.get_player(member.id, member.guild.id)
             return player
               
 
-def is_guild_npc_message(guild: PlayerGuild, message: Message) -> bool:
+def is_guild_npc_message(guild: PlayerGuild, message: discord.Message) -> bool:
     """
     Determines if the author of a given message is an NPC (Non-Player Character) in the specified guild.
     Args:
@@ -49,7 +50,7 @@ def is_guild_npc_message(guild: PlayerGuild, message: Message) -> bool:
     """ 
     return bool(next((npc for npc in guild.npcs if npc.name.lower() == message.author.name.lower()), None))
 
-def is_adventure_npc_message(adventure: Adventure, message: Message) -> bool:
+def is_adventure_npc_message(adventure: Adventure, message: discord.Message) -> bool:
     """
     Determines if the author of a given message is an NPC (Non-Player Character) in the specified adventure.
     Args:
@@ -60,7 +61,7 @@ def is_adventure_npc_message(adventure: Adventure, message: Message) -> bool:
     """
     return bool(next((npc for npc in adventure.npcs if npc.name.lower() == message.author.name.lower()), None))
 
-def get_char_name_from_message(message: Message) -> str:
+def get_char_name_from_message(message: discord.Message) -> str:
         """
         Extracts the character name from a given message.
         The function attempts to split the author's name in the message by ' // ' and then by '] ' 
@@ -77,7 +78,7 @@ def get_char_name_from_message(message: Message) -> str:
         
         return char_name
 
-def get_player_name_from_message(message: Message) -> str:
+def get_player_name_from_message(message: discord.Message) -> str:
         """
         Extracts the player's name from a message object.
         The function assumes that the author's name in the message is formatted

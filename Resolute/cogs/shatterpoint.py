@@ -1,6 +1,6 @@
 import logging
 
-from discord import ApplicationContext
+import discord
 from discord.commands import SlashCommandGroup
 from discord.ext import commands
 
@@ -14,7 +14,7 @@ log = logging.getLogger(__name__)
 # TODO: on_db_connected notify if shatterpoint is busy and is reset
 
 
-def setup(bot):
+def setup(bot: G0T0Bot):
     bot.add_cog(Shatterpoints(bot))
 
 class Shatterpoints(commands.Cog):
@@ -31,12 +31,11 @@ class Shatterpoints(commands.Cog):
         shatterpoint_manage(ctx: ApplicationContext):
             Command to manage a shatterpoint. Only accessible to admins.
     """
-    bot: G0T0Bot  # Typing annotation for my IDE's sake
+    bot: G0T0Bot 
     shatterpoint_commands = SlashCommandGroup("shatterpoint", "Commands related to Shatterpoint event management.", guild_only=True)
 
-    def __init__(self, bot):
+    def __init__(self, bot: G0T0Bot):
         self.bot = bot
-
         log.info(f'Cog \'ShatterPoints\' loaded')
 
     @commands.Cog.listener()
@@ -57,7 +56,7 @@ class Shatterpoints(commands.Cog):
         description="Manage a shatterpoint"
     )
     @commands.check(is_admin)
-    async def shatterpoint_manage(self, ctx: ApplicationContext):
+    async def shatterpoint_manage(self, ctx: discord.ApplicationContext):
         """
         Manages the shatterpoint settings for the guild.
         This method retrieves the shatterpoint settings for the guild and 

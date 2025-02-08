@@ -1,6 +1,6 @@
 import logging
 
-from discord import ApplicationContext, Member, Option, SlashCommandGroup, SlashCommandOptionType
+import discord
 from discord.ext import commands
 
 from Resolute.bot import G0T0Bot
@@ -15,7 +15,7 @@ from Resolute.models.views.logs import LogPromptUI
 log = logging.getLogger(__name__)
 
 
-def setup(bot: commands.Bot):
+def setup(bot: G0T0Bot):
     bot.add_cog(Log(bot))
 
 class Log(commands.Cog):
@@ -48,7 +48,7 @@ class Log(commands.Cog):
             Prompts the user to log an activity.
     """
     bot: G0T0Bot
-    log_commands = SlashCommandGroup("log", "Logging commands for staff", guild_only=True)
+    log_commands = discord.SlashCommandGroup("log", "Logging commands for staff", guild_only=True)
 
     def __init__(self, bot):
         self.bot = bot
@@ -59,15 +59,15 @@ class Log(commands.Cog):
         description="Logs a completed RP"
     )
     @commands.check(is_staff)
-    async def rp_log(self, ctx: ApplicationContext,
-                     member: Option(SlashCommandOptionType(6),description="Player who participated in the RP", required=True),
-                     host: Option(bool, description="Host of the RP or not", required=True, default=False)):
+    async def rp_log(self, ctx: discord.ApplicationContext,
+                     member: discord.Option(discord.SlashCommandOptionType(6),description="Player who participated in the RP", required=True),
+                     host: discord.Option(discord.SlashCommandOptionType(5), description="Host of the RP or not", required=True, default=False)):
         """
         Logs a role-playing (RP) event.
         Parameters:
-            ctx (ApplicationContext): The context in which the command was invoked.
-            member (Option): The player who participated in the RP.
-            host (Option): Indicates whether the member is the host of the RP.
+            ctx (discord.ApplicationContext): The context in which the command was invoked.
+            member (discord.Option): The player who participated in the RP.
+            host (discord.Option): Indicates whether the member is the host of the RP.
         Returns:
             None
         """
@@ -82,8 +82,8 @@ class Log(commands.Cog):
         description="Logs a completed snapshot"
     )
     @commands.check(is_staff)
-    async def snapshot_log(self, ctx: ApplicationContext,
-                     member: Option(SlashCommandOptionType(6),description="Player who participated in the snapshot", required=True)):
+    async def snapshot_log(self, ctx: discord.ApplicationContext,
+                     member: discord.Option(discord.SlashCommandOptionType(6),description="Player who participated in the snapshot", required=True)):
         await self._prompt_log(ctx, member, "SNAPSHOT")
 
     @log_commands.command(
@@ -91,20 +91,20 @@ class Log(commands.Cog):
         description="Give bonus gold and/or xp to a player"
     )
     @commands.check(is_staff)
-    async def bonus_log(self, ctx: ApplicationContext,
-                        member: Option(SlashCommandOptionType(6), description="Player receiving the bonus", required=True),
-                        reason: Option(str, description="The reason for the bonus", required=True),
-                        cc: Option(int, description="The amount of Chain Codes", default=0, min_value=0, max_value=50),
-                        credits: Option(int, description="The amount of Credits", default=0, min_value=0, max_value=20000)):        
+    async def bonus_log(self, ctx: discord.ApplicationContext,
+                        member: discord.Option(discord.SlashCommandOptionType(6), description="Player receiving the bonus", required=True),
+                        reason: discord.Option(discord.SlashCommandOptionType(3), description="The reason for the bonus", required=True),
+                        cc: discord.Option(discord.SlashCommandOptionType(4), description="The amount of Chain Codes", default=0, min_value=0, max_value=50),
+                        credits: discord.Option(discord.SlashCommandOptionType(4), description="The amount of Credits", default=0, min_value=0, max_value=20000)):        
         """
         Logs a bonus for a specified member with a given reason and amounts of Chain Codes and Credits.
 
         Args:
-            ctx (ApplicationContext): The context in which the command was invoked.
-            member (Option): The player receiving the bonus.
-            reason (Option): The reason for the bonus.
-            cc (Option, optional): The amount of Chain Codes to be awarded (default is 0, with a minimum of 0 and a maximum of 50).
-            credits (Option, optional): The amount of Credits to be awarded (default is 0, with a minimum of 0 and a maximum of 20000).
+            ctx (discord.ApplicationContext): The context in which the command was invoked.
+            member (discord.Option): The player receiving the bonus.
+            reason (discord.Option): The reason for the bonus.
+            cc (discord.Option, discord.Optional): The amount of Chain Codes to be awarded (default is 0, with a minimum of 0 and a maximum of 50).
+            credits (discord.Option, discord.Optional): The amount of Credits to be awarded (default is 0, with a minimum of 0 and a maximum of 20000).
 
         Raises:
             G0T0Error: If neither Chain Codes nor Credits are specified.
@@ -119,21 +119,21 @@ class Log(commands.Cog):
         description="Logs the sale of an item to a player"
     )
     @commands.check(is_staff)
-    async def buy_log(self, ctx: ApplicationContext,
-                      member: Option(SlashCommandOptionType(6), description="Player who bought the item", required=True),
-                      item: Option(str, description="The item being bought", required=True),
-                      cost: Option(int, description="The cost of the item", min_value=0, max_value=9999999,
+    async def buy_log(self, ctx: discord.ApplicationContext,
+                      member: discord.Option(discord.SlashCommandOptionType(6), description="Player who bought the item", required=True),
+                      item: discord.Option(discord.SlashCommandOptionType(3), description="The item being bought", required=True),
+                      cost: discord.Option(discord.SlashCommandOptionType(4), description="The cost of the item", min_value=0, max_value=9999999,
                                    required=True),
-                      currency: Option(str, description="Credits or Chain Codes. Default: Credits",
+                      currency: discord.Option(str, description="Credits or Chain Codes. Default: Credits",
                                        choices=['Credits', 'CC'], default="Credits", required=False)):
         """
         Handles the logging of a purchase made by a player.
         Parameters:
-            ctx (ApplicationContext): The context in which the command was invoked.
-            member (Option): The player who bought the item.
-            item (Option): The item being bought.
-            cost (Option): The cost of the item.
-            currency (Option): The currency used for the purchase, either 'Credits' or 'CC'. Default is 'Credits'.
+            ctx (discord.ApplicationContext): The context in which the command was invoked.
+            member (discord.Option): The player who bought the item.
+            item (discord.Option): The item being bought.
+            cost (discord.Option): The cost of the item.
+            currency (discord.Option): The currency used for the purchase, either 'Credits' or 'CC'. Default is 'Credits'.
         Raises:
             InvalidCurrencySelection: If the currency selected is not 'Credits' or 'CC'.
         Returns:
@@ -156,21 +156,21 @@ class Log(commands.Cog):
         description="Logs the sale of an item from a player. Not for player establishment sales"
     )
     @commands.check(is_staff)
-    async def sell_log(self, ctx: ApplicationContext,
-                       member: Option(SlashCommandOptionType(6), description="Player who bought the item", required=True),
-                       item: Option(str, description="The item being sold", required=True),
-                       cost: Option(int, description="The cost of the item", min_value=0, max_value=9999999,
+    async def sell_log(self, ctx: discord.ApplicationContext,
+                       member: discord.Option(discord.SlashCommandOptionType(6), description="Player who bought the item", required=True),
+                       item: discord.Option(discord.SlashCommandOptionType(3), description="The item being sold", required=True),
+                       cost: discord.Option(discord.SlashCommandOptionType(4), description="The cost of the item", min_value=0, max_value=9999999,
                                     required=True),
-                       currency: Option(str, description="Credits or Chain Codes. Default: Credits",
+                       currency: discord.Option(discord.SlashCommandOptionType(3), description="Credits or Chain Codes. Default: Credits",
                                         choices=['Credits', 'CC'], default="Credits", required=False)):
         """
         Handles the logging of a sell transaction.
         Parameters:
-            ctx (ApplicationContext): The context of the command invocation.
-            member (Option): The player who bought the item.
-            item (Option): The item being sold.
-            cost (Option): The cost of the item.
-            currency (Option): The currency used for the transaction, either 'Credits' or 'CC'. Default is 'Credits'.
+            ctx (discord.ApplicationContext): The context of the command invocation.
+            member (discord.Option): The player who bought the item.
+            item (discord.Option): The item being sold.
+            cost (discord.Option): The cost of the item.
+            currency (discord.Option): The currency used for the transaction, either 'Credits' or 'CC'. Default is 'Credits'.
         Raises:
             InvalidCurrencySelection: If an invalid currency is selected.
         Returns:
@@ -196,15 +196,15 @@ class Log(commands.Cog):
         description="Nullifies a log"
     )
     @commands.check(is_admin)
-    async def null_log(self, ctx: ApplicationContext,
-                       log_id: Option(int, description="ID of the log to modify", required=True),
-                       reason: Option(str, description="Reason for nulling the log", required=True)):
+    async def null_log(self, ctx: discord.ApplicationContext,
+                       log_id: discord.Option(discord.SlashCommandOptionType(4), description="ID of the log to modify", required=True),
+                       reason: discord.Option(discord.SlashCommandOptionType(3), description="Reason for nulling the log", required=True)):
         """
         Nullifies a log entry by its ID and provides a reason for the action.
         Args:
-            ctx (ApplicationContext): The context in which the command is being invoked.
-            log_id (Option[int]): The ID of the log to modify.
-            reason (Option[str]): The reason for nulling the log.
+            ctx (discord.ApplicationContext): The context in which the command is being invoked.
+            log_id (discord.Option[int]): The ID of the log to modify.
+            reason (discord.Option[str]): The reason for nulling the log.
         Raises:
             LogNotFound: If the log entry with the specified ID is not found.
         Returns:
@@ -222,8 +222,8 @@ class Log(commands.Cog):
         name="stats",
         description="Log statistics for a character"
     )
-    async def log_stats(self, ctx: ApplicationContext,
-                        member: Option(SlashCommandOptionType(6), description="Player to view stats for", required=True)):
+    async def log_stats(self, ctx: discord.ApplicationContext,
+                        member: discord.Option(discord.SlashCommandOptionType(6), description="Player to view stats for", required=True)):
         await ctx.defer()
 
         player = await self.bot.get_player(member.id, ctx.guild.id, 
@@ -266,16 +266,16 @@ class Log(commands.Cog):
         name="get_history",
         description="Get the last weeks worth of logs for a player"
     )
-    async def get_log_hx(self, ctx: ApplicationContext,
-                         member: Option(SlashCommandOptionType(6), description="Player to get logs for", required=True),
-                         num_logs: Option(int, description="Number of logs to get",
+    async def get_log_hx(self, ctx: discord.ApplicationContext,
+                         member: discord.Option(discord.SlashCommandOptionType(6), description="Player to get logs for", required=True),
+                         num_logs: discord.Option(discord.SlashCommandOptionType(4), description="Number of logs to get",
                                           min_value=1, max_value=20, default=5)):
         """
         Retrieves and responds with a specified number of logs for a given player.
         Args:
-            ctx (ApplicationContext): The context in which the command was invoked.
-            member (Option): The player to get logs for.
-            num_logs (Option): The number of logs to retrieve, with a minimum of 1 and a maximum of 20. Defaults to 5.
+            ctx (discord.ApplicationContext): The context in which the command was invoked.
+            member (discord.Option): The player to get logs for.
+            num_logs (discord.Option): The number of logs to retrieve, with a minimum of 1 and a maximum of 20. Defaults to 5.
         Returns:
             None
         """
@@ -292,7 +292,7 @@ class Log(commands.Cog):
     # Private Methods
     # --------------------------- #
 
-    async def _prompt_log(self, ctx: ApplicationContext, member: Member, activity: str, notes: str = None, 
+    async def _prompt_log(self, ctx: discord.ApplicationContext, member: discord.Member, activity: str, notes: str = None, 
                          cc: int = 0, credits: int = 0, ignore_handicap: bool = False, conversion: bool = False, show_values: bool = False) -> None:
         await ctx.defer()
 

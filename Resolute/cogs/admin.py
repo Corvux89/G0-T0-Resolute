@@ -1,9 +1,9 @@
 import asyncio
 import datetime
 import logging
-from os import listdir
+import os
 
-from discord import (ApplicationContext, ExtensionNotFound, ExtensionNotLoaded, Option, SlashCommandGroup)
+import discord
 from discord.ext import commands, tasks
 
 from Resolute.bot import G0T0Bot
@@ -16,7 +16,7 @@ from Resolute.models.views.automation_request import AutomationRequestView
 
 log = logging.getLogger(__name__)
 
-def setup(bot: commands.Bot):
+def setup(bot: G0T0Bot):
     bot.add_cog(Admin(bot))
 
 
@@ -25,7 +25,7 @@ class Admin(commands.Cog):
     A Cog that handles administrative commands and tasks for the bot.
     Attributes:
         bot (G0T0Bot): The bot instance.
-        admin_commands (SlashCommandGroup): A group of slash commands for administrative purposes.
+        admin_commands (discord.SlashCommandGroup): A group of slash commands for administrative purposes.
     Methods:
         __init__(bot):
             Initializes the Admin cog with the given bot instance.
@@ -33,11 +33,11 @@ class Admin(commands.Cog):
             Listener for the database connection event. Starts the reload_category_task and check_financials tasks if they are not already running.
         on_refresh_guild_cache(guild: PlayerGuild):
             Listener for the refresh guild cache event. Fetches and updates the guild cache.
-        automation_request(ctx: ApplicationContext):
+        automation_request(ctx: discord.ApplicationContext):
             Slash command for logging an automation request. Sends a modal interaction to gather information about the request.
-        admin_admin(ctx: ApplicationContext):
+        admin_admin(ctx: discord.ApplicationContext):
             Slash command for handling the main administration command. Creates and sends an AdminMenuUI instance to the context, then deletes the context message.
-        reload_cog(ctx: ApplicationContext, cog: Option):
+        reload_cog(ctx: discord.ApplicationContext, cog: discord.Option):
             Slash command for reloading a specific cog, refreshing DB information, or reloading all cogs and DB information.
         _reload_DB(ctx):
             Private method for reloading the database information.
@@ -46,8 +46,8 @@ class Admin(commands.Cog):
         check_financials():
             Task that checks and updates financial data every 24 hours.
     '''
-    bot: G0T0Bot  # Typing annotation for my IDE's sake
-    admin_commands = SlashCommandGroup("admin", "Bot administrative commands", guild_ids=ADMIN_GUILDS)
+    bot: G0T0Bot  
+    admin_commands = discord.SlashCommandGroup("admin", "Bot administrative commands", guild_ids=ADMIN_GUILDS)
 
     def __init__(self, bot):
         self.bot = bot
@@ -70,12 +70,12 @@ class Admin(commands.Cog):
         name="automation_request",
         description="Log an automation request"
     )
-    async def automation_request(self, ctx: ApplicationContext):
+    async def automation_request(self, ctx: discord.ApplicationContext):
         """
         Used by players to submit an automation request
 
         Args:
-            ctx (ApplicationContext): Represents a Discord application command interaction context.
+            ctx (discord.ApplicationContext): Represents a Discord application command interaction context.
 
         Returns:
             Interaction: Modal interaction to gather information about the request
@@ -90,13 +90,13 @@ class Admin(commands.Cog):
         description="Main administration command"
     )
     @commands.check(is_admin)
-    async def admin_admin(self, ctx: ApplicationContext):
+    async def admin_admin(self, ctx: discord.ApplicationContext):
         """
         Handles the admin command for the admin cog.
         This command creates a new instance of AdminMenuUI, sends it to the context,
         and then deletes the context message.
         Args:
-            ctx (ApplicationContext): The context in which the command was invoked.
+            ctx (discord.ApplicationContext): The context in which the command was invoked.
         """
 
         ui = AdminMenuUI.new(ctx.author, self.bot)
@@ -108,8 +108,8 @@ class Admin(commands.Cog):
         description="Reloads either a specific cog, refresh DB information, or reload everything"
     )
     @commands.check(is_owner)
-    async def reload_cog(self, ctx: ApplicationContext,
-                         cog: Option(str, description="Cog name, ALL, or SHEET", required=True)):
+    async def reload_cog(self, ctx: discord.ApplicationContext,
+                         cog: discord.Option(discord.SlashCommandOptionType(3), description="Cog name, ALL, or SHEET", required=True)):
         """
         Used to reload a cog, refresh DB information, or reload all cogs and DB information
 
@@ -119,7 +119,7 @@ class Admin(commands.Cog):
         await ctx.defer()
 
         if str(cog).upper() == 'ALL':
-            for file_name in listdir('./Resolute/cogs'):
+            for file_name in os.listdir('./Resolute/cogs'):
                 if file_name.endswith('.py'):
                     ext = file_name.replace('.py', '')
                     self.bot.unload_extension(f'Resolute.cogs.{ext}')
@@ -131,9 +131,9 @@ class Admin(commands.Cog):
         else:
             try:
                 self.bot.unload_extension(f'Resolute.cogs.{cog}')
-            except ExtensionNotLoaded:
+            except discord.ExtensionNotLoaded:
                 return await ctx.respond(f'Cog was already unloaded', ephemeral=True)
-            except ExtensionNotFound:
+            except discord.ExtensionNotFound:
                 return await ctx.respond(f'No cog found by the name: {cog}', ephemeral=True)
             except:
                 return await ctx.respond(f'Something went wrong', ephemeral=True)
@@ -141,8 +141,6 @@ class Admin(commands.Cog):
             self.bot.load_extension(f'Resolute.cogs.{cog}')
             await ctx.respond(f'Cog {cog} reloaded')
        
-
-        
 
     # --------------------------- #
     # Private Methods

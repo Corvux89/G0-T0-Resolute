@@ -1,10 +1,8 @@
 import logging
 import traceback
 
-from discord import (ApplicationContext, CheckFailure, Entitlement,
-                     HTTPException, Member, RawMemberRemoveEvent)
+import discord
 from discord.ext import commands
-from discord.ext.commands import CommandNotFound
 
 from Resolute.bot import G0T0Bot
 from Resolute.constants import ERROR_CHANNEL
@@ -19,7 +17,7 @@ from Resolute.models.objects.players import Player
 
 log = logging.getLogger(__name__)
 
-def setup(bot: commands.Bot):
+def setup(bot: G0T0Bot):
     bot.add_cog(Events(bot))
 
 class Events(commands.Cog):
@@ -32,13 +30,13 @@ class Events(commands.Cog):
             Handles the event when a member is removed from the guild.
         on_member_join(member: Member):
             Handles the event when a member joins the guild.
-        on_command(ctx: ApplicationContext):
+        on_command(ctx: discord.ApplicationContext):
             Handles the event when a command is invoked.
-        on_application_command(ctx: ApplicationContext):
+        on_application_command(ctx: discord.ApplicationContext):
             Handles the event when an application command is invoked.
-        on_application_command_error(ctx: ApplicationContext, error):
+        on_application_command_error(ctx: discord.ApplicationContext, error):
             Handles errors that occur during the execution of an application command.
-        on_command_error(ctx: ApplicationContext, error):
+        on_command_error(ctx: discord.ApplicationContext, error):
             Handles errors that occur during the execution of a command.
         on_entitlement_create(entitlement: Entitlement):
             Handles the event when an entitlement is created.
@@ -47,12 +45,12 @@ class Events(commands.Cog):
     """
     bot: G0T0Bot
 
-    def __init__(self, bot):
+    def __init__(self, bot: G0T0Bot):
         self.bot = bot
         log.info(f'Cog \'Events\' loaded')
 
     @commands.Cog.listener()
-    async def on_raw_member_remove(self, payload: RawMemberRemoveEvent):
+    async def on_raw_member_remove(self, payload: discord.RawMemberRemoveEvent):
         """
         Event handler for when a member is removed from a guild.
         This function performs the following actions:
@@ -81,7 +79,7 @@ class Events(commands.Cog):
                 try:
                     await player.guild.arena_board_channel.purge(check=predicate)
                 except Exception as error:
-                    if isinstance(error, HTTPException):
+                    if isinstance(error, discord.HTTPException):
                         pass
                     else:
                         log.error(error)
@@ -96,12 +94,12 @@ class Events(commands.Cog):
         try:
             await player.guild.exit_channel.send(embed=MemberLeaveEmbed(player))
         except Exception as error:
-            if isinstance(error, HTTPException):
+            if isinstance(error, discord.HTTPException):
                 log.error(f"ON_MEMBER_REMOVE: Error sending message to exit channel in "
                         f"{player.guild.guild.name} [ {player.guild.id} ] for {payload.user.display_name} [ {payload.user.id} ]")     
 
     @commands.Cog.listener()
-    async def on_member_join(self, member: Member):
+    async def on_member_join(self, member: discord.Member):
         """
         Event handler that is called when a new member joins the guild.
         This function sends a greeting message to the entrance channel if it is set up in the guild's settings.
@@ -117,13 +115,13 @@ class Events(commands.Cog):
             await g.entrance_channel.send(message)
 
     @commands.Cog.listener()
-    async def on_command(self, ctx: ApplicationContext):
+    async def on_command(self, ctx: discord.ApplicationContext):
         """
         Event handler for when a command is invoked.
         This method is triggered whenever a command is executed. It updates the command count
         for the player who invoked the command.
         Args:
-            ctx (ApplicationContext): The context in which the command was invoked. This includes
+            ctx (discord.ApplicationContext): The context in which the command was invoked. This includes
                                       information about the command, the user who invoked it, and
                                       the guild (if applicable).
         Returns:
@@ -135,13 +133,13 @@ class Events(commands.Cog):
 
     
     @commands.Cog.listener()
-    async def on_application_command(self, ctx: ApplicationContext):
+    async def on_application_command(self, ctx: discord.ApplicationContext):
         """
         Event handler for when an application command is executed.
         This function logs the command execution details and updates the command count for the player
         if the bot has a database connection.
         Args:
-            ctx (ApplicationContext): The context of the application command, which includes information
+            ctx (discord.ApplicationContext): The context of the application command, which includes information
                                       about the command, the user who executed it, and the channel/guild
                                       where it was executed.
         Raises:
@@ -169,11 +167,11 @@ class Events(commands.Cog):
             log.info(f"Command in DM with {ctx.user} [{ctx.user.id}]: {ctx.command} {params}")
 
     @commands.Cog.listener()
-    async def on_application_command_error(self, ctx: ApplicationContext, error):
+    async def on_application_command_error(self, ctx: discord.ApplicationContext, error):
         """
         Handles errors that occur during the execution of application commands.
         Parameters:
-        ctx (ApplicationContext): The context in which the command was invoked.
+        ctx (discord.ApplicationContext): The context in which the command was invoked.
         error (Exception): The error that was raised during command execution.
         Returns:
         None
@@ -187,7 +185,7 @@ class Events(commands.Cog):
         if hasattr(ctx.command, 'on_error'):
             return                
 
-        if isinstance(error, CheckFailure):
+        if isinstance(error, discord.CheckFailure):
             return await ctx.respond(f'You do not have required permissions for `{ctx.command}`', ephemeral=True)
         elif isinstance(error, G0T0Error):
             return await ctx.respond(embed=ErrorEmbed(error), ephemeral=True)
@@ -221,11 +219,11 @@ class Events(commands.Cog):
 
     
     @commands.Cog.listener()
-    async def on_command_error(self, ctx: ApplicationContext, error):
+    async def on_command_error(self, ctx: discord.ApplicationContext, error):
         """
         Handles errors that occur during command invocation.
         Parameters:
-        ctx (ApplicationContext): The context in which the command was invoked.
+        ctx (discord.ApplicationContext): The context in which the command was invoked.
         error (Exception): The exception that was raised during command invocation.
         Returns:
         None
@@ -240,10 +238,10 @@ class Events(commands.Cog):
         - Logs a warning if unable to respond to the user.
         """
         time = 5
-        if hasattr(ctx.command, 'on_error') or isinstance(error, CommandNotFound):
+        if hasattr(ctx.command, 'on_error') or isinstance(error, commands.CommandNotFound):
             return
 
-        if isinstance(error, CheckFailure):
+        if isinstance(error, discord.CheckFailure):
             return await ctx.send(f'You do not have required permissions for `{ctx.command}`', delete_after=time)
         elif isinstance(error, G0T0CommandError):
             return await ctx.send(embed=ErrorEmbed(error), delete_after=time)
@@ -274,7 +272,7 @@ class Events(commands.Cog):
             log.warning('Unable to respond')
 
     @commands.Cog.listener()
-    async def on_entitlement_create(self, entitlement: Entitlement):
+    async def on_entitlement_create(self, entitlement: discord.Entitlement):
         """
         Event handler for when an entitlement is created.
         This method is called automatically when an entitlement is created.
@@ -285,7 +283,7 @@ class Events(commands.Cog):
         await self._handle_entitlements(entitlement)
 
     @commands.Cog.listener()
-    async def on_entitlement_update(self, entitlement: Entitlement):
+    async def on_entitlement_update(self, entitlement: discord.Entitlement):
         """
         Event handler for entitlement updates.
         This method is called whenever an entitlement is updated. It processes
@@ -298,7 +296,7 @@ class Events(commands.Cog):
     # --------------------------- #
     # Private Methods
     # --------------------------- #
-    async def _handle_entitlements(self, entitlement: Entitlement):
+    async def _handle_entitlements(self, entitlement: discord.Entitlement) -> None:
         """
         Handle the entitlements for a user.
         This function processes the entitlements by updating the financial data

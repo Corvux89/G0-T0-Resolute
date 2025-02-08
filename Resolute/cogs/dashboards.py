@@ -1,7 +1,7 @@
 import logging
 from timeit import default_timer as timer
 
-from discord import ApplicationContext, ChannelType, Message, SlashCommandGroup
+import discord
 from discord.ext import commands, tasks
 
 from Resolute.bot import G0T0Bot
@@ -16,10 +16,8 @@ from Resolute.models.views.dashboards import DashboardSettingsUI
 
 log = logging.getLogger(__name__)
 
-
-def setup(bot: commands.Bot):
+def setup(bot: G0T0Bot):
     bot.add_cog(Dashboards(bot))
-
 
 class Dashboards(commands.Cog):
     """
@@ -42,11 +40,10 @@ class Dashboards(commands.Cog):
             Task that periodically updates the dashboards.
     """
     
-
     bot: G0T0Bot
-    dashboard_commands = SlashCommandGroup("dashboard", "Dashboard commands", guild_only=True)
+    dashboard_commands = discord.SlashCommandGroup("dashboard", "Dashboard commands", guild_only=True)
 
-    def __init__(self, bot):
+    def __init__(self, bot: G0T0Bot):
         self.bot = bot
         log.info(f'Cog \'Dashboards\' loaded')
 
@@ -66,7 +63,7 @@ class Dashboards(commands.Cog):
 
 
     @commands.Cog.listener()
-    async def on_message(self, message: Message):
+    async def on_message(self, message: discord.Message):
         """
         Handles incoming messages and updates the dashboard accordingly.
         This method is triggered whenever a message is sent in a channel. It checks if the message is in a text channel
@@ -76,7 +73,7 @@ class Dashboards(commands.Cog):
         Returns:
             None
         """
-        if hasattr(self.bot, "db") and hasattr(message.channel, "category_id") and (category_channel_id := message.channel.category_id) and message.channel.type == ChannelType.text:
+        if hasattr(self.bot, "db") and hasattr(message.channel, "category_id") and (category_channel_id := message.channel.category_id) and message.channel.type == discord.ChannelType.text:
             dashboard = await self.bot.get_dashboard_from_category(category_channel_id)
 
             if not dashboard or message.channel.id in dashboard.excluded_channel_ids:
@@ -134,7 +131,7 @@ class Dashboards(commands.Cog):
         name="manage",
         description="Manage dashboards",
     )
-    async def dashboard_manage(self, ctx: ApplicationContext):
+    async def dashboard_manage(self, ctx: discord.ApplicationContext):
         """
         Manages the dashboard settings for the user.
         This asynchronous method creates a new instance of `DashboardSettingsUI` 

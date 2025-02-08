@@ -243,10 +243,10 @@ class Player(object):
     async def add_to_arena(self, interaction: Interaction | ApplicationContext, character: PlayerCharacter, arena: Arena):
         if character.id in arena.characters:
             raise G0T0Error("character already in the arena")
-        elif not self.can_join_arena(self, arena.type, character):
+        elif not self.can_join_arena(arena.type, character):
             raise G0T0Error(f"Character is already in an {arena.type.value.lower()} arena")
         
-        if self.id in {c.player_id for c in arena.characters}:
+        if self.id in {c.player_id for c in arena.player_characters}:
             remove_char = next((c for c in arena.player_characters if c.player_id == self.id), None)
             arena.player_characters.remove(remove_char)
             arena.characters.remove(remove_char.id)

@@ -163,7 +163,8 @@ class ArenaCharacterSelect(ArenaView):
 
         await self.player.add_to_arena(interaction, character, arena)
 
-        await self.defer_to(CharacterArenaViewUI, interaction)
+        # await self.defer_to(CharacterArenaViewUI, interaction)
+        await self.on_timeout()
 
     @button(label="Join Arena", style=ButtonStyle.primary, custom_id="join_arena_button")
     async def join_arena_button(self, _: Button, interaction: Interaction):

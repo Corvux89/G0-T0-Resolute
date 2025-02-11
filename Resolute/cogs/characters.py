@@ -218,7 +218,7 @@ class Character(commands.Cog):
             if player.characters[0].level >= player.guild.max_level:
                 raise G0T0Error("Character is already at max level for the server")
             application.application.character = player.characters[0]
-            modal = LevelUpRequestModal(player.guild, application)
+            modal = LevelUpRequestModal(player.guild, application.application)
             return await ctx.send_modal(modal)
         else:
             ui = CharacterSelectUI.new(application, player)

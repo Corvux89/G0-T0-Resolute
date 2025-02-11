@@ -226,7 +226,7 @@ class _AdventureMemberSelect(AdventureView):
         await self.refresh_content(interaction)
 
     @discord.ui.select(placeholder="Select a character", options=[discord.SelectOption(label="You should never see me")], row=2, custom_id="char_select")
-    async def character_select(self, char: discord.Select, interaction: discord.Interaction):
+    async def character_select(self, char: discord.ui.Select, interaction: discord.Interaction):
         self.character = self.player.characters[int(char.values[0])]
         await self.refresh_content(interaction)
 

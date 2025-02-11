@@ -89,7 +89,7 @@ class MessageModal(discord.ui.Modal):
     def __init__(self):
         super().__init__(title="Message Content")
 
-        self.add_item(discord.ui.InputText(label="Message Text", style=discord.ui.InputTextStyle.long, max_length=2000))
+        self.add_item(discord.ui.InputText(label="Message Text", style=discord.InputTextStyle.long, max_length=2000))
 
     async def callback(self, interaction: discord.Interaction):
         self.message = self.children[0].value 

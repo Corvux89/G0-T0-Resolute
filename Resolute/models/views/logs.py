@@ -1,7 +1,6 @@
 from typing import Mapping
 
 import discord
-import discord.ui
 
 from Resolute.bot import G0T0Bot
 from Resolute.models.objects.characters import PlayerCharacter

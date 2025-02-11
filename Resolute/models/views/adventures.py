@@ -3,7 +3,6 @@ from math import ceil
 from typing import Mapping, Type
 
 import discord
-import discord.ui
 
 from Resolute.bot import G0T0Bot
 from Resolute.helpers.general_helpers import confirm, is_admin

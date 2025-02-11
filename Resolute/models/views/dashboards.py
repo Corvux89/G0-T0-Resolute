@@ -2,7 +2,6 @@ import logging
 from typing import Mapping
 
 import discord
-import discord.ui
 
 from Resolute.bot import G0T0Bot
 from Resolute.helpers.dashboards import update_dashboard

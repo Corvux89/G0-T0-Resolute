@@ -1,7 +1,6 @@
 from typing import Mapping
 
 import discord
-import discord.ui
 
 from Resolute.helpers.general_helpers import get_webhook
 from Resolute.models.embeds.applications import NewCharacterRequestEmbed

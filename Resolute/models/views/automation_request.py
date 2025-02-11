@@ -1,5 +1,4 @@
 import discord
-import discord.ui
 
 from Resolute.models.objects.guilds import PlayerGuild
 

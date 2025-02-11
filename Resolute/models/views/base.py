@@ -1,7 +1,6 @@
 from typing import Mapping, Optional, Type
 
 import discord
-import discord.ui
 
 from Resolute.models.embeds import ErrorEmbed
 from Resolute.models.objects.exceptions import G0T0Error

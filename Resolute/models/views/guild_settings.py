@@ -1,7 +1,6 @@
 import re
 
 import discord
-import discord.ui
 
 from Resolute.bot import G0T0Bot
 from Resolute.constants import DAYS_OF_WEEK
@@ -174,7 +173,7 @@ class _GuildResetView(GuildSettings):
 class _GuildStipendView(GuildSettings):
     role: discord.Role
 
-    @discord.ui.role_select(placeholder="Stipend discord.Role", row=1)
+    @discord.ui.role_select(placeholder="Stipend Role", row=1)
     async def guild_role_select(self, role : discord.ui.Select, interaction: discord.Interaction):
         self.role = role.values[0]
         await self.refresh_content(interaction)

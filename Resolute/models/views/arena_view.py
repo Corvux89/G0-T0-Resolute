@@ -1,7 +1,6 @@
 from typing import Type
 
 import discord
-import discord.ui
 
 from Resolute.bot import G0T0Bot
 from Resolute.models.categories.categories import ArenaType

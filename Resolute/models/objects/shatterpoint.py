@@ -1,12 +1,9 @@
-from enum import Enum
 
 import aiopg.sa
+import discord
 import sqlalchemy as sa
-from discord import ForumChannel, Message, TextChannel, Thread, User
 from marshmallow import Schema, fields, post_load
-from sqlalchemy import (BOOLEAN, BigInteger, Boolean, Column, Integer, String,
-                        and_, cast, update)
-from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.dialects.postgresql import ARRAY, insert
 from sqlalchemy.sql.selectable import FromClause, TableClause
 
 from Resolute.compendium import Compendium
@@ -14,18 +11,6 @@ from Resolute.models import metadata
 from Resolute.models.categories.categories import Faction
 from Resolute.models.objects.characters import PlayerCharacter
 from Resolute.models.objects.guilds import PlayerGuild
-
-
-class AdjustOperator(Enum):
-    """
-    Enum class representing adjustment operators.
-    Attributes:
-        less (str): Represents the less than or equal to operator ("<=").
-        greater (str): Represents the greater than or equal to operator (">=").
-    """
-
-    less = "<="
-    greater = ">="
 
 
 class Shatterpoint(object):
@@ -62,21 +47,21 @@ class Shatterpoint(object):
         self.players: list[ShatterpointPlayer] = kwargs.get('players', [])
         self.renown: list[ShatterpointRenown] = kwargs.get('renown', [])
     
-    async def upsert(self):
+    async def upsert(self) -> None:
         async with self._db.acquire() as conn:
             results = await conn.execute(upsert_shatterpoint_query(self))
 
-    async def delete(self):
+    async def delete(self) -> None:
         async with self._db.acquire() as conn:
             await conn.execute(delete_shatterpoint_query(self.guild_id))
             await conn.execute(delete_shatterpoint_players(self.guild_id))
             await conn.execute(delete_all_shatterpoint_renown_query(self.guild_id))
 
-    async def scrape_channel(self, bot, channel: TextChannel|Thread|ForumChannel, guild: PlayerGuild, user: User):
+    async def scrape_channel(self, bot, channel: discord.TextChannel | discord.Thread | discord.ForumChannel, guild: PlayerGuild, user: discord.User) -> None:
         messages = []
         channels = self.channels
 
-        def get_char_name_from_message(message: Message) -> str:
+        def get_char_name_from_message(message: discord.Message) -> str:
             try:
                 char_name = message.author.name.split(' // ')[0].split('] ', 1)[1].strip()
             except:
@@ -86,7 +71,7 @@ class Shatterpoint(object):
 
         try:
             while True:
-                last_message: Message = messages[-1] if messages else None
+                last_message: discord.Message = messages[-1] if messages else None
                 batch = await channel.history(limit=600, before=last_message).flatten()
 
                 if not batch:
@@ -142,11 +127,11 @@ class Shatterpoint(object):
 ref_gb_staging_table = sa.Table(
     "ref_gb_staging",
     metadata,
-    Column("guild_id", BigInteger, primary_key=True, nullable=False),  # ref: > guilds.id
-    Column("name", String, nullable=False),
-    Column("base_cc", Integer, nullable=False),
-    Column("channels", sa.ARRAY(BigInteger), nullable=True, default=[]),
-    Column("busy", Boolean, nullable=True, default=False)
+    sa.Column("guild_id", sa.BigInteger, primary_key=True, nullable=False),  # ref: > guilds.id
+    sa.Column("name", sa.String, nullable=False),
+    sa.Column("base_cc", sa.Integer, nullable=False),
+    sa.Column("channels", ARRAY(sa.BigInteger), nullable=True, default=[]),
+    sa.Column("busy", sa.Boolean, nullable=True, default=False)
 )
 
 class ShatterPointSchema(Schema):
@@ -207,7 +192,7 @@ def upsert_shatterpoint_query(shatterpoint: Shatterpoint):
     return upsert_statement
 
 def reset_busy_flag_query():
-    return update(ref_gb_staging_table).where(ref_gb_staging_table.c.busy == True).values(busy=False)
+    return sa.update(ref_gb_staging_table).where(ref_gb_staging_table.c.busy == True).values(busy=False)
 
 def get_shatterpoint_query(guild_id: int) -> FromClause:
     return ref_gb_staging_table.select().where(
@@ -252,7 +237,7 @@ class ShatterpointPlayer(object):
 
         self.player_characters: list[PlayerCharacter] = kwargs.get('player_characters', [])
 
-    async def upsert(self):
+    async def upsert(self) -> None:
         async with self._db.acquire() as conn:
             await conn.execute(upsert_shatterpoint_player_query(self))
 
@@ -260,15 +245,15 @@ class ShatterpointPlayer(object):
 ref_gb_staging_player_table = sa.Table(
     "ref_gb_staging_player",
     metadata,
-    Column("guild_id", BigInteger, nullable=False),  # ref: > ref_gb_staging.id
-    Column("player_id", BigInteger, nullable=False),  # ref: > characters.player_id
-    Column("cc", Integer, nullable=False),
-    Column("update", BOOLEAN, nullable=False, default=True),
-    Column("active", BOOLEAN, nullable=False, default=True),
-    Column("num_messages", Integer, nullable=False, default=0),
-    Column("channels", sa.ARRAY(BigInteger), nullable=True, default=[]),
-    Column("characters", sa.ARRAY(Integer), nullable=False, default=[]),
-    Column("renown_override", Integer, nullable=True)
+    sa.Column("guild_id", sa.BigInteger, nullable=False),  # ref: > ref_gb_staging.id
+    sa.Column("player_id", sa.BigInteger, nullable=False),  # ref: > characters.player_id
+    sa.Column("cc", sa.Integer, nullable=False),
+    sa.Column("update", sa.BOOLEAN, nullable=False, default=True),
+    sa.Column("active", sa.BOOLEAN, nullable=False, default=True),
+    sa.Column("num_messages", sa.Integer, nullable=False, default=0),
+    sa.Column("channels", ARRAY(sa.BigInteger), nullable=True, default=[]),
+    sa.Column("characters", ARRAY(sa.Integer), nullable=False, default=[]),
+    sa.Column("renown_override", sa.Integer, nullable=True)
 )
 
 class ShatterPointPlayerSchema(Schema):
@@ -356,9 +341,9 @@ class ShatterpointRenown(object):
 ref_gb_renown_table = sa.Table(
     "ref_gb_renown",
     metadata,
-    Column("guild_id", Integer, nullable=False),
-    Column("faction", Integer, nullable=False),
-    Column("renown", Integer, nullable=False, default=0),
+    sa.Column("guild_id", sa.Integer, nullable=False),
+    sa.Column("faction", sa.Integer, nullable=False),
+    sa.Column("renown", sa.Integer, nullable=False, default=0),
     sa.PrimaryKeyConstraint("guild_id", "faction")
 )
 
@@ -406,7 +391,7 @@ def get_shatterpoint_renown_query(guild_id: int) -> FromClause:
 
 def delete_specific_shatterpoint_renown_query(renown: ShatterpointRenown) -> TableClause:
     return ref_gb_renown_table.delete().where(
-        and_(ref_gb_renown_table.c.guild_id == renown.guild_id, ref_gb_renown_table.c.faction == renown.faction.id)
+        sa.and_(ref_gb_renown_table.c.guild_id == renown.guild_id, ref_gb_renown_table.c.faction == renown.faction.id)
     )
 
 def delete_all_shatterpoint_renown_query(guild_id: int) -> TableClause:

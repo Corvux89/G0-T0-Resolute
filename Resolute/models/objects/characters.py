@@ -1,7 +1,6 @@
 import aiopg.sa
 import sqlalchemy as sa
 from marshmallow import Schema, fields, post_load
-from sqlalchemy import BOOLEAN, BigInteger, Column, Integer, String, and_
 from sqlalchemy.dialects.postgresql import ARRAY, insert
 from sqlalchemy.sql import FromClause
 
@@ -38,7 +37,7 @@ class CharacterRenown(object):
 
         self.renown = kwargs.get("renown", 0)
 
-    def get_formatted_renown(self):
+    def get_formatted_renown(self) -> str:
         """
         Returns the formatted renown of the character.
         The renown is formatted as a string with the faction name in bold,
@@ -53,9 +52,9 @@ class CharacterRenown(object):
         """
         Asynchronously upserts a character's renown data into the database.
         This method acquires a database connection, executes the upsert query for the character's renown,
-        and loads the resulting data into a RenownSchema object.
+        and loads the resulting data into a CharacterRenown object.
         Returns:
-            RenownSchema: The renown data loaded from the database.
+            CharacterRenown: The renown data loaded from the database.
         """
         async with self._db.acquire() as conn:
             results = await conn.execute(upsert_character_renown_query(self))
@@ -68,10 +67,10 @@ class CharacterRenown(object):
 renown_table = sa.Table(
     "renown",
     metadata,
-    Column("id", Integer, primary_key=True, autoincrement='auto'),
-    Column("character_id", Integer, nullable=False),  # ref: > characters.id
-    Column("faction", Integer, nullable=False),
-    Column("renown", Integer)
+    sa.Column("id", sa.Integer, primary_key=True, autoincrement='auto'),
+    sa.Column("character_id", sa.Integer, nullable=False),  # ref: > characters.id
+    sa.Column("faction", sa.Integer, nullable=False),
+    sa.Column("renown", sa.Integer)
 )
 
 class RenownSchema(Schema):
@@ -152,7 +151,7 @@ class PlayerCharacterClass(object):
         self.archetype: CharacterArchetype = kwargs.get('archetype')
         self.active = kwargs.get('active', True)
 
-    def is_valid(self):
+    def is_valid(self) -> bool:
         """
         Checks if the character object is valid.
         This method sets the `active` attribute to True if it does not already exist.
@@ -163,7 +162,7 @@ class PlayerCharacterClass(object):
         self.active = True if not hasattr(self, "active") else self.active
         return (hasattr(self, "primary_class") and self.primary_class is not None)
 
-    def get_formatted_class(self):
+    def get_formatted_class(self) -> str:
         """
         Returns a formatted string representing the character's class.
         The format of the returned string depends on the presence and value of the 
@@ -186,9 +185,9 @@ class PlayerCharacterClass(object):
         Asynchronously upserts the current player character class into the database.
         This method acquires a database connection, executes an upsert query for the 
         current player character class, and loads the resulting row into a new 
-        PlayerCharacterClassSchema instance.
+        PlayerCharacterClass instance.
         Returns:
-            PlayerCharacterClassSchema: The newly upserted player character class.
+            PlayerCharacterClass: The newly upserted player character class.
         """
         async with self._db.acquire() as conn:
             results = await conn.execute(upsert_class_query(self))
@@ -201,11 +200,11 @@ class PlayerCharacterClass(object):
 character_class_table = sa.Table(
     "character_class",
     metadata,
-    Column("id", Integer, primary_key=True, autoincrement='auto'),
-    Column("character_id", Integer, nullable=False),  # ref: > characters.id
-    Column("primary_class", Integer, nullable=False),  # ref: > c_character_class.id
-    Column("archetype", Integer, nullable=True),  # ref: > c_character_subclass.id
-    Column("active", BOOLEAN, nullable=False, default=True)
+    sa.Column("id", sa.Integer, primary_key=True, autoincrement='auto'),
+    sa.Column("character_id", sa.Integer, nullable=False),  # ref: > characters.id
+    sa.Column("primary_class", sa.Integer, nullable=False),  # ref: > c_character_class.id
+    sa.Column("archetype", sa.Integer, nullable=True),  # ref: > c_character_subclass.id
+    sa.Column("active", sa.BOOLEAN, nullable=False, default=True)
 )
         
 class PlayerCharacterClassSchema(Schema):
@@ -237,7 +236,7 @@ class PlayerCharacterClassSchema(Schema):
     
 def get_character_class(char_id: int) -> FromClause:
     return character_class_table.select().where(
-        and_(character_class_table.c.character_id == char_id, character_class_table.c.active == True)
+        sa.and_(character_class_table.c.character_id == char_id, character_class_table.c.active == True)
     ).order_by(character_class_table.c.id.asc())
 
 def upsert_class_query(char_class: PlayerCharacterClass):
@@ -315,28 +314,14 @@ class PlayerCharacter(object):
         self.renown: list[CharacterRenown] = []
 
     @property
-    def total_renown(self):
+    def total_renown(self) -> int:
         total = 0
 
         if hasattr(self, "renown") and self.renown:
             total += sum(ren.renown for ren in self.renown)
         return total
     
-    def inline_description(self, compendium: Compendium):
-        """
-        Generates an inline description of the character.
-        Args:
-            compendium (Compendium): The compendium containing additional information about the character.
-        Returns:
-            str: A formatted string containing the character's name, level, species, classes, and credits.
-        """
-
-        class_str = "".join([f" {c.get_formatted_class()}" for c in self.classes])
-        str = f"**{self.name}** - Level {self.level} {self.species.value} [{class_str}] ({self.credits:,} credits)" 
-
-        return str
-    
-    def inline_class_description(self):
+    def inline_class_description(self) -> str:
         """
         Generates a formatted string that describes the character's name, level, species, and classes.
         Returns:
@@ -346,7 +331,7 @@ class PlayerCharacter(object):
         return f"**{self.name}** - Level {self.level} {self.species.value} [{class_str}]" 
 
 
-    def is_valid(self, max_level: int):
+    def is_valid(self, max_level: int) -> bool:
         """
         Check if the character object is valid.
         A character is considered valid if it has the attributes 'name', 'species', and 'level',
@@ -401,21 +386,21 @@ class PlayerCharacter(object):
 characters_table = sa.Table(
     "characters",
     metadata,
-    Column("id", Integer, primary_key=True, autoincrement='auto'),
-    Column("name", String, nullable=False),
-    Column("species", Integer, nullable=False),  # ref: > c_character_race.id
-    Column("credits", Integer, nullable=False, default=0),
-    Column("level", Integer, nullable=False, default=1),
-    Column("player_id", BigInteger, nullable=False),
-    Column("guild_id", BigInteger, nullable=False),  # ref: > guilds.id
-    Column("reroll", BOOLEAN, nullable=True),
-    Column("active", BOOLEAN, nullable=False, default=True),
-    Column("freeroll_from", Integer, nullable=True, default=None),
-    Column("primary_character", BOOLEAN, nullable=False, default=False),
-    Column("channels", ARRAY(BigInteger), nullable=False, default=[]),
-    Column("faction", Integer, nullable=True),
-    Column("avatar_url", String, nullable=True),
-    Column("nickname", String, nullable=True)
+    sa.Column("id", sa.Integer, primary_key=True, autoincrement='auto'),
+    sa.Column("name", sa.String, nullable=False),
+    sa.Column("species", sa.Integer, nullable=False),  # ref: > c_character_race.id
+    sa.Column("credits", sa.Integer, nullable=False, default=0),
+    sa.Column("level", sa.Integer, nullable=False, default=1),
+    sa.Column("player_id", sa.BigInteger, nullable=False),
+    sa.Column("guild_id", sa.BigInteger, nullable=False),  # ref: > guilds.id
+    sa.Column("reroll", sa.BOOLEAN, nullable=True),
+    sa.Column("active", sa.BOOLEAN, nullable=False, default=True),
+    sa.Column("freeroll_from", sa.Integer, nullable=True, default=None),
+    sa.Column("primary_character", sa.BOOLEAN, nullable=False, default=False),
+    sa.Column("channels", ARRAY(sa.BigInteger), nullable=False, default=[]),
+    sa.Column("faction", sa.Integer, nullable=True),
+    sa.Column("avatar_url", sa.String, nullable=True),
+    sa.Column("nickname", sa.String, nullable=True)
 )
 
 class CharacterSchema(Schema):
@@ -474,16 +459,16 @@ class CharacterSchema(Schema):
 
 def get_active_player_characters(player_id: int, guild_id: int) -> FromClause:
     return characters_table.select().where(
-        and_(characters_table.c.player_id == player_id, characters_table.c.guild_id == guild_id,
+        sa.and_(characters_table.c.player_id == player_id, characters_table.c.guild_id == guild_id,
              characters_table.c.active == True)
     )
 
 def get_all_player_characters(player_id: int, guild_id: int) -> FromClause:
-    return characters_table.select().where(and_(characters_table.c.player_id == player_id, characters_table.c.guild_id == guild_id))
+    return characters_table.select().where(sa.and_(characters_table.c.player_id == player_id, characters_table.c.guild_id == guild_id))
 
 def get_player_character_history(player_id: int, guild_id: int) -> FromClause:
     return characters_table.select().where(
-        and_(characters_table.c.player_id == player_id, characters_table.c.guild_id == guild_id)
+        sa.and_(characters_table.c.player_id == player_id, characters_table.c.guild_id == guild_id)
     ).order_by(characters_table.c.id.desc())
 
 
@@ -492,13 +477,13 @@ def get_character_from_id(char_id: int) -> FromClause:
 
 def get_charcters_from_player_list(players: list[int], guild_id: int) -> FromClause:
     return characters_table.select().where(
-        and_(characters_table.c.player_id.in_(players), characters_table.c.active == True,
+        sa.and_(characters_table.c.player_id.in_(players), characters_table.c.active == True,
              characters_table.c.guild_id == guild_id)
     ).order_by(characters_table.c.id.desc())
 
 def get_guild_characters_query(guild_id: int) -> FromClause:
     return characters_table.select().where(
-        and_(characters_table.c.active == True, characters_table.c.guild_id == guild_id)
+        sa.and_(characters_table.c.active == True, characters_table.c.guild_id == guild_id)
     ).order_by(characters_table.c.id.desc())
 
 

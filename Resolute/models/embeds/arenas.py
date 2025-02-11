@@ -1,14 +1,14 @@
-from discord import ApplicationContext, Color, Embed, Interaction
+import discord
 
 from Resolute.constants import THUMBNAIL, ZWSP3
 from Resolute.models.objects.arenas import Arena
 
 
-class ArenaStatusEmbed(Embed):
-    def __init__(self, ctx: ApplicationContext | Interaction, arena: Arena):
+class ArenaStatusEmbed(discord.Embed):
+    def __init__(self, ctx: discord.ApplicationContext | discord.Interaction, arena: Arena):
         self.arena = arena
         self.ctx = ctx
-        super().__init__(title=f"{arena.type.value.title()} Arena Status", color=Color.random())
+        super().__init__(title=f"{arena.type.value.title()} Arena Status", color=discord.Color.random())
         self.set_thumbnail(url=THUMBNAIL)
 
         self.description = f"**Tier**: {arena.tier.id}\n"\
@@ -34,12 +34,12 @@ class ArenaStatusEmbed(Embed):
         if message:
             await message.edit(embed=self)
             
-class ArenaPhaseEmbed(Embed):
-    def __init__(self, ctx: ApplicationContext, arena: Arena, result: str):
+class ArenaPhaseEmbed(discord.Embed):
+    def __init__(self, ctx: discord.ApplicationContext, arena: Arena, result: str):
         super().__init__(
             title=f"Phase {arena.completed_phases} Complete!",
             description=f"Complete phases: **{arena.completed_phases} / {arena.tier.max_phases}**",
-            color=Color.random()
+            color=discord.Color.random()
         )
 
         self.set_thumbnail(url=THUMBNAIL)

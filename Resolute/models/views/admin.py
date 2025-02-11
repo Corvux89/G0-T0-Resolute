@@ -2,9 +2,8 @@
 import logging
 from typing import Mapping
 
-from discord import (ButtonStyle, ChannelType, InputTextStyle, Interaction,
-                     TextChannel)
-from discord.ui import Button, InputText, Modal, Select, button, channel_select
+import discord
+import discord.ui
 
 from Resolute.bot import G0T0Bot
 from Resolute.models.views.base import InteractiveView
@@ -28,7 +27,7 @@ class AdminMenuUI(AdminView):
     Methods:
         new(cls, owner, bot):
             Creates a new instance of AdminMenuUI with the specified owner and bot.
-        message(self, _: Button, interaction: Interaction):
+        message(self, _: discord.ui.Button, interaction: Interaction):
             Sends a message when the "Send message" button is clicked.
         exit(self, *_):
             Exits the admin menu when the "Exit" button is clicked.
@@ -41,11 +40,11 @@ class AdminMenuUI(AdminView):
         inst.bot = bot
         return inst
     
-    @button(label="Send message", style=ButtonStyle.primary, row=1)
-    async def message(self, _: Button, interaction: Interaction):
+    @discord.ui.button(label="Send message", style=discord.ButtonStyle.primary, row=1)
+    async def message(self, _: discord.ui.Button, interaction: discord.Interaction):
         await self.defer_to(_BotMessage, interaction)
 
-    @button(label="Exit", style=ButtonStyle.danger, row=3)
+    @discord.ui.button(label="Exit", style=discord.ButtonStyle.danger, row=3)
     async def exit(self, *_):
         await self.on_timeout()
     
@@ -53,15 +52,15 @@ class AdminMenuUI(AdminView):
         return {"embed": None, "content": "Pick an Option"}
     
 class _BotMessage(AdminView):
-    channel: TextChannel = None
+    channel: discord.TextChannel = None
 
-    @channel_select(placeholder="Channel to message", channel_types=[ChannelType(0)])
-    async def channel_select(self, c: Select, interaction: Interaction):
+    @discord.ui.channel_select(placeholder="Channel to message", channel_types=[discord.ChannelType(0)])
+    async def channel_select(self, c: discord.ui.Select, interaction: discord.Interaction):
         self.channel = c.values[0]
         await self.refresh_content(interaction)
 
-    @button(label="Send Message", style=ButtonStyle.primary, row=2, disabled=True)
-    async def send_message(self, _: Button, interaction: Interaction):
+    @discord.ui.button(label="Send Message", style=discord.ButtonStyle.primary, row=2, disabled=True)
+    async def send_message(self, _: discord.ui.Button, interaction: discord.Interaction):
         modal = MessageModal()
         response = await self.prompt_modal(interaction, modal)
 
@@ -71,8 +70,8 @@ class _BotMessage(AdminView):
         
         await self.refresh_content(interaction)
 
-    @button(label="Back", style=ButtonStyle.grey, row=3)
-    async def back(self, _: Button, interaction: Interaction):
+    @discord.ui.button(label="Back", style=discord.ButtonStyle.grey, row=3)
+    async def back(self, _: discord.ui.Button, interaction: discord.Interaction):
         await self.defer_to(AdminMenuUI, interaction)
 
     async def _before_send(self):
@@ -85,15 +84,15 @@ class _BotMessage(AdminView):
         content = f"{f'**Channel**: {self.channel.name}' if self.channel else 'Pick a channel'}"
         return {"embed": None, "content": content}
 
-class MessageModal(Modal):
+class MessageModal(discord.ui.Modal):
     message: str = None
 
     def __init__(self):
         super().__init__(title="Message Content")
 
-        self.add_item(InputText(label="Message Text", style=InputTextStyle.long, max_length=2000))
+        self.add_item(discord.ui.InputText(label="Message Text", style=discord.ui.InputTextStyle.long, max_length=2000))
 
-    async def callback(self, interaction: Interaction):
+    async def callback(self, interaction: discord.Interaction):
         self.message = self.children[0].value 
 
         await interaction.response.defer()

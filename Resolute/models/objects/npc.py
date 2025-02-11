@@ -1,8 +1,7 @@
 import aiopg.sa
+import discord
 import sqlalchemy as sa
-from discord import ApplicationContext, Thread
 from marshmallow import Schema, fields, post_load
-from sqlalchemy import BigInteger, Column, Integer, String, and_, null
 from sqlalchemy.dialects.postgresql import ARRAY, insert
 from sqlalchemy.sql import FromClause, TableClause
 
@@ -39,18 +38,18 @@ class NPC(object):
         self.roles: list[int] = kwargs.get('roles', [])
         self.adventure_id: int = kwargs.get('adventure_id')
 
-    async def delete(self):
+    async def delete(self) -> None:
         async with self._db.acquire() as conn:
             await conn.execute(delete_npc_query(self))
 
-    async def upsert(self):
+    async def upsert(self) -> None:
         async with self._db.acquire() as conn:
             await conn.execute(upsert_npc_query(self))
 
-    async def send_webhook_message(self, ctx: ApplicationContext, content: str):
+    async def send_webhook_message(self, ctx: discord.ApplicationContext, content: str) -> None:
         webhook = await gh.get_webhook(ctx.channel)
 
-        if isinstance(ctx.channel, Thread):
+        if isinstance(ctx.channel, discord.Thread):
             await webhook.send(username=self.name,
                                avatar_url=self.avatar_url if self.avatar_url else None,
                                content=content,
@@ -65,12 +64,12 @@ class NPC(object):
 npc_table = sa.Table(
     "ref_npc",
     metadata,
-    Column("guild_id", Integer, nullable=False),
-    Column("key", String, nullable=False),
-    Column("name", String, nullable=False),
-    Column("avatar_url", String, nullable=True),
-    Column("roles", ARRAY(BigInteger), nullable=False),
-    Column("adventure_id", Integer, nullable=True),
+    sa.Column("guild_id", sa.Integer, nullable=False),
+    sa.Column("key", sa.String, nullable=False),
+    sa.Column("name", sa.String, nullable=False),
+    sa.Column("avatar_url", sa.String, nullable=True),
+    sa.Column("roles", ARRAY(sa.BigInteger), nullable=False),
+    sa.Column("adventure_id", sa.Integer, nullable=True),
     sa.PrimaryKeyConstraint("guild_id", "key")
 )
 
@@ -98,19 +97,19 @@ class NPCSchema(Schema):
 
 def get_npc_query(guild_id: int, key: str) -> FromClause:
     return npc_table.select().where(
-        and_(npc_table.c.guild_id == guild_id, npc_table.c.key == key)
+        sa.and_(npc_table.c.guild_id == guild_id, npc_table.c.key == key)
     )
 
 
 def get_guild_npcs_query(guild_id: int) -> FromClause:
     return npc_table.select().where(
-        and_(npc_table.c.guild_id == guild_id, npc_table.c.adventure_id == null())
+        sa.and_(npc_table.c.guild_id == guild_id, npc_table.c.adventure_id == sa.null())
     ).order_by(npc_table.c.key.asc())
 
 
 def get_adventure_npcs_query(adventure_id: int) -> FromClause:
     return npc_table.select().where(
-        and_(npc_table.c.adventure_id == adventure_id)
+        sa.and_(npc_table.c.adventure_id == adventure_id)
     ).order_by(npc_table.c.key.asc())
 
 
@@ -141,5 +140,5 @@ def upsert_npc_query(npc: NPC):
 
 def delete_npc_query(npc: NPC) -> TableClause:
     return npc_table.delete().where(
-        and_(npc_table.c.guild_id == npc.guild_id, npc_table.c.key == npc.key)
+        sa.and_(npc_table.c.guild_id == npc.guild_id, npc_table.c.key == npc.key)
     )

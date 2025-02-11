@@ -2,9 +2,8 @@
 
 import logging
 import re
-from enum import Enum
 
-from discord import ApplicationContext
+import discord
 from discord.ext import commands
 
 from Resolute.constants import ACTIVITY_POINT_MINIMUM
@@ -13,25 +12,12 @@ from Resolute.helpers.general_helpers import (get_selection, is_admin,
 from Resolute.helpers.messages import get_player_from_say_message
 from Resolute.models.objects.adventures import Adventure
 from Resolute.models.objects.characters import PlayerCharacter
+from Resolute.models.objects.enum import WebhookType
 from Resolute.models.objects.exceptions import CharacterNotFound
 from Resolute.models.objects.npc import NPC
 from Resolute.models.objects.players import Player
 
 log = logging.getLogger(__name__)
-
-class WebhookType(Enum):
-    """
-    Enum representing different types of webhooks.
-    Attributes:
-        npc (str): Represents a non-player character webhook.
-        adventure (str): Represents an adventure webhook.
-        say (str): Represents a say webhook.
-    """
-
-    npc = "npc"
-    adventure = "adventure"
-    say = "say"
-
 
 class G0T0Webhook(object):
     """
@@ -63,19 +49,19 @@ class G0T0Webhook(object):
     """
 
     player: Player = None
-    ctx: ApplicationContext | commands.Context
+    ctx: discord.ApplicationContext | commands.Context
     type: WebhookType
 
     npc: NPC = None
     character: PlayerCharacter = None
     content: str = None
 
-    def __init__(self, ctx: ApplicationContext|commands.Context, type: WebhookType, **kwargs):
+    def __init__(self, ctx: discord.ApplicationContext|commands.Context, type: WebhookType, **kwargs):
         self.ctx = ctx
         self.type = type
 
 
-    async def run(self):
+    async def run(self) -> None:
         self.player = await self.ctx.bot.get_player(self.ctx.author.id, self.ctx.guild.id)
 
         if self.type == WebhookType.say:
@@ -166,7 +152,7 @@ class G0T0Webhook(object):
 
         return direct_matches
 
-    async def _handle_character_mention(self):
+    async def _handle_character_mention(self) -> None:
         mentioned_characters = []
 
         if char_mentions := re.findall(r'{\$([^}]*)}', self.content):
@@ -197,15 +183,15 @@ class G0T0Webhook(object):
                     except:
                         pass
 
-    def _get_npc_from_guild(self):
+    def _get_npc_from_guild(self) -> NPC:
         return next((npc for npc in self.player.guild.npcs if npc.key == self.ctx.invoked_with), None)
     
-    def _get_npc_from_adventure(self, adventure: Adventure):
+    def _get_npc_from_adventure(self, adventure: Adventure) -> NPC:
         if self.player.id in adventure.dms:
             return next((npc for npc in adventure.npcs if npc.key == self.ctx.invoked_with), None)
         return None
     
-    async def is_authorized(self, npc):
+    async def is_authorized(self, npc) -> bool:
         user_roles = [role.id for role in self.player.member.roles]
 
         return bool(set(user_roles) & set(npc.roles)) or await is_admin(self.ctx)

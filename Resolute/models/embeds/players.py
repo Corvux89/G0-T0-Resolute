@@ -1,4 +1,4 @@
-from discord import Color, Embed
+import discord
 
 from Resolute.compendium import Compendium
 from Resolute.constants import ZWSP3
@@ -6,7 +6,7 @@ from Resolute.helpers.general_helpers import get_webhook
 from Resolute.models.objects.players import ArenaPost, Player, RPPost
 
 
-class PlayerOverviewEmbed(Embed):
+class PlayerOverviewEmbed(discord.Embed):
     def __init__(self, player: Player, compendium: Compendium):
         super().__init__(title=f"Information for {player.member.display_name}")
         self.set_thumbnail(url=player.member.display_avatar.url)
@@ -47,11 +47,11 @@ class PlayerOverviewEmbed(Embed):
             self.add_field(name=f"Character Information",value=val_str,inline=False)
 
 
-class ArenaPostEmbed(Embed):
+class ArenaPostEmbed(discord.Embed):
     def __init__(self, post: ArenaPost):
         super().__init__(
             title=f"{post.type.value} Arena Request",
-            color=Color.random()
+            color=discord.Color.random()
         )
         self.post = post
 
@@ -78,11 +78,11 @@ class ArenaPostEmbed(Embed):
         return False
 
 
-class RPPostEmbed(Embed):
+class RPPostEmbed(discord.Embed):
     def __init__(self, player: Player, posts: list[RPPost]):
         super().__init__(
             title="Roleplay Request",
-            color=Color.random()
+            color=discord.Color.random()
         )
 
         self.set_thumbnail(url=player.member.avatar.url)

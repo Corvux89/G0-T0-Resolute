@@ -1,15 +1,14 @@
 import discord
-from discord import Color, Embed
 
 from Resolute.constants import THUMBNAIL
 from Resolute.helpers.general_helpers import process_message
 from Resolute.models.objects.guilds import PlayerGuild
 
 
-class GuildEmbed(Embed):
+class GuildEmbed(discord.Embed):
     def __init__(self, g: PlayerGuild):
         super().__init__(title=f'Server Settings for {g.guild.name}',
-                         colour=Color.random())
+                         colour=discord.Color.random())
         self.set_thumbnail(url=THUMBNAIL)
 
         self.add_field(name="**Settings**",
@@ -32,9 +31,9 @@ class GuildEmbed(Embed):
                         value="\n".join([f"{discord.utils.get(g.guild.roles, id=s.role_id).mention} ({s.amount} CC's){'*' if s.leadership else ''}{f' - {s.reason}' if s.reason else ''}" for s in g.stipends]),
                            inline=False)
             
-class ResetEmbed(Embed):
+class ResetEmbed(discord.Embed):
     def __init__(self, g: PlayerGuild, is_primary: bool = False, **kwargs):
-        super().__init__(color=Color.random())
+        super().__init__(color=discord.Color.random())
         if is_primary:
             title = kwargs.get('title', 'Weekly Reset')
 

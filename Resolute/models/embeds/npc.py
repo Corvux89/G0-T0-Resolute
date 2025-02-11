@@ -1,13 +1,13 @@
-from discord import Color, Embed
+import discord
 
 from Resolute.models.objects.guilds import PlayerGuild
 from Resolute.models.objects.npc import NPC
 
 
-class NPCEmbed(Embed):
+class NPCEmbed(discord.Embed):
     def __init__(self, guild: PlayerGuild, npcs: list[NPC] = [], primary_npc: NPC = None):
         super().__init__(title=f"Manage NPCs",
-                         color=Color.random())
+                         color=discord.Color.random())
         
         npc = primary_npc if primary_npc else npcs[0] if len(npcs) > 0 else None
 

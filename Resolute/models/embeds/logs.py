@@ -1,16 +1,16 @@
 from datetime import datetime, timezone
 
-from discord import Color, Embed
+import discord
 
 from Resolute.constants import THUMBNAIL
 from Resolute.models.objects.logs import DBLog
 from Resolute.models.objects.players import Player
 
 
-class LogEmbed(Embed):
+class LogEmbed(discord.Embed):
     def __init__(self, log_entry: DBLog, show_values: bool = False):
         super().__init__(title=f"{log_entry.activity.value} Logged - {log_entry.character.name if log_entry.character else log_entry.player.member.display_name}",
-                         color=Color.random(),
+                         color=discord.Color.random(),
                          timestamp=log_entry.created_ts.replace(tzinfo=None))
         
         self.set_thumbnail(url=log_entry.player.member.display_avatar.url if log_entry.player.member else THUMBNAIL)
@@ -34,10 +34,10 @@ class LogEmbed(Embed):
             self.description += f"**Notes**: {log_entry.notes}\n"
 
 
-class LogStatsEmbed(Embed):
+class LogStatsEmbed(discord.Embed):
     def __init__(self, player: Player, player_stats: {}, first: bool = True):
         super().__init__(title=f"Log statistics for {player.member.name}",
-                         color=Color.random(),
+                         color=discord.Color.random(),
                          timestamp=datetime.now(timezone.utc))
         
         self.set_thumbnail(url=player.member.display_avatar.url)
@@ -55,10 +55,10 @@ class LogStatsEmbed(Embed):
                 value="\n".join([f"{a.replace('Activity ', '')}: {v}" for a, v in player_stats.items() if "Activity" in a])
             )
 
-class LogHxEmbed(Embed):
+class LogHxEmbed(discord.Embed):
     def __init__(self, player: Player, logs: list[DBLog] = []):
         super().__init__(title=f"Log history - {player.member.name}",
-                         color=Color.random())
+                         color=discord.Color.random())
         
         self.set_thumbnail(url=player.member.display_avatar.url)
 

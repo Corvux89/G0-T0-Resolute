@@ -13,9 +13,10 @@ from Resolute.models.embeds import ErrorEmbed
 from Resolute.models.embeds.shatterpoint import (ShatterpointEmbed,
                                                  ShatterpointLogEmbed)
 from Resolute.models.objects.characters import PlayerCharacter
+from Resolute.models.objects.enum import AdjustOperator
 from Resolute.models.objects.guilds import PlayerGuild
 from Resolute.models.objects.players import Player
-from Resolute.models.objects.shatterpoint import (AdjustOperator, Shatterpoint,
+from Resolute.models.objects.shatterpoint import (Shatterpoint,
                                                   ShatterpointPlayer,
                                                   ShatterpointRenown)
 from Resolute.models.views.base import InteractiveView

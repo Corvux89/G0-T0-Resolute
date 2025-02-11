@@ -1,14 +1,14 @@
-from discord import ApplicationContext, Color, Embed, Interaction
+import discord
 
 from Resolute.constants import THUMBNAIL, ZWSP3
 from Resolute.models.objects.adventures import Adventure
 from Resolute.models.objects.players import Player
 
 
-class AdventuresEmbed(Embed):
+class AdventuresEmbed(discord.Embed):
     def __init__(self, player: Player, phrases: list[str]):
         super().__init__(title=f"Adventure Information for {player.member.display_name}",
-                         color=Color.dark_grey())
+                         color=discord.Color.dark_grey())
         
         self.set_thumbnail(url=player.member.display_avatar.url)
         
@@ -35,10 +35,10 @@ class AdventuresEmbed(Embed):
                                value=f"{out_str[1] if len(out_str) > 1 else ''}",
                                inline=False)
                 
-class AdventureSettingsEmbed(Embed):
-    def __init__(self, ctx: ApplicationContext | Interaction, adventure: Adventure):
+class AdventureSettingsEmbed(discord.Embed):
+    def __init__(self, ctx: discord.ApplicationContext | discord.Interaction, adventure: Adventure):
         super().__init__(title=f"{adventure.name}",
-                         color=Color.random())
+                         color=discord.Color.random())
         self.set_thumbnail(url=THUMBNAIL)
         
         self.description = f"**Adventure Role**: {adventure.role.mention}\n"\
@@ -48,22 +48,22 @@ class AdventureSettingsEmbed(Embed):
             self.description += f"\n**Factions**:\n" + "\n".join([f"{ZWSP3}{f.value}" for f in adventure.factions])
         
         self.add_field(name=f"DM{'s' if len(adventure.dms) > 1 else ''}",
-                       value="\n".join([f"{ZWSP3}- {ctx.guild.get_member(dm).mention}" for dm in adventure.dms]),
+                       value="\n".join([f"{ZWSP3}- {ctx.guild.get_member(dm).mention}" for dm in adventure.dms if ctx.guild.get_member(dm)]),
                        inline=False)
         
         if adventure.player_characters:
             self.add_field(name="Players",
-                           value="\n".join([f"{ZWSP3}- {character.name} ({ctx.guild.get_member(character.player_id).mention})" for character in adventure.player_characters]),
+                           value="\n".join([f"{ZWSP3}- {character.name} ({ctx.guild.get_member(character.player_id).mention})" for character in adventure.player_characters if ctx.guild.get_member(character.player_id)]),
                            inline=False)
             
-class AdventureRewardEmbed(Embed):
-    def __init__(self, ctx: ApplicationContext | Interaction, adventure: Adventure, cc: int):
+class AdventureRewardEmbed(discord.Embed):
+    def __init__(self, ctx: discord.ApplicationContext | discord.Interaction, adventure: Adventure, cc: int):
         super().__init__(
             title=f"Adventure Rewards",
             description=f"**Adventure**: {adventure.name}\n"
                         f"**CC Earned**: {cc:,}\n"
                         f"**CC Earned to date**: {adventure.cc:,}\n",
-            color=Color.random()
+            color=discord.Color.random()
         )
         self.set_thumbnail(url=THUMBNAIL)
         self.set_footer(text=f"Logged by {ctx.user.name}",
@@ -71,10 +71,10 @@ class AdventureRewardEmbed(Embed):
 
 
         self.add_field(name=f"DM{'s' if len(adventure.dms) > 1 else ''}",
-                       value="\n".join([f"{ZWSP3}- {ctx.guild.get_member(dm).mention}" for dm in adventure.dms]),
+                       value="\n".join([f"{ZWSP3}- {ctx.guild.get_member(dm).mention}" for dm in adventure.dms if ctx.guild.get_member(dm)]),
                        inline=False)
         
         if adventure.player_characters:
             self.add_field(name="Players",
-                           value="\n".join([f"{ZWSP3}- {character.name} ({ctx.guild.get_member(character.player_id).mention})" for character in adventure.player_characters]),
+                           value="\n".join([f"{ZWSP3}- {character.name} ({ctx.guild.get_member(character.player_id).mention})" for character in adventure.player_characters if ctx.guild.get_member(character.player_id)]),
                            inline=False)

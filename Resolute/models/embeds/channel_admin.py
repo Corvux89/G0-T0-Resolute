@@ -1,10 +1,9 @@
 import discord
-from discord import Embed, Member, PermissionOverwrite, Role
 
 from Resolute.constants import ZWSP3
 
 
-class ChannelEmbed(Embed):
+class ChannelEmbed(discord.Embed):
     def __init__(self, channel: discord.TextChannel):
         super().__init__(title=f"{channel.name} Summary")
         chunk_size = 1000
@@ -31,7 +30,7 @@ class ChannelEmbed(Embed):
                         inline=False)
 
 
-def get_overwrite_string(overwrites: dict[Role | Member, PermissionOverwrite]):
+def get_overwrite_string(overwrites: dict[ discord.Role | discord.Member, discord.PermissionOverwrite]):
     out = []
     for target in overwrites:
         value = f"**{target.mention}**:\n"

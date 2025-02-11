@@ -7,10 +7,11 @@ from Resolute.bot import G0T0Bot
 from Resolute.constants import APPROVAL_EMOJI, DENIED_EMOJI
 from Resolute.helpers.general_helpers import try_delete
 from Resolute.models.embeds.players import PlayerOverviewEmbed
-from Resolute.models.objects.applications import ApplicationType, PlayerApplication
+from Resolute.models.objects.enum import ApplicationType, WebhookType
+from Resolute.models.objects.applications import PlayerApplication
 from Resolute.models.objects.exceptions import (ApplicationNotFound,
                                                 CharacterNotFound, G0T0Error)
-from Resolute.models.objects.webhook import G0T0Webhook, WebhookType
+from Resolute.models.objects.webhook import G0T0Webhook
 from Resolute.models.views.applications import (CharacterSelectUI,
                                                 LevelUpRequestModal, NewCharacterRequestUI)
 from Resolute.models.views.character_view import (CharacterGetUI,

@@ -2,9 +2,8 @@ from datetime import datetime, timezone
 from math import ceil
 from typing import Mapping, Type
 
-from discord import ButtonStyle, Interaction, Member, SelectOption
-from discord.ui import (Button, InputText, Modal, Select, button, select,
-                        user_select)
+import discord
+import discord.ui
 
 from Resolute.bot import G0T0Bot
 from Resolute.helpers.general_helpers import confirm, is_admin
@@ -39,10 +38,10 @@ class AdventureView(InteractiveView):
     """
     __menu_copy_attrs__ = ("bot", "adventure", "dm_select")
     bot: G0T0Bot
-    owner: Member = None
+    owner: discord.Member = None
     adventure: Adventure
     dm_select: bool = False
-    member: Member = None
+    member: discord.Member = None
     character: PlayerCharacter = None
     
 
@@ -56,17 +55,17 @@ class AdventureView(InteractiveView):
         self.message = message
         return message
 
-    async def defer_to(self, view_type: Type["AdventureView"], interaction: Interaction, stop=True):
+    async def defer_to(self, view_type: Type["AdventureView"], interaction: discord.Interaction, stop=True):
         view = view_type.from_menu(self)
         if stop:
             self.stop()
         await view._before_send()
         await view.refresh_content(interaction)
 
-    async def get_content(self, interaction: Interaction) -> Mapping:
+    async def get_content(self, interaction: discord.Interaction) -> Mapping:
         return {"embed": AdventureSettingsEmbed(interaction, self.adventure), "content": ""}
 
-    async def refresh_content(self, interaction: Interaction, **kwargs):
+    async def refresh_content(self, interaction: discord.Interaction, **kwargs):
         content_kwargs = await self.get_content(interaction)
         await self._before_send()
         await self.commit()
@@ -82,17 +81,17 @@ class AdventureSettingsUI(AdventureView):
     -------
     new(cls, bot: G0T0Bot, owner: Member, adventure: Adventure):
         Creates a new instance of AdventureSettingsUI.
-    adventure_dm(self, _: Button, interaction: Interaction):
+    adventure_dm(self, _: discord.ui.Button, interaction: discord.Interaction):
         Handles the "Manage DM(s)" button click event.
-    adventure_players(self, _: Button, interaction: Interaction):
+    adventure_players(self, _: discord.ui.Button, interaction: discord.Interaction):
         Handles the "Manage Player(s)" button click event.
-    adventure_reward(self, _: Button, interaction: Interaction):
+    adventure_reward(self, _: discord.ui.Button, interaction: discord.Interaction):
         Handles the "Reward CC" button click event and rewards players and DMs with CC.
-    npcs(self, _: Button, interaction: Interaction):
+    npcs(self, _: discord.ui.Button, interaction: discord.Interaction):
         Handles the "NPCs" button click event and opens the NPC settings UI.
-    factions(self, _: Button, interaction: Interaction):
+    factions(self, _: discord.ui.Button, interaction: discord.Interaction):
         Handles the "Factions" button click event and defers to the adventure factions view.
-    adventure_close(self, _: Button, interaction: Interaction):
+    adventure_close(self, _: discord.ui.Button, interaction: discord.Interaction):
         Handles the "Close Adventure" button click event and closes the adventure after confirmation.
     exit(self, *_):
         Handles the "Exit" button click event and exits the UI.
@@ -101,25 +100,25 @@ class AdventureSettingsUI(AdventureView):
     """
 
     @classmethod
-    def new(cls, bot: G0T0Bot, owner: Member, adventure: Adventure):
+    def new(cls, bot: G0T0Bot, owner: discord.Member, adventure: Adventure):
         inst = cls(owner=owner)
         inst.bot = bot
         inst.adventure = adventure
 
         return inst
     
-    @button(label="Manage DM(s)", style=ButtonStyle.primary, row=1)
-    async def adventure_dm(self, _: Button, interaction: Interaction):
+    @discord.ui.button(label="Manage DM(s)", style=discord.ButtonStyle.primary, row=1)
+    async def adventure_dm(self, _: discord.ui.Button, interaction: discord.Interaction):
         self.dm_select = True
         await self.defer_to(_AdventureMemberSelect, interaction)
 
-    @button(label="Manage Player(s)", style=ButtonStyle.primary, row=1)
-    async def adventure_players(self, _: Button, interaction: Interaction):
+    @discord.ui.button(label="Manage Player(s)", style=discord.ButtonStyle.primary, row=1)
+    async def adventure_players(self, _: discord.ui.Button, interaction: discord.Interaction):
         self.dm_select = False
         await self.defer_to(_AdventureMemberSelect, interaction)
 
-    @button(label="Reward CC", style=ButtonStyle.green, row=2)
-    async def adventure_reward(self, _: Button, interaction: Interaction):
+    @discord.ui.button(label="Reward CC", style=discord.ButtonStyle.green, row=2)
+    async def adventure_reward(self, _: discord.ui.Button, interaction: discord.Interaction):
         modal = AdventureRewardModal(self.adventure)
         response = await self.prompt_modal(interaction, modal)
 
@@ -148,19 +147,19 @@ class AdventureSettingsUI(AdventureView):
             await interaction.channel.send(embed=AdventureRewardEmbed(interaction, self.adventure, response.cc))
         await self.refresh_content(interaction)
 
-    @button(label="NPCs", style=ButtonStyle.primary, row=2)
-    async def npcs(self, _: Button, interaction: Interaction):
+    @discord.ui.button(label="NPCs", style=discord.ButtonStyle.primary, row=2)
+    async def npcs(self, _: discord.ui.Button, interaction: discord.Interaction):
         guild = await self.bot.get_player_guild(self.adventure.guild_id)
         view = NPCSettingsUI.new(self.bot, self.owner, guild, AdventureSettingsUI,
                                adventure=self.adventure)
         await view.send_to(interaction)
 
-    @button(label="Factions", style=ButtonStyle.primary, row=2)
-    async def factions(self, _: Button, interaction: Interaction):
+    @discord.ui.button(label="Factions", style=discord.ButtonStyle.primary, row=2)
+    async def factions(self, _: discord.ui.Button, interaction: discord.Interaction):
         await self.defer_to(_AdventureFactions, interaction)
 
-    @button(label="Close Adventure", style=ButtonStyle.danger, row=2)
-    async def adventure_close(self, _: Button, interaction: Interaction):
+    @discord.ui.button(label="Close Adventure", style=discord.ButtonStyle.danger, row=2)
+    async def adventure_close(self, _: discord.ui.Button, interaction: discord.Interaction):
         conf = await confirm(interaction, "Are you sure you want to end this adventure? (Reply with yes/no)", True, self.bot)
 
         if conf is None:
@@ -202,7 +201,7 @@ class AdventureSettingsUI(AdventureView):
             await self.on_timeout()
         
 
-    @button(label="Exit", style=ButtonStyle.danger, row=3)
+    @discord.ui.button(label="Exit", style=discord.ButtonStyle.danger, row=3)
     async def exit(self, *_):
         await self.on_timeout()
 
@@ -217,9 +216,9 @@ class _AdventureMemberSelect(AdventureView):
         self.add_member.disabled = False if self.character else True
         self.remove_member.disabled = False if self.character else True
 
-    @user_select(placeholder="Select a Player", row=1)
-    async def member_select(self, user: Select, interaction: Interaction):
-        member: Member = user.values[0]
+    @discord.ui.user_select(placeholder="Select a Player", row=1)
+    async def member_select(self, user: discord.ui.Select, interaction: discord.Interaction):
+        member: discord.Member = user.values[0]
         self.member = member
         self.player = await self.bot.get_player(self.member.id, interaction.guild.id)
         self.character = None
@@ -227,13 +226,13 @@ class _AdventureMemberSelect(AdventureView):
             self.add_item(self.character_select)
         await self.refresh_content(interaction)
 
-    @select(placeholder="Select a character", options=[SelectOption(label="You should never see me")], row=2, custom_id="char_select")
-    async def character_select(self, char: Select, interaction: Interaction):
+    @discord.ui.select(placeholder="Select a character", options=[discord.SelectOption(label="You should never see me")], row=2, custom_id="char_select")
+    async def character_select(self, char: discord.Select, interaction: discord.Interaction):
         self.character = self.player.characters[int(char.values[0])]
         await self.refresh_content(interaction)
 
-    @button(label="Add Player", row=3)
-    async def add_member(self, _: Button, interaction: Interaction):
+    @discord.ui.button(label="Add Player", row=3)
+    async def add_member(self, _: discord.ui.Button, interaction: discord.Interaction):
         if self.dm_select:
             if self.member.id in self.adventure.dms:
                 await interaction.channel.send(embed=ErrorEmbed(f"{self.member.mention} is already a DM of this adventure"), delete_after=5)
@@ -260,8 +259,8 @@ class _AdventureMemberSelect(AdventureView):
 
         await self.refresh_content(interaction)
         
-    @button(label="Remove Player", row=3)
-    async def remove_member(self, _: Button, interaction: Interaction):
+    @discord.ui.button(label="Remove Player", row=3)
+    async def remove_member(self, _: discord.ui.Button, interaction: discord.Interaction):
         if self.dm_select:
             if self.member.id not in self.adventure.dms:
                 await interaction.channel.send(embed=ErrorEmbed(f"{self.member.mention} is not a DM of this adventure"), delete_after=5)
@@ -285,8 +284,8 @@ class _AdventureMemberSelect(AdventureView):
         await self.refresh_content(interaction)
 
 
-    @button(label="Back", style=ButtonStyle.grey, row=4)
-    async def back(self, _: Button, interaction: Interaction):
+    @discord.ui.button(label="Back", style=discord.ButtonStyle.grey, row=4)
+    async def back(self, _: discord.ui.Button, interaction: discord.Interaction):
         self.character = None
         self.player = None
         self.member = None
@@ -302,7 +301,7 @@ class _AdventureMemberSelect(AdventureView):
 
                 char_list = []
                 for char in self.player.characters:
-                    char_list.append(SelectOption(label=f"{char.name}", value=f"{self.player.characters.index(char)}", default=True if self.character and  self.player.characters.index(char) == self.player.characters.index(self.character) else False))
+                    char_list.append(discord.ui.SelectOption(label=f"{char.name}", value=f"{self.player.characters.index(char)}", default=True if self.character and  self.player.characters.index(char) == self.player.characters.index(self.character) else False))
                 self.character_select.options = char_list
             else:
                 self.remove_item(self.character_select)
@@ -320,20 +319,20 @@ class _AdventureFactions(AdventureView):
     faction: Faction = None
 
     async def _before_send(self):
-        faction_list = [SelectOption(label=f"{f.value}", value=f"{f.id}", default=True if self.faction and self.faction.id == f.id else False) for f in self.bot.compendium.faction[0].values()]
+        faction_list = [discord.ui.SelectOption(label=f"{f.value}", value=f"{f.id}", default=True if self.faction and self.faction.id == f.id else False) for f in self.bot.compendium.faction[0].values()]
 
         self.faction_select.options = faction_list
 
         self.add_faction.disabled = False if self.faction else True
         self.remove_faction.disabled = False if self.faction else True
 
-    @select(placeholder="Select a faction", row=1)
-    async def faction_select(self, f: Select, interaction: Interaction):
+    @discord.ui.select(placeholder="Select a faction", row=1)
+    async def faction_select(self, f: discord.ui.Select, interaction: discord.Interaction):
         self.faction = self.bot.compendium.get_object(Faction, int(f.values[0]))
         await self.refresh_content(interaction)
 
-    @button(label="Add Faction", style=ButtonStyle.primary, row=2)
-    async def add_faction(self, _: Button, interaction: Interaction):
+    @discord.ui.button(label="Add Faction", style=discord.ButtonStyle.primary, row=2)
+    async def add_faction(self, _: discord.ui.Button, interaction: discord.Interaction):
         if self.faction and self.faction.id not in [f.id for f in self.adventure.factions]:
             if len(self.adventure.factions) >= 2 and not is_admin:
                 await interaction.channel.send(embed=ErrorEmbed(f"You do not have the ability to add more than 2 factions to an adventure"), delete_after=5)
@@ -341,19 +340,19 @@ class _AdventureFactions(AdventureView):
                 self.adventure.factions.append(self.faction)
         await self.refresh_content(interaction)
 
-    @button(label="Remove Faction", style=ButtonStyle.primary, row=2)
-    async def remove_faction(self, _: Button, interaction: Interaction):
+    @discord.ui.button(label="Remove Faction", style=discord.ButtonStyle.primary, row=2)
+    async def remove_faction(self, _: discord.ui.Button, interaction: discord.Interaction):
         if self.faction and self.faction.id in [f.id for f in self.adventure.factions]:
             faction = next((f for f in self.adventure.factions if f.id == self.faction.id), None)
             self.adventure.factions.remove(faction)
         await self.refresh_content(interaction)
 
-    @button(label="Back", style=ButtonStyle.grey, row=3)
-    async def back(self, _: Button, interaction: Interaction):
+    @discord.ui.button(label="Back", style=discord.ButtonStyle.grey, row=3)
+    async def back(self, _: discord.ui.Button, interaction: discord.Interaction):
         self.faction = None
         await self.defer_to(AdventureSettingsUI, interaction)   
     
-class AdventureRewardModal(Modal):
+class AdventureRewardModal(discord.ui.Modal):
     adventure: Adventure
     cc: int = 0
 
@@ -361,9 +360,9 @@ class AdventureRewardModal(Modal):
         super().__init__(title=f"{adventure.name} Rewards")
         self.adventure = adventure
 
-        self.add_item(InputText(label="CC Amount", required=True, placeholder="CC Amount", max_length=3))
+        self.add_item(discord.ui.InputText(label="CC Amount", required=True, placeholder="CC Amount", max_length=3))
 
-    async def callback(self, interaction: Interaction):
+    async def callback(self, interaction: discord.Interaction):
         try:
             self.cc = int(self.children[0].value)
         except:

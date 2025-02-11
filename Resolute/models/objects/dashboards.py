@@ -1,9 +1,8 @@
 import aiopg.sa
+import discord
 import sqlalchemy as sa
-from discord import CategoryChannel, HTTPException, Message, TextChannel
 from marshmallow import Schema, fields, post_load
-from sqlalchemy import BigInteger, Column, Integer, String
-from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.dialects.postgresql import ARRAY, insert
 from sqlalchemy.sql.selectable import FromClause, TableClause
 
 from Resolute.constants import ZWSP3
@@ -31,9 +30,9 @@ class RPDashboardCategory(object):
     def __init__(self, **kwargs):
         self.title = kwargs.get('title')
         self.name = kwargs.get('name')
-        self.channels: list[TextChannel] = kwargs.get('channels', [])
+        self.channels: list[discord.TextChannel] = kwargs.get('channels', [])
 
-    def channel_output(self):
+    def channel_output(self) -> str:
         if self.channels:
             sorted_channels = [c for c in sorted(filter(None, self.channels), key=lambda c: c.position)]
 
@@ -82,20 +81,21 @@ class RefDashboard(object):
         self.post_id = kwargs.get('post_id')
         self.excluded_channel_ids: list[int] = kwargs.get('excluded_channel_ids', [])
         self.dashboard_type: DashboardType = kwargs.get('dashboard_type')
-        self.channel: TextChannel = kwargs.get('channel')
-        self.category_channel: CategoryChannel = kwargs.get('category_channel')
+        self.channel: discord.TextChannel = kwargs.get('channel')
+        self.category_channel: discord.CategoryChannel = kwargs.get('category_channel')
+        self.excluded_channels: list[discord.TextChannel] = kwargs.get('excluded_channels')
         
-    def channels_to_search(self) -> list[TextChannel]:
+    def channels_to_search(self) -> list[discord.TextChannel]:
         if self.category_channel:
             return list(filter(lambda c: c.id not in self.excluded_channel_ids, self.category_channel.text_channels))
         
         return []
     
-    async def get_pinned_post(self) -> Message:
+    async def get_pinned_post(self) -> discord.Message:
         if self.channel:
             try:
                 msg = await self.channel.fetch_message(self.post_id)
-            except HTTPException:
+            except discord.HTTPException:
                 return True
             except:
                 return None
@@ -103,22 +103,22 @@ class RefDashboard(object):
             return msg
         return None
     
-    async def upsert(self):
+    async def upsert(self) -> None:
         async with self._db.acquire() as conn:
             await conn.execute(upsert_dashboard_query(self))
 
-    async def delete(self):
+    async def delete(self) -> None:
         async with self._db.acquire() as conn:
             await conn.execute(delete_dashboard_query(self))
 
 ref_dashboard_table = sa.Table(
     "ref_dashboards",
     metadata,
-    Column("post_id", BigInteger, primary_key=True, nullable=False),
-    Column("category_channel_id", BigInteger, nullable=True),
-    Column("channel_id", BigInteger, nullable=False),
-    Column("excluded_channel_ids", sa.ARRAY(BigInteger), nullable=True, default=[]),
-    Column("dashboard_type", Integer, nullable=False)  # ref: > c_dashboard_type.id
+    sa.Column("post_id", sa.BigInteger, primary_key=True, nullable=False),
+    sa.Column("category_channel_id", sa.BigInteger, nullable=True),
+    sa.Column("channel_id", sa.BigInteger, nullable=False),
+    sa.Column("excluded_channel_ids", ARRAY(sa.BigInteger), nullable=True, default=[]),
+    sa.Column("dashboard_type", sa.Integer, nullable=False)  # ref: > c_dashboard_type.id
 )
 
 class RefDashboardSchema(Schema):
@@ -144,6 +144,7 @@ class RefDashboardSchema(Schema):
     
     def get_channels(self, dashboard: RefDashboard):
         dashboard.channel = self.bot.get_channel(dashboard.channel_id)
+        dashboard.excluded_channels = [self.bot.get_channel(c) for c in dashboard.excluded_channel_ids]
         dashboard.category_channel = self.bot.get_channel(dashboard.category_channel_id)
 
     
@@ -197,8 +198,8 @@ def delete_dashboard_query(dashboard: RefDashboard) -> TableClause:
 class_census_table = sa.Table(
     "Class Census",
     metadata,
-    Column("Class", String, nullable=False),
-    Column("#", Integer, nullable=False)
+    sa.Column("Class", sa.String, nullable=False),
+    sa.Column("#", sa.Integer, nullable=False)
 )
 
 def get_class_census() -> FromClause:
@@ -208,8 +209,8 @@ def get_class_census() -> FromClause:
 level_distribution_table = sa.Table(
     "Level Distribution",
     metadata,
-    Column("level", Integer, nullable=False),
-    Column("#", Integer, nullable=False, default=0)
+    sa.Column("level", sa.Integer, nullable=False),
+    sa.Column("#", sa.Integer, nullable=False, default=0)
 )
 
 def get_level_distribution() -> FromClause:

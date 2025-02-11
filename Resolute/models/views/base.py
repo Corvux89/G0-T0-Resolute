@@ -1,22 +1,22 @@
 from typing import Mapping, Optional, Type
 
-from discord import HTTPException, Interaction, Member, Message
-from discord.ui import View
+import discord
+import discord.ui
 
 from Resolute.models.embeds import ErrorEmbed
 from Resolute.models.objects.exceptions import G0T0Error
 
 
-class InteractiveView(View):
+class InteractiveView(discord.ui.View):
     """
     InteractiveView is a subclass of View that provides interactive functionalities for a Discord bot.
     Attributes:
-        owner (Member): The owner of the interaction.
-        message (Optional[Message]): The message associated with the view.
+        owner (discord.Member): The owner of the interaction.
+        message (Optional[discord.Message]): The message associated with the view.
     Methods:
-        __init__(owner: Member, *args, **kwargs):
+        __init__(owner: discord.Member, *args, **kwargs):
             Initializes the InteractiveView with the owner and other arguments.
-        interaction_check(interaction: Interaction) -> bool:
+        interaction_check(interaction: discord.Interaction) -> bool:
         on_error(error, item, interaction):
             Handles errors that occur during interaction.
         from_menu(other: "InteractiveView") -> "InteractiveView":
@@ -29,27 +29,27 @@ class InteractiveView(View):
             Handles the timeout event by editing and deleting the message.
         send_to(destination, *args, **kwargs):
             Sends the view to a specified destination.
-        defer_to(view_type: Type["InteractiveView"], interaction: Interaction, stop=True):
+        defer_to(view_type: Type["InteractiveView"], interaction: discord.Interaction, stop=True):
             Defers the interaction to another view type.
         get_content() -> Mapping:
             Returns the content to be sent with the view.
-        refresh_content(interaction: Interaction, **kwargs):
+        refresh_content(interaction: discord.Interaction, **kwargs):
             Refreshes the content of the view based on the interaction.
-        prompt_modal(interaction: Interaction, modal):
+        prompt_modal(interaction: discord.Interaction, modal):
             Prompts the user with a modal and waits for their response.
         """
 
 
-    def __init__(self, owner: Member, *args, **kwargs):
+    def __init__(self, owner: discord.Member, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.owner = owner
-        self.message = None # type: Optional[Message]
+        self.message = None # type: Optional[discord.Message]
 
-    async def interaction_check(self, interaction: Interaction) -> bool:
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
         """
         Checks if the user initiating the interaction is the owner.
         Args:
-            interaction (Interaction): The interaction to check.
+            interaction (discord.Interaction): The interaction to check.
         Returns:
             bool: True if the user is the owner, False otherwise.
         Sends a message to the user if they are not the owner.
@@ -126,7 +126,7 @@ class InteractiveView(View):
         Handles the timeout event for the view.
         This method is called when the view times out. It attempts to edit the message
         associated with the view to remove the view and then delete the message. If the
-        message is None, the method returns immediately. If an HTTPException occurs
+        message is None, the method returns immediately. If an discord.HTTPException occurs
         during the process, it is caught and printed.
         Returns:
             None
@@ -136,7 +136,7 @@ class InteractiveView(View):
         try:
             await self.message.edit(view=None)
             await self.message.delete()
-        except HTTPException as e:
+        except discord.HTTPException as e:
             print(e)
             pass
 
@@ -158,7 +158,7 @@ class InteractiveView(View):
         self.message = message
         return message
 
-    async def defer_to(self, view_type: Type["InteractiveView"], interaction: Interaction, stop=True):
+    async def defer_to(self, view_type: Type["InteractiveView"], interaction: discord.Interaction, stop=True):
         """
         Defers the current view to another view of the specified type.
         This method stops the current view (if specified) and transitions to a new view
@@ -166,7 +166,7 @@ class InteractiveView(View):
         and then refreshes its content based on the provided interaction.
         Args:
             view_type (Type["InteractiveView"]): The type of the view to defer to.
-            interaction (Interaction): The interaction that triggered the deferment.
+            interaction (discord.Interaction): The interaction that triggered the deferment.
             stop (bool, optional): Whether to stop the current view. Defaults to True.
         Returns:
             None
@@ -185,12 +185,12 @@ class InteractiveView(View):
         """
         return {}
 
-    async def refresh_content(self, interaction: Interaction, **kwargs):
+    async def refresh_content(self, interaction: discord.Interaction, **kwargs):
         """
         Refreshes the content of the interaction.
         This method commits any changes, retrieves the updated content, and updates the interaction response accordingly.
         Args:
-            interaction (Interaction): The interaction object to be refreshed.
+            interaction (discord.Interaction): The interaction object to be refreshed.
             **kwargs: Additional keyword arguments to be passed to the response methods.
         Returns:
             None
@@ -209,11 +209,11 @@ class InteractiveView(View):
             await interaction.response.edit_message(view=self, **content_kwargs, **kwargs)
 
     @staticmethod
-    async def prompt_modal(interaction: Interaction, modal):
+    async def prompt_modal(interaction: discord.Interaction, modal):
         """
         Asynchronously prompts a modal dialog in response to an interaction.
         Args:
-            interaction (Interaction): The interaction that triggers the modal.
+            interaction (discord.Interaction): The interaction that triggers the modal.
             modal: The modal dialog to be displayed.
         Returns:
             The modal dialog after it has been interacted with.

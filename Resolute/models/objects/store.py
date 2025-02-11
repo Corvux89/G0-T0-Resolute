@@ -1,6 +1,5 @@
 import sqlalchemy as sa
 from marshmallow import Schema, fields, post_load
-from sqlalchemy import BigInteger, Column, Numeric
 from sqlalchemy.sql.selectable import TableClause
 
 from Resolute.models import metadata
@@ -28,8 +27,8 @@ class Store(object):
 store_table = sa.Table(
     "store",
     metadata,
-    Column("sku", BigInteger, primary_key=True, nullable=False),
-    Column("user_cost", Numeric, nullable=False)
+    sa.Column("sku", sa.BigInteger, primary_key=True, nullable=False),
+    sa.Column("user_cost", sa.Numeric, nullable=False)
 )
 
 class StoreSchema(Schema):

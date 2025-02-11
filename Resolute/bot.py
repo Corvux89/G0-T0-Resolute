@@ -5,8 +5,8 @@ from math import ceil
 from signal import SIGINT, SIGTERM
 from timeit import default_timer as timer
 
+import discord
 from aiopg.sa import Engine, SAConnection, create_engine
-from discord import ApplicationContext, ClientUser, Interaction, Member
 from discord.ext import commands
 from quart import Quart
 from sqlalchemy.schema import CreateTable
@@ -459,7 +459,7 @@ class G0T0Bot(commands.Bot):
 
         return d
     
-    async def log(self, ctx: ApplicationContext|Interaction|None, player: Member|ClientUser|Player, author: Member|ClientUser|Player, activity: Activity|str, **kwargs) -> DBLog:
+    async def log(self, ctx: discord.ApplicationContext | discord.Interaction|None, player: discord.Member | discord.ClientUser|Player, author: discord.Member | discord.ClientUser|Player, activity: Activity|str, **kwargs) -> DBLog:
         """
         Logs an activity for a player and updates the database accordingly.
         Args:

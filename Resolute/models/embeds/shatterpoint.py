@@ -1,4 +1,4 @@
-from discord import Color, Embed
+import discord
 
 from Resolute.bot import G0T0Bot
 from Resolute.constants import THUMBNAIL, ZWSP3
@@ -6,10 +6,10 @@ from Resolute.models.objects.shatterpoint import (Shatterpoint,
                                                   ShatterpointPlayer)
 
 
-class ShatterpointEmbed(Embed):
+class ShatterpointEmbed(discord.Embed):
     def __init__(self, bot: G0T0Bot, shatterpoint: Shatterpoint, player_list: bool = False, player: ShatterpointPlayer = None):
         super().__init__(title=f"Summary for shatterpoint: {shatterpoint.name}",
-                         color=Color.random())
+                         color=discord.Color.random())
         self.set_thumbnail(url=THUMBNAIL)
         
         guild = bot.get_guild(shatterpoint.guild_id)
@@ -55,7 +55,7 @@ class ShatterpointEmbed(Embed):
                                value="\n".join([f"{ZWSP3}{member.mention if member else f'Unknown Member {p.player_id}'} ({p.cc:,}, {p.num_messages}, {len(p.characters)})" for p in players if (member := guild.get_member(p.player_id)) is not None]),
                                inline=False)
                 
-class ShatterpointLogEmbed(Embed):
+class ShatterpointLogEmbed(discord.Embed):
     def __init__(self, shatterpoint: Shatterpoint):
         super().__init__(title=f"Shatterpoint: {shatterpoint.name} - has been logged")
 

@@ -10,10 +10,11 @@ from discord.ext import commands, tasks
 from Resolute.bot import G0T0Bot
 from Resolute.helpers.general_helpers import confirm, is_admin
 from Resolute.models.embeds.guilds import ResetEmbed
+from Resolute.models.objects.enum import WebhookType
 from Resolute.models.objects.guilds import (GuildSchema, PlayerGuild,
                                             get_guilds_with_reset_query)
 from Resolute.models.objects.players import reset_div_cc
-from Resolute.models.objects.webhook import G0T0Webhook, WebhookType
+from Resolute.models.objects.webhook import G0T0Webhook
 from Resolute.models.views.guild_settings import GuildSettingsUI
 
 log = logging.getLogger(__name__)

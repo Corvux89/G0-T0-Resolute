@@ -9,7 +9,7 @@ from marshmallow import Schema, fields, post_load
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.sql import FromClause
 
-import Resolute.models.objects.logs as log
+import Resolute.models.objects.logs as logs
 import Resolute.models.objects.npc as npc
 from Resolute.compendium import Compendium
 from Resolute.helpers.general_helpers import get_webhook
@@ -388,9 +388,9 @@ class PlayerSchema(Schema):
         arena_host_activity = self.bot.compendium.get_activity("ARENA_HOST")
 
         async with self.bot.db.acquire() as conn:
-            rp_result = await conn.execute(log.get_log_count_by_player_and_activity(player.id, player.guild_id, rp_activity.id))
-            areana_result = await conn.execute(log.get_log_count_by_player_and_activity(player.id, player.guild_id, arena_activity.id))
-            arena_host_result = await conn.execute(log.get_log_count_by_player_and_activity(player.id, player.guild_id, arena_host_activity.id))
+            rp_result = await conn.execute(logs.get_log_count_by_player_and_activity(player.id, player.guild_id, rp_activity.id))
+            areana_result = await conn.execute(logs.get_log_count_by_player_and_activity(player.id, player.guild_id, arena_activity.id))
+            arena_host_result = await conn.execute(logs.get_log_count_by_player_and_activity(player.id, player.guild_id, arena_host_activity.id))
             player.completed_rps = await rp_result.scalar()
             player.completed_arenas = await areana_result.scalar() + await arena_host_result.scalar()
 

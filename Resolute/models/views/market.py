@@ -1,8 +1,11 @@
 from typing import Mapping
 
+import discord
+import discord.ui
+
 from discord import (ButtonStyle, InputTextStyle, Interaction, Member,
                      SelectOption)
-from discord.ui import Button, InputText, Modal, Select, button, select
+
 
 from Resolute.bot import G0T0Bot
 from Resolute.models.categories.categories import (LevelCost,
@@ -39,9 +42,9 @@ class MarketPromptUI(MarketPrompt):
     -------
     new(cls, bot: G0T0Bot, owner: Member, player: Player):
         Creates a new instance of MarketPromptUI with the given bot, owner, and player.
-    character_select(self, char: Select, interation: Interaction):
+    character_select(self, char: discord.ui.Select, interation: Interaction):
         Handles the character selection from the dropdown menu.
-    transaction_prompt(self, _: Button, interaction: Interaction):
+    transaction_prompt(self, _: discord.ui.Button, interaction: Interaction):
         Handles the confirmation of the transaction.
     exit(self, *_):
         Handles the cancellation of the transaction.
@@ -60,16 +63,16 @@ class MarketPromptUI(MarketPrompt):
         inst.transaction = MarketTransaction(inst.player, character=character)
         return inst
     
-    @select(placeholder="Select a character", row=1)
-    async def character_select(self, char: Select, interation: Interaction):
+    @discord.ui.select(placeholder="Select a character", row=1)
+    async def character_select(self, char: discord.ui.Select, interation: Interaction):
         self.transaction.character = self.player.characters[int(char.values[0])]
         await self.refresh_content(interation)
 
-    @button(label="Confirm", style=ButtonStyle.primary, row=2)
-    async def transaction_prompt(self, _: Button, interaction: Interaction):
+    @discord.ui.button(label="Confirm", style=ButtonStyle.primary, row=2)
+    async def transaction_prompt(self, _: discord.ui.Button, interaction: Interaction):
         await self.defer_to(TransactionPromptUI, interaction)
 
-    @button(label="Cancel", style=ButtonStyle.grey, row=2)
+    @discord.ui.button(label="Cancel", style=ButtonStyle.grey, row=2)
     async def exit(self, *_):
         await self.on_timeout()
 
@@ -95,8 +98,8 @@ class TransactionPromptUI(MarketPrompt):
         inst.transaction = transaction or MarketTransaction(inst.player, character=character)
         return inst
     
-    @select(placeholder="Select transaction type", row=1)
-    async def transaction_select(self, type: Select, interaction: Interaction):
+    @discord.ui.select(placeholder="Select transaction type", row=1)
+    async def transaction_select(self, type: discord.ui.Select, interaction: Interaction):
         self.transaction.type = self.bot.compendium.get_object(TransactionType, int(type.values[0]))
         self.transaction.subtype = None
 
@@ -115,19 +118,19 @@ class TransactionPromptUI(MarketPrompt):
 
         await self.refresh_content(interaction)
 
-    @select(placeholder="Select transaction subtype", row=2, custom_id="subtype")
-    async def transaction_sub_select(self, subtype: Select, interaction: Interaction):
+    @discord.ui.select(placeholder="Select transaction subtype", row=2, custom_id="subtype")
+    async def transaction_sub_select(self, subtype: discord.ui.Select, interaction: Interaction):
         self.transaction.subtype = self.bot.compendium.get_object(TransactionSubType, int(subtype.values[0]))
         await self.refresh_content(interaction)
 
-    @button(label="Details", style=ButtonStyle.primary, row=3)
-    async def transaction_details(self, _: Button, interaction: Interaction):
+    @discord.ui.button(label="Details", style=ButtonStyle.primary, row=3)
+    async def transaction_details(self, _: discord.ui.Button, interaction: Interaction):
         modal = TransactionDetails(self.transaction)
         await self.prompt_modal(interaction, modal)
         await self.refresh_content(interaction)
 
-    @button(label="Submit", style=ButtonStyle.green, row=3)
-    async def submit_transaction(self, _: Button, interaction: Interaction):
+    @discord.ui.button(label="Submit", style=ButtonStyle.green, row=3)
+    async def submit_transaction(self, _: discord.ui.Button, interaction: Interaction):
         if self.transaction.message:
             await self.transaction.message.edit(embed=TransactionEmbed(self.transaction))
             await self.transaction.message.clear_reactions()
@@ -138,11 +141,11 @@ class TransactionPromptUI(MarketPrompt):
             await interaction.response.send_message("Issue submitting request", ephemeral=True)
         await self.on_timeout()
 
-    @button(label="Change Character", style=ButtonStyle.secondary, row=4)
-    async def change_character(self, _: Button, interaction: Interaction):
+    @discord.ui.button(label="Change Character", style=ButtonStyle.secondary, row=4)
+    async def change_character(self, _: discord.ui.Button, interaction: Interaction):
         await self.defer_to(MarketPromptUI, interaction)
 
-    @button(label="Cancel", style=ButtonStyle.grey, row=4)
+    @discord.ui.button(label="Cancel", style=ButtonStyle.grey, row=4)
     async def exit(self, *_):
         if self.transaction.message:
             await self.transaction.message.edit(embed=TransactionEmbed(self.transaction))
@@ -170,7 +173,7 @@ class TransactionPromptUI(MarketPrompt):
         else:
             self.remove_item(self.transaction_sub_select)
 
-class TransactionDetails(Modal):
+class TransactionDetails(discord.ui.Modal):
     transaction: MarketTransaction
 
     def __init__(self, transaction: MarketTransaction):
@@ -178,15 +181,15 @@ class TransactionDetails(Modal):
 
         self.transaction = transaction
 
-        self.add_item(InputText(label="Transaction Details", placeholder="Transaction Details", style=InputTextStyle.long, max_length=2000, 
+        self.add_item(discord.ui.InputText(label="Transaction Details", placeholder="Transaction Details", style=InputTextStyle.long, max_length=2000, 
                                 value=transaction.notes))
         
         if self.transaction.type.currency == "CC" or self.transaction.type.currency == "Both":
-            self.add_item(InputText(label="Total CC Cost", placeholder="Total CC Cost",
+            self.add_item(discord.ui.InputText(label="Total CC Cost", placeholder="Total CC Cost",
                                     value=transaction.cc))
 
         if self.transaction.type.currency == "CR" or self.transaction.type.currency == "Both":
-            self.add_item(InputText(label="Total Credit Cost", placeholder="Total Credit Cost",
+            self.add_item(discord.ui.InputText(label="Total Credit Cost", placeholder="Total Credit Cost",
                                     value=transaction.credits))
         
     async def callback(self, interaction: Interaction):

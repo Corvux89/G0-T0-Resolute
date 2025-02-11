@@ -165,7 +165,7 @@ class G0T0Webhook(object):
                 if len(matches) == 1:
                     mention_char = matches[0]
                 elif len(matches) > 1:
-                    choices = [f"{c.name} [{self.ctx.guild.get_member(c.player_id).display_name}]" for c in matches]
+                    choices = [f"{c.name} [{self.ctx.guild.get_member(c.player_id).display_name}]" for c in matches if self.ctx.guild.get_member(c.player_id)]
 
                     if choice := await get_selection(self.ctx, choices, True, True, f"Type your choice in {self.ctx.channel.jump_url}", True, f"Found multiple matches for `{mention}`"):
                         mention_char = matches[choices.index(choice)]

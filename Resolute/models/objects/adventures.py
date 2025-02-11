@@ -1,11 +1,9 @@
 from datetime import datetime, timezone
 
 import aiopg.sa
+import discord
 import sqlalchemy as sa
-from discord import CategoryChannel, Member, Role, PermissionOverwrite
 from marshmallow import Schema, fields, post_load
-from sqlalchemy import (TIMESTAMP, BigInteger, Column, Integer, String, and_,
-                        null)
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.sql import FromClause
 
@@ -59,14 +57,14 @@ class Adventure(object):
         Inserts or updates the adventure in the database.
     """
     
-    def __init__(self, db: aiopg.sa.Engine, guild_id: int, name: str, role: Role, category_channel: CategoryChannel, **kwargs):
+    def __init__(self, db: aiopg.sa.Engine, guild_id: int, name: str, role: discord.Role, category_channel: discord.CategoryChannel, **kwargs):
         self._db = db
 
         self.id = kwargs.get('id')
         self.guild_id = guild_id
         self.name: str = name
-        self.category_channel: CategoryChannel = category_channel
-        self.role: Role = role
+        self.category_channel: discord.CategoryChannel = category_channel
+        self.role: discord.Role = role
         self.role_id = role.id
         self.category_channel_id = category_channel.id
         self.dms: list[int] = kwargs.get('dms', [])
@@ -92,7 +90,7 @@ class Adventure(object):
         async with self._db.acquire() as conn:
             await conn.execute(upsert_adventure_query(self))
 
-    async def update_dm_permissions(self, member: Member, remove: bool = False):
+    async def update_dm_permissions(self, member: discord.Member, remove: bool = False) -> None:
         """
         Updates the Dungeon Master's permissions for the adventure.
         This method adds or removes the specified role and permissions for the given member
@@ -116,7 +114,7 @@ class Adventure(object):
         if remove:
             del category_overwrites[member]
         else:
-            category_overwrites[member] = PermissionOverwrite(manage_messages=True)
+            category_overwrites[member] = discord.PermissionOverwrite(manage_messages=True)
 
         await self.category_channel.edit(overwrites=category_overwrites)
 
@@ -125,7 +123,7 @@ class Adventure(object):
             if remove:
                 del overwrites[member]
             else:
-                overwrites[member] = PermissionOverwrite(manage_messages=True)
+                overwrites[member] = discord.PermissionOverwrite(manage_messages=True)
             await channel.edit(overwrites=overwrites)
 
             
@@ -135,17 +133,17 @@ class Adventure(object):
 adventures_table = sa.Table(
     "adventures",
     metadata,
-    Column("id", Integer, primary_key=True, autoincrement='auto'),
-    Column("guild_id", BigInteger, nullable=False),
-    Column("name", String, nullable=False),
-    Column("role_id", BigInteger, nullable=False),
-    Column("dms", ARRAY(BigInteger), nullable=False),  # ref: <> characters.player_id
-    Column("category_channel_id", BigInteger, nullable=False),
-    Column("cc", Integer, nullable=False, default=0),
-    Column("created_ts", TIMESTAMP(timezone=timezone.utc)),
-    Column("end_ts", TIMESTAMP(timezone=timezone.utc), nullable=True, default=null()),
-    Column("characters", ARRAY(Integer), nullable=False),
-    Column("factions", ARRAY(Integer), nullable=False)
+    sa.Column("id", sa.Integer, primary_key=True, autoincrement='auto'),
+    sa.Column("guild_id", sa.BigInteger, nullable=False),
+    sa.Column("name", sa.String, nullable=False),
+    sa.Column("role_id", sa.BigInteger, nullable=False),
+    sa.Column("dms", ARRAY(sa.BigInteger), nullable=False),  # ref: <> characters.player_id
+    sa.Column("category_channel_id", sa.BigInteger, nullable=False),
+    sa.Column("cc", sa.Integer, nullable=False, default=0),
+    sa.Column("created_ts", sa.TIMESTAMP(timezone=timezone.utc)),
+    sa.Column("end_ts", sa.TIMESTAMP(timezone=timezone.utc), nullable=True, default=sa.null()),
+    sa.Column("characters", ARRAY(sa.Integer), nullable=False),
+    sa.Column("factions", ARRAY(sa.Integer), nullable=False)
 )
 
 class AdventureSchema(Schema):
@@ -233,20 +231,20 @@ def upsert_adventure_query(adventure: Adventure):
     
 def get_character_adventures_query(char_id: int) -> FromClause:
     return adventures_table.select().where(
-        and_(adventures_table.c.characters.contains([char_id]), adventures_table.c.end_ts == null())
+        sa.and_(adventures_table.c.characters.contains([char_id]), adventures_table.c.end_ts == sa.null())
     ).order_by(adventures_table.c.id.asc())
 
 def get_adventures_by_dm_query(member_id: int) -> FromClause:
     return adventures_table.select().where(
-        and_(adventures_table.c.dms.contains([member_id]), adventures_table.c.end_ts == null())
+        sa.and_(adventures_table.c.dms.contains([member_id]), adventures_table.c.end_ts == sa.null())
     ).order_by(adventures_table.c.id.asc())
 
 def get_adventure_by_role_query(role_id: int) -> FromClause:
     return adventures_table.select().where(
-        and_(adventures_table.c.role_id == role_id, adventures_table.c.end_ts == null())
+        sa.and_(adventures_table.c.role_id == role_id, adventures_table.c.end_ts == sa.null())
     )
 
 def get_adventure_by_category_channel_query(category_channel_id: int) -> FromClause:
     return adventures_table.select().where(
-        and_(adventures_table.c.category_channel_id == category_channel_id, adventures_table.c.end_ts == null())
+        sa.and_(adventures_table.c.category_channel_id == category_channel_id, adventures_table.c.end_ts == sa.null())
     )

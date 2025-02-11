@@ -4,15 +4,17 @@ import random
 from datetime import datetime, timedelta, timezone
 from timeit import default_timer as timer
 
-from discord import ApplicationContext, HTTPException, Message, SlashCommandGroup
+import discord
 from discord.ext import commands, tasks
 
 from Resolute.bot import G0T0Bot
 from Resolute.helpers.general_helpers import confirm, is_admin
 from Resolute.models.embeds.guilds import ResetEmbed
-from Resolute.models.objects.guilds import GuildSchema, PlayerGuild, get_guilds_with_reset_query
+from Resolute.models.objects.enum import WebhookType
+from Resolute.models.objects.guilds import (GuildSchema, PlayerGuild,
+                                            get_guilds_with_reset_query)
 from Resolute.models.objects.players import reset_div_cc
-from Resolute.models.objects.webhook import G0T0Webhook, WebhookType
+from Resolute.models.objects.webhook import G0T0Webhook
 from Resolute.models.views.guild_settings import GuildSettingsUI
 
 log = logging.getLogger(__name__)
@@ -51,7 +53,7 @@ class Guilds(commands.Cog):
             Scheduled task that cleans up roleplay posts older than 72 hours in the guild's RP post channel.
     """
     bot: G0T0Bot
-    guilds_commands = SlashCommandGroup("guild", "Commands related to guild specific settings", guild_only=True)
+    guilds_commands = discord.SlashCommandGroup("guild", "Commands related to guild specific settings", guild_only=True)
 
     def __init__(self, bot):
         self.bot = bot
@@ -86,7 +88,7 @@ class Guilds(commands.Cog):
             description="Modify the current guild/server settings"
     )
     @commands.check(is_admin)
-    async def guild_settings(self, ctx: ApplicationContext):
+    async def guild_settings(self, ctx: discord.ApplicationContext):
         """
         Handles the guild settings command.
         This method retrieves the guild settings for the guild associated with the given context,
@@ -110,7 +112,7 @@ class Guilds(commands.Cog):
         description="Performs a weekly reset for the server"
     )
     @commands.check(is_admin)
-    async def guild_weekly_reset(self, ctx: ApplicationContext):
+    async def guild_weekly_reset(self, ctx: discord.ApplicationContext):
         """
         Manually performs a weekly reset for the guild.
         This method defers the context, retrieves the player's guild, and asks for confirmation
@@ -140,7 +142,7 @@ class Guilds(commands.Cog):
         description="Send announcements only"
     )
     @commands.check(is_admin)
-    async def guild_announcements(self, ctx: ApplicationContext):
+    async def guild_announcements(self, ctx: discord.ApplicationContext):
         """
         Manually push guild announcements.
         This method allows a user to manually trigger the pushing of announcements for a guild.
@@ -195,7 +197,7 @@ class Guilds(commands.Cog):
                 guild.weekly_announcement = []
                 guild.ping_announcement = False
             except Exception as error:
-                if isinstance(error, HTTPException):
+                if isinstance(error, discord.HTTPException):
                     log.error(f"WEEKLY RESET: Error sending message to announcements channel in "
                               f"{guild.guild.name} [ {guild.id} ]")
                 else:
@@ -317,7 +319,7 @@ class Guilds(commands.Cog):
         for guild in self.bot.guilds:
             g: PlayerGuild = await self.bot.get_player_guild(guild.id)
 
-            def predicate(message: Message):
+            def predicate(message: discord.Message):
                 return message.author.bot and message.webhook_id is not None
 
             if g.rp_post_channel:
@@ -326,7 +328,7 @@ class Guilds(commands.Cog):
                     if len(deleted_messages) > 0:
                         log.info(f"RP BOARD: {len(deleted_messages)} message{'s' if len(deleted_messages) > 1 else ''} deleted from {g.rp_post_channel.name} for {g.guild.name} [{g.guild.id}]")
                 except Exception as error:
-                    if isinstance(error, HTTPException):
+                    if isinstance(error, discord.HTTPException):
                         log.error(f"RP BOARD: Error purging messages in {g.rp_post_channel.name}")
                     else:
                         log.error(error)

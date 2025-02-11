@@ -3,10 +3,9 @@ from datetime import datetime, timezone
 from statistics import mode
 
 import aiopg.sa
+import discord
 import sqlalchemy as sa
-from discord import TextChannel
 from marshmallow import Schema, fields, post_load
-from sqlalchemy import TIMESTAMP, BigInteger, Column, Integer, and_, null
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.sql.selectable import FromClause
 
@@ -56,9 +55,9 @@ class Arena(object):
         self.player_characters: list[PlayerCharacter] = []
         self.pin_message_id = kwargs.get('pin_message_id')
 
-        self.channel: TextChannel = kwargs.get('channel')
+        self.channel: discord.TextChannel = kwargs.get('channel')
 
-    def update_tier(self):
+    def update_tier(self) -> None:
         """
         Updates the tier of the arena based on the average level of player characters.
         The method calculates the average level of the player characters using the mode of their levels.
@@ -79,7 +78,7 @@ class Arena(object):
                 tier = bisect.bisect(levels, avg_level)
                 self.tier = self._compendium.get_object(ArenaTier, tier)
 
-    async def upsert(self):
+    async def upsert(self) -> None:
         """
         Asynchronously upserts the current arena object into the database.
         This method acquires a connection from the database pool and executes
@@ -92,7 +91,7 @@ class Arena(object):
         async with self._db.acquire() as conn:
             await conn.execute(upsert_arena_query(self))
     
-    async def close(self):
+    async def close(self) -> None:
         """
         Asynchronously closes the arena.
         This method performs the following actions:
@@ -116,16 +115,16 @@ class Arena(object):
 arenas_table = sa.Table(
     "arenas",
     metadata,
-    Column("id", Integer, primary_key=True, autoincrement='auto'),
-    Column("channel_id", BigInteger, nullable=False),
-    Column("pin_message_id", BigInteger, nullable=False),
-    Column("host_id", BigInteger, nullable=False),  # ref: > characters.player_id
-    Column("tier", Integer, nullable=False, default=1),  # ref: > c_arena_tier.id
-    Column("type", Integer, nullable=False, default=1),  # ref: > c_arena_type.id
-    Column("completed_phases", Integer, nullable=False, default=0),
-    Column("created_ts", TIMESTAMP(timezone=timezone.utc)),
-    Column("end_ts", TIMESTAMP(timezone=timezone.utc), nullable=True, default=null()),
-    Column("characters", ARRAY(Integer), nullable=True)
+    sa.Column("id", sa.Integer, primary_key=True, autoincrement='auto'),
+    sa.Column("channel_id", sa.BigInteger, nullable=False),
+    sa.Column("pin_message_id", sa.BigInteger, nullable=False),
+    sa.Column("host_id", sa.BigInteger, nullable=False),  # ref: > characters.player_id
+    sa.Column("tier", sa.Integer, nullable=False, default=1),  # ref: > c_arena_tier.id
+    sa.Column("type", sa.Integer, nullable=False, default=1),  # ref: > c_arena_type.id
+    sa.Column("completed_phases", sa.Integer, nullable=False, default=0),
+    sa.Column("created_ts", sa.TIMESTAMP(timezone=timezone.utc)),
+    sa.Column("end_ts", sa.TIMESTAMP(timezone=timezone.utc), nullable=True, default=sa.null()),
+    sa.Column("characters", ARRAY(sa.Integer), nullable=True)
 )
 
 class ArenaSchema(Schema):
@@ -169,17 +168,17 @@ class ArenaSchema(Schema):
 
 def get_arena_by_channel_query(channel_id: int) -> FromClause:
     return arenas_table.select().where(
-        and_(arenas_table.c.channel_id == channel_id, arenas_table.c.end_ts == null())
+        sa.and_(arenas_table.c.channel_id == channel_id, arenas_table.c.end_ts == sa.null())
     )
 
 def get_arena_by_host_query(member_id: int) -> FromClause:
     return arenas_table.select().where(
-        and_(arenas_table.c.host_id == member_id, arenas_table.c.end_ts == null())
+        sa.and_(arenas_table.c.host_id == member_id, arenas_table.c.end_ts == sa.null())
     )
 
 def get_character_arena_query(char_id: int) -> FromClause:
     return arenas_table.select().where(
-        and_(arenas_table.c.characters.contains([char_id]), arenas_table.c.end_ts == null())
+        sa.and_(arenas_table.c.characters.contains([char_id]), arenas_table.c.end_ts == sa.null())
     )
 
 def upsert_arena_query(arena: Arena):

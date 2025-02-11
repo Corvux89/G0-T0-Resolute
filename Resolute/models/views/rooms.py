@@ -1,7 +1,6 @@
 from typing import Mapping, Type
 
-from discord import SelectOption, Member, Role, Interaction, ButtonStyle, TextChannel
-from discord.ui import InputText, Modal, select, Select, button, Button
+import discord
 
 from Resolute.bot import G0T0Bot
 from Resolute.models.embeds import ErrorEmbed
@@ -20,7 +19,7 @@ class RoomSettings(InteractiveView):
         adventure (Adventure): The adventure associated with the room. Defaults to None.
         roles (list[Role]): The roles associated with the room. Defaults to an empty list.
     Methods:
-        _before_send(interaction: Interaction):
+        _before_send(interaction: discord.Interaction):
             A coroutine that is called before sending a message. Can be overridden to add custom behavior.
         send_to(destination, *args, **kwargs):
             A coroutine that sends the view to the specified destination.
@@ -30,13 +29,13 @@ class RoomSettings(InteractiveView):
                 **kwargs: Additional keyword arguments.
             Returns:
                 The sent message.
-        defer_to(view_type: Type["RoomSettings"], interaction: Interaction, stop=True):
+        defer_to(view_type: Type["RoomSettings"], interaction: discord.Interaction, stop=True):
             A coroutine that defers the view to another view type.
             Args:
                 view_type (Type[RoomSettings]): The type of the view to defer to.
                 interaction (Interaction): The interaction that triggered the defer.
                 stop (bool): Whether to stop the current view. Defaults to True.
-        refresh_content(interaction: Interaction, **kwargs):
+        refresh_content(interaction: discord.Interaction, **kwargs):
             A coroutine that refreshes the content of the view.
             Args:
                 interaction (Interaction): The interaction that triggered the refresh.
@@ -45,11 +44,11 @@ class RoomSettings(InteractiveView):
 
     __menu_copy_attrs__ = ("bot", "adventure", "roles")
     bot: G0T0Bot
-    owner: Member = None
+    owner: discord.Member = None
     adventure: Adventure = None
-    roles: list[Role] = []    
+    roles: list[discord.Role] = []    
     
-    async def _before_send(self, interaction: Interaction):
+    async def _before_send(self, interaction: discord.Interaction):
         pass
 
     async def send_to(self, destination, *args, **kwargs):
@@ -59,14 +58,14 @@ class RoomSettings(InteractiveView):
         self.message = message
         return message
 
-    async def defer_to(self, view_type: Type["RoomSettings"], interaction: Interaction, stop=True):
+    async def defer_to(self, view_type: Type["RoomSettings"], interaction: discord.Interaction, stop=True):
         view = view_type.from_menu(self)
         if stop:
             self.stop()
         await view._before_send(interaction)
         await view.refresh_content(interaction)
 
-    async def refresh_content(self, interaction: Interaction, **kwargs):
+    async def refresh_content(self, interaction: discord.Interaction, **kwargs):
         content_kwargs = await self.get_content()
         await self._before_send(interaction)
         await self.commit()
@@ -84,17 +83,17 @@ class RoomSettingsUI(RoomSettings):
     Methods:
         new(cls, bot, owner, roles=[], adventure=None):
             Creates a new instance of RoomSettingsUI.
-        room_view(self, choice: Select, interaction: Interaction):
+        room_view(self, choice: discord.ui.Select, interaction: discord.Interaction):
             Handles the selection of a view option for the room.
-        room_rename(self, _: Button, interaction: Interaction):
+        room_rename(self, _: discord.ui.Button, interaction: discord.Interaction):
             Handles the renaming of the room.
-        room_add(self, _: Button, interaction: Interaction):
+        room_add(self, _: discord.ui.Button, interaction: discord.Interaction):
             Handles the addition of a new room.
-        room_move(self, _: Button, interaction: Interaction):
+        room_move(self, _: discord.ui.Button, interaction: discord.Interaction):
             Handles the movement of the room to a different category.
         exit(self, *_):
             Handles the exit action.
-        _before_send(self, interaction: Interaction):
+        _before_send(self, interaction: discord.Interaction):
             Prepares the UI before sending it to the user.
         get_content(self) -> Mapping:
             Returns the content to be displayed in the UI.
@@ -108,8 +107,8 @@ class RoomSettingsUI(RoomSettings):
         inst.adventure = adventure
         return inst
     
-    @select(placeholder="Select a view option", row=1)
-    async def room_view(self, choice: Select, interaction: Interaction):
+    @discord.ui.select(placeholder="Select a view option", row=1)
+    async def room_view(self, choice: discord.ui.Select, interaction: discord.Interaction):
         view = int(choice.values[0])
 
         read = True if view == 1 or view == 2 else False
@@ -123,30 +122,30 @@ class RoomSettingsUI(RoomSettings):
 
         await self.refresh_content(interaction)
 
-    @button(label="Rename", style=ButtonStyle.primary, row=2)
-    async def room_rename(self, _: Button, interaction: Interaction):
+    @discord.ui.button(label="Rename", style=discord.ButtonStyle.primary, row=2)
+    async def room_rename(self, _: discord.ui.Button, interaction: discord.Interaction):
         modal = RoomNameModal(interaction.channel.name)
         response = await self.prompt_modal(interaction, modal)
 
         await interaction.channel.edit(name=response.name)
         await self.refresh_content(interaction)
 
-    @button(label="Add", style=ButtonStyle.primary, row=2)
-    async def room_add(self, _: Button, interaciton: Interaction):
+    @discord.ui.button(label="Add", style=discord.ButtonStyle.primary, row=2)
+    async def room_add(self, _: discord.ui.Button, interaciton: discord.Interaction):
         modal = RoomNameModal()
         response = await self.prompt_modal(interaciton, modal)
         await interaciton.channel.category.create_text_channel(response.name, reason=f"Room created by {self.owner.name}")
         await self.refresh_content(interaciton)
 
-    @button(label="Move", style=ButtonStyle.primary, row=2)
-    async def room_move(self, _: Button, interaction: Interaction):
+    @discord.ui.button(label="Move", style=discord.ButtonStyle.primary, row=2)
+    async def room_move(self, _: discord.ui.Button, interaction: discord.Interaction):
         await self.defer_to(_RoomMoveUI, interaction)
     
-    @button(label="Exit", style=ButtonStyle.danger, row=3)
+    @discord.ui.button(label="Exit", style=discord.ButtonStyle.danger, row=3)
     async def exit(self, *_):
         await self.on_timeout()
 
-    async def _before_send(self, interaction: Interaction):
+    async def _before_send(self, interaction: discord.Interaction):
         if not self.roles:
             raise G0T0Error("No roles found to manage")
 
@@ -167,9 +166,9 @@ class RoomSettingsUI(RoomSettings):
 
 
         view_options = [
-            SelectOption(label="Read/Write Access", value="1", description="Allow others to read and write", default=True if default == 1 else False),
-            SelectOption(label="Read Only Acccess", value="2", description="Allow others to just read", default=True if default == 2 else False),
-            SelectOption(label="No Access", value="3", description="Don't allow others to view/write", default=True if default == 3 else False)
+            discord.SelectOption(label="Read/Write Access", value="1", description="Allow others to read and write", default=True if default == 1 else False),
+            discord.SelectOption(label="Read Only Acccess", value="2", description="Allow others to just read", default=True if default == 2 else False),
+            discord.SelectOption(label="No Access", value="3", description="Don't allow others to view/write", default=True if default == 3 else False)
             ]
         
         self.room_view.options = view_options
@@ -183,8 +182,8 @@ class _RoomMoveUI(RoomSettings):
     current_position: int = None
 
 
-    @button(label="Up", style=ButtonStyle.green, row=1, emoji="⬆")
-    async def move_up(self, _: Button, interaction: Interaction):
+    @discord.ui.button(label="Up", style=discord.ButtonStyle.green, row=1, emoji="⬆")
+    async def move_up(self, _: discord.ui.Button, interaction: discord.Interaction):
         if self.current_position == 0:
             await interaction.channel.send(embed=ErrorEmbed(f"Channel is already in the top position"), delete_after=5)
         else:
@@ -192,8 +191,8 @@ class _RoomMoveUI(RoomSettings):
         
         await self.refresh_content(interaction)
 
-    @button(label="Top", style=ButtonStyle.primary, row=1, emoji="🔝")
-    async def move_top(self, _: Button, interaction: Interaction):
+    @discord.ui.button(label="Top", style=discord.ButtonStyle.primary, row=1, emoji="🔝")
+    async def move_top(self, _: discord.ui.Button, interaction: discord.Interaction):
         if self.current_position == 0:
             await interaction.channel.send(embed=ErrorEmbed(f"Channel is already in the top position"), delete_after=5)
         else:
@@ -201,8 +200,8 @@ class _RoomMoveUI(RoomSettings):
         
         await self.refresh_content(interaction)
 
-    @button(label="Down", style=ButtonStyle.green, row=2, emoji="⬇")
-    async def move_down(self, _: Button, interaction: Interaction):
+    @discord.ui.button(label="Down", style=discord.ButtonStyle.green, row=2, emoji="⬇")
+    async def move_down(self, _: discord.ui.Button, interaction: discord.Interaction):
         if self.current_position == len(interaction.channel.category.channels)-1:
             await interaction.channel.send(embed=ErrorEmbed(f"Channel is already in the lowest position"), delete_after=5)
         else:
@@ -210,8 +209,8 @@ class _RoomMoveUI(RoomSettings):
         
         await self.refresh_content(interaction)
 
-    @button(label="Bottom", style=ButtonStyle.primary, row=2)
-    async def move_bottom(self, _: Button, interaction: Interaction):
+    @discord.ui.button(label="Bottom", style=discord.ButtonStyle.primary, row=2)
+    async def move_bottom(self, _: discord.ui.Button, interaction: discord.Interaction):
         if self.current_position == len(interaction.channel.category.channels)-1:
             await interaction.channel.send(embed=ErrorEmbed(f"Channel is already in the lowest position"), delete_after=5)
         else:
@@ -219,17 +218,17 @@ class _RoomMoveUI(RoomSettings):
         
         await self.refresh_content(interaction)
 
-    @button(label="Back", style=ButtonStyle.grey, row=3)
-    async def back(self, _: Button, interaction: Interaction):
+    @discord.ui.button(label="Back", style=discord.ButtonStyle.grey, row=3)
+    async def back(self, _: discord.ui.Button, interaction: discord.Interaction):
         await self.defer_to(RoomSettingsUI, interaction)
 
-    async def _before_send(self, interaction: Interaction):
+    async def _before_send(self, interaction: discord.Interaction):
         self.current_position = interaction.channel.category.channels.index(interaction.channel)
     
     async def get_content(self) -> Mapping:
         return {"embed": None, "content": "Choose an option on where to move the channel: \n"}
 
-async def update_position(channel_list: list[TextChannel], old_position: int, new_position: int) -> None:
+async def update_position(channel_list: list[discord.TextChannel], old_position: int, new_position: int) -> None:
     channel_list.insert(new_position, channel_list.pop(old_position))
 
     for i, c in enumerate(channel_list):
@@ -238,16 +237,16 @@ async def update_position(channel_list: list[TextChannel], old_position: int, ne
     return
 
     
-class RoomNameModal(Modal):
+class RoomNameModal(discord.ui.Modal):
     name: str
 
     def __init__(self, name = None):
         super().__init__(title=f"Channel Name")
         self.name = name
 
-        self.add_item(InputText(label="Channel Name", required=True, value=self.name, placeholder="Channel Name", max_length=25))
+        self.add_item(discord.ui.InputText(label="Channel Name", required=True, value=self.name, placeholder="Channel Name", max_length=25))
 
-    async def callback(self, interaction: Interaction):
+    async def callback(self, interaction: discord.Interaction):
         self.name = self.children[0].value
 
         await interaction.response.defer()

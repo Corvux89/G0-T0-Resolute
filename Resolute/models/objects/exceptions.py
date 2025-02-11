@@ -1,14 +1,14 @@
-from discord import ApplicationCommandError, Member
+import discord
 from discord.ext.commands import CommandError
 
 
 # Aplication Command Errors
-class G0T0Error(ApplicationCommandError):
+class G0T0Error(discord.ApplicationCommandError):
     def __init__(self, message):
         super().__init__(f"{message}")
 
 class CharacterNotFound(G0T0Error):
-    def __init__(self, member: Member):
+    def __init__(self, member: discord.Member):
         super().__init__(f"No character information found for {member.mention}")
 
 class ApplicationNotFound(G0T0Error):

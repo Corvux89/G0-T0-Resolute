@@ -1,7 +1,6 @@
 import logging
 
-from discord import (ApplicationContext, Option, SlashCommandOptionType,
-                     WebhookMessage)
+import discord
 from discord.commands import SlashCommandGroup
 from discord.ext import commands
 
@@ -10,19 +9,19 @@ from Resolute.constants import CHANNEL_BREAK
 from Resolute.helpers.autocomplete import get_arena_type_autocomplete
 from Resolute.helpers.general_helpers import confirm
 from Resolute.models.categories import ArenaTier, ArenaType
-from Resolute.models.embeds.arenas import (ArenaPhaseEmbed, ArenaStatusEmbed)
+from Resolute.models.embeds.arenas import ArenaPhaseEmbed, ArenaStatusEmbed
 from Resolute.models.embeds.players import ArenaPostEmbed
-from Resolute.models.objects.players import ArenaPost
 from Resolute.models.objects.arenas import Arena
 from Resolute.models.objects.exceptions import (ArenaNotFound,
                                                 CharacterNotFound, G0T0Error)
+from Resolute.models.objects.players import ArenaPost
 from Resolute.models.views.arena_view import (ArenaCharacterSelect,
                                               ArenaRequestCharacterSelect,
                                               CharacterArenaViewUI)
 
 log = logging.getLogger(__name__)
 
-def setup(bot):
+def setup(bot: G0T0Bot):
     bot.add_cog(Arenas(bot))
 
 
@@ -55,7 +54,7 @@ class Arenas(commands.Cog):
         arena_close(ctx: ApplicationContext):
             Prompts the user for confirmation to close the arena and frees the channel for use.
     '''
-    bot: G0T0Bot  # Typing annotation for my IDE's sake
+    bot: G0T0Bot  
     arena_commands = SlashCommandGroup("arena", "Commands for arenas!", guild_only=True)
 
     def __init__(self, bot):
@@ -80,7 +79,7 @@ class Arenas(commands.Cog):
             name="arena_request",
             description="Request to join an arena"
     )
-    async def arena_request(self, ctx: ApplicationContext):
+    async def arena_request(self, ctx: discord.ApplicationContext):
         """
         Handles an arena request from a player.
         This method processes a player's request to join an arena. It performs several checks to ensure
@@ -129,7 +128,8 @@ class Arenas(commands.Cog):
         name="claim",
         description="Opens an arena in this channel and sets you as host"
     )
-    async def arena_claim(self, ctx: ApplicationContext, type: Option(str, description="Arena Type", autocomplete=get_arena_type_autocomplete, required=True, default="COMBAT")):
+    async def arena_claim(self, ctx: discord.ApplicationContext, 
+                          type: discord.Option(discord.SlashCommandOptionType(3), description="Arena Type", autocomplete=get_arena_type_autocomplete, required=True, default="COMBAT")):
         """
         Handles the claiming of an arena in the current channel.
         This command allows a user to claim an arena of a specified type in the current channel.
@@ -171,7 +171,7 @@ class Arenas(commands.Cog):
         name="status",
         description="Shows the current status of this arena."
     )
-    async def arena_status(self, ctx: ApplicationContext):
+    async def arena_status(self, ctx: discord.ApplicationContext):
         """
         Retrieves and sends the status of the current arena in the context channel.
         This method defers the response, fetches the arena associated with the current
@@ -199,8 +199,8 @@ class Arenas(commands.Cog):
         name="add",
         description="Adds the specified player to this arena"
     )
-    async def arena_add(self, ctx: ApplicationContext,
-                        member: Option(SlashCommandOptionType(6), description="Player to add to arena", required=True)):
+    async def arena_add(self, ctx: discord.ApplicationContext,
+                        member: discord.Option(discord.SlashCommandOptionType(6), description="Player to add to arena", required=True)):
         """
         Adds a player to an arena.
         This command allows a user to add a specified player to an arena. The player must have at least one character to be added.
@@ -236,8 +236,8 @@ class Arenas(commands.Cog):
         name="remove",
         description="Removes the specified player from this arena"
     )
-    async def arena_remove(self, ctx: ApplicationContext,
-                           member: Option(SlashCommandOptionType(6), description="Player to remove from arena", required=True)):
+    async def arena_remove(self, ctx: discord.ApplicationContext,
+                           member: discord.Option(discord.SlashCommandOptionType(6), description="Player to remove from arena", required=True)):
         """
         Removes a player from the arena.
         Args:
@@ -276,8 +276,8 @@ class Arenas(commands.Cog):
         name="phase",
         description="Records the outcome of an arena phase"
     )
-    async def arena_phase(self, ctx: ApplicationContext,
-                          result: Option(str, description="The result of the phase", required=True,
+    async def arena_phase(self, ctx: discord.ApplicationContext,
+                          result: discord.Option(discord.SlashCommandOptionType(3), description="The result of the phase", required=True,
                                          choices=["WIN", "LOSS"])):
 
         """
@@ -335,7 +335,7 @@ class Arenas(commands.Cog):
         name="close",
         description="Closes out a finished arena"
     )
-    async def arena_close(self, ctx: ApplicationContext):
+    async def arena_close(self, ctx: discord.ApplicationContext):
         """
         Closes an active arena in the current channel.
         This method defers the response, retrieves the arena associated with the current channel,

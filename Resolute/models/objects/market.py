@@ -1,6 +1,6 @@
 import re
 
-from discord import Message
+import discord
 
 from Resolute.bot import G0T0Bot
 from Resolute.models.categories.categories import (TransactionSubType,
@@ -37,19 +37,19 @@ class MarketTransaction(object):
         self.cc: int = kwargs.get('cc', 0)
         self.credits: int = kwargs.get('credits', 0)
         self.character: PlayerCharacter = kwargs.get('character')
-        self.message: Message = kwargs.get('message')
+        self.message: discord.Message = kwargs.get('message')
 
     @property
-    def format_type(self):
+    def format_type(self) -> str:
         if not self.type:
             return ""
         return f"{self.type.value}{f' ({self.subtype.value})' if self.subtype else ''}"
     
     @property
-    def log_notes(self):
+    def log_notes(self) -> str:
         return f"{self.format_type}\n\n{self.notes}"
     
-    async def get_request(bot: G0T0Bot, message: Message):
+    async def get_request(bot: G0T0Bot, message: discord.Message):
 
         def get_match(pattern, text, group=1, default=None):
             match = re.search(pattern, text, re.DOTALL)

@@ -1,23 +1,21 @@
 from typing import Type
 
-from discord import Interaction, Message, ButtonStyle, SelectOption
-from discord.ui import View, button, Button, select, Select
+import discord
 
 from Resolute.bot import G0T0Bot
 from Resolute.models.categories.categories import ArenaType
 from Resolute.models.embeds import ErrorEmbed
-from Resolute.models.objects.players import ArenaPostType
 from Resolute.models.embeds.players import ArenaPostEmbed
-from Resolute.models.objects.players import ArenaPost
 from Resolute.models.objects.characters import PlayerCharacter
+from Resolute.models.objects.enum import ArenaPostType
 from Resolute.models.objects.exceptions import (ArenaNotFound,
                                                 CharacterNotFound, G0T0Error)
 from Resolute.models.objects.guilds import PlayerGuild
-from Resolute.models.objects.players import Player
+from Resolute.models.objects.players import ArenaPost, Player
 from Resolute.models.views.base import InteractiveView
 
 
-class ArenaView(View):
+class ArenaView(discord.ui.View):
     """
     ArenaView class represents a view for the arena in the G0-T0-Resolute game.
     Attributes:
@@ -35,9 +33,9 @@ class ArenaView(View):
             Placeholder method to be executed before sending a message.
         send_to(destination, *args, **kwargs):
             Sends the view to the specified destination and pins the message.
-        defer_to(view_type: Type["ArenaView"], interaction: Interaction, stop=True):
+        defer_to(view_type: Type["ArenaView"], interaction: discord.Interaction, stop=True):
             Defers the view to another view type and refreshes the content.
-        refresh_content(interaction: Interaction, **kwargs):
+        refresh_content(interaction: discord.Interaction, **kwargs):
             Refreshes the content of the view based on the interaction.
     """
 
@@ -76,7 +74,7 @@ class ArenaView(View):
         self.message = message
         return message
     
-    async def defer_to(self, view_type: Type["ArenaView"], interaction: Interaction, stop=True):
+    async def defer_to(self, view_type: Type["ArenaView"], interaction: discord.Interaction, stop=True):
         view = view_type.from_menu(self)
         if stop:
             self.stop()
@@ -84,11 +82,11 @@ class ArenaView(View):
         await view.refresh_content(interaction)
 
     
-    async def refresh_content(self, interaction: Interaction, **kwargs):
+    async def refresh_content(self, interaction: discord.Interaction, **kwargs):
         await self._before_send()
         if interaction.response.is_done():
             arena = await self.bot.get_arena(interaction.channel.id)
-            message: Message = await interaction.channel.fetch_message(arena.pin_message_id)
+            message: discord.Message = await interaction.channel.fetch_message(arena.pin_message_id)
             await message.edit(view=self, **kwargs)
         else:
             await interaction.response.edit_message(view=self, **kwargs)
@@ -100,7 +98,7 @@ class CharacterArenaViewUI(ArenaView):
     -------
     new(cls, bot: G0T0Bot) -> CharacterArenaViewUI
         Class method to create a new instance of CharacterArenaViewUI.
-    join_arena_button(self, _: Button, interaction: Interaction)
+    join_arena_button(self, _: discord.ui.Button, interaction: discord.Interaction)
         Handles the interaction when a user clicks the "Join Arena" button.
     """
 
@@ -109,8 +107,8 @@ class CharacterArenaViewUI(ArenaView):
         inst = cls(bot=bot)
         return inst
     
-    @button(label="Join Arena", style=ButtonStyle.primary, custom_id="join_arena_button")
-    async def join_arena_button(self, _: Button, interaction: Interaction):
+    @discord.ui.button(label="Join Arena", style=discord.ButtonStyle.primary, custom_id="join_arena_button")
+    async def join_arena_button(self, _: discord.ui.Button, interaction: discord.Interaction):
         arena = await self.bot.get_arena(interaction.channel.id)
 
         if arena is None:
@@ -150,8 +148,8 @@ class ArenaCharacterSelect(ArenaView):
     def __init__(self, bot: G0T0Bot):
         super().__init__(bot)            
 
-    @select(placeholder="Select a character to join arena", row=1, custom_id="character_select")
-    async def character_select(self, char: Select, interaction: Interaction):
+    @discord.ui.select(placeholder="Select a character to join arena", row=1, custom_id="character_select")
+    async def character_select(self, char: discord.ui.Select, interaction: discord.Interaction):
         arena = await self.bot.get_arena(interaction.channel.id)
         character = await self.bot.get_character(char.values[0])
 
@@ -166,8 +164,8 @@ class ArenaCharacterSelect(ArenaView):
         # await self.defer_to(CharacterArenaViewUI, interaction)
         await self.on_timeout()
 
-    @button(label="Join Arena", style=ButtonStyle.primary, custom_id="join_arena_button")
-    async def join_arena_button(self, _: Button, interaction: Interaction):
+    @discord.ui.button(label="Join Arena", style=discord.ButtonStyle.primary, custom_id="join_arena_button")
+    async def join_arena_button(self, _: discord.ui.Button, interaction: discord.Interaction):
         arena = await self.bot.get_arena(interaction.channel.id)
 
         if arena is None:
@@ -190,7 +188,7 @@ class ArenaCharacterSelect(ArenaView):
     async def _before_send(self):
         char_list = []
         for char in self.player.characters:
-            char_list.append(SelectOption(label=f"{char.name}", value=f"{char.id}"))
+            char_list.append(discord.SelectOption(label=f"{char.name}", value=f"{char.id}"))
         self.character_select.__setattr__("placeholder", f"{self.bot.get_guild(self.player.guild_id).get_member(self.player.id).display_name} select a character to join arena")
         self.character_select.options = char_list
 
@@ -223,7 +221,7 @@ class ArenaRequestCharacterSelect(ArenaRequest):
             char_list = []
             
             for char in self.post.player.characters:
-                char_list.append(SelectOption(label=f"{char.name}", value=f"{char.id}", default=True if self.character and char.id == self.character.id else False))
+                char_list.append(discord.SelectOption(label=f"{char.name}", value=f"{char.id}", default=True if self.character and char.id == self.character.id else False))
             
             self.character_select.options = char_list
 
@@ -236,17 +234,17 @@ class ArenaRequestCharacterSelect(ArenaRequest):
         else:
             type_list = []
             for type in ArenaPostType:
-                type_list.append(SelectOption(label=f"{type.value}", value=f"{type.name}", default=True if self.post.type.name == type.name else False))
+                type_list.append(discord.SelectOption(label=f"{type.value}", value=f"{type.name}", default=True if self.post.type.name == type.name else False))
             self.arena_type_select.options = type_list
 
 
-    @select(placeholder="Select an arena type to join", row=1, custom_id='arena_type')
-    async def arena_type_select(self, type: Select, interaction: Interaction):
+    @discord.ui.select(placeholder="Select an arena type to join", row=1, custom_id='arena_type')
+    async def arena_type_select(self, type: discord.ui.Select, interaction: discord.Interaction):
         self.post.type = ArenaPostType[type.values[0]]
         await self.refresh_content(interaction)
 
-    @select(placeholder="Select a character to join arena", row=2, custom_id="character_select")
-    async def character_select(self, char: Select, interaction: Interaction):
+    @discord.ui.select(placeholder="Select a character to join arena", row=2, custom_id="character_select")
+    async def character_select(self, char: discord.ui.Select, interaction: discord.Interaction):
         character = await self.bot.get_character(char.values[0])
  
         if character.player_id != interaction.user.id and interaction.user.id != self.owner.id:
@@ -256,8 +254,8 @@ class ArenaRequestCharacterSelect(ArenaRequest):
         
         await self.refresh_content(interaction)
     
-    @button(label="Add", style=ButtonStyle.primary, custom_id="add_character", row=3)
-    async def queue_character(self, _: Button, interaction: Interaction):
+    @discord.ui.button(label="Add", style=discord.ButtonStyle.primary, custom_id="add_character", row=3)
+    async def queue_character(self, _: discord.ui.Button, interaction: discord.Interaction):
         if self.post.type.name != "BOTH" and  not self.post.player.can_join_arena(self.bot.compendium.get_object(ArenaType, self.post.type.name), self.character):
             raise G0T0Error(f"{self.character.name} can't queue up for another {self.post.type.name.lower()} arena.")
 
@@ -266,15 +264,15 @@ class ArenaRequestCharacterSelect(ArenaRequest):
             
         await self.refresh_content(interaction)
 
-    @button(label="Remove", style=ButtonStyle.red, custom_id="remove_character", row=3)
-    async def remove_character(self, _: Button, interaction: Interaction):
+    @discord.ui.button(label="Remove", style=discord.ButtonStyle.red, custom_id="remove_character", row=3)
+    async def remove_character(self, _: discord.ui.Button, interaction: discord.Interaction):
         if self.character.id in [c.id for c in self.post.characters]:
             char = next((c for c in self.post.characters if c.id == self.character.id), None)
             self.post.characters.remove(char)
         await self.refresh_content(interaction)
 
-    @button(label="Accept", style=ButtonStyle.primary, row=4)
-    async def next_application(self, _: Button, interaction: Interaction):
+    @discord.ui.button(label="Accept", style=discord.ButtonStyle.primary, row=4)
+    async def next_application(self, _: discord.ui.Button, interaction: discord.Interaction):
         if self.post.type.name != "BOTH":
             for character in self.post.characters:
                 if not self.post.player.can_join_arena(self.bot.compendium.get_object(ArenaType, self.post.type.name), character):
@@ -287,8 +285,8 @@ class ArenaRequestCharacterSelect(ArenaRequest):
 
         await self.on_timeout()
 
-    @button(label="Exit", style=ButtonStyle.red, row=4)
-    async def exit_application(self, _: Button, interaction: Interaction):
+    @discord.ui.button(label="Exit", style=discord.ButtonStyle.red, row=4)
+    async def exit_application(self, _: discord.ui.Button, interaction: discord.Interaction):
         await self.on_timeout()
 
                 

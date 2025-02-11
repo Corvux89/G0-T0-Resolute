@@ -1,7 +1,6 @@
 import aiopg.sa
 import sqlalchemy as sa
 from marshmallow import Schema, fields, post_load
-from sqlalchemy import BOOLEAN, BigInteger, Column, Integer, String
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.sql import FromClause, TableClause
 
@@ -41,11 +40,11 @@ class RefWeeklyStipend(object):
         self.reason = reason
         self.leadership = leadership
 
-    async def upsert(self):
+    async def upsert(self) -> None:
         async with self._db.acquire() as conn:
             await conn.execute(upsert_weekly_stipend(self))
 
-    async def delete(self):
+    async def delete(self) -> None:
         async with self._db.acquire() as conn:
             await conn.execute(delete_weekly_stipend_query(self))
 
@@ -53,11 +52,11 @@ class RefWeeklyStipend(object):
 ref_weekly_stipend_table = sa.Table(
     "ref_weekly_stipend",
     metadata,
-    Column("role_id", BigInteger, primary_key=True, nullable=False),
-    Column("guild_id", BigInteger, nullable=False),  # ref: > guilds.id
-    Column("amount", Integer, nullable=False),
-    Column("reason", String, nullable=True),
-    Column("leadership", BOOLEAN, nullable=False, default=False)
+    sa.Column("role_id", sa.BigInteger, primary_key=True, nullable=False),
+    sa.Column("guild_id", sa.BigInteger, nullable=False),  # ref: > guilds.id
+    sa.Column("amount", sa.Integer, nullable=False),
+    sa.Column("reason", sa.String, nullable=True),
+    sa.Column("leadership", sa.BOOLEAN, nullable=False, default=False)
 )
 
 class RefWeeklyStipendSchema(Schema):
@@ -128,10 +127,10 @@ class RefServerCalendar(object):
 ref_server_calendar_table = sa.Table(
     "ref_server_calendar",
     metadata,
-    Column("day_start", Integer, primary_key=True, nullable=False),
-    Column("day_end", Integer, nullable=False),
-    Column("display_name", String, nullable=False),
-    Column("guild_id", BigInteger, nullable=False)    
+    sa.Column("day_start", sa.Integer, primary_key=True, nullable=False),
+    sa.Column("day_end", sa.Integer, nullable=False),
+    sa.Column("display_name", sa.String, nullable=False),
+    sa.Column("guild_id", sa.BigInteger, nullable=False)    
 )
 
 class RefServerCalendarSchema(Schema):

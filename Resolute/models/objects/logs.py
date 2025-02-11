@@ -1,11 +1,9 @@
 import calendar
 from datetime import datetime, timezone
 
+import discord
 import sqlalchemy as sa
-from discord import ApplicationContext
 from marshmallow import Schema, fields, post_load
-from sqlalchemy import (BOOLEAN, TIMESTAMP, BigInteger, Column, Integer,
-                        String, and_, case, func, select)
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.sql import FromClause
 
@@ -76,7 +74,7 @@ class DBLog(object):
         """
         return calendar.timegm(self.created_ts.utctimetuple())
     
-    async def null(self, ctx: ApplicationContext, reason: str):
+    async def null(self, ctx: discord.ApplicationContext, reason: str) -> None:
         """
         Nullifies the log entry for a given reason, if it is valid.
         Parameters:
@@ -132,20 +130,20 @@ class DBLog(object):
 log_table = sa.Table(
     "log",
     metadata,
-    Column("id", Integer, primary_key=True, autoincrement='auto'),
-    Column("author", BigInteger, nullable=False),
-    Column("cc", Integer, nullable=True),
-    Column("credits", Integer, nullable=True),
-    Column("created_ts", TIMESTAMP(timezone=timezone.utc), nullable=False),
-    Column("character_id", Integer, nullable=True),  # ref: > characters.id
-    Column("activity", Integer, nullable=False),  # ref: > c_activity.id
-    Column("notes", String, nullable=True),
-    Column("adventure_id", Integer, nullable=True),  # ref: > adventures.id
-    Column("renown", Integer, nullable=True),
-    Column("faction", Integer, nullable=True),
-    Column("invalid", BOOLEAN, nullable=False, default=False),
-    Column("player_id", BigInteger, nullable=False),
-    Column("guild_id", BigInteger, nullable=False)
+    sa.Column("id", sa.Integer, primary_key=True, autoincrement='auto'),
+    sa.Column("author", sa.BigInteger, nullable=False),
+    sa.Column("cc", sa.Integer, nullable=True),
+    sa.Column("credits", sa.Integer, nullable=True),
+    sa.Column("created_ts", sa.TIMESTAMP(timezone=timezone.utc), nullable=False),
+    sa.Column("character_id", sa.Integer, nullable=True),  # ref: > characters.id
+    sa.Column("activity", sa.Integer, nullable=False),  # ref: > c_activity.id
+    sa.Column("notes", sa.String, nullable=True),
+    sa.Column("adventure_id", sa.Integer, nullable=True),  # ref: > adventures.id
+    sa.Column("renown", sa.Integer, nullable=True),
+    sa.Column("faction", sa.Integer, nullable=True),
+    sa.Column("invalid", sa.BOOLEAN, nullable=False, default=False),
+    sa.Column("player_id", sa.BigInteger, nullable=False),
+    sa.Column("guild_id", sa.BigInteger, nullable=False)
 )
 
 class LogSchema(Schema):
@@ -194,15 +192,15 @@ def get_log_by_id(log_id: int) -> FromClause:
 
 def get_last_log_by_type(player_id: int, guild_id: int, activity_id: int) -> FromClause:
     return log_table.select().where(
-        and_(log_table.c.player_id == player_id,
+        sa.and_(log_table.c.player_id == player_id,
              log_table.c.guild_id == guild_id,
              log_table.c.activity == activity_id,
              log_table.c.invalid == False)
     ).order_by(log_table.c.id.desc()).limit(1)
 
 def get_log_count_by_player_and_activity(player_id: int, guild_id: int,  activity_id: int) -> FromClause:
-    return select([func.count()]).select_from(log_table).where(
-        and_(log_table.c.player_id == player_id,
+    return sa.select([sa.func.count()]).select_from(log_table).where(
+        sa.and_(log_table.c.player_id == player_id,
              log_table.c.guild_id == guild_id, 
              log_table.c.activity == activity_id, log_table.c.invalid == False)
     )
@@ -241,21 +239,21 @@ def upsert_log(log: DBLog):
     return insert_statement
 
 def get_n_player_logs_query(player_id: int, guild_id: int, n : int) -> FromClause:
-    return log_table.select().where(and_(log_table.c.player_id == player_id, log_table.c.guild_id == guild_id)).order_by(log_table.c.id.desc()).limit(n)
+    return log_table.select().where(sa.and_(log_table.c.player_id == player_id, log_table.c.guild_id == guild_id)).order_by(log_table.c.id.desc()).limit(n)
 
 def player_stats_query(compendium: Compendium, player_id: int, guild_id: int):
     new_character_activity = compendium.get_activity("NEW_CHARACTER")
     activities = [x for x in compendium.activity[0].values() if x.value in ["RP", "ARENA", "ARENA_HOST", "GLOBAL", "SNAPSHOT"]]
-    activity_columns = [func.sum(case([(log_table.c.activity == act.id, 1)], else_=0)).label(f"Activity {act.value}") for act in activities]
+    activity_columns = [sa.func.sum(sa.case([(log_table.c.activity == act.id, 1)], else_=0)).label(f"Activity {act.value}") for act in activities]
 
-    query = select(log_table.c.player_id,
-                   func.count(log_table.c.id).label("#"),
-                   func.sum(case([(and_(log_table.c.cc > 0, log_table.c.activity != new_character_activity.id), log_table.c.cc)], else_=0)).label("debt"),
-                   func.sum(case([(and_(log_table.c.cc < 0, log_table.c.activity != new_character_activity.id), log_table.c.cc)], else_=0)).label("credit"),
-                   func.sum(case([(and_(log_table.c.cc > 0, log_table.c.activity == new_character_activity.id), log_table.c.cc)], else_=0)).label("starting"),
+    query = sa.select(log_table.c.player_id,
+                   sa.func.count(log_table.c.id).label("#"),
+                   sa.func.sum(sa.case([(sa.and_(log_table.c.cc > 0, log_table.c.activity != new_character_activity.id), log_table.c.cc)], else_=0)).label("debt"),
+                   sa.func.sum(sa.case([(sa.and_(log_table.c.cc < 0, log_table.c.activity != new_character_activity.id), log_table.c.cc)], else_=0)).label("credit"),
+                   sa.func.sum(sa.case([(sa.and_(log_table.c.cc > 0, log_table.c.activity == new_character_activity.id), log_table.c.cc)], else_=0)).label("starting"),
                    *activity_columns)\
                     .group_by(log_table.c.player_id)\
-                        .where(and_(log_table.c.player_id == player_id,
+                        .where(sa.and_(log_table.c.player_id == player_id,
                                     log_table.c.guild_id == guild_id,
                                      log_table.c.invalid == False))
     
@@ -265,17 +263,17 @@ def character_stats_query(compendium: Compendium, character_id: int):
     new_character_activity = compendium.get_activity("NEW_CHARACTER")
     conversion_activity = compendium.get_activity("CONVERSION")
 
-    query = select(log_table.c.character_id,
-                   func.count(log_table.c.id).label("#"),
-                   func.sum(case([(and_(log_table.c.cc > 0, log_table.c.activity != new_character_activity.id), log_table.c.cc)], else_=0)).label("cc debt"),
-                   func.sum(case([(and_(log_table.c.cc > 0, log_table.c.activity != new_character_activity.id), log_table.c.cc)], else_=0)).label("cc credit"),
-                   func.sum(case([(and_(log_table.c.cc > 0, log_table.c.activity == new_character_activity.id), log_table.c.cc)], else_=0)).label("cc starting"),
-                   func.sum(case([(and_(log_table.c.credits > 0, log_table.c.activity != new_character_activity.id), log_table.c.credits)], else_=0)).label("credit debt"),
-                   func.sum(case([(and_(log_table.c.cc < 0, log_table.c.activity != new_character_activity.id), log_table.c.credits)], else_=0)).label("credit credit"),
-                   func.sum(case([(and_(log_table.c.credits > 0, log_table.c.activity == new_character_activity.id), log_table.c.credits)], else_=0)).label("credit starting"),
-                   func.sum(case([(log_table.c.activity == conversion_activity.id, log_table.c.credits)], else_=0)).label("credits converted"))\
+    query = sa.select(log_table.c.character_id,
+                   sa.func.count(log_table.c.id).label("#"),
+                   sa.func.sum(sa.case([(sa.and_(log_table.c.cc > 0, log_table.c.activity != new_character_activity.id), log_table.c.cc)], else_=0)).label("cc debt"),
+                   sa.func.sum(sa.case([(sa.and_(log_table.c.cc > 0, log_table.c.activity != new_character_activity.id), log_table.c.cc)], else_=0)).label("cc credit"),
+                   sa.func.sum(sa.case([(sa.and_(log_table.c.cc > 0, log_table.c.activity == new_character_activity.id), log_table.c.cc)], else_=0)).label("cc starting"),
+                   sa.func.sum(sa.case([(sa.and_(log_table.c.credits > 0, log_table.c.activity != new_character_activity.id), log_table.c.credits)], else_=0)).label("credit debt"),
+                   sa.func.sum(sa.case([(sa.and_(log_table.c.cc < 0, log_table.c.activity != new_character_activity.id), log_table.c.credits)], else_=0)).label("credit credit"),
+                   sa.func.sum(sa.case([(sa.and_(log_table.c.credits > 0, log_table.c.activity == new_character_activity.id), log_table.c.credits)], else_=0)).label("credit starting"),
+                   sa.func.sum(sa.case([(log_table.c.activity == conversion_activity.id, log_table.c.credits)], else_=0)).label("credits converted"))\
                     .group_by(log_table.c.character_id)\
-                    .where(and_(log_table.c.character_id == character_id, log_table.c.invalid == False))
+                    .where(sa.and_(log_table.c.character_id == character_id, log_table.c.invalid == False))
     return query
 
 

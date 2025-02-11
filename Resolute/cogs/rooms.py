@@ -1,6 +1,6 @@
 import logging
 
-from discord import ApplicationContext, SlashCommandGroup
+import discord
 from discord.ext import commands
 
 from Resolute.bot import G0T0Bot
@@ -10,7 +10,7 @@ from Resolute.models.views.rooms import RoomSettingsUI
 
 log = logging.getLogger(__name__)
 
-def setup(bot: commands.Bot):
+def setup(bot: G0T0Bot):
     bot.add_cog(Room(bot))
 
 
@@ -29,19 +29,17 @@ class Room(commands.Cog):
     """
     bot: G0T0Bot
 
-    room_commands = SlashCommandGroup("room", "Room commands", guild_only=True)
+    room_commands = discord.SlashCommandGroup("room", "Room commands", guild_only=True)
     
     def __init__(self, bot):
-        # Setting up some objects
         self.bot = bot
-
         log.info(f'Cog \'Room\' loaded')
 
     @room_commands.command(
         name="settings",
         description="Room settings"
     )
-    async def room_settings(self, ctx: ApplicationContext):
+    async def room_settings(self, ctx: discord.ApplicationContext):
         """
         Handles the room settings for a given context.
         This method checks if the author of the context has the necessary permissions

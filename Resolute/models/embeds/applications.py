@@ -1,10 +1,10 @@
-from discord import Embed
+import discord
 
 from Resolute.models.objects.applications import (NewCharacterApplication,
                                                   status)
 
 
-class NewCharacterRequestEmbed(Embed):
+class NewCharacterRequestEmbed(discord.Embed):
     def __init__(self, application: NewCharacterApplication):
         super().__init__(title=f"{application.type.value} Application")
 

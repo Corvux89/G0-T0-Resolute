@@ -1,30 +1,14 @@
 import re
-from enum import Enum
 
+import discord
 import sqlalchemy as sa
-from discord import Member, Message, Role, User
 from marshmallow import Schema, fields
-from sqlalchemy import BigInteger, Column, String
 from sqlalchemy.sql.selectable import FromClause, TableClause
 
 from Resolute.models import metadata
+from Resolute.models.objects.enum import ApplicationType
 from Resolute.models.objects.characters import PlayerCharacter
 from Resolute.models.objects.exceptions import G0T0Error
-
-
-class ApplicationType(Enum):
-    """
-    Enum representing different types of applications.
-    Attributes:
-        new (str): Represents a new character application.
-        death (str): Represents a death reroll application.
-        freeroll (str): Represents a free reroll application.
-        level (str): Represents a level up application.
-    """
-    new = "New Character"
-    death = "Death Reroll"
-    freeroll = "Free Reroll"
-    level = "Level Up"
 
 
 class AppBaseScores(object):
@@ -59,7 +43,7 @@ class AppBaseScores(object):
         self.wis = kwargs.get('wis',"")
         self.cha = kwargs.get('cha',"")
 
-    def status(self):
+    def status(self) -> str:
         """
         Returns the status of the object based on its attributes.
         This method collects the object's attributes (strength, dexterity, 
@@ -72,7 +56,7 @@ class AppBaseScores(object):
 
         return status(attributes)
 
-    def output(self):
+    def output(self) -> str:
         """
         Generates a formatted string representing the character's attributes.
         Returns:
@@ -112,7 +96,7 @@ class AppSpecies(object):
         self.asi = kwargs.get('asi', "")
         self.feats = kwargs.get('feats', "")
 
-    def get_field(self):
+    def get_field(self) -> str:
         """
         Retrieves the field information for the object.
         Returns:
@@ -124,7 +108,7 @@ class AppSpecies(object):
         else:
             return f"**{self.species}**\nASIs: {self.asi}\nFeatures: {self.feats}"
 
-    def status(self):
+    def status(self) -> str:
         """
         Retrieve the status of the application.
         This method collects the attributes of the application, which include
@@ -136,7 +120,7 @@ class AppSpecies(object):
 
         return status(attributes )
 
-    def output(self):
+    def output(self) -> str:
         """
         Generates a formatted string containing the species, ASI, and features of the object.
         Returns:
@@ -175,7 +159,7 @@ class AppClass(object):
         self.feats = kwargs.get('feats',"")
         self.equipment = kwargs.get('equipment',"")
 
-    def status(self):
+    def status(self) -> str:
         """
         Returns the status of the application by aggregating various attributes.
         This method collects the character class, skills, feats, and equipment
@@ -187,7 +171,7 @@ class AppClass(object):
 
         return status(attributes)
 
-    def output(self):
+    def output(self) -> str:
         """
         Generates a formatted string containing the character's class, skills, features, and equipment.
         Returns:
@@ -236,7 +220,7 @@ class AppBackground(object):
         self.feat = kwargs.get('feat',"")
         self.equipment = kwargs.get('equipment',"")
 
-    def status(self):
+    def status(self) -> str:
         """
         Returns the status of the application based on its attributes.
         This method collects various attributes of the application, such as 
@@ -248,7 +232,7 @@ class AppBackground(object):
         attributes = [self.background, self.skills, self.tools, self.feat, self.equipment]
         return status(attributes)
 
-    def output(self):
+    def output(self) -> str:
         """
         Generates a formatted string containing the details of the application.
         Returns:
@@ -311,7 +295,7 @@ class NewCharacterApplication(object):
         Loads the application from the given content or message.
     """
     def __init__(self, **kwargs):
-        self.message: Message = kwargs.get('message')
+        self.message: discord.Message = kwargs.get('message')
         self.character: PlayerCharacter = kwargs.get('character')
         self.name = kwargs.get('name',"")
         self.type: ApplicationType = kwargs.get('type', ApplicationType.new)
@@ -327,7 +311,7 @@ class NewCharacterApplication(object):
         self.hp = kwargs.get('hp',"")
         self.level = kwargs.get('level', "1")
 
-    def can_submit(self):
+    def can_submit(self) -> bool:
         """
         Determines if the application can be submitted.
         This method checks if all required fields and statuses are complete and non-empty.
@@ -337,13 +321,25 @@ class NewCharacterApplication(object):
         Returns:
             bool: True if the application can be submitted, False otherwise.
         """
-        if 'Complete' in self.base_scores.status() and 'Complete' in self.species.status() and 'Complete' in self.char_class.status() and 'Complete' in self.background.status() and self.join_motivation != '' and self.name != '' and self.link != '' and self.homeworld != '' and self.good_motivation != '':
+        required_fields = [
+            self.base_scores.status(),
+            self.species.status(),
+            self.char_class.status(),
+            self.background.status(),
+            self.join_motivation,
+            self.name,
+            self.link,
+            self.homeworld,
+            self.good_motivation
+        ]
+
+        if all('Complete' in field or field for field in required_fields):
             return True
         else:
             return False
 
 
-    def format_app(self, owner: Member, staff: Role = None):
+    def format_app(self, owner: discord.Member, staff: discord.Role = None) -> str:
         """
         Formats the application details into a string for display.
         Args:
@@ -389,7 +385,7 @@ class NewCharacterApplication(object):
             f"**Link:** {self.link}"
         )
     
-    async def load(self, bot, content: str = None, message: Message = None):
+    async def load(self, bot, content: str = None, message: discord.Message = None):
         """
         Asynchronously loads a new character application from the provided content or message.
         Args:
@@ -482,8 +478,8 @@ class NewCharacterApplication(object):
 ref_applications_table = sa.Table(
     "ref_character_applications",
     metadata,
-    Column("id", BigInteger, primary_key=True),
-    Column("application", String, nullable=False)
+    sa.Column("id", sa.BigInteger, primary_key=True),
+    sa.Column("application", sa.String, nullable=False)
 )
 
 class ApplicationSchema(Schema):
@@ -552,7 +548,7 @@ class LevelUpApplication(object):
         Loads the application details from a message or content string.
     """
     def __init__(self, **kwargs):
-        self.message: Message = kwargs.get('message')
+        self.message: discord.Message = kwargs.get('message')
         self.level = kwargs.get('level')
         self.hp = kwargs.get('hp')
         self.feats = kwargs.get('feats')
@@ -577,7 +573,7 @@ class LevelUpApplication(object):
             self.level = self._character.level+1
 
 
-    def format_app(self, owner: Member, staff: Role = None):
+    def format_app(self, owner: discord.Member, staff: discord.Role = None) -> str:
         """
         Formats the application details for a character level-up.
         Args:
@@ -597,7 +593,7 @@ class LevelUpApplication(object):
             f"**Link:** {self.link}\n\n"
         )
     
-    async def load(self, bot, content: str = None, message: Message = None):
+    async def load(self, bot, content: str = None, message: discord.Message = None):
         """
         Asynchronously loads an application from the provided content or message.
         Args:
@@ -657,7 +653,7 @@ class PlayerApplication(object):
     """
     cached: bool = False 
 
-    def __init__(self, bot, owner: Member | User, **kwargs):
+    def __init__(self, bot, owner: discord.Member | discord.User, **kwargs):
         self._bot = bot
         self.owner = owner
         type = kwargs.get('type', ApplicationType.new)
@@ -668,7 +664,7 @@ class PlayerApplication(object):
         else:
             self.application = LevelUpApplication()
 
-    async def upsert(self):
+    async def upsert(self) -> None:
         """
         Asynchronously inserts or updates the player's application in the database.
         If the application exists, it formats the application data for the owner and 
@@ -680,7 +676,7 @@ class PlayerApplication(object):
             async with self._bot.db.acquire() as conn:
                 await conn.execute(insert_player_application(self.owner.id, self.application.format_app(self.owner)))
 
-    async def delete(self):
+    async def delete(self) -> None:
         """
         Asynchronously deletes the player application associated with the owner of this instance.
         This method acquires a database connection from the bot's connection pool and executes
@@ -691,7 +687,7 @@ class PlayerApplication(object):
         async with self._bot.db.acquire() as conn:
             await conn.execute(delete_player_application(self.owner.id))
 
-    async def load(self, message: Message = None):
+    async def load(self, message: discord.Message = None):
         """
         Asynchronously loads the application data for the player.
         If a message is provided, it uses the content of the message to load the application.

@@ -1,16 +1,17 @@
 import logging
 
-from discord import (ApplicationContext, NotFound, Option, SlashCommandGroup,
-                     SlashCommandOptionType)
+import discord
 from discord.ext import commands
 
 from Resolute.bot import G0T0Bot
 from Resolute.constants import APPROVAL_EMOJI, DENIED_EMOJI
+from Resolute.helpers.general_helpers import try_delete
 from Resolute.models.embeds.players import PlayerOverviewEmbed
-from Resolute.models.objects.applications import ApplicationType, PlayerApplication
+from Resolute.models.objects.enum import ApplicationType, WebhookType
+from Resolute.models.objects.applications import PlayerApplication
 from Resolute.models.objects.exceptions import (ApplicationNotFound,
                                                 CharacterNotFound, G0T0Error)
-from Resolute.models.objects.webhook import G0T0Webhook, WebhookType
+from Resolute.models.objects.webhook import G0T0Webhook
 from Resolute.models.views.applications import (CharacterSelectUI,
                                                 LevelUpRequestModal, NewCharacterRequestUI)
 from Resolute.models.views.character_view import (CharacterGetUI,
@@ -22,7 +23,7 @@ log = logging.getLogger(__name__)
 
 # TODO: Add Character Birthday for server date
 
-def setup(bot: commands.Bot):
+def setup(bot: G0T0Bot):
     bot.add_cog(Character(bot))
 
 
@@ -31,29 +32,29 @@ class Character(commands.Cog):
     Cog for handling character-related commands and interactions.
     Attributes:
         bot (G0T0Bot): The bot instance.
-        character_admin_commands (SlashCommandGroup): Group of character administration commands.
+        character_admin_commands (discord.SlashCommandGroup): Group of character administration commands.
     Methods:
         __init__(bot):
             Initializes the Character cog with the given bot instance.
-        character_say(ctx: ApplicationContext):
+        character_say(ctx: discord.ApplicationContext):
             Command for making a character say something in the chat.
-        character_manage(ctx: ApplicationContext, member: Option):
+        character_manage(ctx: discord.ApplicationContext, member: discord.Option):
             Command for managing a player's character(s).
-        character_get(ctx: ApplicationContext, member: Option):
+        character_get(ctx: discord.ApplicationContext, member: discord.Option):
             Command for displaying character information for a player's character.
-        character_settings(ctx: ApplicationContext):
+        character_settings(ctx: discord.ApplicationContext):
             Command for accessing character settings.
-        rp_request(ctx: ApplicationContext):
+        rp_request(ctx: discord.ApplicationContext):
             Command for making an RP board request.
-        character_level_request(ctx: ApplicationContext):
+        character_level_request(ctx: discord.ApplicationContext):
             Command for making a level request for a character.
-        new_character_request(ctx: ApplicationContext):
+        new_character_request(ctx: discord.ApplicationContext):
             Command for making a new character request.
-        edit_application(ctx: ApplicationContext, application_id: Option):
+        edit_application(ctx: discord.ApplicationContext, application_id: discord.Option):
             Command for editing an application.
     """
     bot: G0T0Bot
-    character_admin_commands = SlashCommandGroup("character_admin", "Character administration commands", guild_only=True)
+    character_admin_commands = discord.SlashCommandGroup("character_admin", "Character administration commands", guild_only=True)
 
     def __init__(self, bot):
         self.bot = bot
@@ -63,11 +64,11 @@ class Character(commands.Cog):
         name="say",
         guild_only=True
     )
-    async def character_say(self, ctx: ApplicationContext):
+    async def character_say(self, ctx: discord.ApplicationContext):
         """
         Handles the character say command, allowing a player to send a message as one of their characters.
         Args:
-            ctx (ApplicationContext): The context of the command invocation.
+            ctx (discord.ApplicationContext): The context of the command invocation.
         Raises:
             CharacterNotFound: If the player has no characters.
         Workflow:
@@ -83,10 +84,7 @@ class Character(commands.Cog):
             10. Sends a response ping if the message is a reply to another message.
         """
         await G0T0Webhook(ctx, WebhookType.say).run()
-        try:
-            await ctx.message.delete()
-        except:
-            pass
+        await try_delete(ctx.message)
         
 
                 
@@ -94,13 +92,13 @@ class Character(commands.Cog):
         name="manage",
         description="Manage a players character(s)"
     )
-    async def character_manage(self, ctx: ApplicationContext,
-                               member: Option(SlashCommandOptionType(6), description="Player", required=True)):
+    async def character_manage(self, ctx: discord.ApplicationContext,
+                               member: discord.Option(discord.SlashCommandOptionType(6), description="Player", required=True)):
         """
         Manages a player's character.
         Args:
-            ctx (ApplicationContext): The context of the command.
-            member (Option): The player whose character is to be managed.
+            ctx (discord.ApplicationContext): The context of the command.
+            member (discord.Option): The player whose character is to be managed.
         Returns:
             None
         """
@@ -114,14 +112,14 @@ class Character(commands.Cog):
         name="get",
         description="Displays character information for a player's character"
     )
-    async def character_get(self, ctx: ApplicationContext,
-                            member: Option(SlashCommandOptionType(6), description="Player to get the information of",
+    async def character_get(self, ctx: discord.ApplicationContext,
+                            member: discord.Option(discord.SlashCommandOptionType(6), description="Player to get the information of",
                                            required=False)):
         """
         Retrieves and displays information about a player's characters.
         Parameters:
-            ctx (ApplicationContext): The context in which the command was invoked.
-            member (Option, optional): The player to get the information of. If not provided, defaults to the command author.
+            ctx (discord.ApplicationContext): The context in which the command was invoked.
+            member (discord.Option, optional): The player to get the information of. If not provided, defaults to the command author.
         Returns:
             None
         """
@@ -143,12 +141,12 @@ class Character(commands.Cog):
             name="settings",
             description="Character settings"
     )
-    async def character_settings(self, ctx: ApplicationContext):
+    async def character_settings(self, ctx: discord.ApplicationContext):
         """
         Handles the character settings command.
         This command allows a player to manage their character settings within the game.
         Args:
-            ctx (ApplicationContext): The context in which the command was invoked.
+            ctx (discord.ApplicationContext): The context in which the command was invoked.
         Raises:
             CharacterNotFound: If the player has no characters.
         Returns:
@@ -168,7 +166,7 @@ class Character(commands.Cog):
             name="rp_request",
             description="RP Board Request",
     )
-    async def rp_request(self, ctx: ApplicationContext):
+    async def rp_request(self, ctx: discord.ApplicationContext):
         """
         Handles a roleplay request from a user.
         This method is triggered when a user initiates a roleplay request. It retrieves the player's
@@ -176,7 +174,7 @@ class Character(commands.Cog):
         a CharacterNotFound exception. Otherwise, it creates a new RPPostUI instance and sends it to
         the context. Finally, it deletes the original context message.
         Args:
-            ctx (ApplicationContext): The context of the application command.
+            ctx (discord.ApplicationContext): The context of the application command.
         Raises:
             CharacterNotFound: If the player has no characters.
         """
@@ -195,7 +193,7 @@ class Character(commands.Cog):
         name="level_request",
         description="Level Request"
     )
-    async def character_level_request(self, ctx: ApplicationContext):
+    async def character_level_request(self, ctx: discord.ApplicationContext):
         """
         Handles a character level request from a user.
         This method is triggered when a user requests to level up their character.
@@ -203,7 +201,7 @@ class Character(commands.Cog):
         is already at the maximum level for the server. If the user has multiple
         characters, it presents a UI for the user to select which character to level up.
         Args:
-            ctx (ApplicationContext): The context of the interaction, including
+            ctx (discord.ApplicationContext): The context of the interaction, including
                                       information about the user and the guild.
         Raises:
             CharacterNotFound: If the user has no characters.
@@ -229,13 +227,13 @@ class Character(commands.Cog):
         name="new_character_request",
         description="New Character Request"
     )
-    async def new_character_request(self, ctx: ApplicationContext):
+    async def new_character_request(self, ctx: discord.ApplicationContext):
         """
         Handles the request to create a new character.
         This function retrieves the player information and their character application,
         then presents the appropriate UI for character selection or new character request.
         Args:
-            ctx (ApplicationContext): The context of the application command.
+            ctx (discord.ApplicationContext): The context of the application command.
         Returns:
             None
         """
@@ -260,13 +258,13 @@ class Character(commands.Cog):
         name="edit_application",
         description="Edit an application"
     )
-    async def edit_application(self, ctx: ApplicationContext,
-                               application_id: Option(str, description="Application ID", required=False)):
+    async def edit_application(self, ctx: discord.ApplicationContext,
+                               application_id: discord.Option(discord.SlashCommandOptionType(3), description="Application ID", required=False)):
         """
         Edits an application based on the provided application ID or the current channel ID.
         Args:
-            ctx (ApplicationContext): The context of the command invocation.
-            application_id (Option[str], optional): The ID of the application to edit. Defaults to None.
+            ctx (discord.ApplicationContext): The context of the command invocation.
+            application_id (discord.Option[str], optional): The ID of the application to edit. Defaults to None.
         Raises:
             G0T0Error: If the application identifier is invalid or the application is already approved or denied.
             ApplicationNotFound: If the application message is not found.
@@ -283,7 +281,7 @@ class Character(commands.Cog):
                     message = await player.guild.application_channel.fetch_message(int(application_id))
                 except ValueError:
                     raise G0T0Error("Invalid application identifier")
-                except NotFound:
+                except discord.NotFound:
                     raise ApplicationNotFound()
             else:
                 try:

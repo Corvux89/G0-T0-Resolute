@@ -1,12 +1,12 @@
-from discord import Color, Embed
+import discord
 
 from Resolute.models.objects.market import MarketTransaction
 
 
-class TransactionEmbed(Embed):
+class TransactionEmbed(discord.Embed):
     def __init__(self, transaction: MarketTransaction):
         super().__init__(title=f"Market Request - {transaction.character.name if transaction.character else transaction.player.member.display_name}",
-                         color=Color.random())
+                         color=discord.Color.random())
         self.set_thumbnail(url=transaction.player.member.display_avatar.url)
         self.description=f"**Player**: {transaction.player.member.mention}\n"
 

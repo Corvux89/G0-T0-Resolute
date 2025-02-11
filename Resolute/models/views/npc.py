@@ -1,7 +1,6 @@
 from typing import Mapping
 
-from discord import ButtonStyle, InputText, Interaction, Role, SelectOption
-from discord.ui import Button, Modal, Select, button, role_select, select
+import discord
 
 from Resolute.bot import G0T0Bot
 from Resolute.helpers.general_helpers import is_admin
@@ -39,7 +38,7 @@ class NPCSettings(InteractiveView):
     back_menu: type[InteractiveView] 
 
     npc: NPC = None
-    role: Role = None
+    role: discord.Role = None
 
 
     async def get_content(self) -> Mapping:
@@ -75,21 +74,21 @@ class NPCSettingsUI(NPCSettings):
             Creates a new instance of NPCSettingsUI.
         async _before_send(self):
             Prepares the UI before sending it to the user.
-        async npc_select(self, n: Select, interaction: Interaction):
+        async npc_select(self, n: discord.ui.Select, interaction: discord.Interaction):
             Handles the selection of an NPC from the dropdown.
-        async role_select(self, r: Select, interaction: Interaction):
+        async role_select(self, r: discord.ui.Select, interaction: discord.Interaction):
             Handles the selection of a role from the dropdown.
-        async new_npc(self, _: Button, interaction: Interaction):
+        async new_npc(self, _: discord.ui.Button, interaction: discord.Interaction):
             Opens a modal to create a new NPC.
-        async edit_npc(self, _: Button, interaction: Interaction):
+        async edit_npc(self, _: discord.ui.Button, interaction: discord.Interaction):
             Opens a modal to edit the selected NPC.
-        async delete_npc_button(self, _: Button, interaction: Interaction):
+        async delete_npc_button(self, _: discord.ui.Button, interaction: discord.Interaction):
             Deletes the selected NPC.
-        async add_npc_role(self, _: Button, interaction: Interaction):
+        async add_npc_role(self, _: discord.ui.Button, interaction: discord.Interaction):
             Adds a role to the selected NPC.
-        async remove_npc_role(self, _: Button, interaction: Interaction):
+        async remove_npc_role(self, _: discord.ui.Button, interaction: discord.Interaction):
             Removes a role from the selected NPC.
-        async back(self, _: Button, interaction: Interaction):
+        async back(self, _: discord.ui.Button, interaction: discord.Interaction):
             Navigates back to the previous menu.
     """
 
@@ -127,7 +126,7 @@ class NPCSettingsUI(NPCSettings):
             if not self.get_item("npc_select"):
                 self.add_item(self.npc_select)
 
-            npc_list = [SelectOption(label=f"{n.name}", 
+            npc_list = [discord.SelectOption(label=f"{n.name}", 
                                                 value=f"{n.key}", 
                                                 default=True if self.npc and self.npc.key == n.key else False) for n in npcs]
 
@@ -141,18 +140,18 @@ class NPCSettingsUI(NPCSettings):
 
 
     
-    @select(placeholder="Select an NPC", row=1, custom_id="npc_select")
-    async def npc_select(self, n: Select, interaction: Interaction):
+    @discord.ui.select(placeholder="Select an NPC", row=1, custom_id="npc_select")
+    async def npc_select(self, n: discord.ui.Select, interaction: discord.Interaction):
         self.npc = next((i for i in self.guild.npcs if i.key == n.values[0]), None)
         await self.refresh_content(interaction)
 
-    @role_select(placeholder="Select a role", custom_id="role_select", row=2)
-    async def role_select(self, r: Select, interaction: Interaction):
+    @discord.ui.role_select(placeholder="Select a role", custom_id="role_select", row=2)
+    async def role_select(self, r: discord.ui.Select, interaction: discord.Interaction):
         self.role = r.values[0]
         await self.refresh_content(interaction)
 
-    @button(label="New NPC", style=ButtonStyle.primary, row=3)
-    async def new_npc(self, _: Button, interaction: Interaction):
+    @discord.ui.button(label="New NPC", style=discord.ButtonStyle.primary, row=3)
+    async def new_npc(self, _: discord.ui.Button, interaction: discord.Interaction):
          modal = NPCModal(self.bot, 
                           guild=self.guild,
                           adventure=self.adventure)
@@ -161,8 +160,8 @@ class NPCSettingsUI(NPCSettings):
          await self.refresh_content(interaction)
 
 
-    @button(label="Edit NPC", style=ButtonStyle.primary, row=3)
-    async def edit_npc(self, _: Button, interaction: Interaction):
+    @discord.ui.button(label="Edit NPC", style=discord.ButtonStyle.primary, row=3)
+    async def edit_npc(self, _: discord.ui.Button, interaction: discord.Interaction):
          modal = NPCModal(self.bot,
                           guild=self.guild,
                           adventure=self.adventure,
@@ -170,31 +169,31 @@ class NPCSettingsUI(NPCSettings):
          await self.prompt_modal(interaction, modal)
          await self.refresh_content(interaction)
 
-    @button(label="Delete NPC", style=ButtonStyle.danger, row=3)
-    async def delete_npc_button(self, _: Button, interaction: Interaction):
+    @discord.ui.button(label="Delete NPC", style=discord.ButtonStyle.danger, row=3)
+    async def delete_npc_button(self, _: discord.ui.Button, interaction: discord.Interaction):
         await self.npc.delete()
         self.npc = None
         await self.refresh_content(interaction)
 
-    @button(label="Add Role", style=ButtonStyle.primary, row=4)
-    async def add_npc_role(self, _: Button, interaction: Interaction):
+    @discord.ui.button(label="Add Role", style=discord.ButtonStyle.primary, row=4)
+    async def add_npc_role(self, _: discord.ui.Button, interaction: discord.Interaction):
         if self.role.id not in self.npc.roles:
             self.npc.roles.append(self.role.id)
             await self.npc.upsert()
         await self.refresh_content(interaction)
 
-    @button(label="Remove Role", style=ButtonStyle.primary, row=4)
-    async def remove_npc_role(self, _: Button, interaction: Interaction):
+    @discord.ui.button(label="Remove Role", style=discord.ButtonStyle.primary, row=4)
+    async def remove_npc_role(self, _: discord.ui.Button, interaction: discord.Interaction):
         if self.role.id in self.npc.roles:
             self.npc.roles.remove(self.role.id)
             await self.npc.upsert()
         await self.refresh_content(interaction)
 
-    @button(label="Back", style=ButtonStyle.grey, row=4)
-    async def back(self, _: Button, interaction: Interaction):
+    @discord.ui.button(label="Back", style=discord.ButtonStyle.grey, row=4)
+    async def back(self, _: discord.ui.Button, interaction: discord.Interaction):
         await self.defer_to(self.back_menu, interaction)
 
-class NPCModal(Modal):
+class NPCModal(discord.ui.Modal):
     bot: G0T0Bot
     guild: PlayerGuild
     adventure: Adventure
@@ -207,11 +206,11 @@ class NPCModal(Modal):
         self.guild = kwargs.get("guild")
         self.adventure = kwargs.get("adventure")
         if not self.npc:
-            self.add_item(InputText(label="Key", placeholder="Key", max_length=20, value=self.npc.key if self.npc else None))
-        self.add_item(InputText(label="Name", placeholder="Name", max_length=100, value=self.npc.name if self.npc else None))
-        self.add_item(InputText(label="Avatar URL", placeholder="Avatar URL", required=False, max_length=100, value=self.npc.avatar_url if self.npc else None))
+            self.add_item(discord.InputText(label="Key", placeholder="Key", max_length=20, value=self.npc.key if self.npc else None))
+        self.add_item(discord.InputText(label="Name", placeholder="Name", max_length=100, value=self.npc.name if self.npc else None))
+        self.add_item(discord.InputText(label="Avatar URL", placeholder="Avatar URL", required=False, max_length=100, value=self.npc.avatar_url if self.npc else None))
 
-    async def callback(self, interaction: Interaction):
+    async def callback(self, interaction: discord.Interaction):
         key=self.children[0].value.strip() if not self.npc else self.npc.key
         name=self.children[1].value if not self.npc else self.children[0].value
         url=self.children[2].value if not self.npc else self.children[1].value

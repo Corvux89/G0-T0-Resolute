@@ -3,7 +3,6 @@ import datetime
 import aiopg.sa
 import sqlalchemy as sa
 from marshmallow import Schema, fields, post_load
-from sqlalchemy import TIMESTAMP, Column, Integer, Numeric, null
 from sqlalchemy.sql.selectable import TableClause
 
 from Resolute.models import metadata
@@ -43,22 +42,22 @@ class Financial(object):
         self.last_reset: datetime.datetime = kwargs.get('last_reset')
 
     @property
-    def adjusted_total(self):
+    def adjusted_total(self) -> float:
         # Adjusted for what Discord takes
         return self.monthly_total*.9
     
-    async def update(self):
+    async def update(self) -> None:
         async with self._db.acquire() as conn:
             await conn.execute(update_financial_query(self))
 
 financial_table = sa.Table(
     "financial",
     metadata,
-    Column("month_count", Integer, nullable=False),
-    Column("monthly_goal", Numeric, nullable=False),
-    Column("monthly_total", Numeric, nullable=False),
-    Column("reserve", Numeric, nullable=False),
-    Column("last_reset", TIMESTAMP(timezone=datetime.timezone.utc), nullable=True, default=null())
+    sa.Column("month_count", sa.Integer, nullable=False),
+    sa.Column("monthly_goal", sa.Numeric, nullable=False),
+    sa.Column("monthly_total", sa.Numeric, nullable=False),
+    sa.Column("reserve", sa.Numeric, nullable=False),
+    sa.Column("last_reset", sa.TIMESTAMP(timezone=datetime.timezone.utc), nullable=True, default=sa.null())
 )
 
 class FinancialSchema(Schema):

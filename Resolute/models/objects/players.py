@@ -1,18 +1,15 @@
 import json
 import logging
-from enum import Enum
 from timeit import default_timer as timer
 
 import aiopg.sa
+import discord
 import sqlalchemy as sa
-from discord import (ApplicationContext, ForumChannel, HTTPException,
-                     Interaction, Member, Message, TextChannel, Thread)
 from marshmallow import Schema, fields, post_load
-from sqlalchemy import BigInteger, Column, Integer, String, and_, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.sql import FromClause
 
-import Resolute.models.objects.logs as l
+import Resolute.models.objects.logs as log
 import Resolute.models.objects.npc as npc
 from Resolute.compendium import Compendium
 from Resolute.helpers.general_helpers import get_webhook
@@ -22,7 +19,7 @@ from Resolute.models.embeds.arenas import ArenaStatusEmbed
 from Resolute.models.objects.adventures import (Adventure, AdventureSchema,
                                                 get_adventures_by_dm_query,
                                                 get_character_adventures_query)
-from Resolute.models.objects.applications import ApplicationType
+from Resolute.models.objects.enum import ApplicationType, ArenaPostType
 from Resolute.models.objects.arenas import (Arena, ArenaSchema,
                                             get_arena_by_host_query,
                                             get_character_arena_query)
@@ -92,7 +89,7 @@ class Player(object):
 
         # Virtual Attributes
         self.characters: list[PlayerCharacter] = []
-        self.member: Member = kwargs.get('member', None)
+        self.member: discord.Member = kwargs.get('member', None)
         self.completed_rps: int = None
         self.completed_arenas: int = None
         self.needed_rps: int = None
@@ -115,7 +112,7 @@ class Player(object):
                     return True
         return False
     
-    def get_channel_character(self, channel: TextChannel | Thread | ForumChannel) -> PlayerCharacter:
+    def get_channel_character(self, channel: discord.TextChannel | discord.Thread | discord.ForumChannel) -> PlayerCharacter:
         for char in self.characters:
             if channel.id in char.channels:
                 return char
@@ -125,7 +122,7 @@ class Player(object):
             if char.primary_character:
                 return char
             
-    async def get_webhook_character(self, channel: TextChannel | Thread | ForumChannel) -> PlayerCharacter:
+    async def get_webhook_character(self, channel: discord.TextChannel | discord.Thread | discord.ForumChannel) -> PlayerCharacter:
         if character := self.get_channel_character(channel):
             return character
         elif character := self.get_primary_character():
@@ -140,10 +137,10 @@ class Player(object):
         return character
 
 
-    async def send_webhook_message(self, ctx: ApplicationContext, character: PlayerCharacter, content: str):
+    async def send_webhook_message(self, ctx: discord.ApplicationContext, character: PlayerCharacter, content: str) -> None:
         webhook = await get_webhook(ctx.channel)
         
-        if isinstance(ctx.channel, Thread):
+        if isinstance(ctx.channel, discord.Thread):
             await webhook.send(username=f"[{character.level}] {character.name} // {self.member.display_name}",
                             avatar_url=self.member.display_avatar.url if not character.avatar_url else character.avatar_url,
                             content=content,
@@ -154,7 +151,7 @@ class Player(object):
                             content=content)
 
     
-    async def update_command_count(self, command: str):
+    async def update_command_count(self, command: str) -> None:
         stats = json.loads(self.statistics if self.statistics else "{}")
         if "commands" not in stats:
             stats["commands"] = {}
@@ -169,7 +166,7 @@ class Player(object):
         async with self._db.acquire() as conn:
             await conn.execute(upsert_player_query(self))
     
-    async def update_post_stats(self, character: PlayerCharacter | npc.NPC, post: Message, **kwargs):
+    async def update_post_stats(self, character: PlayerCharacter | npc.NPC, post: discord.Message, **kwargs) -> None:
         content = kwargs.get('content', post.content)
         retract = kwargs.get('retract', False)
 
@@ -220,8 +217,8 @@ class Player(object):
         async with self._db.acquire() as conn:
             await conn.execute(upsert_player_query(self))
 
-    async def remove_arena_board_post(self, ctx: ApplicationContext | Interaction):
-        def predicate(message: Message):
+    async def remove_arena_board_post(self, ctx: discord.ApplicationContext | discord.Interaction) -> None:
+        def predicate(message: discord.Message):
             if message.author.bot:
                 return message.embeds[0].footer.text == f"{self.id}"
             
@@ -235,12 +232,12 @@ class Player(object):
                 deleted_message = await self.guild.arena_board_channel.purge(check=predicate)
                 log.info(f"{len(deleted_message)} message{'s' if len(deleted_message)>1 else ''} by {self.member.name} deleted from #{self.guild.arena_board_channel.name}")
             except Exception as error:
-                if isinstance(error, HTTPException):
+                if isinstance(error, discord.HTTPException):
                     await ctx.send(f'Warning: deleting users\'s post(s) from {self.guild.arena_board_channel.mention} failed')
                 else:
                     log.error(error)
 
-    async def add_to_arena(self, interaction: Interaction | ApplicationContext, character: PlayerCharacter, arena: Arena):
+    async def add_to_arena(self, interaction: discord.Interaction | discord.ApplicationContext, character: PlayerCharacter, arena: Arena) -> None:
         if character.id in arena.characters:
             raise G0T0Error("character already in the arena")
         elif not self.can_join_arena(arena.type, character):
@@ -319,15 +316,15 @@ class Player(object):
 player_table = sa.Table(
     "players",
     metadata,
-    Column("id", BigInteger, primary_key=True),
-    Column("guild_id", BigInteger, primary_key=True),
-    Column("handicap_amount", Integer),
-    Column("cc", Integer),
-    Column("div_cc", Integer),
-    Column("points", Integer),
-    Column("activity_points", Integer),
-    Column("activity_level", Integer),
-    Column("statistics", String)
+    sa.Column("id", sa.BigInteger, primary_key=True),
+    sa.Column("guild_id", sa.BigInteger, primary_key=True),
+    sa.Column("handicap_amount", sa.Integer),
+    sa.Column("cc", sa.Integer),
+    sa.Column("div_cc", sa.Integer),
+    sa.Column("points", sa.Integer),
+    sa.Column("activity_points", sa.Integer),
+    sa.Column("activity_level", sa.Integer),
+    sa.Column("statistics", sa.String)
 )
 
 class PlayerSchema(Schema):
@@ -391,9 +388,9 @@ class PlayerSchema(Schema):
         arena_host_activity = self.bot.compendium.get_activity("ARENA_HOST")
 
         async with self.bot.db.acquire() as conn:
-            rp_result = await conn.execute(l.get_log_count_by_player_and_activity(player.id, player.guild_id, rp_activity.id))
-            areana_result = await conn.execute(l.get_log_count_by_player_and_activity(player.id, player.guild_id, arena_activity.id))
-            arena_host_result = await conn.execute(l.get_log_count_by_player_and_activity(player.id, player.guild_id, arena_host_activity.id))
+            rp_result = await conn.execute(log.get_log_count_by_player_and_activity(player.id, player.guild_id, rp_activity.id))
+            areana_result = await conn.execute(log.get_log_count_by_player_and_activity(player.id, player.guild_id, arena_activity.id))
+            arena_host_result = await conn.execute(log.get_log_count_by_player_and_activity(player.id, player.guild_id, arena_host_activity.id))
             player.completed_rps = await rp_result.scalar()
             player.completed_arenas = await areana_result.scalar() + await arena_host_result.scalar()
 
@@ -434,15 +431,15 @@ def get_player_query(player_id: int, guild_id: int = None) -> FromClause:
 
     if guild_id:
         return player_table.select().where(
-            and_(player_table.c.id == player_id, player_table.c.guild_id == guild_id)
+            sa.and_(player_table.c.id == player_id, player_table.c.guild_id == guild_id)
         )
     
     return player_table.select().where(
-        and_(player_table.c.id == player_id)
+        sa.and_(player_table.c.id == player_id)
     )
 
 def reset_div_cc(guild_id: int):
-    return update(player_table).where(player_table.c.guild_id == guild_id).values(div_cc=0, activity_points=0, activity_level=0)
+    return sa.update(player_table).where(player_table.c.guild_id == guild_id).values(div_cc=0, activity_points=0, activity_level=0)
 
 def upsert_player_query(player: Player):
     insert_statement = insert(player_table).values(
@@ -476,20 +473,6 @@ def upsert_player_query(player: Player):
 
     return upsert_statement
 
-class ArenaPostType(Enum):
-    """
-    Enum class representing the types of posts that can be made in an arena.
-    Attributes:
-        COMBAT (str): Represents a combat post type.
-        NARRATIVE (str): Represents a narrative post type.
-        BOTH (str): Represents a post type that can be either combat or narrative.
-    """
-
-    COMBAT = 'Combat'
-    NARRATIVE = 'Narrative'
-    BOTH = 'Combat or Narrative'
-
-
 class ArenaPost(object):
     """
     Represents a post in the arena associated with a player and their characters.
@@ -510,7 +493,7 @@ class ArenaPost(object):
         self.characters = characters
         self.type: ArenaPostType = kwargs.get('type', ArenaPostType.COMBAT)
 
-        self.message: Message = kwargs.get("message")
+        self.message: discord.Message = kwargs.get("message")
 
 
 class RPPost(object):

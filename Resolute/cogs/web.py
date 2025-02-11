@@ -8,7 +8,7 @@ from Resolute.constants import AUTH_TOKEN, ERROR_CHANNEL
 
 log = logging.getLogger(__name__)
 
-def setup(bot: commands.Bot):
+def setup(bot: G0T0Bot):
     bot.add_cog(WebCog(bot))
 
 class WebCog(commands.Cog):

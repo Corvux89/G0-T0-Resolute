@@ -1,9 +1,6 @@
 import logging
 
-from discord import (ApplicationContext, CategoryChannel, Forbidden,
-                     HTTPException, InvalidArgument, Option,
-                     PermissionOverwrite, Role, SlashCommandGroup,
-                     SlashCommandOptionType, TextChannel, utils)
+import discord
 from discord.ext import commands
 
 from Resolute.bot import G0T0Bot
@@ -11,9 +8,10 @@ from Resolute.helpers.autocomplete import get_faction_autocomplete
 from Resolute.models.categories.categories import Faction
 from Resolute.models.embeds.adventures import AdventuresEmbed
 from Resolute.models.objects.adventures import Adventure
+from Resolute.models.objects.enum import WebhookType
 from Resolute.models.objects.exceptions import (AdventureNotFound,
                                                 CharacterNotFound, G0T0Error)
-from Resolute.models.objects.webhook import G0T0Webhook, WebhookType
+from Resolute.models.objects.webhook import G0T0Webhook
 from Resolute.models.views.adventures import AdventureSettingsUI
 
 log = logging.getLogger(__name__)
@@ -36,13 +34,11 @@ class Adventures(commands.Cog):
         create_error(ctx, error):
         adventure_manage(ctx, role, channel_category):
     '''
-    bot: G0T0Bot  # Typing annotation for my IDE's sake
-    adventure_commands = SlashCommandGroup("adventure", "Adventure commands", guild_only=True)
+    bot: G0T0Bot  
+    adventure_commands = discord.SlashCommandGroup("adventure", "Adventure commands", guild_only=True)
 
     def __init__(self, bot):
-        # Setting up some objects
         self.bot = bot
-
         log.info(f'Cog \'Adventures\' loaded')
 
     @commands.Cog.listener()
@@ -64,10 +60,10 @@ class Adventures(commands.Cog):
         name="adventures",
         description="Shows active adventures for a player"
     )
-    async def adventure_get(self, ctx: ApplicationContext,
-                            member: Option(SlashCommandOptionType(6), description="Player to get the information of", required=False),
-                            phrase: Option(str, description="Additional question/phrase to add", required=False),
-                            phrase2: Option(str, description="Additional question/phrase to add", required=False)):
+    async def adventure_get(self, ctx: discord.ApplicationContext,
+                            member: discord.Option(discord.SlashCommandOptionType(6), description="Player to get the information of", required=False),
+                            phrase: discord.Option(str, description="Additional question/phrase to add", required=False),
+                            phrase2: discord.Option(str, description="Additional question/phrase to add", required=False)):
         
         """
         Retrieves and responds with the adventure information of a specified player.
@@ -102,15 +98,15 @@ class Adventures(commands.Cog):
         name="create",
         description="Creates a new adventure"
     )
-    async def adventure_create(self, ctx: ApplicationContext,
-                               adventure_name: Option(str, description="The name of the adventure as it should show up"
+    async def adventure_create(self, ctx: discord.ApplicationContext,
+                               adventure_name: discord.Option(str, description="The name of the adventure as it should show up"
                                                                        "in the category and channel names",
                                                       required=True),
-                               role_name: Option(str, description="The name of the Role to be created for adventure"
+                               role_name: discord.Option(str, description="The name of the Role to be created for adventure"
                                                                   "participants", required=True),
-                               dm: Option(SlashCommandOptionType(6), description="The DM of the adventure.", required=True),
-                               faction1: Option(str, description="First faction this adventure is for", autocomplete=get_faction_autocomplete, required=False),
-                               faction2: Option(str, description="Second faction this adventure is for", autocomplete=get_faction_autocomplete, required=False)):
+                               dm: discord.Option(discord.SlashCommandOptionType(6), description="The DM of the adventure.", required=True),
+                               faction1: discord.Option(str, description="First faction this adventure is for", autocomplete=get_faction_autocomplete, required=False),
+                               faction2: discord.Option(str, description="Second faction this adventure is for", autocomplete=get_faction_autocomplete, required=False)):
         """
         Creates a new adventure with the specified parameters.
         Args:
@@ -129,31 +125,31 @@ class Adventures(commands.Cog):
         await ctx.defer()
 
         # Create the role
-        if utils.get(ctx.guild.roles, name=role_name):
+        if discord.utils.get(ctx.guild.roles, name=role_name):
             raise G0T0Error(f"Role `@{role_name}` already exists")
         else:
             g = await self.bot.get_player_guild(ctx.guild.id)
-            adventure_role: Role = await ctx.guild.create_role(name=role_name, mentionable=True,
+            adventure_role: discord.Role = await ctx.guild.create_role(name=role_name, mentionable=True,
                                                          reason=f"Created by {ctx.author.nick} for adventure"
                                                                 f"{adventure_name}")
             
             # Setup role permissions
             category_permissions = dict()
 
-            category_permissions[adventure_role] = PermissionOverwrite(view_channel=True, 
+            category_permissions[adventure_role] = discord.PermissionOverwrite(view_channel=True, 
                                                                                send_messages=True)
 
-            if bots_role := utils.get(ctx.guild.roles, name="Bots"):
-                category_permissions[bots_role] = PermissionOverwrite(view_channel=True,
+            if bots_role := discord.utils.get(ctx.guild.roles, name="Bots"):
+                category_permissions[bots_role] = discord.PermissionOverwrite(view_channel=True,
                                                                               send_messages=True)
 
-            if goto_role := utils.get(ctx.guild.roles, name="G0-T0 Resolute"):
-                category_permissions[goto_role] = PermissionOverwrite(view_channel=True,
+            if goto_role := discord.utils.get(ctx.guild.roles, name="G0-T0 Resolute"):
+                category_permissions[goto_role] = discord.PermissionOverwrite(view_channel=True,
                                                                               send_messages=True,
                                                                               manage_messages=True,
                                                                               manage_channels=True)
 
-            category_permissions[ctx.guild.default_role] = PermissionOverwrite(
+            category_permissions[ctx.guild.default_role] = discord.PermissionOverwrite(
                 view_channel=False,
                 send_messages=False
             )
@@ -164,22 +160,22 @@ class Adventures(commands.Cog):
 
             # Setup the questers
             if g.quest_role:
-                ic_overwrites[g.quest_role] = PermissionOverwrite(
+                ic_overwrites[g.quest_role] = discord.PermissionOverwrite(
                     view_channel=True
                 )
 
-                ooc_overwrites[g.quest_role] = PermissionOverwrite(
+                ooc_overwrites[g.quest_role] = discord.PermissionOverwrite(
                     view_channel=True,
                     send_messages=True
                 )
 
-            new_adventure_category: CategoryChannel = await ctx.guild.create_category_channel(
+            new_adventure_category: discord.CategoryChannel = await ctx.guild.create_category_channel(
                 name=adventure_name,
                 overwrites=category_permissions,
                 reason=f"Creating category for {adventure_name}"
             )
 
-            ic_channel: TextChannel = await ctx.guild.create_text_channel(
+            ic_channel: discord.TextChannel = await ctx.guild.create_text_channel(
                 name=adventure_name,
                 category=new_adventure_category,
                 overwrites=ic_overwrites,
@@ -187,7 +183,7 @@ class Adventures(commands.Cog):
                 reason=f"Creating adventure {adventure_name} IC Room"
             )
 
-            ooc_channel: TextChannel = await ctx.guild.create_text_channel(
+            ooc_channel: discord.TextChannel = await ctx.guild.create_text_channel(
                 name=f"{adventure_name}-ooc",
                 category=new_adventure_category,
                 overwrites=ooc_overwrites,
@@ -222,20 +218,20 @@ class Adventures(commands.Cog):
             G0T0Error: If the error is of type Forbidden, HTTPException, or InvalidArgument.
         """
 
-        if isinstance(error, Forbidden):
+        if isinstance(error, discord.Forbidden):
             raise G0T0Error(f"Bot isn't allowed to do that for some reason")
-        elif isinstance(error, HTTPException):
+        elif isinstance(error, discord.HTTPException):
             raise G0T0Error(f"Error createing new role")
-        elif isinstance(error, InvalidArgument):
+        elif isinstance(error, discord.InvalidArgument):
             raise G0T0Error(f"Invalid Argument: {error}")
 
     @adventure_commands.command(
         name="manage",
         description="Manage an adventure. Either run in the adventure channel or specify a role/category"
     )
-    async def adventure_manage(self, ctx: ApplicationContext,
-                               role: Option(Role, description="Role of the adventure", required=False),
-                               channel_category: Option(CategoryChannel, description="Adventure Channel Category", required=False)):
+    async def adventure_manage(self, ctx: discord.ApplicationContext,
+                               role: discord.Option(discord.Role, description="Role of the adventure", required=False),
+                               channel_category: discord.Option(discord.CategoryChannel, description="Adventure Channel Category", required=False)):
         """
         Manages the settings of an adventure based on the provided role or channel category.
         Parameters:

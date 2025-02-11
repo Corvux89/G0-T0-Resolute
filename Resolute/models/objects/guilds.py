@@ -3,12 +3,10 @@ from datetime import datetime, timedelta, timezone
 from math import floor
 
 import aiopg.sa
+import discord
 import sqlalchemy as sa
-from discord import Guild, Role, TextChannel
 from marshmallow import Schema, fields, post_load
-from sqlalchemy import (BOOLEAN, TIMESTAMP, BigInteger, Column, Integer,
-                        String, and_)
-from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.dialects.postgresql import ARRAY, insert
 from sqlalchemy.sql import FromClause
 
 from Resolute.compendium import Compendium
@@ -120,35 +118,35 @@ class PlayerGuild(object):
 
         # Virtual attributes
         self.calendar: list[RefServerCalendar] = None
-        self.guild: Guild = kwargs.get('guild')
+        self.guild: discord.Guild = kwargs.get('guild')
         self.npcs: list[NPC] = []
         self.stipends: list[RefWeeklyStipend] = []
 
         # Roles
-        self.entry_role: Role = kwargs.get('entry_role')
-        self.member_role: Role = kwargs.get('member_role')
-        self.tier_2_role: Role = kwargs.get('tier_2_role')
-        self.tier_3_role: Role = kwargs.get('tier_3_role')
-        self.tier_4_role: Role = kwargs.get('tier_4_role')
-        self.tier_5_role: Role = kwargs.get('tier_5_role')
-        self.tier_6_role: Role = kwargs.get('tier_6_role')
-        self.admin_role: Role = kwargs.get('admin_role')
-        self.staff_role: Role = kwargs.get('staff_role')
-        self.bot_role: Role = kwargs.get('bot_role')
-        self.quest_role: Role = kwargs.get('quest_role')
+        self.entry_role: discord.Role = kwargs.get('entry_role')
+        self.member_role: discord.Role = kwargs.get('member_role')
+        self.tier_2_role: discord.Role = kwargs.get('tier_2_role')
+        self.tier_3_role: discord.Role = kwargs.get('tier_3_role')
+        self.tier_4_role: discord.Role = kwargs.get('tier_4_role')
+        self.tier_5_role: discord.Role = kwargs.get('tier_5_role')
+        self.tier_6_role: discord.Role = kwargs.get('tier_6_role')
+        self.admin_role: discord.Role = kwargs.get('admin_role')
+        self.staff_role: discord.Role = kwargs.get('staff_role')
+        self.bot_role: discord.Role = kwargs.get('bot_role')
+        self.quest_role: discord.Role = kwargs.get('quest_role')
         
         # Channels
-        self.application_channel: TextChannel = kwargs.get('application_channel')
-        self.market_channel: TextChannel = kwargs.get('market_channel')
-        self.announcement_channel: TextChannel = kwargs.get('announcement_channel')
-        self.staff_channel: TextChannel = kwargs.get('staff_channel')
-        self.help_channel: TextChannel = kwargs.get('help_channel')
-        self.arena_board_channel: TextChannel = kwargs.get('arena_board_channel')
-        self.exit_channel: TextChannel = kwargs.get('exit_channel')
-        self.entrance_channel: TextChannel = kwargs.get('entrance_channel')
-        self.activity_points_channel: TextChannel = kwargs.get('activity_points_channel')
-        self.rp_post_channel: TextChannel = kwargs.get('rp_post_channel')
-        self.dev_channels: list[TextChannel] = kwargs.get('dev_channels', [])
+        self.application_channel: discord.TextChannel = kwargs.get('application_channel')
+        self.market_channel: discord.TextChannel = kwargs.get('market_channel')
+        self.announcement_channel: discord.TextChannel = kwargs.get('announcement_channel')
+        self.staff_channel: discord.TextChannel = kwargs.get('staff_channel')
+        self.help_channel: discord.TextChannel = kwargs.get('help_channel')
+        self.arena_board_channel: discord.TextChannel = kwargs.get('arena_board_channel')
+        self.exit_channel: discord.TextChannel = kwargs.get('exit_channel')
+        self.entrance_channel: discord.TextChannel = kwargs.get('entrance_channel')
+        self.activity_points_channel: discord.TextChannel = kwargs.get('activity_points_channel')
+        self.rp_post_channel: discord.TextChannel = kwargs.get('rp_post_channel')
+        self.dev_channels: list[discord.TextChannel] = kwargs.get('dev_channels', [])
 
 
         if not self.id and self.guild:
@@ -156,12 +154,12 @@ class PlayerGuild(object):
 
 
     @property
-    def get_reset_day(self):
+    def get_reset_day(self) -> str:
         weekDays = ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
         return weekDays[self._reset_day]
 
     @property
-    def get_next_reset(self):
+    def get_next_reset(self) -> int:
         if self._reset_hour is not None and self._reset_day is not None:
             now = datetime.now(timezone.utc)
             day_offset = (self._reset_day - now.weekday() + 7) % 7
@@ -181,15 +179,15 @@ class PlayerGuild(object):
             return None
 
     @property
-    def get_last_reset(self):
+    def get_last_reset(self) -> int:
         return calendar.timegm(self._last_reset.utctimetuple())
     
     @property
-    def formatted_server_date(self):
+    def formatted_server_date(self) -> str:
         return f"{f'{self.epoch_notation}::' if self.epoch_notation else ''}{self.server_year:02}:{self.server_month.display_name}:{self.server_day:02}"
     
     @property
-    def server_year(self):
+    def server_year(self) -> int:
         if not self.calendar or self.server_date is None:
             return None
         return floor(self.server_date / self.days_in_server_year)
@@ -203,7 +201,7 @@ class PlayerGuild(object):
         
     
     @property 
-    def server_day(self):        
+    def server_day(self) -> int:        
         month = self.server_month
 
         if not month:
@@ -227,7 +225,7 @@ class PlayerGuild(object):
 
         return epoch_time
     
-    def is_dev_channel(self, channel: TextChannel):
+    def is_dev_channel(self, channel: discord.TextChannel) -> bool:
         if not self.dev_channels:
             return False
         return channel in self.dev_channels
@@ -278,50 +276,50 @@ class PlayerGuild(object):
 guilds_table = sa.Table(
     "guilds",
     metadata,
-    Column("id", BigInteger, primary_key=True, nullable=False),
-    Column("max_level", Integer, nullable=False, default=3),
-    Column("weeks", Integer, nullable=False, default=0),
-    Column("reset_day", Integer, nullable=True),
-    Column("reset_hour", Integer, nullable=True),
-    Column("last_reset", TIMESTAMP(timezone=timezone.utc)),
-    Column("greeting", String, nullable=True),
-    Column("handicap_cc", Integer, nullable=True),
-    Column("max_characters", Integer, nullable=False),
-    Column("div_limit", Integer, nullable=False),
-    Column("reset_message", String, nullable=True),
-    Column("weekly_announcement", sa.ARRAY(String), nullable=True),
-    Column("server_date", Integer, nullable=True),
-    Column("epoch_notation", String, nullable=True),
-    Column("first_character_message", String, nullable=True),
-    Column("ping_announcement", BOOLEAN, default=False, nullable=False),
-    Column("reward_threshold", Integer, nullable=True),
-    Column("entry_role", BigInteger, nullable=True),
-    Column("member_role", BigInteger, nullable=True),
-    Column("tier_2_role", BigInteger, nullable=True),
-    Column("tier_3_role", BigInteger, nullable=True),
-    Column("tier_4_role", BigInteger, nullable=True),
-    Column("tier_5_role", BigInteger, nullable=True),
-    Column("tier_6_role", BigInteger, nullable=True),
-    Column("admin_role", BigInteger, nullable=True),
-    Column("staff_role", BigInteger, nullable=True),
-    Column("bot_role", BigInteger, nullable=True),
-    Column("quest_role", BigInteger, nullable=True),
-    Column("application_channel", BigInteger, nullable=True),
-    Column("market_channel", BigInteger, nullable=True),
-    Column("announcement_channel", BigInteger, nullable=True),
-    Column("staff_channel", BigInteger, nullable=True),
-    Column("help_channel", BigInteger, nullable=True),
-    Column("arena_board_channel", BigInteger, nullable=True),
-    Column("exit_channel", BigInteger, nullable=True),
-    Column("entrance_channel", BigInteger, nullable=True),
-    Column("activity_points_channel", BigInteger, nullable=True),
-    Column("rp_post_channel", BigInteger, nullable=True),
-    Column("dev_channels", sa.ARRAY(BigInteger), nullable=True, default=[])
+    sa.Column("id", sa.BigInteger, primary_key=True, nullable=False),
+    sa.Column("max_level", sa.Integer, nullable=False, default=3),
+    sa.Column("weeks", sa.Integer, nullable=False, default=0),
+    sa.Column("reset_day", sa.Integer, nullable=True),
+    sa.Column("reset_hour", sa.Integer, nullable=True),
+    sa.Column("last_reset", sa.TIMESTAMP(timezone=timezone.utc)),
+    sa.Column("greeting", sa.String, nullable=True),
+    sa.Column("handicap_cc", sa.Integer, nullable=True),
+    sa.Column("max_characters", sa.Integer, nullable=False),
+    sa.Column("div_limit", sa.Integer, nullable=False),
+    sa.Column("reset_message", sa.String, nullable=True),
+    sa.Column("weekly_announcement", sa.ARRAY(sa.String), nullable=True),
+    sa.Column("server_date", sa.Integer, nullable=True),
+    sa.Column("epoch_notation", sa.String, nullable=True),
+    sa.Column("first_character_message", sa.String, nullable=True),
+    sa.Column("ping_announcement", sa.BOOLEAN, default=False, nullable=False),
+    sa.Column("reward_threshold", sa.Integer, nullable=True),
+    sa.Column("entry_role", sa.BigInteger, nullable=True),
+    sa.Column("member_role", sa.BigInteger, nullable=True),
+    sa.Column("tier_2_role", sa.BigInteger, nullable=True),
+    sa.Column("tier_3_role", sa.BigInteger, nullable=True),
+    sa.Column("tier_4_role", sa.BigInteger, nullable=True),
+    sa.Column("tier_5_role", sa.BigInteger, nullable=True),
+    sa.Column("tier_6_role", sa.BigInteger, nullable=True),
+    sa.Column("admin_role", sa.BigInteger, nullable=True),
+    sa.Column("staff_role", sa.BigInteger, nullable=True),
+    sa.Column("bot_role", sa.BigInteger, nullable=True),
+    sa.Column("quest_role", sa.BigInteger, nullable=True),
+    sa.Column("application_channel", sa.BigInteger, nullable=True),
+    sa.Column("market_channel", sa.BigInteger, nullable=True),
+    sa.Column("announcement_channel", sa.BigInteger, nullable=True),
+    sa.Column("staff_channel", sa.BigInteger, nullable=True),
+    sa.Column("help_channel", sa.BigInteger, nullable=True),
+    sa.Column("arena_board_channel", sa.BigInteger, nullable=True),
+    sa.Column("exit_channel", sa.BigInteger, nullable=True),
+    sa.Column("entrance_channel", sa.BigInteger, nullable=True),
+    sa.Column("activity_points_channel", sa.BigInteger, nullable=True),
+    sa.Column("rp_post_channel", sa.BigInteger, nullable=True),
+    sa.Column("dev_channels", ARRAY(sa.BigInteger), nullable=True, default=[])
 )
 
 class GuildSchema(Schema):
     _db: aiopg.sa.Engine
-    _guild: Guild
+    _guild: discord.Guild
 
     id = fields.Integer(required=True)
     max_level = fields.Integer()
@@ -363,7 +361,7 @@ class GuildSchema(Schema):
     rp_post_channel = fields.Method(None, "load_channel", allow_none=True)
     dev_channels = fields.Method(None, "load_channels", allow_none=True)
 
-    def __init__(self, db: aiopg.sa.Engine, guild: Guild, **kwargs):
+    def __init__(self, db: aiopg.sa.Engine, guild: discord.Guild, **kwargs):
         super().__init__(**kwargs)
         self._db = db
         self._guild = guild
@@ -424,7 +422,7 @@ def get_guilds_with_reset_query(day: int, hour: int) -> FromClause:
     six_days_ago = datetime.today() - timedelta(days=6)
 
     return guilds_table.select().where(
-        and_(guilds_table.c.reset_day == day, guilds_table.c.reset_hour == hour,
+        sa.and_(guilds_table.c.reset_day == day, guilds_table.c.reset_hour == hour,
              guilds_table.c.last_reset < six_days_ago)
     ).order_by(guilds_table.c.id.desc())
 

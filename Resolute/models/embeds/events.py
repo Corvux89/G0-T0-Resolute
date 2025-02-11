@@ -1,10 +1,10 @@
-from discord import Embed
+import discord
 
 from Resolute.constants import ZWSP3
 from Resolute.models.objects.players import Player
 
 
-class MemberLeaveEmbed(Embed):
+class MemberLeaveEmbed(discord.Embed):
     def __init__(self, player: Player):
         super().__init__(title=f"{str(player.member)} ( {f'`{player.member.nick}`' if player.member.nick else 'No nickname'}) has left the server")
                 

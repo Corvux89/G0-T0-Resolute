@@ -3,20 +3,20 @@ import logging
 import sys
 from os import listdir
 
-from discord import Color, Embed, Intents
+import discord
 from discord.ext import commands
 
 from Resolute.bot import G0T0Bot
 from Resolute.constants import BOT_TOKEN, DEFAULT_PREFIX
 
-intents = Intents.default()
+intents = discord.Intents.default()
 intents.members = True
 intents.message_content = True
 
 class MyHelpCommand(commands.MinimalHelpCommand):
     async def send_pages(self):
         destination = self.get_destination()
-        e = Embed(color=Color.blurple(), description='')
+        e = discord.Embed(color=discord.Color.blurple(), description='')
         for page in self.paginator.pages:
             e.description += page
         await destination.send(embed=e)

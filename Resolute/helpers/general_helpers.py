@@ -1,8 +1,6 @@
 import re
 
-from discord import (ApplicationContext, Color, Embed, ForumChannel,
-                     Interaction, Member, Message, TextChannel, Thread,
-                     Webhook, utils)
+import discord
 from sqlalchemy.util import asyncio
 
 from Resolute.constants import BOT_OWNERS
@@ -10,7 +8,7 @@ from Resolute.models.objects.characters import PlayerCharacter
 from Resolute.models.objects.guilds import PlayerGuild
 
 
-def is_owner(ctx: ApplicationContext) -> bool:
+def is_owner(ctx: discord.ApplicationContext) -> bool:
     """
     User is a bot owner (not just a server owner)
 
@@ -25,7 +23,7 @@ def is_owner(ctx: ApplicationContext) -> bool:
     return author.id in BOT_OWNERS
 
 
-async def is_admin(ctx: ApplicationContext | Interaction) -> bool:
+async def is_admin(ctx: discord.ApplicationContext | discord.Interaction) -> bool:
     """
     User is a designated administrator
 
@@ -49,13 +47,13 @@ async def is_admin(ctx: ApplicationContext | Interaction) -> bool:
     else:
         return False
     
-async def is_staff(ctx: ApplicationContext | Interaction) -> bool:
+async def is_staff(ctx: discord.ApplicationContext | discord.Interaction) -> bool:
     """
     Check if the user is a staff member.
     This function checks if the user who initiated the context is a staff member
     by verifying their roles against the admin and staff roles defined in the guild.
     Args:
-        ctx (ApplicationContext | Interaction): The context of the command or interaction.
+        ctx (discord.ApplicationContext | discord.Interaction): The context of the command or discord.Interaction.
     Returns:
         bool: True if the user is a staff member or the owner, False otherwise.
     """
@@ -179,14 +177,14 @@ def find_character(name: str, characters: list[PlayerCharacter]) -> list[PlayerC
     return direct_match
 
 
-def process_message(message: str, g: PlayerGuild,  member: Member = None, mappings: dict = None) -> str:
-    def process_message(message: str, g: PlayerGuild, member: Member = None, mappings: dict = None) -> str:
+def process_message(message: str, g: PlayerGuild,  member: discord.Member = None, mappings: dict = None) -> str:
+    def process_message(message: str, g: PlayerGuild, member: discord.Member = None, mappings: dict = None) -> str:
         """
         Processes a message by replacing placeholders with actual mentions and values.
         Args:
             message (str): The message containing placeholders to be replaced.
             g (PlayerGuild): The guild object containing channels and roles.
-            member (Member, optional): The member to mention in the message. Defaults to None.
+            member (discord.Member, optional): The member to mention in the message. Defaults to None.
             mappings (dict, optional): A dictionary of additional placeholders and their replacements. Defaults to None.
         Returns:
             str: The processed message with placeholders replaced by actual mentions and values.
@@ -195,11 +193,11 @@ def process_message(message: str, g: PlayerGuild,  member: Member = None, mappin
     role_mentions = re.findall(r'{@([^}]*)}', message)
 
     for chan in channel_mentions:
-        if (channel := utils.get(g.guild.channels, name=chan)):
+        if (channel := discord.utils.get(g.guild.channels, name=chan)):
             message = message.replace("{#"+chan+"}", f"{channel.mention}")
 
     for r in role_mentions:
-        if (role := utils.get(g.guild.roles, name=r)):
+        if (role := discord.utils.get(g.guild.roles, name=r)):
             message = message.replace("{@"+r+"}", f"{role.mention}")
 
     if mappings:
@@ -211,7 +209,7 @@ def process_message(message: str, g: PlayerGuild,  member: Member = None, mappin
 
     return message
 
-async def get_webhook(channel: TextChannel) -> Webhook:
+async def get_webhook(channel: discord.TextChannel) -> discord.Webhook:
     """
     Asynchronously retrieves or creates a webhook for the given channel.
     If the channel is a Thread or ForumChannel, it retrieves the parent text channel.
@@ -222,7 +220,7 @@ async def get_webhook(channel: TextChannel) -> Webhook:
     Returns:
         Webhook: The existing or newly created webhook for the channel.
     """
-    if isinstance(channel, (Thread, ForumChannel)):
+    if isinstance(channel, (discord.Thread, discord.ForumChannel)):
         text_channel = channel.parent
     else:
         text_channel = channel
@@ -252,7 +250,7 @@ def paginate(choices: list[str], per_page: int) -> list[list[str]]:
         out.append(choices[idx:idx+per_page])
     return out
 
-async def try_delete(message: Message):
+async def try_delete(message: discord.Message) -> None:
     """
     Attempts to delete a given message asynchronously.
     Args:
@@ -267,11 +265,11 @@ async def try_delete(message: Message):
     except:
         pass
 
-async def get_selection(ctx: ApplicationContext, choices: list[str], delete: bool = True, dm: bool=False, message: str = None, force_select: bool = False, query_message: str = None):
+async def get_selection(ctx: discord.ApplicationContext, choices: list[str], delete: bool = True, dm: bool=False, message: str = None, force_select: bool = False, query_message: str = None) -> str:
     """
     Asynchronously prompts the user to select an option from a list of choices.
     Parameters:
-        ctx (ApplicationContext): The context in which the command was invoked.
+        ctx (discord.ApplicationContext): The context in which the command was invoked.
         choices (list[str]): A list of string choices for the user to select from.
         delete (bool, optional): Whether to delete the selection message after selection. Defaults to True.
         dm (bool, optional): Whether to send the selection message as a direct message. Defaults to False.
@@ -304,7 +302,7 @@ async def get_selection(ctx: ApplicationContext, choices: list[str], delete: boo
 
     for n in range(200):
         _choices = pages[page]
-        embed = Embed(title="Multiple Matches Found")
+        embed = discord.Embed(title="Multiple Matches Found")
         select_str = (
             f"{query_message}\n"
             f"Which one were you looking for? (Type the number or `c` to cancel)\n"
@@ -318,7 +316,7 @@ async def get_selection(ctx: ApplicationContext, choices: list[str], delete: boo
             select_str += f"**[{i+1+page*10}]** - {r}\n"
         
         embed.description = select_str
-        embed.color = Color.random()
+        embed.color = discord.Color.random()
 
         if message:
             embed.add_field(

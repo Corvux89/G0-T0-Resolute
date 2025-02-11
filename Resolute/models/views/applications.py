@@ -532,7 +532,7 @@ class LevelUpRequestModal(Modal):
         self.application = application
         self.guild = guild
 
-        self.add_item(InputText(label="Level", placeholder=f"Level", max_length=3, value=self.application.level if self.application.level else self.application.character.level+1))
+        self.add_item(InputText(label="Level", placeholder=f"Level", max_length=3, value=self.application.level))
         self.add_item(InputText(label="HP", placeholder="HP", max_length=500, value=self.application.hp))
         self.add_item(InputText(label="New Features", style=InputTextStyle.long, placeholder="New Features or NA", value=self.application.feats))
         

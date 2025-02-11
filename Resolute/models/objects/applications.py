@@ -558,8 +558,23 @@ class LevelUpApplication(object):
         self.feats = kwargs.get('feats')
         self.changes = kwargs.get('changes')
         self.link = kwargs.get('link')
-        self.character: PlayerCharacter = kwargs.get('character')
+        self._character: PlayerCharacter = kwargs.get('character')
         self.type=ApplicationType.level
+
+        if not self.level and self._character:
+            self.level = self._character.level+1
+
+    
+    @property
+    def character(self):
+        return self._character
+    
+    @character.setter
+    def character(self, value):
+        self._character = value
+
+        if not self.level:
+            self.level = self._character.level+1
 
 
     def format_app(self, owner: Member, staff: Role = None):

@@ -77,7 +77,7 @@ class Messages(commands.Cog):
             if not message.author.bot or message.embeds[0].footer.text != f"{ctx.author.id}":
                 raise G0T0Error("You cannot edit this roleplay board post")
             
-            ui = RPPostUI.new(self.bot, ctx.author, player, message)
+            ui = RPPostUI.new(self.bot, player, message)
             await ui.send_to(ctx.author)            
             
         # Character Say 

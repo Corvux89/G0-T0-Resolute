@@ -56,6 +56,13 @@ async def create_tables(conn: SAConnection):
         await conn.execute(CreateTable(table, if_not_exists=True))
 
 
+class G0T0Context(discord.ApplicationContext):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        
+        self.player: Player = None
+
+
 class G0T0Bot(commands.Bot):
     """
     G0T0Bot is a custom Discord bot that extends the functionality of discord.ext.commands.Bot.
@@ -136,6 +143,8 @@ class G0T0Bot(commands.Bot):
         log.info(f"Logged in as {self.user} (ID: {self.user.id})")
         log.info("------")
 
+        self.before_invoke(self.before_invoke_setup)
+
     async def close(self):
         """
         Asynchronously closes the bot and web server.
@@ -169,6 +178,9 @@ class G0T0Bot(commands.Bot):
             except (NotImplementedError, RuntimeError):
                 pass
         super().run(*args, **kwargs)
+
+    async def before_invoke_setup(self, ctx: G0T0Context):
+        ctx.player = await self.get_player(ctx.author.id, ctx.guild.id if ctx.guild else None)
 
     async def get_player_guild(self, guild_id: int) -> PlayerGuild:
         """

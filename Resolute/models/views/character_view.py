@@ -1002,8 +1002,8 @@ class RPPostUI(RPPostView):
     character: PlayerCharacter = None
 
     @classmethod
-    def new(cls, bot: G0T0Bot, owner: discord.Member, player: Player, orig_message: discord.Message = None):
-        inst = cls(owner=owner)
+    def new(cls, bot: G0T0Bot, player: Player, orig_message: discord.Message = None):
+        inst = cls(owner=player.member)
         inst.bot = bot
         inst.player = player
         inst.orig_message = orig_message

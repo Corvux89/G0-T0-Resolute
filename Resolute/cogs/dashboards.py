@@ -4,7 +4,7 @@ from timeit import default_timer as timer
 import discord
 from discord.ext import commands, tasks
 
-from Resolute.bot import G0T0Bot
+from Resolute.bot import G0T0Bot, G0T0Context
 from Resolute.constants import DASHBOARD_REFRESH_INTERVAL, ZWSP3
 from Resolute.helpers.dashboards import update_dashboard
 from Resolute.models.embeds.dashboards import RPDashboardEmbed
@@ -131,7 +131,7 @@ class Dashboards(commands.Cog):
         name="manage",
         description="Manage dashboards",
     )
-    async def dashboard_manage(self, ctx: discord.ApplicationContext):
+    async def dashboard_manage(self, ctx: G0T0Context):
         """
         Manages the dashboard settings for the user.
         This asynchronous method creates a new instance of `DashboardSettingsUI` 

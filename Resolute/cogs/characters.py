@@ -219,7 +219,7 @@ class Character(commands.Cog):
         name="new_character_request",
         description="New Character Request"
     )
-    async def new_character_request(self, ctx: discord.ApplicationContext):
+    async def new_character_request(self, ctx: G0T0Context):
         """
         Handles the request to create a new character.
         This function retrieves the player information and their character application,
@@ -234,14 +234,11 @@ class Character(commands.Cog):
         if application.application and application.application.type not in [ApplicationType.death, ApplicationType.freeroll, ApplicationType.new]:
             application.application = PlayerApplication(self.bot, ctx.author)
             application.cached = False
-
-        player = await self.bot.get_player(ctx.author.id, ctx.guild.id if ctx.guild else None,
-                                           ctx=ctx)
         
-        if player.characters:
-            ui = CharacterSelectUI.new(application, player)
+        if ctx.player.characters:
+            ui = CharacterSelectUI.new(application, ctx.player)
         else:
-            ui = NewCharacterRequestUI.new(application, player)
+            ui = NewCharacterRequestUI.new(application, ctx.player)
 
         await ui.send_to(ctx)
         await ctx.delete()
@@ -250,7 +247,7 @@ class Character(commands.Cog):
         name="edit_application",
         description="Edit an application"
     )
-    async def edit_application(self, ctx: discord.ApplicationContext,
+    async def edit_application(self, ctx: G0T0Context,
                                application_id: discord.Option(discord.SlashCommandOptionType(3), description="Application ID", required=False)):
         """
         Edits an application based on the provided application ID or the current channel ID.
@@ -263,21 +260,18 @@ class Character(commands.Cog):
             CharacterNotFound: If no characters are found for the player.
         Returns:
             None
-        """
-        player = await self.bot.get_player(ctx.author.id, ctx.guild.id if ctx.guild else None,
-                                           ctx=ctx)
-        
-        if player.guild.application_channel:
+        """        
+        if ctx.player.guild.application_channel:
             if application_id:
                 try:
-                    message = await player.guild.application_channel.fetch_message(int(application_id))
+                    message = await ctx.player.guild.application_channel.fetch_message(int(application_id))
                 except ValueError:
                     raise G0T0Error("Invalid application identifier")
                 except discord.NotFound:
                     raise ApplicationNotFound()
             else:
                 try:
-                    message = await player.guild.application_channel.fetch_message(ctx.channel.id)
+                    message = await ctx.player.guild.application_channel.fetch_message(ctx.channel.id)
                 except:
                     raise ApplicationNotFound()
         
@@ -292,22 +286,22 @@ class Character(commands.Cog):
         await application.load(message)
 
         if application.application.type in [ApplicationType.new, ApplicationType.death, ApplicationType.freeroll]:
-            if player.characters:
-                ui = CharacterSelectUI.new(application, player)
+            if ctx.player.characters:
+                ui = CharacterSelectUI.new(application, ctx.player)
             else:
-                ui = NewCharacterRequestUI.new(application, player)
+                ui = NewCharacterRequestUI.new(application, ctx.player)
 
             await ui.send_to(ctx)
             await ctx.delete()
 
         else:
-            if not player.characters:
-                raise CharacterNotFound(player.member)
-            elif len(player.characters) == 1:
-                modal = LevelUpRequestModal(player.guild, application.application)
+            if not ctx.player.characters:
+                raise CharacterNotFound(ctx.player.member)
+            elif len(ctx.player.characters) == 1:
+                modal = LevelUpRequestModal(ctx.player.guild, application.application)
                 return await ctx.send_modal(modal)
             else:
-                ui = CharacterSelectUI.new(application, player)
+                ui = CharacterSelectUI.new(application, ctx.player)
                 await ui.send_to(ctx)
                 await ctx.delete()
         

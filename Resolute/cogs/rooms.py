@@ -3,7 +3,7 @@ import logging
 import discord
 from discord.ext import commands
 
-from Resolute.bot import G0T0Bot
+from Resolute.bot import G0T0Bot, G0T0Context
 from Resolute.helpers.general_helpers import is_admin
 from Resolute.models.objects.exceptions import G0T0Error
 from Resolute.models.views.rooms import RoomSettingsUI
@@ -39,7 +39,7 @@ class Room(commands.Cog):
         name="settings",
         description="Room settings"
     )
-    async def room_settings(self, ctx: discord.ApplicationContext):
+    async def room_settings(self, ctx: G0T0Context):
         """
         Handles the room settings for a given context.
         This method checks if the author of the context has the necessary permissions

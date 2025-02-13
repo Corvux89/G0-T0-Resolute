@@ -4,7 +4,7 @@ import re
 import discord
 from discord.ext import commands
 
-from Resolute.bot import G0T0Bot
+from Resolute.bot import G0T0Bot, G0T0Context
 from Resolute.constants import (ACTIVITY_POINT_MINIMUM, APPROVAL_EMOJI, DENIED_EMOJI, EDIT_EMOJI,
                                 NULL_EMOJI)
 from Resolute.helpers.general_helpers import confirm, is_admin, is_staff
@@ -35,8 +35,8 @@ class Messages(commands.Cog):
     @commands.message_command(
         name="Edit"
     )
-    async def message_edit(self, ctx: discord.ApplicationContext, message: discord.Message):
-        player = await self.bot.get_player(ctx.author.id, ctx.guild.id)
+    async def message_edit(self, ctx: G0T0Context, message: discord.Message):
+        player = ctx.player
 
         # Market
         if player.guild.market_channel and message.channel.id == player.guild.market_channel.id:
@@ -92,8 +92,8 @@ class Messages(commands.Cog):
     @commands.message_command(
         name="Delete"
     )
-    async def message_delete(self, ctx: discord.ApplicationContext, message: discord.Message):
-        player = await self.bot.get_player(ctx.author.id, ctx.guild.id)
+    async def message_delete(self, ctx: G0T0Context, message: discord.Message):
+        player = ctx.player
 
         # Arena Board
         if player.guild.arena_board_channel and message.channel.id == player.guild.arena_board_channel.id:
@@ -173,8 +173,8 @@ class Messages(commands.Cog):
         name="Approve"
     )
     @commands.check(is_staff)
-    async def message_approve(self, ctx: discord.ApplicationContext, message: discord.Message):
-        guild = await self.bot.get_player_guild(ctx.guild.id)
+    async def message_approve(self, ctx: G0T0Context, message: discord.Message):
+        guild = ctx.player.guild
 
         # Market Transactions
         if guild.market_channel and message.channel.id == guild.market_channel.id:
@@ -232,7 +232,7 @@ class Messages(commands.Cog):
         name="Null"
     )
     @commands.check(is_admin)
-    async def message_null(self, ctx: discord.ApplicationContext, message: discord.Message):
+    async def message_null(self, ctx: G0T0Context, message: discord.Message):
         await ctx.defer()
         log_entry = await self._get_log_from_entry(message)
         

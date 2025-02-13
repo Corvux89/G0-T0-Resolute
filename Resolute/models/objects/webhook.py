@@ -6,6 +6,7 @@ import re
 import discord
 from discord.ext import commands
 
+from Resolute.bot import G0T0Context
 from Resolute.constants import ACTIVITY_POINT_MINIMUM
 from Resolute.helpers.general_helpers import (get_selection, is_admin,
                                               split_content)
@@ -49,20 +50,23 @@ class G0T0Webhook(object):
     """
 
     player: Player = None
-    ctx: discord.ApplicationContext | commands.Context
+    ctx: commands.Context | G0T0Context
     type: WebhookType
 
     npc: NPC = None
     character: PlayerCharacter = None
     content: str = None
 
-    def __init__(self, ctx: discord.ApplicationContext|commands.Context, type: WebhookType, **kwargs):
+    def __init__(self, ctx: G0T0Context | commands.Context, type: WebhookType, **kwargs):
         self.ctx = ctx
         self.type = type
 
 
     async def run(self) -> None:
-        self.player = await self.ctx.bot.get_player(self.ctx.author.id, self.ctx.guild.id)
+        if hasattr(self.ctx, "player") and self.ctx.player:
+            self.player = self.ctx.player
+        else:
+            self.player = await self.ctx.bot.get_player(self.ctx.author.id, self.ctx.guild.id)
 
         if self.type == WebhookType.say:
             self.content = self.ctx.message.content[5:]

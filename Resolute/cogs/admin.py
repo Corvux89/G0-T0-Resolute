@@ -6,7 +6,7 @@ import os
 import discord
 from discord.ext import commands, tasks
 
-from Resolute.bot import G0T0Bot
+from Resolute.bot import G0T0Bot, G0T0Context
 from Resolute.constants import ADMIN_GUILDS
 from Resolute.helpers.dashboards import update_financial_dashboards
 from Resolute.helpers.general_helpers import is_admin, is_owner
@@ -70,7 +70,7 @@ class Admin(commands.Cog):
         name="automation_request",
         description="Log an automation request"
     )
-    async def automation_request(self, ctx: discord.ApplicationContext):
+    async def automation_request(self, ctx: G0T0Context):
         """
         Used by players to submit an automation request
 
@@ -80,9 +80,7 @@ class Admin(commands.Cog):
         Returns:
             Interaction: Modal interaction to gather information about the request
         """
-        player = await self.bot.get_player(ctx.author.id, ctx.guild.id if ctx.guild else None,
-                                           ctx=ctx)
-        modal = AutomationRequestView(player.guild)
+        modal = AutomationRequestView(ctx.player.guild)
         await ctx.send_modal(modal)
 
     @admin_commands.command(
@@ -108,8 +106,8 @@ class Admin(commands.Cog):
         description="Reloads either a specific cog, refresh DB information, or reload everything"
     )
     @commands.check(is_owner)
-    async def reload_cog(self, ctx: discord.ApplicationContext,
-                         cog: discord.Option(discord.SlashCommandOptionType(3), description="Cog name, ALL, or SHEET", required=True)):
+    async def reload_cog(self, ctx: G0T0Context,
+                         cog: discord.Option(discord.SlashCommandOptionType(3), description="Cog name, ALL, or DB", required=True)):
         """
         Used to reload a cog, refresh DB information, or reload all cogs and DB information
 

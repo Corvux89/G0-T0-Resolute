@@ -3,7 +3,7 @@ import logging
 import discord
 from discord.ext import commands
 
-from Resolute.bot import G0T0Bot
+from Resolute.bot import G0T0Bot, G0T0Context
 from Resolute.models.objects.exceptions import CharacterNotFound
 from Resolute.models.views.market import MarketPromptUI, TransactionPromptUI
 
@@ -37,7 +37,7 @@ class Market(commands.Cog):
         name="request",
         description="Setup a market request"
     )
-    async def market_request(self, ctx: discord.ApplicationContext):
+    async def market_request(self, ctx: G0T0Context):
         """
         Handles a market request from a user.
         This function defers the context, retrieves the player associated with the user,
@@ -50,16 +50,14 @@ class Market(commands.Cog):
             CharacterNotFound: If the player has no characters.
         """
         await ctx.defer()
-        player = await self.bot.get_player(ctx.author.id, ctx.guild.id if ctx.guild else None,
-                                           ctx=ctx)
 
-        if not player.characters:
+        if not ctx.player.characters:
             raise CharacterNotFound()
 
-        if len(player.characters) == 1:
-            ui = TransactionPromptUI.new(self.bot, ctx.author, player)
+        if len(ctx.player.characters) == 1:
+            ui = TransactionPromptUI.new(self.bot, ctx.author, ctx.player)
         else:
-            ui = MarketPromptUI.new(self.bot, ctx.author, player)
+            ui = MarketPromptUI.new(self.bot, ctx.author, ctx.player)
 
         await ui.send_to(ctx)
         await ctx.delete()      

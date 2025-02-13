@@ -4,7 +4,7 @@ import discord
 from discord.commands import SlashCommandGroup
 from discord.ext import commands
 
-from Resolute.bot import G0T0Bot
+from Resolute.bot import G0T0Bot, G0T0Context
 from Resolute.helpers.general_helpers import is_admin
 from Resolute.models.objects.shatterpoint import reset_busy_flag_query
 from Resolute.models.views.shatterpoint import ShatterpointSettingsUI
@@ -56,7 +56,7 @@ class Shatterpoints(commands.Cog):
         description="Manage a shatterpoint"
     )
     @commands.check(is_admin)
-    async def shatterpoint_manage(self, ctx: discord.ApplicationContext):
+    async def shatterpoint_manage(self, ctx: G0T0Context):
         """
         Manages the shatterpoint settings for the guild.
         This method retrieves the shatterpoint settings for the guild and 

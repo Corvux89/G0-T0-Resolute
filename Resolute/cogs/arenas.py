@@ -4,7 +4,7 @@ import discord
 from discord.commands import SlashCommandGroup
 from discord.ext import commands
 
-from Resolute.bot import G0T0Bot
+from Resolute.bot import G0T0Bot, G0T0Context
 from Resolute.constants import CHANNEL_BREAK
 from Resolute.helpers.autocomplete import get_arena_type_autocomplete
 from Resolute.helpers.general_helpers import confirm
@@ -79,7 +79,7 @@ class Arenas(commands.Cog):
             name="arena_request",
             description="Request to join an arena"
     )
-    async def arena_request(self, ctx: discord.ApplicationContext):
+    async def arena_request(self, ctx: G0T0Context):
         """
         Handles an arena request from a player.
         This method processes a player's request to join an arena. It performs several checks to ensure
@@ -93,31 +93,25 @@ class Arenas(commands.Cog):
                        if the character is already in an active arena, or if something else goes wrong.
         Returns:
             None
-        """
-                
-        player = await self.bot.get_player(ctx.author.id, ctx.guild.id if ctx.guild else None,
-                                           ctx=ctx)
-        
-        
-
-        if len(player.characters) == 0:
+        """     
+        if len(ctx.player.characters) == 0:
             raise CharacterNotFound(ctx.author)
-        elif not player.can_join_arena():
+        elif not ctx.player.can_join_arena():
             raise G0T0Error(f"You or your characters are already in the maximum allowed arenas.")
-        elif len(player.characters) == 1:
-            post = ArenaPost(player, player.characters)
+        elif len(ctx.player.characters) == 1:
+            post = ArenaPost(ctx.player, ctx.player.characters)
 
-            if player.guild.member_role and player.guild.member_role in player.member.roles:
-                ui = ArenaRequestCharacterSelect.new(self.bot, player, post)
+            if ctx.player.guild.member_role and ctx.player.guild.member_role in ctx.player.member.roles:
+                ui = ArenaRequestCharacterSelect.new(self.bot, ctx.player, post)
                 await ui.send_to(ctx)
                 return await ctx.delete()
-            elif player.can_join_arena(self.bot.compendium.get_object(ArenaType, "COMBAT"), player.characters[0]):
+            elif ctx.player.can_join_arena(self.bot.compendium.get_object(ArenaType, "COMBAT"), ctx.player.characters[0]):
                 if await ArenaPostEmbed(post).build():
                     return await ctx.respond(f"Request submitted!", ephemeral=True)
             else:
                 raise G0T0Error(f"Character already in an active arena.")
         else:
-            ui = ArenaRequestCharacterSelect.new(self.bot, player)
+            ui = ArenaRequestCharacterSelect.new(self.bot, ctx.player)
             await ui.send_to(ctx)
             return await ctx.delete()
         
@@ -128,7 +122,7 @@ class Arenas(commands.Cog):
         name="claim",
         description="Opens an arena in this channel and sets you as host"
     )
-    async def arena_claim(self, ctx: discord.ApplicationContext, 
+    async def arena_claim(self, ctx: G0T0Context, 
                           type: discord.Option(discord.SlashCommandOptionType(3), description="Arena Type", autocomplete=get_arena_type_autocomplete, required=True, default="COMBAT")):
         """
         Handles the claiming of an arena in the current channel.
@@ -171,7 +165,7 @@ class Arenas(commands.Cog):
         name="status",
         description="Shows the current status of this arena."
     )
-    async def arena_status(self, ctx: discord.ApplicationContext):
+    async def arena_status(self, ctx: G0T0Context):
         """
         Retrieves and sends the status of the current arena in the context channel.
         This method defers the response, fetches the arena associated with the current
@@ -199,7 +193,7 @@ class Arenas(commands.Cog):
         name="add",
         description="Adds the specified player to this arena"
     )
-    async def arena_add(self, ctx: discord.ApplicationContext,
+    async def arena_add(self, ctx: G0T0Context,
                         member: discord.Option(discord.SlashCommandOptionType(6), description="Player to add to arena", required=True)):
         """
         Adds a player to an arena.
@@ -236,7 +230,7 @@ class Arenas(commands.Cog):
         name="remove",
         description="Removes the specified player from this arena"
     )
-    async def arena_remove(self, ctx: discord.ApplicationContext,
+    async def arena_remove(self, ctx: G0T0Context,
                            member: discord.Option(discord.SlashCommandOptionType(6), description="Player to remove from arena", required=True)):
         """
         Removes a player from the arena.
@@ -276,7 +270,7 @@ class Arenas(commands.Cog):
         name="phase",
         description="Records the outcome of an arena phase"
     )
-    async def arena_phase(self, ctx: discord.ApplicationContext,
+    async def arena_phase(self, ctx: G0T0Context,
                           result: discord.Option(discord.SlashCommandOptionType(3), description="The result of the phase", required=True,
                                          choices=["WIN", "LOSS"])):
 
@@ -335,7 +329,7 @@ class Arenas(commands.Cog):
         name="close",
         description="Closes out a finished arena"
     )
-    async def arena_close(self, ctx: discord.ApplicationContext):
+    async def arena_close(self, ctx: G0T0Context):
         """
         Closes an active arena in the current channel.
         This method defers the response, retrieves the arena associated with the current channel,

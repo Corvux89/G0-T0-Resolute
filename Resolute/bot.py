@@ -56,6 +56,13 @@ async def create_tables(conn: SAConnection):
         await conn.execute(CreateTable(table, if_not_exists=True))
 
 
+class G0T0Context(discord.ApplicationContext):
+    def __init__(self, **kwargs):
+        super(G0T0Context).__init__(**kwargs)
+        
+        self.player: Player = None
+
+
 class G0T0Bot(commands.Bot):
     """
     G0T0Bot is a custom Discord bot that extends the functionality of discord.ext.commands.Bot.
@@ -136,6 +143,8 @@ class G0T0Bot(commands.Bot):
         log.info(f"Logged in as {self.user} (ID: {self.user.id})")
         log.info("------")
 
+        self.before_invoke(self.before_invoke_setup)
+
     async def close(self):
         """
         Asynchronously closes the bot and web server.
@@ -169,6 +178,18 @@ class G0T0Bot(commands.Bot):
             except (NotImplementedError, RuntimeError):
                 pass
         super().run(*args, **kwargs)
+
+    async def before_invoke_setup(self, ctx: G0T0Context):
+        ctx.player = await self.get_player(ctx.author.id, ctx.guild.id if ctx.guild else None)
+
+        await ctx.player.update_command_count(str(ctx.command))
+        params = "".join([f" [{p['name']}: {p['value']}]" for p in (ctx.selected_options if hasattr(ctx, "selected_options") and ctx.selected_options else [])])
+
+        try:
+            log.info(f"cmd: chan {ctx.channel} [{ctx.channel.id}], serv: {f'{ctx.guild.name} [{ctx.guild.id}]' if ctx.guild.id else 'DM'}, "
+                     f"auth: {ctx.author} [{ctx.author.id}]: {ctx.command}  {params}")
+        except AttributeError as e:
+            log.info(f"Command in DM with {ctx.author} [{ctx.author.id}]: {ctx.command} {params}")
 
     async def get_player_guild(self, guild_id: int) -> PlayerGuild:
         """
@@ -459,7 +480,7 @@ class G0T0Bot(commands.Bot):
 
         return d
     
-    async def log(self, ctx: discord.ApplicationContext | discord.Interaction|None, player: discord.Member | discord.ClientUser|Player, author: discord.Member | discord.ClientUser|Player, activity: Activity|str, **kwargs) -> DBLog:
+    async def log(self, ctx: discord.ApplicationContext | discord.Interaction|None, player: discord.Member | discord.ClientUser| Player, author: discord.Member | discord.ClientUser | Player, activity: Activity|str, **kwargs) -> DBLog:
         """
         Logs an activity for a player and updates the database accordingly.
         Args:

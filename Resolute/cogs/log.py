@@ -3,7 +3,7 @@ import logging
 import discord
 from discord.ext import commands
 
-from Resolute.bot import G0T0Bot
+from Resolute.bot import G0T0Bot, G0T0Context
 from Resolute.constants import ZWSP3
 from Resolute.helpers.general_helpers import is_admin, is_staff
 from Resolute.models.embeds.logs import LogHxEmbed, LogStatsEmbed
@@ -59,7 +59,7 @@ class Log(commands.Cog):
         description="Logs a completed RP"
     )
     @commands.check(is_staff)
-    async def rp_log(self, ctx: discord.ApplicationContext,
+    async def rp_log(self, ctx: G0T0Context,
                      member: discord.Option(discord.SlashCommandOptionType(6),description="Player who participated in the RP", required=True),
                      host: discord.Option(discord.SlashCommandOptionType(5), description="Host of the RP or not", required=True, default=False)):
         """
@@ -82,7 +82,7 @@ class Log(commands.Cog):
         description="Logs a completed snapshot"
     )
     @commands.check(is_staff)
-    async def snapshot_log(self, ctx: discord.ApplicationContext,
+    async def snapshot_log(self, ctx: G0T0Context,
                      member: discord.Option(discord.SlashCommandOptionType(6),description="Player who participated in the snapshot", required=True)):
         await self._prompt_log(ctx, member, "SNAPSHOT")
 
@@ -91,7 +91,7 @@ class Log(commands.Cog):
         description="Give bonus gold and/or xp to a player"
     )
     @commands.check(is_staff)
-    async def bonus_log(self, ctx: discord.ApplicationContext,
+    async def bonus_log(self, ctx: G0T0Context,
                         member: discord.Option(discord.SlashCommandOptionType(6), description="Player receiving the bonus", required=True),
                         reason: discord.Option(discord.SlashCommandOptionType(3), description="The reason for the bonus", required=True),
                         cc: discord.Option(discord.SlashCommandOptionType(4), description="The amount of Chain Codes", default=0, min_value=0, max_value=50),
@@ -119,7 +119,7 @@ class Log(commands.Cog):
         description="Logs the sale of an item to a player"
     )
     @commands.check(is_staff)
-    async def buy_log(self, ctx: discord.ApplicationContext,
+    async def buy_log(self, ctx: G0T0Context,
                       member: discord.Option(discord.SlashCommandOptionType(6), description="Player who bought the item", required=True),
                       item: discord.Option(discord.SlashCommandOptionType(3), description="The item being bought", required=True),
                       cost: discord.Option(discord.SlashCommandOptionType(4), description="The cost of the item", min_value=0, max_value=9999999,
@@ -156,7 +156,7 @@ class Log(commands.Cog):
         description="Logs the sale of an item from a player. Not for player establishment sales"
     )
     @commands.check(is_staff)
-    async def sell_log(self, ctx: discord.ApplicationContext,
+    async def sell_log(self, ctx: G0T0Context,
                        member: discord.Option(discord.SlashCommandOptionType(6), description="Player who bought the item", required=True),
                        item: discord.Option(discord.SlashCommandOptionType(3), description="The item being sold", required=True),
                        cost: discord.Option(discord.SlashCommandOptionType(4), description="The cost of the item", min_value=0, max_value=9999999,
@@ -196,7 +196,7 @@ class Log(commands.Cog):
         description="Nullifies a log"
     )
     @commands.check(is_admin)
-    async def null_log(self, ctx: discord.ApplicationContext,
+    async def null_log(self, ctx: G0T0Context,
                        log_id: discord.Option(discord.SlashCommandOptionType(4), description="ID of the log to modify", required=True),
                        reason: discord.Option(discord.SlashCommandOptionType(3), description="Reason for nulling the log", required=True)):
         """
@@ -222,7 +222,7 @@ class Log(commands.Cog):
         name="stats",
         description="Log statistics for a character"
     )
-    async def log_stats(self, ctx: discord.ApplicationContext,
+    async def log_stats(self, ctx: G0T0Context,
                         member: discord.Option(discord.SlashCommandOptionType(6), description="Player to view stats for", required=True)):
         await ctx.defer()
 
@@ -266,7 +266,7 @@ class Log(commands.Cog):
         name="get_history",
         description="Get the last weeks worth of logs for a player"
     )
-    async def get_log_hx(self, ctx: discord.ApplicationContext,
+    async def get_log_hx(self, ctx: G0T0Context,
                          member: discord.Option(discord.SlashCommandOptionType(6), description="Player to get logs for", required=True),
                          num_logs: discord.Option(discord.SlashCommandOptionType(4), description="Number of logs to get",
                                           min_value=1, max_value=20, default=5)):
@@ -292,7 +292,7 @@ class Log(commands.Cog):
     # Private Methods
     # --------------------------- #
 
-    async def _prompt_log(self, ctx: discord.ApplicationContext, member: discord.Member, activity: str, notes: str = None, 
+    async def _prompt_log(self, ctx: G0T0Context, member: discord.Member, activity: str, notes: str = None, 
                          cc: int = 0, credits: int = 0, ignore_handicap: bool = False, conversion: bool = False, show_values: bool = False) -> None:
         await ctx.defer()
 
@@ -304,7 +304,7 @@ class Log(commands.Cog):
 
         if len(player.characters) == 1:
             character = player.characters[0]
-            await self.bot.log(ctx, player, ctx.author, activity,
+            await self.bot.log(ctx, player, ctx.player, activity,
                                cc=cc,
                                credits=credits,
                                notes=notes,
@@ -312,7 +312,7 @@ class Log(commands.Cog):
                                ignore_handicap=ignore_handicap,
                                show_values=show_values)
         else:
-            ui = LogPromptUI.new(self.bot, ctx.author, member, player, activity, credits=credits, cc=cc, notes=notes,
+            ui = LogPromptUI.new(self.bot, ctx.player, player, activity, credits=credits, cc=cc, notes=notes,
                                  ignore_handicap=ignore_handicap, show_values=show_values)    
             await ui.send_to(ctx)
             await ctx.delete()

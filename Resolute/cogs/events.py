@@ -113,58 +113,7 @@ class Events(commands.Cog):
         if g.entrance_channel and g.greeting != None and g.greeting != "":
             message = process_message(g.greeting, member.guild, member)
             await g.entrance_channel.send(message)
-
-    @commands.Cog.listener()
-    async def on_command(self, ctx: discord.ApplicationContext):
-        """
-        Event handler for when a command is invoked.
-        This method is triggered whenever a command is executed. It updates the command count
-        for the player who invoked the command.
-        Args:
-            ctx (discord.ApplicationContext): The context in which the command was invoked. This includes
-                                      information about the command, the user who invoked it, and
-                                      the guild (if applicable).
-        Returns:
-            None
-        """
-        if hasattr(ctx, "bot") and hasattr(ctx.bot, "db"):
-            player = await self.bot.get_player(ctx.author.id, ctx.guild.id if ctx.guild else None)
-            await player.update_command_count(str(ctx.command))
-
     
-    @commands.Cog.listener()
-    async def on_application_command(self, ctx: discord.ApplicationContext):
-        """
-        Event handler for when an application command is executed.
-        This function logs the command execution details and updates the command count for the player
-        if the bot has a database connection.
-        Args:
-            ctx (discord.ApplicationContext): The context of the application command, which includes information
-                                      about the command, the user who executed it, and the channel/guild
-                                      where it was executed.
-        Raises:
-            AttributeError: If there is an issue accessing attributes of the context or bot.
-        Logs:
-            Information about the command execution, including the channel, server, author, and command details.
-        """
-        try:
-            params = "".join([f" [{p['name']}: {p['value']}]" for p in (ctx.selected_options or [])])
-            if hasattr(ctx, "bot") and hasattr(ctx.bot, "db"):
-                if player := await self.bot.get_player(ctx.author.id, ctx.guild.id if ctx.guild else None,
-                                                       lookup_only=True):
-                    
-                    await player.update_command_count(str(ctx.command))
-
-            log.info(f"cmd: chan {ctx.channel} [{ctx.channel.id}], serv: {f'{ctx.guild.name} [{ctx.guild.id}]' if ctx.guild_id else 'DC'}, "
-                     f"auth: {ctx.user} [{ctx.user.id}]: {ctx.command}  {params}")
-            
-        except AttributeError:
-            params = "".join([f" [{p['name']}: {p['value']}]" for p in (ctx.selected_options or [])])
-            if hasattr(ctx, "bot") and hasattr(ctx.bot, "db"):
-                player = await self.bot.get_player(ctx.author.id, ctx.guild.id if ctx.guild else None)
-                await player.update_command_count(str(ctx.command))
-
-            log.info(f"Command in DM with {ctx.user} [{ctx.user.id}]: {ctx.command} {params}")
 
     @commands.Cog.listener()
     async def on_application_command_error(self, ctx: discord.ApplicationContext, error):
@@ -189,7 +138,11 @@ class Events(commands.Cog):
             return await ctx.respond(f'You do not have required permissions for `{ctx.command}`', ephemeral=True)
         elif isinstance(error, G0T0Error):
             return await ctx.respond(embed=ErrorEmbed(error), ephemeral=True)
-    
+        elif "'ApplicationContext' object has no attribute 'player'" in str(error):
+            return await ctx.respond(f"Try again in a few seconds. I'm not fully awake yet.", ephemeral=True)
+        elif 'Unknown interaction' in str(error):
+            return
+
         if hasattr(ctx, "bot") and hasattr(ctx.bot, "db"):
             params = "".join([f" [{p['name']}: {p['value']}]" for p in (ctx.selected_options or [])])
 

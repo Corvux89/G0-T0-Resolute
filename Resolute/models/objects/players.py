@@ -478,7 +478,7 @@ class ArenaPost(object):
     Represents a post in the arena associated with a player and their characters.
     Attributes:
         player (Player): The player associated with the arena post.
-        characters (list[PlayerCharacter]): A list of characters associated with the player.
+        characters (list[PlayerCharacter]): A list of characters associated with the player requesting the arena.
         type (ArenaPostType): The type of the arena post. Defaults to ArenaPostType.COMBAT.
         message (Message): An optional message associated with the arena post.
     Args:

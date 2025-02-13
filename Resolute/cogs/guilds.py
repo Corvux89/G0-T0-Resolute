@@ -7,7 +7,7 @@ from timeit import default_timer as timer
 import discord
 from discord.ext import commands, tasks
 
-from Resolute.bot import G0T0Bot
+from Resolute.bot import G0T0Bot, G0T0Context
 from Resolute.helpers.general_helpers import confirm, is_admin
 from Resolute.models.embeds.guilds import ResetEmbed
 from Resolute.models.objects.enum import WebhookType
@@ -88,7 +88,7 @@ class Guilds(commands.Cog):
             description="Modify the current guild/server settings"
     )
     @commands.check(is_admin)
-    async def guild_settings(self, ctx: discord.ApplicationContext):
+    async def guild_settings(self, ctx: G0T0Context):
         """
         Handles the guild settings command.
         This method retrieves the guild settings for the guild associated with the given context,
@@ -99,9 +99,7 @@ class Guilds(commands.Cog):
         Returns:
             Coroutine: A coroutine that deletes the context message.
         """
-        g = await self.bot.get_player_guild(ctx.guild.id)
-
-        ui = GuildSettingsUI.new(self.bot, ctx.author, g)
+        ui = GuildSettingsUI.new(self.bot, ctx.author, ctx.player.guild)
 
         await ui.send_to(ctx)
         return await ctx.delete()
@@ -112,7 +110,7 @@ class Guilds(commands.Cog):
         description="Performs a weekly reset for the server"
     )
     @commands.check(is_admin)
-    async def guild_weekly_reset(self, ctx: discord.ApplicationContext):
+    async def guild_weekly_reset(self, ctx: G0T0Context):
         """
         Manually performs a weekly reset for the guild.
         This method defers the context, retrieves the player's guild, and asks for confirmation
@@ -124,9 +122,6 @@ class Guilds(commands.Cog):
             None
         """
         await ctx.defer()
-
-        g: PlayerGuild = await self.bot.get_player_guild(ctx.guild.id)
-
         conf = await confirm(ctx, f"Are you sure you want to manually do a weekly reset? (Reply with yes/no)", True)
 
         if conf is None:
@@ -134,7 +129,7 @@ class Guilds(commands.Cog):
         elif not conf:
             return await ctx.respond(f"Ok, cancelling.", delete_after=10)
 
-        await self.perform_weekly_reset(g)
+        await self.perform_weekly_reset(ctx.player.guild)
         return await ctx.respond("Weekly reset manually completed")
     
     @guilds_commands.command(
@@ -142,7 +137,7 @@ class Guilds(commands.Cog):
         description="Send announcements only"
     )
     @commands.check(is_admin)
-    async def guild_announcements(self, ctx: discord.ApplicationContext):
+    async def guild_announcements(self, ctx: G0T0Context):
         """
         Manually push guild announcements.
         This method allows a user to manually trigger the pushing of announcements for a guild.
@@ -156,8 +151,6 @@ class Guilds(commands.Cog):
         """
         await ctx.defer()
 
-        g: PlayerGuild = await self.bot.get_player_guild(ctx.guild.id)
-
         conf = await confirm(ctx, f"Are you sure you want to manually push announcements? (Reply with yes/no)", True)
 
         if conf is None:
@@ -165,9 +158,9 @@ class Guilds(commands.Cog):
         elif not conf:
             return await ctx.respond(f"Ok, cancelling.", delete_after=10)
         
-        g = await self.push_announcements(g, None, title="Announcements")
-        await g.upsert()
-        self.bot.dispatch("refresh_guild_cache", g)
+        ctx.player.guild = await self.push_announcements(ctx.player.guild, None, title="Announcements")
+        await ctx.player.guild.upsert()
+        self.bot.dispatch("refresh_guild_cache", ctx.player.guild)
         return await ctx.respond("Announcements manually completed")
         
     async def push_announcements(self, guild: PlayerGuild, complete_time: float = None, **kwargs) -> PlayerGuild:

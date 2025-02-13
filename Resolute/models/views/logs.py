@@ -26,14 +26,14 @@ class LogPrompt(InteractiveView):
         show_values (bool): Flag to show values, default is False.
     """
 
-    __menu_copy_attrs__ = ("bot", "player", "member", "activity", "credits", "notes", "cc", "ignore_handicap", "show_values")
+    __menu_copy_attrs__ = ("bot", "player", "activity", "credits", "notes", "cc", "ignore_handicap", "show_values", "author")
     owner: discord.Member = None
-    member = discord.Member = None
     bot: G0T0Bot
     activity: str
     credits: int = 0
     cc: int = 0
     player: Player
+    author: Player
     character: PlayerCharacter = None
     notes: str = None
     ignore_handicap: bool = False
@@ -60,11 +60,11 @@ class LogPromptUI(LogPrompt):
     """
 
     @classmethod
-    def new(cls, bot: G0T0Bot, owner: discord.Member, member: discord.Member, player: Player, activity: str, **kwargs):
-        inst = cls(owner=owner)
+    def new(cls, bot: G0T0Bot, owner: Player, player: Player, activity: str, **kwargs):
+        inst = cls(owner=owner.member)
         inst.bot = bot
-        inst.member = member
         inst.player = player
+        inst.author = owner
         inst.activity = activity
         inst.credits = kwargs.get('credits', 0)
         inst.cc = kwargs.get('cc', 0)
@@ -82,7 +82,7 @@ class LogPromptUI(LogPrompt):
 
     @discord.ui.button(label="Confirm", style=discord.ButtonStyle.green, row=2)
     async def confirm_log(self, _: discord.ui.Button, interaction: discord.Interaction):
-        await self.bot.log(interaction, self.player, self.owner, self.activity,
+        await self.bot.log(interaction, self.player, self.author, self.activity,
                            character=self.character,
                            notes=self.notes,
                            cc=self.cc,

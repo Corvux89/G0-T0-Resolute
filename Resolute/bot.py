@@ -111,6 +111,8 @@ class G0T0Bot(commands.Bot):
         self.compendium = Compendium()
         self.web_app = Quart(__name__)
 
+        self.check(self.bot_check)
+
     async def on_ready(self):
         """
         Event handler for when the bot is ready.
@@ -190,6 +192,12 @@ class G0T0Bot(commands.Bot):
                      f"auth: {ctx.author} [{ctx.author.id}]: {ctx.command}  {params}")
         except AttributeError as e:
             log.info(f"Command in DM with {ctx.author} [{ctx.author.id}]: {ctx.command} {params}")
+
+    def bot_check(self, ctx: G0T0Context):
+        if hasattr(self, "db") and self.db and  hasattr(self, "compendium") and self.compendium:
+            return True
+        raise(G0T0Error("Try again in a few seconds. I'm not quite awake yet."))
+
 
     async def get_player_guild(self, guild_id: int) -> PlayerGuild:
         """

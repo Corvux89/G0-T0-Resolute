@@ -96,7 +96,6 @@ class Admin(commands.Cog):
         Args:
             ctx (discord.ApplicationContext): The context in which the command was invoked.
         """
-
         ui = AdminMenuUI.new(ctx.author, self.bot)
         await ui.send_to(ctx)
         await ctx.delete()

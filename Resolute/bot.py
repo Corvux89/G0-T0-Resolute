@@ -4,6 +4,7 @@ import operator
 from math import ceil
 from signal import SIGINT, SIGTERM
 from timeit import default_timer as timer
+import traceback
 
 import discord
 from aiopg.sa import Engine, SAConnection, create_engine
@@ -12,11 +13,12 @@ from quart import Quart
 from sqlalchemy.schema import CreateTable
 
 from Resolute.compendium import Compendium
-from Resolute.constants import DB_URL, PORT
+from Resolute.constants import DB_URL, ERROR_CHANNEL, PORT
 from Resolute.helpers.general_helpers import get_selection
 from Resolute.models import metadata
 from Resolute.models.categories.categories import (Activity, ActivityPoints,
                                                    CodeConversion, Faction)
+from Resolute.models.embeds import ErrorEmbed
 from Resolute.models.embeds.logs import LogEmbed
 from Resolute.models.objects.adventures import (
     Adventure, AdventureSchema, get_adventure_by_category_channel_query,
@@ -112,6 +114,9 @@ class G0T0Bot(commands.Bot):
         self.web_app = Quart(__name__)
 
         self.check(self.bot_check)
+        self.before_invoke(self.before_invoke_setup)
+        self.add_listener(self.error_handling, "on_error")
+        self.add_listener(self.error_handling, "on_application_command_error")
 
     async def on_ready(self):
         """
@@ -144,8 +149,6 @@ class G0T0Bot(commands.Bot):
 
         log.info(f"Logged in as {self.user} (ID: {self.user.id})")
         log.info("------")
-
-        self.before_invoke(self.before_invoke_setup)
 
     async def close(self):
         """
@@ -193,10 +196,64 @@ class G0T0Bot(commands.Bot):
         except AttributeError as e:
             log.info(f"Command in DM with {ctx.author} [{ctx.author.id}]: {ctx.command} {params}")
 
-    def bot_check(self, ctx: G0T0Context):
+    async def bot_check(self, ctx: G0T0Context):
         if hasattr(self, "db") and self.db and  hasattr(self, "compendium") and self.compendium:
             return True
-        raise(G0T0Error("Try again in a few seconds. I'm not quite awake yet."))
+        await ctx.send(embed=ErrorEmbed(f"Try again in a few seconds. I'm not fully awake yet."))
+        return False
+    
+    async def error_handling(self, ctx: discord.ApplicationContext, error):
+        """
+        Handles errors that occur during the execution of application commands.
+        Parameters:
+        ctx (discord.ApplicationContext): The context in which the command was invoked.
+        error (Exception): The error that was raised during command execution.
+        Returns:
+        None
+        This function performs the following actions:
+        - If the command has a custom error handler (`on_error`), it returns immediately.
+        - If the error is a `CheckFailure`, it responds with a message indicating insufficient permissions.
+        - If the error is a `G0T0Error`, it responds with an embedded error message.
+        - Logs detailed error information to a specified error channel or to the log if the error channel is not available.
+        - Responds with appropriate messages for specific conditions such as bot not being fully initialized or command not supported in direct messages.
+        """
+        # Cleanup
+        try:
+            await ctx.defer()
+            await ctx.delete()
+        except:
+            pass
+
+        if hasattr(ctx.command, 'on_error') or isinstance(error, commands.CommandNotFound) or "Unknown interaction" in str(error):
+            return               
+
+        elif isinstance(error, discord.CheckFailure):
+            return await ctx.send(f'You do not have required permissions for `{ctx.command}`')
+        
+        elif isinstance(error, G0T0Error):
+            return await ctx.send(embed=ErrorEmbed(error))
+
+
+        if hasattr(ctx, "bot") and hasattr(ctx.bot, "db"):
+            params = "".join([f" [{p['name']}: {p['value']}]" for p in (ctx.selected_options or [])]) if hasattr(ctx, 'selected_options') and ctx.selected_options else ""
+
+            out_str = f"Error in command: cmd: chan {ctx.channel} [{ctx.channel.id}], {f'serv: {ctx.guild} [{ctx.guild.id}]' if ctx.guild else ''} auth: {ctx.author} [{ctx.author.id}]: {ctx.command} {params}\n```"\
+                      f"{''.join(traceback.format_exception(type(error), error, error.__traceback__))}"\
+                      f"```"
+            
+            # At this time...I don't want DM Errors...cause those are going to happen a lot for now. 
+            if ERROR_CHANNEL and ctx.guild:
+                try:
+                    await ctx.bot.get_channel(int(ERROR_CHANNEL)).send(out_str)
+                except:
+                    log.error(out_str)
+            else:
+                log.error(out_str)
+
+        try:
+            return await ctx.send(f'Something went wrong. Let us know if it keeps up!')
+        except:
+            log.warning('Unable to respond')
 
 
     async def get_player_guild(self, guild_id: int) -> PlayerGuild:
@@ -821,8 +878,6 @@ class G0T0Bot(commands.Bot):
         fin = FinancialSchema(self.db).load(row)
 
         return fin
-
-
             
         
 

@@ -1,17 +1,13 @@
 import logging
-import traceback
 
 import discord
 from discord.ext import commands
 
 from Resolute.bot import G0T0Bot
-from Resolute.constants import ERROR_CHANNEL
 from Resolute.helpers.dashboards import update_financial_dashboards
 from Resolute.helpers.general_helpers import process_message
-from Resolute.models.embeds import ErrorEmbed
 from Resolute.models.embeds.events import MemberLeaveEmbed
 from Resolute.models.objects.applications import PlayerApplication
-from Resolute.models.objects.exceptions import G0T0CommandError, G0T0Error
 from Resolute.models.objects.guilds import PlayerGuild
 from Resolute.models.objects.players import Player
 
@@ -30,14 +26,6 @@ class Events(commands.Cog):
             Handles the event when a member is removed from the guild.
         on_member_join(member: Member):
             Handles the event when a member joins the guild.
-        on_command(ctx: discord.ApplicationContext):
-            Handles the event when a command is invoked.
-        on_application_command(ctx: discord.ApplicationContext):
-            Handles the event when an application command is invoked.
-        on_application_command_error(ctx: discord.ApplicationContext, error):
-            Handles errors that occur during the execution of an application command.
-        on_command_error(ctx: discord.ApplicationContext, error):
-            Handles errors that occur during the execution of a command.
         on_entitlement_create(entitlement: Entitlement):
             Handles the event when an entitlement is created.
         on_entitlement_update(entitlement: Entitlement):
@@ -113,117 +101,7 @@ class Events(commands.Cog):
         if g.entrance_channel and g.greeting != None and g.greeting != "":
             message = process_message(g.greeting, member.guild, member)
             await g.entrance_channel.send(message)
-    
-
-    @commands.Cog.listener("on_application_command_error")
-    @commands.Cog.listener("on_command_error")
-    async def command_errors(self, ctx: discord.ApplicationContext, error):
-        """
-        Handles errors that occur during the execution of application commands.
-        Parameters:
-        ctx (discord.ApplicationContext): The context in which the command was invoked.
-        error (Exception): The error that was raised during command execution.
-        Returns:
-        None
-        This function performs the following actions:
-        - If the command has a custom error handler (`on_error`), it returns immediately.
-        - If the error is a `CheckFailure`, it responds with a message indicating insufficient permissions.
-        - If the error is a `G0T0Error`, it responds with an embedded error message.
-        - Logs detailed error information to a specified error channel or to the log if the error channel is not available.
-        - Responds with appropriate messages for specific conditions such as bot not being fully initialized or command not supported in direct messages.
-        """
-        if hasattr(ctx.command, 'on_error'):
-            return                
-
-        if isinstance(error, discord.CheckFailure):
-            return await ctx.respond(f'You do not have required permissions for `{ctx.command}`', ephemeral=True)
-        elif isinstance(error, G0T0Error):
-            return await ctx.respond(embed=ErrorEmbed(error), ephemeral=True)
-        elif "'ApplicationContext' object has no attribute 'player'" in str(error):
-            return await ctx.respond(embed=ErrorEmbed(f"Try again in a few seconds. I'm not fully awake yet."), ephemeral=True)
-        elif 'Unknown interaction' in str(error):
-            return
-
-        if hasattr(ctx, "bot") and hasattr(ctx.bot, "db"):
-            params = "".join([f" [{p['name']}: {p['value']}]" for p in (ctx.selected_options or [])])
-
-            out_str = f"Error in command: cmd: chan {ctx.channel} [{ctx.channel.id}], {f'serv: {ctx.guild} [{ctx.guild.id}]' if ctx.guild else ''} auth: {ctx.user} [{ctx.user.id}]: {ctx.command} {params}\n```"\
-                      f"{''.join(traceback.format_exception(type(error), error, error.__traceback__))}"\
-                      f"```"
-            
-            # At this time...I don't want DM Errors...cause those are going to happen a lot for now. 
-            if ERROR_CHANNEL and ctx.guild:
-                try:
-                    await ctx.bot.get_channel(int(ERROR_CHANNEL)).send(out_str)
-                except:
-                    log.error(out_str)
-            else:
-                log.error(out_str)
-
-        try:
-            if hasattr(ctx, "bot") and not hasattr(ctx.bot, "db"):
-                return await ctx.respond(f"Try again in a few seconds. I'm not fully awake yet.", ephemeral=True)
-            
-            if not ctx.guild:
-                return await ctx.respond(f"This command isn't supported in direct messages.", ephemeral=True)    
-
-            return await ctx.respond(f'Something went wrong. Let us know if it keeps up!', ephemeral=True)
-        except:
-            log.warning('Unable to respond')
-
-    
-    # @commands.Cog.listener()
-    # async def on_command_error(self, ctx: discord.ApplicationContext, error):
-    #     """
-    #     Handles errors that occur during command invocation.
-    #     Parameters:
-    #     ctx (discord.ApplicationContext): The context in which the command was invoked.
-    #     error (Exception): The exception that was raised during command invocation.
-    #     Returns:
-    #     None
-    #     Behavior:
-    #     - If the command has its own error handler or the error is a CommandNotFound, the function returns immediately.
-    #     - If the error is a CheckFailure, sends a message indicating the user lacks permissions for the command.
-    #     - If the error is a G0T0CommandError, sends an embedded error message.
-    #     - Logs the error details to a specified error channel or logs it if the error channel is not available.
-    #     - Sends a message indicating the bot is not fully awake if the bot's database is not available.
-    #     - Sends a message indicating the command is not supported in direct messages if invoked in a DM.
-    #     - Sends a generic error message if none of the above conditions are met.
-    #     - Logs a warning if unable to respond to the user.
-    #     """
-    #     time = 5
-    #     if hasattr(ctx.command, 'on_error') or isinstance(error, commands.CommandNotFound):
-    #         return
-
-    #     if isinstance(error, discord.CheckFailure):
-    #         return await ctx.send(f'You do not have required permissions for `{ctx.command}`', delete_after=time)
-    #     elif isinstance(error, G0T0CommandError):
-    #         return await ctx.send(embed=ErrorEmbed(error), delete_after=time)
-    
-    #     if hasattr(ctx, "bot") and hasattr(ctx.bot, "db"):
-    #         out_str = f"Error in command: cmd: chan {ctx.channel} [{ctx.channel.id}], {f'serv: {ctx.guild} [{ctx.guild.id}]' if ctx.guild else ''} auth: {ctx.author} [{ctx.author.id}]: {ctx.command}\n```"\
-    #                   f"{''.join(traceback.format_exception(type(error), error, error.__traceback__))}"\
-    #                   f"```"
-            
-    #         # At this time...I don't want DM Errors...cause those are going to happen a lot for now. 
-    #         if ERROR_CHANNEL and ctx.guild:
-    #             try:
-    #                 await ctx.bot.get_channel(int(ERROR_CHANNEL)).send(out_str)
-    #             except:
-    #                 log.error(out_str)
-    #         else:
-    #             log.error(out_str)
-
-    #     try:
-    #         if hasattr(ctx, "bot") and not hasattr(ctx.bot, "db"):
-    #             return await ctx.send(f"Try again in a few seconds. I'm not fully awake yet.", delete_after=time)
-            
-    #         if not ctx.guild:
-    #             return await ctx.send(f"This command isn't supported in direct messages.", delete_after=time)    
-
-    #         return await ctx.send(f'Something went wrong. Let us know if it keeps up!', delete_after=time)
-    #     except:
-    #         log.warning('Unable to respond')
+        
 
     @commands.Cog.listener()
     async def on_entitlement_create(self, entitlement: discord.Entitlement):

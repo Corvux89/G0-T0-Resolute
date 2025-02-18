@@ -55,7 +55,6 @@ class SelectionCancelled(G0T0Error):
     def __init__(self):
         super().__init__("Selection timed out or was cancelled.")
 
-# Command Errors
-class G0T0CommandError(CommandError):
-    def __init__(self, message):
-        super().__init__(f"{message}")
+class DBError(G0T0Error):
+    def __init__(self):
+        super().__init__("Try again in a few seconds. I'm not quite awake yet")

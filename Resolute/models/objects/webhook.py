@@ -104,7 +104,7 @@ class G0T0Webhook(object):
         elif self.type == WebhookType.adventure:
             if self.ctx.channel.category:
                 if not self.adventure:
-                    self.adventure = self.ctx.bot.get_adventure_from_category(self.ctx.channel.category.id)                  
+                    self.adventure = await self.ctx.bot.get_adventure_from_category(self.ctx.channel.category.id)                  
 
                 if self.adventure:
                     self.npc = self.adventure.get_npc(key=self.ctx.invoked_with)

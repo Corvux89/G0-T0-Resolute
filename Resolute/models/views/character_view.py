@@ -278,6 +278,20 @@ class _EditCharacter(CharacterManage):
 
         await self.on_timeout()
 
+    @discord.ui.button(label="Date of Birth", style=discord.ButtonStyle.primary, row=2)
+    async def dob_character(self, _: discord.ui.Button, interaction: discord.Interaction):
+        old_dob = self.active_character.dob
+        modal = CharacterDOBModal(self.player, self.active_character)
+
+        if self.active_character.dob != old_dob:
+            await self.bot.log(interaction, self.player, self.owner, "MOD_CHARACTER",
+                               character=self.active_character,
+                               notes="Character modifcation",
+                               silent=True)
+            
+        await self.prompt_modal(interaction, modal)
+        await self.refresh_content(interaction)
+
     @discord.ui.button(label="Back", style=discord.ButtonStyle.grey, row=3)
     async def back(self, _: discord.ui.Button, interaction: discord.Interaction):
         await self.defer_to(CharacterManageUI, interaction)
@@ -289,9 +303,11 @@ class _EditCharacter(CharacterManage):
             self.level_character.disabled = False
         pass
 
-    async def _before_send(self):
         if not is_admin:
             self.remove_item(self.manage_renown)
+
+        if not self.player.guild.calendar:
+            self.remove_item(self.dob_character)
 
     async def get_content(self) -> Mapping:
         return {"embed": CharacterEmbed(self.player, self.active_character), "content": ""}
@@ -779,6 +795,9 @@ class _CharacterSettings2UI(CharacterSettings):
         else:
             self.remove_item(self.faction_select)
 
+        if not self.player.guild.calendar or self.active_character.dob:
+            self.remove_item(self.update_dob)
+
     @discord.ui.select(placeholder="Select a faction", row=1)
     async def faction_select(self, faction: discord.ui.Select, interaction: discord.Interaction):
         self.active_character.faction = self.bot.compendium.get_object(Faction, int(faction.values[0]))
@@ -797,6 +816,12 @@ class _CharacterSettings2UI(CharacterSettings):
         await self.prompt_modal(interaction, modal)
         await self.refresh_content(interaction)
 
+    @discord.ui.button(label="Set Birthday", style=discord.ButtonStyle.primary, row=2)
+    async def update_dob(self, _: discord.ui.Button, interaction: discord.Interaction):
+        modal = CharacterDOBModal(self.player, self.active_character)
+        await self.prompt_modal(interaction, modal)
+        await self.refresh_content(interaction)
+
     @discord.ui.button(label="Back", style=discord.ButtonStyle.secondary, row=3)
     async def back(self, _: discord.ui.Button, interaction: discord.Interaction):
         await self.defer_to(CharacterSettingsUI, interaction)
@@ -805,6 +830,33 @@ class _CharacterSettings2UI(CharacterSettings):
     async def exit(self, *_):
         await self.on_timeout()
 
+class CharacterDOBModal(discord.ui.Modal):
+    character: PlayerCharacter
+    player: Player
+
+    def __init__(self, player: Player, character: PlayerCharacter):
+        super().__init__(title="Date of Birth")
+        self.player = player
+        self.character = character
+
+        self.add_item(discord.ui.InputText(label="Age (years)", placeholder="Age (years)", max_length=5, value=self.character.age(self.player.guild) if self.character.dob else ''))
+        self.add_item(discord.ui.InputText(label="Birth Month", placeholder="Birth Month", max_length=50, value=self.character.dob_month(self.player.guild).display_name if self.character.dob else ''))
+        self.add_item(discord.ui.InputText(label="Birth Day", placeholder="Birth Day", max_length=3, value=self.character.dob_day(self.player.guild) if self.character.dob else ''))
+
+    async def callback(self, interaction: discord.Interaction):
+        month = next((month for month in self.player.guild.calendar if month.display_name.lower() == self.children[1].value.lower()), None)
+
+        if month:
+            try:
+                self.character.dob = self.player.guild.get_internal_date(int(self.children[2].value),
+                                                                         self.player.guild.calendar.index(month)+1,
+                                                                         self.player.guild.server_year-int(self.children[0].value))
+                await self.character.upsert()
+            except:
+               await interaction.channel.send(embed=ErrorEmbed(f"Error setting birth date"), delete_after=5) 
+
+        await interaction.response.defer()
+        self.stop()   
 
 class CharacterAvatarModal(discord.ui.Modal):
     bot: G0T0Bot

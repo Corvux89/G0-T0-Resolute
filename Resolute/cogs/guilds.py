@@ -10,6 +10,7 @@ from discord.ext import commands, tasks
 from Resolute.bot import G0T0Bot, G0T0Context
 from Resolute.helpers.general_helpers import confirm, is_admin
 from Resolute.models.embeds.guilds import ResetEmbed
+from Resolute.models.objects.characters import PlayerCharacter
 from Resolute.models.objects.enum import WebhookType
 from Resolute.models.objects.guilds import (GuildSchema, PlayerGuild,
                                             get_guilds_with_reset_query)
@@ -211,13 +212,19 @@ class Guilds(commands.Cog):
         # Setup
         start = timer()
         stipend_task = []
+        start_date = None
+        birthdays = []
 
         # Guild updates
         g.weeks += 1
         g._last_reset = datetime.now(timezone.utc)
+
         if g.server_date and g.server_date is not None:
+            start_date = g.server_date
             g.server_date += random.randint(13, 16)
-        
+
+        if start_date and g.calendar:
+            birthdays = await self._get_characters_with_birthdays(g, start_date)        
 
         # Reset Player CC's and Activity Points
         async with self.bot.db.acquire() as conn:
@@ -225,7 +232,6 @@ class Guilds(commands.Cog):
         
         # Stipends
         leadership_stipend_players = set()
-
         for stipend in g.stipends:
             if stipend_role := self.bot.get_guild(g.id).get_role(stipend.role_id):
                 members = stipend_role.members
@@ -248,7 +254,7 @@ class Guilds(commands.Cog):
         end = timer()
 
         # Announce we're all done!
-        g = await self.push_announcements(g, end-start)
+        g = await self.push_announcements(g, end-start, birthdays=birthdays)
         await g.upsert()
         self.bot.dispatch("refresh_guild_cache", g)
 
@@ -271,6 +277,22 @@ class Guilds(commands.Cog):
         guild_list = [await GuildSchema(self.bot.db, self.bot.get_guild(row["id"])).load(row) for row in rows]
 
         return guild_list
+    
+    async def _get_characters_with_birthdays(self, guild: PlayerGuild, start_date: int) -> list[PlayerCharacter]:
+        all_characters: list[PlayerCharacter] = await guild.get_all_characters(self.bot.compendium)
+        birthdays = []
+
+        start_days_in_year = start_date % guild.days_in_server_year
+        start_month = next((month for month in guild.calendar if month.day_start <= start_days_in_year <= month.day_end), None)
+
+        for character in all_characters:
+            if character.dob:
+                character_days_in_year = character.dob % guild.days_in_server_year
+
+                if start_month.day_start <= character_days_in_year <= guild.server_month.day_end:
+                    birthdays.append(character)
+
+        return birthdays
 
     # --------------------------- #
     # Task Helpers

@@ -81,8 +81,12 @@ class CharacterSettingsEmbed(discord.Embed):
         self.description= (f"**Character**: {character.name}{f' (*{character.nickname}*)' if character.nickname else ''}\n"
                            f"**Faction**: {character.faction.value if character.faction else '*None*'}\n"
                            f"**Global Character**: {'True' if character.primary_character else 'False'}")
+        
+        if player.guild.calendar and character.dob:
+            self.description += (f"\n**Birthday**: {character.formatted_dob(player.guild)}\n"
+                                 f"**Age**: {character.age(player.guild)}")
 
         self.add_field(name="Active RP Channels",
-                       value="\n".join([player.member.guild.get_channel(c).mention if player.member.guild.get_channel(c) else '' for c in character.channels]))
+                       value="\n".join([player.member.guild.get_channel(c).mention for c in character.channels if player.member.guild.get_channel(c)]))
 
 

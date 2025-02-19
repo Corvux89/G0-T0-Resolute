@@ -46,6 +46,17 @@ class ResetEmbed(discord.Embed):
                 self.add_field(name="Galactic Date",
                             value=f"{g.formatted_server_date}",
                             inline=False)
+                
+                if (birthdays := kwargs.get('birthdays', [])) and len(birthdays) > 0:
+                    birthday_str = []
+
+                    for character in birthdays:
+                        if member := g.guild.get_member(character.player_id):
+                            birthday_str.append(f"{character.name} ({member.mention})\n - {character.dob_month(g).display_name}:{character.dob_day(g):02}, {character.age(g)} years")
+
+                    self.add_field(name="Happy Birthday!",
+                                   value="\n".join(birthday_str))
+                    
             if time := kwargs.get('complete_time', 0):
                 self.set_footer(text=f"Weekly reset complete in {time:.2f} seconds")
         else:
@@ -60,7 +71,7 @@ class ResetEmbed(discord.Embed):
         total_chars = 0
 
         if len(g.weekly_announcement) == 0:
-            return [ResetEmbed(g, True, complete_time=complete_time)]
+            return [ResetEmbed(g, True, complete_time=complete_time, **kwargs)]
 
         for announcement in g.weekly_announcement:
             parts = announcement.split("|")
@@ -71,7 +82,7 @@ class ResetEmbed(discord.Embed):
             field_char_count = len(title) + len(processed_announcement)
 
             if (not current_embed or
-                total_chars + field_char_count > 6000 or
+                total_chars + field_char_count > 5500 or
                 len(current_embed.fields) >= 25):
                 
                 if current_embed:

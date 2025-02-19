@@ -11,8 +11,6 @@ from sqlalchemy.sql import FromClause
 
 from Resolute.compendium import Compendium
 from Resolute.models import metadata
-from Resolute.models.objects.characters import (CharacterSchema,
-                                                get_guild_characters_query)
 from Resolute.models.objects.dashboards import (RefDashboard,
                                                 RefDashboardSchema,
                                                 get_dashboards)
@@ -254,6 +252,9 @@ class PlayerGuild(object):
         return guild
     
     async def get_all_characters(self, compendium: Compendium):
+        from Resolute.models.objects.characters import (CharacterSchema,
+                                                get_guild_characters_query)
+        
         async with self._db.acquire() as conn:
             results = await conn.execute(get_guild_characters_query(self.id))
             rows = await results.fetchall()

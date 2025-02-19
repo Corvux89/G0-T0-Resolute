@@ -1,3 +1,4 @@
+from math import floor
 import aiopg.sa
 import sqlalchemy as sa
 from marshmallow import Schema, fields, post_load
@@ -9,6 +10,8 @@ from Resolute.models import metadata
 from Resolute.models.categories import (CharacterArchetype, CharacterClass,
                                         CharacterSpecies)
 from Resolute.models.categories.categories import Faction
+from Resolute.models.objects.guilds import PlayerGuild
+from Resolute.models.objects.ref_objects import RefServerCalendar
 
 
 class CharacterRenown(object):
@@ -308,6 +311,7 @@ class PlayerCharacter(object):
         self.faction: Faction = kwargs.get('faction')
         self.avatar_url = kwargs.get('avatar_url')
         self.nickname = kwargs.get('nickname')
+        self.dob = kwargs.get('dob')
 
         # Virtual Attributes
         self.classes: list[PlayerCharacterClass] = []
@@ -320,6 +324,32 @@ class PlayerCharacter(object):
         if hasattr(self, "renown") and self.renown:
             total += sum(ren.renown for ren in self.renown)
         return total
+    
+    def formatted_dob(self, guild: PlayerGuild) -> str:
+        return f"{f'{guild.epoch_notation}::' if guild.epoch_notation else ''}{self.dob_year(guild):02}:{self.dob_month(guild).display_name}:{self.dob_day(guild):02}"
+    
+    def dob_year(self, guild: PlayerGuild) -> int:
+        if not guild.calendar or self.dob is None:
+            return None
+        return floor(self.dob / guild.days_in_server_year)
+    
+    def dob_month(self, guild: PlayerGuild) -> RefServerCalendar:
+        if not guild.calendar or self.dob is None:
+            return None
+        days_in_year = self.dob % guild.days_in_server_year
+        return next((month for month in guild.calendar if month.day_start <= days_in_year <= month.day_end), None)
+    
+    def dob_day(self, guild: PlayerGuild) -> int:
+        month = self.dob_month(guild)
+
+        if not month:
+            return None
+        days_in_year = self.dob % guild.days_in_server_year
+
+        return days_in_year - month.day_start+1
+    
+    def age(self, guild: PlayerGuild) -> int:
+        return guild.server_year-self.dob_year(guild)
     
     def inline_class_description(self) -> str:
         """
@@ -400,7 +430,8 @@ characters_table = sa.Table(
     sa.Column("channels", ARRAY(sa.BigInteger), nullable=False, default=[]),
     sa.Column("faction", sa.Integer, nullable=True),
     sa.Column("avatar_url", sa.String, nullable=True),
-    sa.Column("nickname", sa.String, nullable=True)
+    sa.Column("nickname", sa.String, nullable=True),
+    sa.Column("dob", sa.Integer, nullable=True)
 )
 
 class CharacterSchema(Schema):
@@ -422,6 +453,7 @@ class CharacterSchema(Schema):
     faction = fields.Method(None, "load_faction", allow_none=True)
     avatar_url = fields.String(required=False, allow_none=True)
     nickname = fields.String(required=False, allow_none=True)
+    dob = fields.Integer(required=False, allow_none=True)
 
     def __init__(self, db: aiopg.sa.Engine, compendium: Compendium, **kwargs):
         super().__init__(**kwargs)
@@ -503,7 +535,8 @@ def upsert_character_query(character: PlayerCharacter):
         "channels": character.channels,
         "primary_character": character.primary_character,
         "faction": character.faction.id if character.faction else None,
-        "nickname": character.nickname
+        "nickname": character.nickname,
+        "dob": character.dob
         }
         
         update_statement = characters_table.update().where(characters_table.c.id == character.id).values(**update_dict).returning(characters_table)
@@ -523,7 +556,8 @@ def upsert_character_query(character: PlayerCharacter):
         avatar_url=character.avatar_url,
         channels=character.channels,
         primary_character=character.primary_character,
-        faction=character.faction.id if character.faction else None
+        faction=character.faction.id if character.faction else None,
+        dob=character.dob
     ).returning(characters_table)
 
     return insert_statement

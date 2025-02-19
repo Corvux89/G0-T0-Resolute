@@ -1,5 +1,4 @@
 import logging
-import discord
 from discord.ext import commands
 from timeit import default_timer as timer
 
@@ -21,7 +20,7 @@ class NPC(commands.Cog):
         log.info(f'Cog \'NPC\' loaded')
 
     @commands.Cog.listener()
-    async def on_compendium_loaded(self):
+    async def on_db_connected(self):
         start = timer()
         npcs = await self.bot.get_all_npcs()
        

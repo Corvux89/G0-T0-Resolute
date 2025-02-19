@@ -267,7 +267,7 @@ async def _get_reply_player(webhook: G0T0Webhook) -> Player:
         orig_webhook = G0T0Webhook(webhook.ctx, message=webhook.message.reference.resolved)
 
         if await orig_webhook.is_valid_message(update_player=True):
-            return webhook.player
+            return orig_webhook.player
         
 def _find_character_by_name(name: str, characters: list[PlayerCharacter]) -> list[PlayerCharacter]:
     direct_matches = [c for c in characters if c.name.lower() == name.lower()]

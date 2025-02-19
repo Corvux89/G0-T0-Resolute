@@ -16,7 +16,7 @@ from Resolute.models.views.adventures import AdventureSettingsUI
 
 log = logging.getLogger(__name__)
 
-def setup(bot: commands.Bot):
+def setup(bot: G0T0Bot):
     bot.add_cog(Adventures(bot))
 
 class Adventures(commands.Cog):
@@ -40,21 +40,6 @@ class Adventures(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         log.info(f'Cog \'Adventures\' loaded')
-
-    @commands.Cog.listener()
-    async def on_command_error(self, ctx: commands.Context, error):
-        """
-        Handles errors that occur during command execution.
-        This function is called when an error is raised while invoking a command.
-        It checks if the context has a bot with a database, and if the command was
-        executed in a guild and within a channel category. If these conditions are
-        met, it sends a webhook notification.
-        Args:
-            ctx (commands.Context): The context in which the command was invoked.
-            error (Exception): The error that was raised during command execution.
-        """
-        if hasattr(ctx, "bot") and hasattr(ctx.bot, "db") and ctx.guild and ctx.channel.category:
-            await G0T0Webhook(ctx, type=WebhookType.adventure).send()
 
     @commands.slash_command(
         name="adventures",

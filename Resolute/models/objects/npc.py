@@ -1,5 +1,6 @@
 import aiopg.sa
 import discord
+from discord.ext import commands
 import sqlalchemy as sa
 from marshmallow import Schema, fields, post_load
 from sqlalchemy.dialects.postgresql import ARRAY, insert
@@ -7,6 +8,7 @@ from sqlalchemy.sql import FromClause, TableClause
 
 import Resolute.helpers.general_helpers as gh
 from Resolute.models import metadata
+from Resolute.models.objects.enum import WebhookType
 
 
 class NPC(object):
@@ -59,6 +61,14 @@ class NPC(object):
             await webhook.send(username=self.name,
                                avatar_url=self.avatar_url if self.avatar_url else None,
                                content=content)
+            
+    async def register_command(self, bot):
+        async def npc_command(ctx):
+            from Resolute.models.objects.webhook import G0T0Webhook
+            await G0T0Webhook(ctx, type=WebhookType.adventure if self.adventure_id else WebhookType.npc).send()
+        
+        if bot.get_command(self.key) is None:
+            bot.add_command(commands.Command(npc_command, name=self.key))
 
 
 npc_table = sa.Table(
@@ -99,6 +109,9 @@ def get_npc_query(guild_id: int, key: str) -> FromClause:
     return npc_table.select().where(
         sa.and_(npc_table.c.guild_id == guild_id, npc_table.c.key == key)
     )
+
+def get_all_npc_query() -> FromClause:
+    return npc_table.select().order_by(npc_table.c.key.asc())
 
 
 def get_guild_npcs_query(guild_id: int) -> FromClause:

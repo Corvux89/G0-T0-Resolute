@@ -114,7 +114,7 @@ class G0T0Webhook(object):
             raise Unauthorized()
 
         if self.npc:
-            self.content = self.message.content.replace(f">{npc.key}", "")
+            self.content = self.message.content[len(self.npc.key)+2:]
             await self.player.update_command_count("npc")
 
         if self.npc or self.character:

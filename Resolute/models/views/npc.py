@@ -231,6 +231,7 @@ class NPCModal(discord.ui.Modal):
                             adventure_id=self.adventure.id if self.adventure else None)
 
         await self.npc.upsert()
+        await self.npc.register_command(self.bot)
         self.bot.dispatch("refresh_guild_cache", self.guild)
                       
         await interaction.response.defer()

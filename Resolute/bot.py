@@ -14,7 +14,7 @@ from sqlalchemy.schema import CreateTable
 
 from Resolute.compendium import Compendium
 from Resolute.constants import DB_URL, ERROR_CHANNEL, PORT
-from Resolute.helpers.general_helpers import get_selection
+from Resolute.helpers.general_helpers import get_selection, is_admin
 from Resolute.models import metadata
 from Resolute.models.categories.categories import (Activity, ActivityPoints,
                                                    CodeConversion, Faction)
@@ -41,6 +41,7 @@ from Resolute.models.objects.logs import (DBLog, LogSchema,
                                           character_stats_query, get_log_by_id,
                                           get_n_player_logs_query,
                                           player_stats_query, upsert_log)
+from Resolute.models.objects.npc import NPC, NPCSchema, get_all_npc_query
 from Resolute.models.objects.players import (Player, PlayerSchema,
                                              get_player_query,
                                              upsert_player_query)
@@ -874,6 +875,20 @@ class G0T0Bot(commands.Bot):
         fin = FinancialSchema(self.db).load(row)
 
         return fin
+    
+    async def get_all_npcs(self) -> list[NPC]:
+        if not is_admin:
+            return
+        
+        async with self.db.acquire() as conn:
+            results = await conn.execute(get_all_npc_query())
+            rows = await results.fetchall()
+
+        npcs = [NPCSchema(self.db).load(row) for row in rows]
+
+        return npcs
+        
+
             
         
 

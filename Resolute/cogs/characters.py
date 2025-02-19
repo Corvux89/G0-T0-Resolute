@@ -22,8 +22,6 @@ from Resolute.models.views.character_view import (CharacterGetUI,
 
 log = logging.getLogger(__name__)
 
-# TODO: Add Character Birthday for server date
-
 def setup(bot: G0T0Bot):
     bot.add_cog(Character(bot))
 

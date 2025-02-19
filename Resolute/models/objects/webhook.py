@@ -71,7 +71,7 @@ class G0T0Webhook(object):
 
     async def send(self) -> None:
         # Maker sure we have required attributes
-        if not self.player and self.ctx.player:
+        if not self.player and hasattr(self.ctx, 'player') and self.ctx.player:
             self.player = self.ctx.player
         else:
             self.player = await self.ctx.bot.get_player(self.ctx.author.id, self.ctx.guild.id)

@@ -249,7 +249,9 @@ async def update_dashboard(bot: G0T0Bot, dashboard: RefDashboard) -> None:
             radius=corner_radius,
         )
 
-        background.save("progress.png")
+        image_buffer = BytesIO()
+        background.save(image_buffer, format="PNG")
+        image_buffer.seek(0)
 
         embed = discord.Embed(title="G0-T0 Financial Progress",
                               description=f"Current Monthly Progress: ${fin.adjusted_total:.2f}\n"
@@ -264,7 +266,7 @@ async def update_dashboard(bot: G0T0Bot, dashboard: RefDashboard) -> None:
         embed.set_image(url="attachment://progress.png")
         embed.set_footer(text="Last Updated")
 
-        file = discord.File("progress.png", filename="progress.png")
+        file = discord.File(image_buffer, filename="progress.png")
         original_message.attachments.clear()
         return await original_message.edit(file=file, embed=embed, content="")
 

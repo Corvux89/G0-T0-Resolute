@@ -1,8 +1,10 @@
 import asyncio
 import datetime
+import io
 import logging
 import os
 
+import chat_exporter
 import discord
 from discord.ext import commands, tasks
 
@@ -137,6 +139,21 @@ class Admin(commands.Cog):
 
             self.bot.load_extension(f'Resolute.cogs.{cog}')
             await ctx.respond(f'Cog {cog} reloaded')
+
+    
+    @commands.command(name="dev")
+    @commands.check(is_admin)
+    async def dev(self, ctx: G0T0Context):
+        transcript = await chat_exporter.export(ctx.channel,
+                                                guild=ctx.guild,
+                                                bot=self.bot)
+        
+        if transcript is None:
+            return
+        transcript_file = discord.File(io.BytesIO(transcript.encode()),
+                                       filename=f"transcript-{ctx.channel.name}.html")
+        
+        await ctx.send(file=transcript_file)
        
 
     # --------------------------- #

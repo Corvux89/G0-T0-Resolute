@@ -117,6 +117,7 @@ class G0T0Bot(commands.Bot):
         self.check(self.bot_check)
         self.before_invoke(self.before_invoke_setup)
         self.add_listener(self.error_handling, "on_error")
+        self.add_listener(self.error_handling, "on_command_error")
         self.add_listener(self.error_handling, "on_application_command_error")
 
     async def on_ready(self):
@@ -203,7 +204,7 @@ class G0T0Bot(commands.Bot):
         await ctx.send(embed=ErrorEmbed(f"Try again in a few seconds. I'm not fully awake yet."))
         return False
     
-    async def error_handling(self, ctx: discord.ApplicationContext, error):
+    async def error_handling(self, ctx: discord.ApplicationContext | commands.Context, error):
         """
         Handles errors that occur during the execution of application commands.
         Parameters:
@@ -224,8 +225,11 @@ class G0T0Bot(commands.Bot):
             await ctx.delete()
         except:
             pass
-
-        if hasattr(ctx.command, 'on_error') or isinstance(error, (commands.CommandNotFound, discord.CheckFailure)) or "Unknown interaction" in str(error):
+        
+        if isinstance(error, commands.CommandNotFound) and isinstance(ctx, commands.Context):
+            return await ctx.send(embed=ErrorEmbed(f"No npc with the key `{ctx.invoked_with}` found."))
+        
+        elif hasattr(ctx.command, 'on_error') or isinstance(error, (commands.CommandNotFound, discord.CheckFailure)) or "Unknown interaction" in str(error):
             return               
                 
         elif isinstance(error, G0T0Error):

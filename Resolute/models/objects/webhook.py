@@ -8,13 +8,12 @@ from discord.ext import commands
 
 from Resolute.bot import G0T0Context
 from Resolute.constants import ACTIVITY_POINT_MINIMUM
-from Resolute.helpers.general_helpers import (get_selection, is_admin,
+from Resolute.helpers.general_helpers import (get_selection, is_admin, is_staff,
                                               split_content)
-from Resolute.helpers.messages import get_player_from_say_message
 from Resolute.models.objects.adventures import Adventure
 from Resolute.models.objects.characters import PlayerCharacter
 from Resolute.models.objects.enum import WebhookType
-from Resolute.models.objects.exceptions import CharacterNotFound
+from Resolute.models.objects.exceptions import CharacterNotFound, Unauthorized
 from Resolute.models.objects.npc import NPC
 from Resolute.models.objects.players import Player
 
@@ -56,20 +55,30 @@ class G0T0Webhook(object):
     npc: NPC = None
     character: PlayerCharacter = None
     content: str = None
+    message: discord.Message = None
+    adventure: Adventure = None
 
-    def __init__(self, ctx: G0T0Context | commands.Context, type: WebhookType, **kwargs):
+    def __init__(self, ctx: commands.Context | G0T0Context, **kwargs):
         self.ctx = ctx
-        self.type = type
+        self.type = kwargs.get('type', WebhookType.say)
 
-
-    async def run(self) -> None:
         if hasattr(self.ctx, "player") and self.ctx.player:
+            self.player = self.ctx.player
+
+        self.message = kwargs.get('message', ctx.message)
+        self.adventure = kwargs.get('adventure')
+
+
+    async def send(self) -> None:
+        # Maker sure we have required attributes
+        if not self.player and self.ctx.player:
             self.player = self.ctx.player
         else:
             self.player = await self.ctx.bot.get_player(self.ctx.author.id, self.ctx.guild.id)
 
+        # >say
         if self.type == WebhookType.say:
-            self.content = self.ctx.message.content[5:]
+            self.content = self.message.content[5:]
 
             if self.content == "" or self.content.lower() == ">say":
                 return
@@ -85,21 +94,31 @@ class G0T0Webhook(object):
                 
             if not self.character:
                 self.character = await self.player.get_webhook_character(self.ctx.channel)    
-
+        
+        # Guild NPC
         elif self.type ==WebhookType.npc:
-            if (npc := self._get_npc_from_guild()) and await self.is_authorized(npc):
+            if npc := self.player.guild.get_npc(key=self.ctx.invoked_with):
                 self.npc = npc
 
+        # Adventure NPC
         elif self.type == WebhookType.adventure:
-            if self.ctx.channel.category and (adventure := await self.ctx.bot.get_adventure_from_category(self.ctx.channel.category.id)) and (npc := self._get_npc_from_adventure(adventure)):
-                self.npc = npc
+            if self.ctx.channel.category:
+                if not self.adventure:
+                    self.adventure = self.ctx.bot.get_adventure_from_category(self.ctx.channel.category.id)                  
+
+                if self.adventure:
+                    self.npc = self.adventure.get_npc(key=self.ctx.invoked_with)
+
+        # Final Checks
+        if self.npc and not await self.is_authorized():
+            raise Unauthorized()
 
         if self.npc:
-            self.content = self.ctx.message.content.replace(f">{npc.key}", "")
+            self.content = self.message.content.replace(f">{npc.key}", "")
             await self.player.update_command_count("npc")
 
         if self.npc or self.character:
-            await self._handle_character_mention()
+            await _handle_character_mentions(self)
 
             try:
                 await self.ctx.message.delete()
@@ -126,7 +145,7 @@ class G0T0Webhook(object):
                     await self.player.member.send(f"```{chunk}```")
                     return
                 
-            if self.ctx.message.reference is not None and (reply_player := await self._get_reply_player()):
+            if self.message.reference is not None and (reply_player := await _get_reply_player(self)):
                 try:
                     await reply_player.member.send(
                         f"{self.ctx.author} replied to your message in:\n"
@@ -134,70 +153,164 @@ class G0T0Webhook(object):
                     )
                 except Exception as error:
                     log.error(f"Error replying to message {error}")
-                                  
 
-                        
-                
-    async def _get_reply_player(self) -> Player:
-        if self.ctx.message.reference.resolved and self.ctx.message.reference.resolved.author.bot:
-            return await get_player_from_say_message(self.ctx.bot, self.ctx.message.reference.resolved)
+    async def edit(self, content: str) -> None:
+        self.content = content
+        if self.type == WebhookType.say:
+            if hasattr(self.ctx, "player") and self.ctx.player and not self.player:
+                self.player = self.ctx.player
+            else:
+                self.player = await self.ctx.bot.get_player(self.ctx.author.id, self.ctx.guild.id)
 
+            await _handle_character_mentions(self)
 
-    def _find_character_by_name(self, name: str, characters: list[PlayerCharacter]) -> list[PlayerCharacter]:
-        direct_matches = [c for c in characters if c.name.lower() == name.lower()]
+            try:
+                await self.player.edit_webhook_message(self.ctx, self.message.id, self.content)
 
-        # Prioritize main name first
-        if not direct_matches:
-            direct_matches = [c for c in characters if c.nickname and c.nickname.lower() == name.lower()]
+                if not self.player.guild.is_dev_channel(self.ctx.channel):
+                    await self.player.update_post_stats(self.character, self.message, retract=True)
+                    await self.player.update_post_stats(self.character, self.message, content=self.content)
 
-        if not direct_matches:
-            partial_matches = [c for c in characters if name.lower() in c.name.lower() or (c.nickname and name.lower() in c.nickname.lower())]
-            return partial_matches
+                    if len(self.content) <= ACTIVITY_POINT_MINIMUM and len(self.message.content) >= ACTIVITY_POINT_MINIMUM:
+                        await self.ctx.bot.update_player_activity_points(self.player, False)
+                    elif len(self.content) >= ACTIVITY_POINT_MINIMUM and len(self.message.content) <= ACTIVITY_POINT_MINIMUM:
+                        await self.ctx.bot.update_player_activity_points(self.player)
+            except:
+                await self.player.member.send(f"Error editing message in {self.ctx.channel.jump_url}. Try again.")
+                await self.player.member.send(f"```{self.content}```")
+                return
+        
+    async def delete(self) -> None:
+        if self.npc and not await self.is_authorized():
+            raise Unauthorized()
 
-        return direct_matches
+        if not self.player.guild.is_dev_channel(self.ctx.channel):
+            await self.player.update_post_stats(self.character if self.character else self.npc, self.message, retract=True)
 
-    async def _handle_character_mention(self) -> None:
-        mentioned_characters = []
-
-        if char_mentions := re.findall(r'{\$([^}]*)}', self.content):
-            guild_characters = await self.player.guild.get_all_characters(self.ctx.bot.compendium)
-
-            for mention in char_mentions:
-                matches = self._find_character_by_name(mention, guild_characters)
-                mention_char = None
-
-                if len(matches) == 1:
-                    mention_char = matches[0]
-                elif len(matches) > 1:
-                    choices = [f"{c.name} [{self.ctx.guild.get_member(c.player_id).display_name}]" for c in matches if self.ctx.guild.get_member(c.player_id)]
-
-                    if choice := await get_selection(self.ctx, choices, True, True, f"Type your choice in {self.ctx.channel.jump_url}", True, f"Found multiple matches for `{mention}`"):
-                        mention_char = matches[choices.index(choice)]
-
-                if mention_char:
-                    if mention_char not in mentioned_characters:
-                        mentioned_characters.append(mention_char)
-                    self.content = self.content.replace("{$" + mention + "}", f"[{mention_char.nickname if mention_char.nickname else mention_char.name}](<discord:///users/{mention_char.player_id}>)")
-
-            for char in mentioned_characters:
-                char: PlayerCharacter
-                if member := self.ctx.guild.get_member(char.player_id):
-                    try:
-                        await member.send(f"{self.ctx.author.mention} directly mentioned `{char.name}` in:\n{self.ctx.channel.jump_url}")
-                    except:
-                        pass
-
-    def _get_npc_from_guild(self) -> NPC:
-        return next((npc for npc in self.player.guild.npcs if npc.key == self.ctx.invoked_with), None)
+            if len(self.message.content) >= ACTIVITY_POINT_MINIMUM:
+                await self.ctx.bot.update_player_activity_points(self.player, False)            
+        
+        await self.message.delete()
     
-    def _get_npc_from_adventure(self, adventure: Adventure) -> NPC:
-        if self.player.id in adventure.dms:
-            return next((npc for npc in adventure.npcs if npc.key == self.ctx.invoked_with), None)
+    async def is_authorized(self) -> bool:
+        if not self.npc:
+            return False
+
+        if self.type == WebhookType.npc:
+            user_roles = [role.id for role in self.player.member.roles]
+
+            return bool(set(user_roles) & set(self.npc.roles)) or await is_admin(self.ctx)
+        
+        elif self.type == WebhookType.adventure:
+            if not self.adventure and self.ctx.channel.category:
+                self.adventure = await self.bot.get_adventure_from_category(self.ctx.channel.category.id)
+
+            if self.adventure:
+                return self.player.id in self.adventure.dms or await is_staff(self.ctx)
+
+        return False
+    
+    async def is_valid_message(self, **kwargs) -> bool:
+        if not self.message.author.bot:
+            return False
+        
+        if self.type == WebhookType.say:
+            if kwargs.get('update_player', False):
+                if (name := _get_player_name(self)) and (member := discord.utils.get(self.message.guild.members, display_name=name)):
+                    self.player = await self.ctx.bot.get_player(member.id, member.guild.id)
+                else:
+                    return False
+
+            if char_name := _get_char_name(self):
+                for char in self.player.characters:
+                    if char.name.lower() == char_name.lower():
+                        self.character = char
+                        return True
+                    
+        elif self.type == WebhookType.adventure:
+            if self.ctx.channel.category:
+                self.adventure = await self.ctx.bot.get_adventure_from_category(self.ctx.channel.category.id)
+
+                if self.adventure and (npc := self.adventure.get_npc(name=self.message.author.name)):
+                    self.npc = npc
+                    return True
+                    
+        elif self.type == WebhookType.npc:
+            if npc := self.player.guild.get_npc(name=self.message.author.name):
+                self.npc = npc
+                return True
+
+        return False
+
+# --------------------------- #
+# Private Methods
+# --------------------------- #
+
+def _get_player_name(webhook: G0T0Webhook) -> str:
+    try:
+        player_name = webhook.message.author.name.split(' // ')[1:]
+    except:
         return None
     
-    async def is_authorized(self, npc) -> bool:
-        user_roles = [role.id for role in self.player.member.roles]
+    return " // ".join(player_name)
 
-        return bool(set(user_roles) & set(npc.roles)) or await is_admin(self.ctx)
+def _get_char_name(webhook: G0T0Webhook) -> str:
+    try:
+        char_name = webhook.message.author.name.split(' // ')[0].split('] ', 1)[1].strip()
+    except:
+        return None
+    
+    return char_name
 
+async def _get_reply_player(webhook: G0T0Webhook) -> Player:
+    if webhook.message.reference.resolved and webhook.message.reference.resolved.author.bot:
+        orig_webhook = G0T0Webhook(webhook.ctx, message=webhook.message.reference.resolved)
+
+        if await orig_webhook.is_valid_message(update_player=True):
+            return webhook.player
+        
+def _find_character_by_name(name: str, characters: list[PlayerCharacter]) -> list[PlayerCharacter]:
+    direct_matches = [c for c in characters if c.name.lower() == name.lower()]
+
+    # Prioritize main name first
+    if not direct_matches:
+        direct_matches = [c for c in characters if c.nickname and c.nickname.lower() == name.lower()]
+
+    if not direct_matches:
+        partial_matches = [c for c in characters if name.lower() in c.name.lower() or (c.nickname and name.lower() in c.nickname.lower())]
+        return partial_matches
+
+    return direct_matches
+
+        
+async def _handle_character_mentions(webhook: G0T0Webhook) -> None:
+    mentioned_characters = []
+
+    if char_mentions := re.findall(r'{\$([^}]*)}', webhook.content):
+        guild_characters = await webhook.player.guild.get_all_characters(webhook.ctx.bot.compendium)
+
+        for mention in char_mentions:
+            matches = _find_character_by_name(mention, guild_characters)
+            mention_char = None
+
+            if len(matches) == 1:
+                mention_char = matches[0]
+            elif len(matches) > 1:
+                choices = [f"{c.name} [{webhook.ctx.guild.get_member(c.player_id).display_name}]" for c in matches if webhook.ctx.guild.get_member(c.player_id)]
+
+                if choice := await get_selection(webhook.ctx, choices, True, True, f"Type your choice in {webhook.ctx.channel.jump_url}", True, f"Found multiple matches for `{mention}`"):
+                    mention_char = matches[choices.index(choice)]
+
+            if mention_char:
+                if mention_char not in mentioned_characters:
+                    mentioned_characters.append(mention_char)
+                webhook.content = webhook.content.replace("{$" + mention + "}", f"[{mention_char.nickname if mention_char.nickname else mention_char.name}](<discord:///users/{mention_char.player_id}>)")
+
+        for char in mentioned_characters:
+            char: PlayerCharacter
+            if member := webhook.ctx.guild.get_member(char.player_id):
+                try:
+                    await member.send(f"{webhook.ctx.author.mention} directly mentioned `{char.name}` in:\n{webhook.ctx.channel.jump_url}")
+                except:
+                    pass
     

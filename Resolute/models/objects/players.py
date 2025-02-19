@@ -149,7 +149,14 @@ class Player(object):
             await webhook.send(username=f"[{character.level}] {character.name} // {self.member.display_name}",
                             avatar_url=self.member.display_avatar.url if not character.avatar_url else character.avatar_url,
                             content=content)
+            
+    async def edit_webhook_message(self, ctx: discord.ApplicationContext, message_id: int, content: str) -> None:
+        webhook = await get_webhook(ctx.channel)
 
+        if isinstance(ctx.channel, (discord.Thread, discord.ForumChannel)):
+            await webhook.edit_message(message_id, content=content, thread=ctx.channel)
+        else:
+            await webhook.edit_message(message_id, content=content)
     
     async def update_command_count(self, command: str) -> None:
         stats = json.loads(self.statistics if self.statistics else "{}")

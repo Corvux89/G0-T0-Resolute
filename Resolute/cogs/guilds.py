@@ -81,7 +81,7 @@ class Guilds(commands.Cog):
     @commands.Cog.listener()
     async def on_command_error(self, ctx: commands.Context, error):
         if hasattr(ctx, "bot") and hasattr(ctx.bot, "db") and ctx.guild:
-            await G0T0Webhook(ctx, WebhookType.npc).run()
+            await G0T0Webhook(ctx, type=WebhookType.npc).send()
     
     @guilds_commands.command(
             name="settings",

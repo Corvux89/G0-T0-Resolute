@@ -224,15 +224,11 @@ class G0T0Bot(commands.Bot):
         except:
             pass
 
-        if hasattr(ctx.command, 'on_error') or isinstance(error, commands.CommandNotFound) or "Unknown interaction" in str(error):
+        if hasattr(ctx.command, 'on_error') or isinstance(error, (commands.CommandNotFound, discord.CheckFailure)) or "Unknown interaction" in str(error):
             return               
-
-        elif isinstance(error, discord.CheckFailure):
-            return await ctx.send(f'You do not have required permissions for `{ctx.command}`')
-        
+                
         elif isinstance(error, G0T0Error):
             return await ctx.send(embed=ErrorEmbed(error))
-
 
         if hasattr(ctx, "bot") and hasattr(ctx.bot, "db"):
             params = "".join([f" [{p['name']}: {p['value']}]" for p in (ctx.selected_options or [])]) if hasattr(ctx, 'selected_options') and ctx.selected_options else ""

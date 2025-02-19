@@ -206,9 +206,9 @@ class NPCModal(discord.ui.Modal):
         self.guild = kwargs.get("guild")
         self.adventure = kwargs.get("adventure")
         if not self.npc:
-            self.add_item(discord.InputText(label="Key", placeholder="Key", max_length=20, value=self.npc.key if self.npc else None))
-        self.add_item(discord.InputText(label="Name", placeholder="Name", max_length=100, value=self.npc.name if self.npc else None))
-        self.add_item(discord.InputText(label="Avatar URL", placeholder="Avatar URL", required=False, max_length=100, value=self.npc.avatar_url if self.npc else None))
+            self.add_item(discord.ui.InputText(label="Key", placeholder="Key", max_length=20, value=self.npc.key if self.npc else None))
+        self.add_item(discord.ui.InputText(label="Name", placeholder="Name", max_length=100, value=self.npc.name if self.npc else None))
+        self.add_item(discord.ui.InputText(label="Avatar URL", placeholder="Avatar URL", required=False, max_length=100, value=self.npc.avatar_url if self.npc else None))
 
     async def callback(self, interaction: discord.Interaction):
         key=self.children[0].value.strip() if not self.npc else self.npc.key

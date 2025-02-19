@@ -126,6 +126,14 @@ class Adventure(object):
                 overwrites[member] = discord.PermissionOverwrite(manage_messages=True)
             await channel.edit(overwrites=overwrites)
 
+    def get_npc(self, **kwargs) -> NPC:
+        if kwargs.get('key'):
+            return next((npc for npc in self.npcs if npc.key == kwargs.get('key')), None)
+        elif kwargs.get('name'):
+            return next((npc for npc in self.npcs if npc.name.lower() == kwargs.get('name').lower()), None)
+        
+        return None
+
             
                 
 

@@ -58,3 +58,7 @@ class SelectionCancelled(G0T0Error):
 class DBError(G0T0Error):
     def __init__(self):
         super().__init__("Try again in a few seconds. I'm not quite awake yet")
+
+class Unauthorized(G0T0Error):
+    def __init__(self):
+        super().__init__("You do not have access to do this.")

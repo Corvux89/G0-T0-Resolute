@@ -11,8 +11,6 @@ from sqlalchemy.sql import FromClause
 
 from Resolute.compendium import Compendium
 from Resolute.models import metadata
-from Resolute.models.objects.characters import (CharacterSchema,
-                                                get_guild_characters_query)
 from Resolute.models.objects.dashboards import (RefDashboard,
                                                 RefDashboardSchema,
                                                 get_dashboards)
@@ -272,6 +270,15 @@ class PlayerGuild(object):
                     dashboards.append(dashboard)
 
         return dashboards
+    
+    def get_npc(self, **kwargs) -> NPC:
+        if kwargs.get('key'):
+            return next((npc for npc in self.npcs if npc.key == kwargs.get('key')), None)
+        elif kwargs.get('name'):
+            return next((npc for npc in self.npcs if npc.name.lower() == kwargs.get('name').lower()), None)
+        
+        return None
+        
 
 guilds_table = sa.Table(
     "guilds",

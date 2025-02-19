@@ -5,15 +5,16 @@ import discord
 from discord.ext import commands
 
 from Resolute.bot import G0T0Bot, G0T0Context
-from Resolute.constants import (ACTIVITY_POINT_MINIMUM, APPROVAL_EMOJI, DENIED_EMOJI, EDIT_EMOJI,
+from Resolute.constants import (APPROVAL_EMOJI, DENIED_EMOJI, EDIT_EMOJI,
                                 NULL_EMOJI)
 from Resolute.helpers.general_helpers import confirm, is_admin, is_staff
-from Resolute.helpers.messages import get_char_name_from_message, get_player_from_say_message, is_adventure_npc_message, is_player_say_message
 from Resolute.models.embeds.logs import LogEmbed
+from Resolute.models.objects.enum import WebhookType
 from Resolute.models.objects.market import MarketTransaction
 from Resolute.models.objects.players import ArenaPost
 from Resolute.models.objects.exceptions import G0T0Error, LogNotFound
 from Resolute.models.objects.logs import DBLog
+from Resolute.models.objects.webhook import G0T0Webhook
 from Resolute.models.views.arena_view import ArenaRequestCharacterSelect
 from Resolute.models.views.character_view import RPPostUI, SayEditModal
 from Resolute.models.views.market import TransactionPromptUI
@@ -81,9 +82,10 @@ class Messages(commands.Cog):
             await ui.send_to(ctx.author)            
             
         # Character Say 
-        elif is_player_say_message(player, message):
-            modal = SayEditModal(self.bot, message)
+        elif (webhook := G0T0Webhook(ctx, message=message)) and await webhook.is_valid_message():
+            modal = SayEditModal(self.bot, webhook)
             return await ctx.send_modal(modal) 
+        
         else:
             raise G0T0Error("This message cannot be edited")
         
@@ -128,41 +130,20 @@ class Messages(commands.Cog):
             await message.delete()
 
         # Character Say
-        elif is_player_say_message(player, message):
-            if not player.guild.is_dev_channel(ctx.channel):
-                if (char := next((c for c in player.characters if c.name ==  get_char_name_from_message(message)), None)):
-                    await player.update_post_stats(char, message, retract=True)
-                if len(message.content) >= ACTIVITY_POINT_MINIMUM:
-                    await self.bot.update_player_activity_points(player, False)
-            await message.delete()
+        elif (webhook := G0T0Webhook(ctx, message=message)) and await webhook.is_valid_message():
+            await webhook.delete()
 
         # Staff Say Delete
-        elif message.author.bot and is_staff and (orig_player := await get_player_from_say_message(self.bot, message)):
-            if not player.guild.is_dev_channel(ctx.channel):
-                if len(message.content) >= ACTIVITY_POINT_MINIMUM:
-                    await self.bot.update_player_activity_points(orig_player, False)
-                if (char := next((c for c in orig_player.characters if c.name == get_char_name_from_message(message)), None)):
-                    await orig_player.update_post_stats(char, message, retract=True)
-            await message.delete()
+        elif is_staff and (webhook := G0T0Webhook(ctx, message=message)) and await webhook.is_valid_message(update_player=True):
+            await webhook.delete()
 
         # Adventure NPC
-        elif ctx.channel.category and (adventure := await self.bot.get_adventure_from_category(ctx.channel.category.id)) and ctx.author.id in adventure.dms and is_adventure_npc_message(adventure, message):
-            if not player.guild.is_dev_channel(ctx.channel):
-                if len(message.content) >= ACTIVITY_POINT_MINIMUM:
-                    await self.bot.update_player_activity_points(player, False)
-                if npc := next((npc for npc in adventure.npcs if npc.name.lower() == message.author.name.lower()), None):
-                    await player.update_post_stats(npc, message, retract=True)
-            await message.delete()
+        elif (webhook := G0T0Webhook(ctx, type=WebhookType.adventure, message=message)) and await webhook.is_valid_message():
+            await webhook.delete()
 
         # Global NPC
-        elif message.author.bot and (npc := next((n for n in player.guild.npcs if n.name == message.author.name), None)):
-            if not player.guild.is_dev_channel(ctx.channel):
-                if len(message.content) >= ACTIVITY_POINT_MINIMUM:
-                    await self.bot.update_player_activity_points(player, False)
-                                    
-                await player.update_post_stats(npc, message, retract=True)
-
-            await message.delete()
+        elif (webhook := G0T0Webhook(ctx, type=WebhookType.npc, message=message)) and await webhook.is_valid_message():
+            await webhook.delete()
         
         else:
             raise G0T0Error("This message cannot be deleted")

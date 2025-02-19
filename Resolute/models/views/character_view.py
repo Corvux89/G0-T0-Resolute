@@ -5,11 +5,8 @@ import discord
 
 from Resolute.bot import G0T0Bot
 from Resolute.compendium import Compendium
-from Resolute.constants import ACTIVITY_POINT_MINIMUM
 from Resolute.helpers.general_helpers import (get_webhook, is_admin,
                                               process_message)
-from Resolute.helpers.messages import (get_char_name_from_message,
-                                       get_player_from_say_message)
 from Resolute.models.categories import CharacterClass, CharacterSpecies
 from Resolute.models.categories.categories import CharacterArchetype, Faction
 from Resolute.models.embeds import ErrorEmbed
@@ -23,6 +20,7 @@ from Resolute.models.objects.characters import (CharacterRenown,
 from Resolute.models.objects.enum import ApplicationType
 from Resolute.models.objects.exceptions import G0T0Error
 from Resolute.models.objects.players import Player, PlayerCharacter, RPPost
+from Resolute.models.objects.webhook import G0T0Webhook
 from Resolute.models.views.base import InteractiveView
 
 
@@ -617,40 +615,21 @@ class SayEditModal(discord.ui.Modal):
         callback(interaction: discord.Interaction):
             Handles the interaction when the modal is submitted.
     """
-
-    message: discord.Message
     bot: G0T0Bot
+    webhook: G0T0Webhook
 
-    def __init__(self, bot: G0T0Bot, message: discord.Message = None):
+    def __init__(self, bot: G0T0Bot, webhook: G0T0Webhook):
         super().__init__(title="Edit discord.Message")
         self.bot = bot
-        self.message = message
+        self.webhook = webhook
 
-        self.add_item(discord.ui.InputText(label="discord.Message", placeholder="", value=message.content, style=discord.InputTextStyle.long, max_length=2000))
+        self.add_item(discord.ui.InputText(label="Message", placeholder="", value=self.webhook.message.content, style=discord.InputTextStyle.long, max_length=2000))
 
     async def callback(self, interaction: discord.Interaction):
-        webook = await get_webhook(interaction.channel)
-        content = self.children[0].value            
-
-        try:
-            if (player := await get_player_from_say_message(self.bot, self.message)) and (char_name := get_char_name_from_message(self.message)) and (char := next((c for c in player.characters if c.name == char_name), None)):
-                await player.update_post_stats(char, self.message, retract=True)
-                await player.update_post_stats(char, self.message, content=content)
-
-                if len(content) <= ACTIVITY_POINT_MINIMUM and len(self.message.content) >= ACTIVITY_POINT_MINIMUM:
-                    await self.bot.update_player_activity_points(player, False)
-                elif len(content) >= ACTIVITY_POINT_MINIMUM and len(self.message.content) <= ACTIVITY_POINT_MINIMUM:
-                    await self.bot.update_player_activity_points(player)
-            if isinstance(interaction.channel, (discord.Thread, discord.ForumChannel)):
-                await webook.edit_message(self.message.id, content=content, thread=interaction.channel)
-            else:
-                await webook.edit_message(self.message.id, content=content)
-        except Exception as e:
-            print(e)
-            pass
-
+        content = self.children[0].value
         await interaction.response.defer()
         self.stop()
+        await self.webhook.edit(content)           
 
 # Character Settings
 class CharacterSettings(InteractiveView):

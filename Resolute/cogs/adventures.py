@@ -54,7 +54,7 @@ class Adventures(commands.Cog):
             error (Exception): The error that was raised during command execution.
         """
         if hasattr(ctx, "bot") and hasattr(ctx.bot, "db") and ctx.guild and ctx.channel.category:
-            await G0T0Webhook(ctx, WebhookType.adventure).run()
+            await G0T0Webhook(ctx, type=WebhookType.adventure).send()
 
     @commands.slash_command(
         name="adventures",

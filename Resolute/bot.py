@@ -46,7 +46,7 @@ from Resolute.models.objects.players import (Player, PlayerSchema,
                                              get_player_query,
                                              upsert_player_query)
 from Resolute.models.objects.shatterpoint import (Shatterpoint,
-                                                  ShatterPointSchema,
+                                                  ShatterPointSchema, get_busy_shatterpoints_query,
                                                   get_shatterpoint_query)
 from Resolute.models.objects.store import (Store, StoreSchema,
                                            get_store_items_query)
@@ -504,6 +504,18 @@ class G0T0Bot(commands.Bot):
         shatterpoint: Shatterpoint = await ShatterPointSchema(self).load(row)
 
         return shatterpoint
+    
+    async def get_busy_shatterpoints(self) -> list[Shatterpoint]:
+        if not is_admin:
+            return
+        
+        async with self.db.acquire() as conn:
+            results = await conn.execute(get_busy_shatterpoints_query())
+            rows = await results.fetchall()
+
+        shatterpoints = [await ShatterPointSchema(self).load(row) for row in rows]
+
+        return shatterpoints
 
     async def get_dashboard_from_category(self, category_id: int) -> RefDashboard:
         """

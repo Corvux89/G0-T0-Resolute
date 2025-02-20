@@ -1,12 +1,11 @@
 import logging
 
-import discord
 from discord.commands import SlashCommandGroup
 from discord.ext import commands
 
 from Resolute.bot import G0T0Bot, G0T0Context
 from Resolute.helpers.general_helpers import is_admin
-from Resolute.models.objects.shatterpoint import reset_busy_flag_query
+from Resolute.models.embeds import ErrorEmbed
 from Resolute.models.views.shatterpoint import ShatterpointSettingsUI
 
 log = logging.getLogger(__name__)
@@ -47,8 +46,14 @@ class Shatterpoints(commands.Cog):
         Returns:
             None
         """
-        async with self.bot.db.acquire() as conn:
-            await conn.execute(reset_busy_flag_query())
+        busy_shatterpoints = await self.bot.get_busy_shatterpoints()
+
+        for shatterpoint in busy_shatterpoints:
+            if shatterpoint.busy_member:
+                await shatterpoint.busy_member.send(embed=ErrorEmbed(f"**{shatterpoint.name}**: Issue scraping the channel. Bot went down or shard reset during process. Please check your settings to ensure no data was written, and re-scrape."))
+                shatterpoint.busy = False
+                shatterpoint.busy_member = None
+                await shatterpoint.upsert()
 
 
     @shatterpoint_commands.command(

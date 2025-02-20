@@ -43,6 +43,7 @@ class Shatterpoint(object):
         self.base_cc = kwargs.get('base_cc', 0)
         self.channels: list[int] = kwargs.get('channels', [])
         self.busy = kwargs.get('busy', False)
+        self.busy_member: discord.Member | discord.User = kwargs.get('busy_member')
 
         self.players: list[ShatterpointPlayer] = kwargs.get('players', [])
         self.renown: list[ShatterpointRenown] = kwargs.get('renown', [])
@@ -104,8 +105,6 @@ class Shatterpoint(object):
 
                 if message.channel.id not in player.channels:
                     player.channels.append(message.channel.id)
-                
-                await player.upsert()
 
                 if player.player_id not in [p.player_id for p in self.players]:
                     self.players.append(player)
@@ -115,11 +114,15 @@ class Shatterpoint(object):
 
         shatterpoint: Shatterpoint = await bot.get_shatterpoint(self.guild_id)
         shatterpoint.busy = False
+        shatterpoint.busy_member=None
         for c in channels:
             if c not in shatterpoint.channels:
                 shatterpoint.channels.append(c)
 
         await shatterpoint.upsert()
+        for p in self.players():
+            await p.upsert()
+
         await user.send(f"**{shatterpoint.name}**: Finished scraping {len(messages):,} messages in {channel.jump_url}")
 
         
@@ -131,7 +134,8 @@ ref_gb_staging_table = sa.Table(
     sa.Column("name", sa.String, nullable=False),
     sa.Column("base_cc", sa.Integer, nullable=False),
     sa.Column("channels", ARRAY(sa.BigInteger), nullable=True, default=[]),
-    sa.Column("busy", sa.Boolean, nullable=True, default=False)
+    sa.Column("busy", sa.Boolean, nullable=True, default=False),
+    sa.Column("busy_member", sa.BigInteger, nullable=True)
 )
 
 class ShatterPointSchema(Schema):
@@ -142,6 +146,7 @@ class ShatterPointSchema(Schema):
     base_cc = fields.Integer(required=True)
     channels = fields.List(fields.Integer, load_default=[], required=False)
     busy = fields.Boolean(required=False, load_default=False, allow_none=True)
+    busy_member = fields.Integer(required=False, allow_none=True)
 
     def __init__(self, bot, **kwargs):
         super().__init__(**kwargs)
@@ -149,9 +154,12 @@ class ShatterPointSchema(Schema):
 
     @post_load
     async def make_shatterpoint(self, data, **kwargs):
+        self.bot: discord.Bot
         shatterpoint = Shatterpoint(self.bot.db, **data)
         await self.get_players(shatterpoint)
         await self.get_renown(shatterpoint)
+        if shatterpoint.busy_member:
+            shatterpoint.busy_member = self.bot.get_user(shatterpoint.busy_member)
         return shatterpoint
     
     async def get_players(self, shatterpoint: Shatterpoint):
@@ -174,14 +182,16 @@ def upsert_shatterpoint_query(shatterpoint: Shatterpoint):
         name=shatterpoint.name,
         base_cc=shatterpoint.base_cc,
         channels=shatterpoint.channels,
-        busy=shatterpoint.busy
+        busy=shatterpoint.busy,
+        busy_member=shatterpoint.busy_member.id if shatterpoint.busy_member else None
     ).returning(ref_gb_staging_table)
 
     update_dict = {
         "name": shatterpoint.name,
         "base_cc": shatterpoint.base_cc,
         "channels": shatterpoint.channels,
-        "busy": shatterpoint.busy
+        "busy": shatterpoint.busy,
+        "busy_member": shatterpoint.busy_member.id if shatterpoint.busy_member else None
     }
 
     upsert_statement = insert_statement.on_conflict_do_update(
@@ -191,8 +201,8 @@ def upsert_shatterpoint_query(shatterpoint: Shatterpoint):
 
     return upsert_statement
 
-def reset_busy_flag_query():
-    return sa.update(ref_gb_staging_table).where(ref_gb_staging_table.c.busy == True).values(busy=False)
+def get_busy_shatterpoints_query():
+    return ref_gb_staging_table.select().where(ref_gb_staging_table.c.busy == True)
 
 def get_shatterpoint_query(guild_id: int) -> FromClause:
     return ref_gb_staging_table.select().where(

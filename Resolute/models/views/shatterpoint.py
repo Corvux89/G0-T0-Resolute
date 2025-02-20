@@ -174,6 +174,7 @@ class _ShatterpointManage(ShatterpointSettings):
         else:
             guild: PlayerGuild = await self.bot.get_player_guild(interaction.guild.id)
             self.shatterpoint.busy = True
+            self.shatterpoint.busy_member = interaction.user
             await self.shatterpoint.upsert()
             asyncio.create_task(self.shatterpoint.scrape_channel(self.bot, self.channel, guild, interaction.user))
             await interaction.channel.send("Scraping done in background process. Please rerun the command when finished. You will not be able to modify Shatterpoint settings at this time.", delete_after=5)

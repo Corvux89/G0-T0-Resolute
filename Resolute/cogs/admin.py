@@ -3,10 +3,13 @@ import datetime
 import io
 import logging
 import os
+import re
 
 import chat_exporter
 import discord
+from bs4 import BeautifulSoup
 from discord.ext import commands, tasks
+from texttable import Texttable
 
 from Resolute.bot import G0T0Bot, G0T0Context
 from Resolute.constants import ADMIN_GUILDS
@@ -140,6 +143,10 @@ class Admin(commands.Cog):
             self.bot.load_extension(f'Resolute.cogs.{cog}')
             await ctx.respond(f'Cog {cog} reloaded')
 
+    @commands.command(name="stop")
+    @commands.check(is_owner)
+    async def stop(self, ctx: G0T0Context):
+        exit()
     
     @commands.command(name="dev")
     @commands.check(is_admin)
@@ -152,8 +159,74 @@ class Admin(commands.Cog):
             return
         transcript_file = discord.File(io.BytesIO(transcript.encode()),
                                        filename=f"transcript-{ctx.channel.name}.html")
-        
+
+        text = BeautifulSoup(transcript, "html.parser")
+
+        ems = text.find_all("em")
+
+        ems.extend(text.find_all(class_="chatlog__markdown-preserve"))
+
+        stats = {}
+
+        words = 0
+        lines = 0
+        characters = 0
+        count = 0
+
+        def name(s):
+            match = re.search(r"\[\d+\]\s+([^/]+)", s)
+            return match.group(1).strip() if match else s
+
+        for tag in ems:
+            words += len(tag.text.split())
+            lines += max(tag.text.count("\n"), 1)
+            characters += len(tag.text)
+            message = tag.find_parent(class_="chatlog__message")
+            header = tag.find_previous(class_="chatlog__header")
+            group = tag.find_parent(class_="chatlog__message-group")
+            if author:= message.find(class_="chatlog__author-name") or (group and (author := group.find(class_="chatlog__author-name"))) or (author := message.find_previous(class_="chatlog__author-name")) or (header and (author := header.find(class_="chatlog__author-name"))):
+                author_name = name(author.text)
+                if author_name not in stats: 
+                    stats[author_name] = {
+                        "names": [],
+                        "count": 0,
+                        "words": 0,
+                        "lines": 0,
+                        "characters": 0
+                    }
+
+                stats[author_name]["words"] += len(tag.text.split())
+                stats[author_name]["lines"] += max(tag.text.count("\n"), 1)
+                stats[author_name]["characters"] += len(tag.text)
+                if author.text not in stats[author_name]["names"]:
+                    stats[author_name]["names"].append(author.text)
+            else:
+                print("no author found?")
+
+
+        # Prep Data
+        for key, values in stats.items():
+            for author_name in values['names']:
+                author_tags = text.find_all(lambda t: t.has_attr('title') and author_name in t['title'])
+                count += len(author_tags)
+                values["count"] += len(author_tags)
+
+            
+        stat_list = [(key, f"{values['words']:,}", f"{values['lines']:,}", f"{values['characters']:,}", f"{values['count']:,}") for key, values in stats.items()]
+        stat_list = sorted(stat_list, key=lambda x: x[0])
+
+        stat_list.append(("Total", f"{words:,}", f"{lines:,}", f"{characters:,}", f"{count:,}"))
+
+
+        # TextTable
+        table = Texttable()
+        table.set_cols_align(['l', 'r', 'r', 'r', 'r'])
+        table.set_cols_valign(['m', 'm', 'm', 'm', 'm'])
+        table.header(['Name', '# Words', '# Lines', '# Chars', '# Posts'])
+        table.add_rows(stat_list, header=False)
+
         await ctx.send(file=transcript_file)
+        await ctx.send(f"```{table.draw()}```")
        
 
     # --------------------------- #

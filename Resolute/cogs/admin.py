@@ -143,10 +143,10 @@ class Admin(commands.Cog):
             self.bot.load_extension(f'Resolute.cogs.{cog}')
             await ctx.respond(f'Cog {cog} reloaded')
 
-    @commands.command(name="stop")
-    @commands.check(is_owner)
-    async def stop(self, ctx: G0T0Context):
-        exit()
+    # @commands.command(name="stop")
+    # @commands.check(is_owner)
+    # async def stop(self, ctx: G0T0Context):
+    #     exit()
     
     @commands.command(name="dev")
     @commands.check(is_admin)
@@ -225,8 +225,11 @@ class Admin(commands.Cog):
         table.header(['Name', '# Words', '# Lines', '# Chars', '# Posts'])
         table.add_rows(stat_list, header=False)
 
+        summary_table = discord.File(io.BytesIO(table.draw().encode()),
+                                     filename=f"summary-{ctx.channel.name}.txt")
+
         await ctx.send(file=transcript_file)
-        await ctx.send(f"```{table.draw()}```")
+        await ctx.send(file=summary_table)
        
 
     # --------------------------- #

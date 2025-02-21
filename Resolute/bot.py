@@ -36,7 +36,7 @@ from Resolute.models.objects.dashboards import (
 from Resolute.models.objects.exceptions import G0T0Error, TransactionError
 from Resolute.models.objects.financial import (Financial, FinancialSchema,
                                                get_financial_query)
-from Resolute.models.objects.guilds import PlayerGuild
+from Resolute.models.objects.guilds import GuildSchema, PlayerGuild, get_busy_guilds_query
 from Resolute.models.objects.logs import (DBLog, LogSchema,
                                           character_stats_query, get_log_by_id,
                                           get_n_player_logs_query,
@@ -276,6 +276,18 @@ class G0T0Bot(commands.Bot):
         self.player_guilds[str(guild_id)] = guild
 
         return guild
+    
+    async def get_busy_guilds(self) -> list[PlayerGuild]:
+        if not is_admin:
+            return
+        
+        async with self.db.acquire() as conn:
+            results = await conn.execute(get_busy_guilds_query())
+            rows = await results.fetchall()
+
+        guilds = [await GuildSchema(self.db, guild=self.get_guild(row["id"])).load(row) for row in rows]
+
+        return guilds
     
     async def get_character(self, char_id: int) -> PlayerCharacter:
         """

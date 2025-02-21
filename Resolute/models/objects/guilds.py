@@ -113,6 +113,7 @@ class PlayerGuild(object):
         self.first_character_message: str = kwargs.get('first_character_message')
         self.ping_announcement: bool = kwargs.get('ping_announcement', False)
         self.reward_threshold: int = kwargs.get('reward_threshold')
+        self.archive_user: discord.User | discord.Member = kwargs.get('archive_user')
 
         # Virtual attributes
         self.calendar: list[RefServerCalendar] = None
@@ -324,7 +325,8 @@ guilds_table = sa.Table(
     sa.Column("entrance_channel", sa.BigInteger, nullable=True),
     sa.Column("activity_points_channel", sa.BigInteger, nullable=True),
     sa.Column("rp_post_channel", sa.BigInteger, nullable=True),
-    sa.Column("dev_channels", ARRAY(sa.BigInteger), nullable=True, default=[])
+    sa.Column("dev_channels", ARRAY(sa.BigInteger), nullable=True, default=[]),
+    sa.Column("archive_user", sa.BigInteger, nullable=True)
 )
 
 class GuildSchema(Schema):
@@ -370,6 +372,7 @@ class GuildSchema(Schema):
     activity_points_channel = fields.Method(None, "load_channel", allow_none=True)
     rp_post_channel = fields.Method(None, "load_channel", allow_none=True)
     dev_channels = fields.Method(None, "load_channels", allow_none=True)
+    archive_user = fields.Method(None, "load_member", allow_none=True)
 
     def __init__(self, db: aiopg.sa.Engine, guild: discord.Guild, **kwargs):
         super().__init__(**kwargs)
@@ -401,13 +404,15 @@ class GuildSchema(Schema):
 
         return channels
     
+    def load_member(self, value):
+        return self._guild.get_member(value)
+    
     async def load_calendar(self, guild: PlayerGuild):
         async with self._db.acquire() as conn:
             results = await conn.execute(get_server_calendar(guild.id))
             rows = await results.fetchall()
 
         guild.calendar = [RefServerCalendarSchema().load(row) for row in rows]
-
     
     async def load_npcs(self, guild: PlayerGuild):
         async with self._db.acquire() as conn:
@@ -436,6 +441,11 @@ def get_guilds_with_reset_query(day: int, hour: int) -> FromClause:
              guilds_table.c.last_reset < six_days_ago)
     ).order_by(guilds_table.c.id.desc())
 
+def get_busy_guilds_query() -> FromClause:
+    return guilds_table.select().where(
+        guilds_table.c.archive_user.isnot(None)
+    )
+
 def upsert_guild(guild: PlayerGuild):
     insert_statment = insert(guilds_table).values(
         id=guild.id,
@@ -454,7 +464,8 @@ def upsert_guild(guild: PlayerGuild):
         epoch_notation=guild.epoch_notation,
         first_character_message=guild.first_character_message,
         ping_announcement=guild.ping_announcement,
-        reward_threshold=guild.reward_threshold
+        reward_threshold=guild.reward_threshold,
+        archive_user=guild.archive_user.id if guild.archive_user else None
     ).returning(guilds_table)
 
     update_dict = {
@@ -473,7 +484,8 @@ def upsert_guild(guild: PlayerGuild):
         'greeting': guild.greeting,
         'first_character_message': guild.first_character_message,
         'ping_announcement': guild.ping_announcement,
-        'reward_threshold': guild.reward_threshold
+        'reward_threshold': guild.reward_threshold,
+        "archive_user": guild.archive_user.id if guild.archive_user else None
     }
 
     upsert_statement = insert_statment.on_conflict_do_update(

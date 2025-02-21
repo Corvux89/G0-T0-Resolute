@@ -3,7 +3,8 @@ import logging
 import discord
 from discord.ext import commands
 
-from Resolute.bot import G0T0Bot
+from Resolute.bot import G0T0Bot, G0T0Context
+from Resolute.models.embeds import ErrorEmbed
 from Resolute.models.views.channel_admin import ChannelAdminUI
 
 log = logging.getLogger(__name__)
@@ -33,11 +34,21 @@ class ChannelAdmin(commands.Cog):
         self.bot = bot
         log.info(f'Cog \'Channel Admin\' loaded')
 
+    @commands.Cog.listener()
+    async def on_db_connected(self):
+        busy_guilds = await self.bot.get_busy_guilds()
+
+        for guild in busy_guilds:
+            await guild.archive_user.send(embed=ErrorEmbed(f"**Channel Archive**: Issue archiving the channel. Bot went down or shard reset during process."))
+            guild.archive_user = None
+            await guild.upsert()
+            self.bot.dispatch("refresh_guild_cache", guild)
+
     @channel_commands.command(
         name="manage",
         description="Room settings",
     )
-    async def channel_settings(self, ctx: discord.ApplicationContext):
+    async def channel_settings(self, ctx: G0T0Context):
         """
         Handles the channel settings command.
         This method creates a new instance of the ChannelAdminUI class, sends it to the user,
@@ -46,6 +57,6 @@ class ChannelAdmin(commands.Cog):
             ctx (ApplicationContext): The context in which the command was invoked.
         """
 
-        ui = ChannelAdminUI.new(self.bot, ctx.author)
+        ui = ChannelAdminUI.new(self.bot, ctx.player)
         await ui.send_to(ctx)
         await ctx.delete()

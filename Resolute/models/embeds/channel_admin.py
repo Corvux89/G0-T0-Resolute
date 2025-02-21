@@ -8,10 +8,9 @@ class ChannelEmbed(discord.Embed):
         super().__init__(title=f"{channel.name} Summary")
         chunk_size = 1000
 
-        self.description = f"**Category**: {channel.category.mention}\n"\
+        self.description = f"**Category**: {channel.category.mention if channel.category else ''}\n"\
         
-
-        category_overwrites = channel.category.overwrites
+        category_overwrites = channel.category.overwrites if channel.category else {}
         category_string = "\n".join(get_overwrite_string(category_overwrites))
         category_chunk = [category_string[i:i+chunk_size] for i in range(0, len(category_string), chunk_size)]
 
@@ -20,7 +19,7 @@ class ChannelEmbed(discord.Embed):
                         value=chunk,
                         inline=False)
         
-        channel_overwrites = channel.overwrites
+        channel_overwrites = channel.overwrites if hasattr(channel, "overwrites") else {}
         channel_string = "\n".join(get_overwrite_string(channel_overwrites))
         channel_chunk = [channel_string[i:i+chunk_size] for i in range(0, len(channel_string), chunk_size)]
 

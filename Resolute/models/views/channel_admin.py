@@ -1,12 +1,16 @@
+import asyncio
+import io
 import logging
 from typing import Mapping
 
+import chat_exporter
 import discord
 
 from Resolute.bot import G0T0Bot
 from Resolute.models.embeds import ErrorEmbed
 from Resolute.models.embeds.channel_admin import ChannelEmbed
 from Resolute.models.objects.exceptions import G0T0Error
+from Resolute.models.objects.players import Player
 from Resolute.models.views.base import InteractiveView
 
 log = logging.getLogger(__name__)
@@ -42,9 +46,13 @@ class ChannelAdmin(InteractiveView):
         channel (discord.TextChannel): The text channel associated with this admin view.
     """
 
-    __menu_copy_attrs__ = ("bot", "channel")
+    __menu_copy_attrs__ = ("bot", "channel", "player")
     bot: G0T0Bot
+    player: Player
     channel: discord.TextChannel = None
+
+    async def commit(self):
+        self.player = await self.bot.get_player(self.player.id, self.player.guild.id)
 
 class ChannelAdminUI(ChannelAdmin):
     """
@@ -67,15 +75,24 @@ class ChannelAdminUI(ChannelAdmin):
     """
 
     @classmethod
-    def new(cls, bot, owner):
-        inst = cls(owner=owner)
+    def new(cls, bot, player: Player):
+        inst = cls(owner=player.member)
         inst.bot = bot
+        inst.player = player
         return inst
     
     async def _before_send(self):
         self.player_channel.disabled = False if self.channel else True
+        if self.get_item("archive_channel"):
+            self.archive_channel.disabled = False if self.channel else True
 
-    @discord.ui.channel_select(placeholder="Channel to manage", channel_types=[discord.ChannelType(0)])
+            if self.player.guild.archive_user:
+                self.remove_item(self.archive_channel)
+        
+        elif not self.player.guild.archive_user:
+            self.add_item(self.archive_channel)
+
+    @discord.ui.channel_select(placeholder="Channel to manage", channel_types=[discord.ChannelType(0), discord.ChannelType(11), discord.ChannelType(15)])
     async def channel_select(self, c : discord.ui.Select, interaction: discord.Interaction):
         self.channel = c.values[0]
         await self.refresh_content(interaction)
@@ -97,10 +114,17 @@ class ChannelAdminUI(ChannelAdmin):
         else:
             await self.defer_to(_EditPlayerChannel, interaction)
 
-    # TODO: Archive channel - Save to attachment
-    # @discord.ui.button(label="Archive Channel", style=discord.discord.ButtonStyle.primary, row=3)
-    # async def archive_channel(self, _: discord.ui.Button, interaction: discord.discord.Interaction):
-    #     await self.refresh_content(interaction)
+    @discord.ui.button(label="Archive Channel", style=discord.ButtonStyle.primary, row=3, custom_id="archive_channel")
+    async def archive_channel(self, _: discord.ui.Button, interaction: discord.Interaction):
+        if self.player.guild.archive_user:
+            return await interaction.channel.send(embed=ErrorEmbed("Already archiving a channel. Please wait for it to finish first"), delete_after=5)
+        else:
+            self.player.guild.archive_user = self.player.member
+            await self.player.guild.upsert()
+
+            asyncio.create_task(_archive_channel(self.bot, self.channel, self.player))
+            await interaction.channel.send("Archiving done in background process. You can only archive one channel at a time.", delete_after=5)
+            await self.refresh_content(interaction)
 
     @discord.ui.button(label="Exit", style=discord.ButtonStyle.danger, row=4)
     async def exit(self, *_):
@@ -231,4 +255,23 @@ class ChannelInfoModal(discord.ui.Modal):
 
         await interaction.response.defer()
         self.stop()
+
+
+# --------------------------- #
+# Private Methods
+# --------------------------- #
+
+async def _archive_channel(bot: G0T0Bot, channel: discord.TextChannel | discord.Thread | discord.ForumChannel, player: Player):
+    transcript = await chat_exporter.export(channel,
+                                            guild=player.guild.guild,
+                                            bot=bot)
     
+    if transcript is None:
+        return
+    
+    transcript_file = discord.File(io.BytesIO(transcript.encode()),
+                                   filename=f"{player.guild.guild.name} - {channel.name} [{channel.id}].html")
+    
+    await player.member.send(file=transcript_file)
+    player.guild.archive_user = None
+    await player.guild.upsert()

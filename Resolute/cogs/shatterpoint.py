@@ -10,9 +10,6 @@ from Resolute.models.views.shatterpoint import ShatterpointSettingsUI
 
 log = logging.getLogger(__name__)
 
-# TODO: on_db_connected notify if shatterpoint is busy and is reset
-
-
 def setup(bot: G0T0Bot):
     bot.add_cog(Shatterpoints(bot))
 
@@ -32,13 +29,15 @@ class Shatterpoints(commands.Cog):
     """
     bot: G0T0Bot 
     shatterpoint_commands = SlashCommandGroup("shatterpoint", "Commands related to Shatterpoint event management.", guild_only=True)
+    check: bool = True
+
 
     def __init__(self, bot: G0T0Bot):
         self.bot = bot
         log.info(f'Cog \'ShatterPoints\' loaded')
 
     @commands.Cog.listener()
-    async def on_db_connected(self):
+    async def on_compendium_loaded(self):
         """
         Event handler that is called when the database connection is established.
         This method acquires a connection from the bot's database pool and executes
@@ -46,14 +45,15 @@ class Shatterpoints(commands.Cog):
         Returns:
             None
         """
-        busy_shatterpoints = await self.bot.get_busy_shatterpoints()
+        if self.check:
+            self.check = False
+            busy_shatterpoints = await self.bot.get_busy_shatterpoints()
 
-        for shatterpoint in busy_shatterpoints:
-            if shatterpoint.busy_member:
-                await shatterpoint.busy_member.send(embed=ErrorEmbed(f"**{shatterpoint.name}**: Issue scraping the channel. Bot went down or shard reset during process. Please check your settings to ensure no data was written, and re-scrape."))
-                shatterpoint.busy = False
-                shatterpoint.busy_member = None
-                await shatterpoint.upsert()
+            for shatterpoint in busy_shatterpoints:
+                if shatterpoint.busy_member:
+                    await shatterpoint.busy_member.send(embed=ErrorEmbed(f"**{shatterpoint.name}**: Issue scraping the channel. Bot went down or shard reset during process. Please check your settings to ensure no data was written, and re-scrape."))
+                    shatterpoint.busy_member = None
+                    await shatterpoint.upsert()
 
 
     @shatterpoint_commands.command(

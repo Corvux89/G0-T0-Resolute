@@ -36,7 +36,7 @@ class ShatterpointSettings(InteractiveView):
     shatterpoint: Shatterpoint
 
     async def commit(self):
-        if not self.shatterpoint.busy:
+        if not self.shatterpoint.busy_member:
             await self.shatterpoint.upsert()
             self.shatterpoint = await self.bot.get_shatterpoint(self.shatterpoint.guild_id)
 
@@ -72,7 +72,7 @@ class ShatterpointSettingsUI(ShatterpointSettings):
 
     @discord.ui.button(label="Shatterpoint Settings", style=discord.ButtonStyle.primary, row=1)
     async def shatterpoint_settings(self, _: discord.ui.Button, interaction: discord.Interaction):
-        if self.shatterpoint.busy:
+        if self.shatterpoint.busy_member:
             await interaction.channel.send(embed=ErrorEmbed("Shatterpoint modification in progress. Please wait for it to finish first"), delete_after=5)
             return await self.refresh_content(interaction)
         
@@ -92,7 +92,7 @@ class ShatterpointSettingsUI(ShatterpointSettings):
 
     @discord.ui.button(label="Commit", style=discord.ButtonStyle.green, row=1)
     async def shatterpoint_commit(self, _: discord.ui.Button, interaction: discord.Interaction):
-        if self.shatterpoint.busy:
+        if self.shatterpoint.busy_member:
             await interaction.channel.send(embed=ErrorEmbed("Shatterpoint modification in progress. Please wait for it to finish first"), delete_after=5)
             return await self.refresh_content(interaction)
 
@@ -135,7 +135,7 @@ class ShatterpointSettingsUI(ShatterpointSettings):
 
     @discord.ui.button(label="Reset", style=discord.ButtonStyle.red, row=2)
     async def shatterpoint_reset(self, _: discord.ui.Button, interaction: discord.Interaction):
-        if self.shatterpoint.busy:
+        if self.shatterpoint.busy_member:
             await interaction.channel.send(embed=ErrorEmbed("Shatterpoint modification in progress. Please wait for it to finish first"), delete_after=5)
             return await self.refresh_content(interaction)
 
@@ -169,11 +169,10 @@ class _ShatterpointManage(ShatterpointSettings):
     async def channel_scrape(self, _: discord.ui.Select, interaction: discord.Interaction):
         if not self.channel:
             return await interaction.channel.send(embed=ErrorEmbed("Select a channel to scrape first"), delete_after=5)
-        elif self.shatterpoint.busy:
+        elif self.shatterpoint.busy_member:
             return await interaction.channel.send(embed=ErrorEmbed("Already scraping a channel. Please wait for it to finish first"), delete_after=5)
         else:
             guild: PlayerGuild = await self.bot.get_player_guild(interaction.guild.id)
-            self.shatterpoint.busy = True
             self.shatterpoint.busy_member = interaction.user
             await self.shatterpoint.upsert()
             asyncio.create_task(self.shatterpoint.scrape_channel(self.bot, self.channel, guild, interaction.user))
@@ -190,7 +189,7 @@ class _ShatterpointManage(ShatterpointSettings):
 
     @discord.ui.button(label="Mass Adjust", style=discord.ButtonStyle.primary, row=2)
     async def shatterpoint_adjust(self, _: discord.ui.Button, interaction: discord.Interaction):
-        if self.shatterpoint.busy:
+        if self.shatterpoint.busy_member:
             await interaction.channel.send(embed=ErrorEmbed("Shatterpoint modification in progress. Please wait for it to finish first"), delete_after=5)
             return await self.refresh_content(interaction)
         await self.defer_to(_ShatterpointMassAdjust, interaction)
@@ -246,7 +245,7 @@ class _ShatterpointPlayerManage(ShatterpointSettings):
 
     @discord.ui.button(label="Player Settings", style=discord.ButtonStyle.primary, row=3)
     async def player_settings(self, _: discord.ui.Button, interaction: discord.Interaction):
-        if self.shatterpoint.busy:
+        if self.shatterpoint.busy_member:
             await interaction.channel.send(embed=ErrorEmbed("Shatterpoint modification in progress. Please wait for it to finish first"), delete_after=5)
             return await self.refresh_content(interaction)
         
@@ -268,7 +267,7 @@ class _ShatterpointPlayerManage(ShatterpointSettings):
     async def player_remove(self, _: discord.ui.Button, interaction: discord.Interaction):
         if not self.player.active:
             return await interaction.channel.send(embed=ErrorEmbed("Player already isn't in the global"), delete_after=5)
-        elif self.shatterpoint.busy:
+        elif self.shatterpoint.busy_member:
             await interaction.channel.send(embed=ErrorEmbed("Shatterpoint modification in progress. Please wait for it to finish first"), delete_after=5)
             return await self.refresh_content(interaction)
         else:
@@ -278,7 +277,7 @@ class _ShatterpointPlayerManage(ShatterpointSettings):
 
     @discord.ui.button(label="Add Character", style=discord.ButtonStyle.primary, row=4)
     async def character_add(self, _: discord.ui.Button, interaction: discord.Interaction):
-        if self.shatterpoint.busy:
+        if self.shatterpoint.busy_member:
             await interaction.channel.send(embed=ErrorEmbed("Shatterpoint modification in progress. Please wait for it to finish first"), delete_after=5)
             return await self.refresh_content(interaction)
         
@@ -289,7 +288,7 @@ class _ShatterpointPlayerManage(ShatterpointSettings):
 
     @discord.ui.button(label="Remove Character", style=discord.ButtonStyle.red, row=4)
     async def character_remove(self, _: discord.ui.Button, interaction: discord.Interaction):
-        if self.shatterpoint.busy:
+        if self.shatterpoint.busy_member:
             await interaction.channel.send(embed=ErrorEmbed("Shatterpoint modification in progress. Please wait for it to finish first"), delete_after=5)
             return await self.refresh_content(interaction)
         if self.character.id in self.player.characters:

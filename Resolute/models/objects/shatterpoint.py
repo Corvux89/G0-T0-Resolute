@@ -42,7 +42,6 @@ class Shatterpoint(object):
         self.name = kwargs.get('name', "New Shatterpoint")
         self.base_cc = kwargs.get('base_cc', 0)
         self.channels: list[int] = kwargs.get('channels', [])
-        self.busy = kwargs.get('busy', False)
         self.busy_member: discord.Member | discord.User = kwargs.get('busy_member')
 
         self.players: list[ShatterpointPlayer] = kwargs.get('players', [])
@@ -50,7 +49,7 @@ class Shatterpoint(object):
     
     async def upsert(self) -> None:
         async with self._db.acquire() as conn:
-            results = await conn.execute(upsert_shatterpoint_query(self))
+            await conn.execute(upsert_shatterpoint_query(self))
 
     async def delete(self) -> None:
         async with self._db.acquire() as conn:
@@ -113,14 +112,13 @@ class Shatterpoint(object):
             channels.append(message.channel.id)
 
         shatterpoint: Shatterpoint = await bot.get_shatterpoint(self.guild_id)
-        shatterpoint.busy = False
         shatterpoint.busy_member=None
         for c in channels:
             if c not in shatterpoint.channels:
                 shatterpoint.channels.append(c)
 
         await shatterpoint.upsert()
-        for p in self.players():
+        for p in self.players:
             await p.upsert()
 
         await user.send(f"**{shatterpoint.name}**: Finished scraping {len(messages):,} messages in {channel.jump_url}")
@@ -134,7 +132,6 @@ ref_gb_staging_table = sa.Table(
     sa.Column("name", sa.String, nullable=False),
     sa.Column("base_cc", sa.Integer, nullable=False),
     sa.Column("channels", ARRAY(sa.BigInteger), nullable=True, default=[]),
-    sa.Column("busy", sa.Boolean, nullable=True, default=False),
     sa.Column("busy_member", sa.BigInteger, nullable=True)
 )
 
@@ -145,7 +142,6 @@ class ShatterPointSchema(Schema):
     name = fields.String(required=True)
     base_cc = fields.Integer(required=True)
     channels = fields.List(fields.Integer, load_default=[], required=False)
-    busy = fields.Boolean(required=False, load_default=False, allow_none=True)
     busy_member = fields.Integer(required=False, allow_none=True)
 
     def __init__(self, bot, **kwargs):
@@ -182,7 +178,6 @@ def upsert_shatterpoint_query(shatterpoint: Shatterpoint):
         name=shatterpoint.name,
         base_cc=shatterpoint.base_cc,
         channels=shatterpoint.channels,
-        busy=shatterpoint.busy,
         busy_member=shatterpoint.busy_member.id if shatterpoint.busy_member else None
     ).returning(ref_gb_staging_table)
 
@@ -190,7 +185,6 @@ def upsert_shatterpoint_query(shatterpoint: Shatterpoint):
         "name": shatterpoint.name,
         "base_cc": shatterpoint.base_cc,
         "channels": shatterpoint.channels,
-        "busy": shatterpoint.busy,
         "busy_member": shatterpoint.busy_member.id if shatterpoint.busy_member else None
     }
 
@@ -202,7 +196,7 @@ def upsert_shatterpoint_query(shatterpoint: Shatterpoint):
     return upsert_statement
 
 def get_busy_shatterpoints_query():
-    return ref_gb_staging_table.select().where(ref_gb_staging_table.c.busy == True)
+    return ref_gb_staging_table.select().where(ref_gb_staging_table.c.busy_member.isnot(None))
 
 def get_shatterpoint_query(guild_id: int) -> FromClause:
     return ref_gb_staging_table.select().where(

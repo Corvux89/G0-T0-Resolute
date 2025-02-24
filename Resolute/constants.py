@@ -37,4 +37,4 @@ APPROVAL_EMOJI = ["✅", "greencheck"]
 DENIED_EMOJI = ["❌"]
 NULL_EMOJI = ["◀️", "⏪"]
 EDIT_EMOJI = ["📝", "✏️"]
-ACTIVITY_POINT_MINIMUM = 250
+ACTIVITY_POINT_MINIMUM = os.environ.get("ACTIVITY_POINT_MINIMUM", 250)

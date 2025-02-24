@@ -10,17 +10,26 @@ from Resolute.models.embeds.players import PlayerOverviewEmbed
 from Resolute.bot import G0T0Context
 from Resolute.models.objects.enum import ApplicationType, WebhookType
 from Resolute.models.objects.applications import PlayerApplication
-from Resolute.models.objects.exceptions import (ApplicationNotFound,
-                                                CharacterNotFound, G0T0Error)
+from Resolute.models.objects.exceptions import (
+    ApplicationNotFound,
+    CharacterNotFound,
+    G0T0Error,
+)
 from Resolute.models.objects.webhook import G0T0Webhook
-from Resolute.models.views.applications import (CharacterSelectUI,
-                                                LevelUpRequestModal, NewCharacterRequestUI)
-from Resolute.models.views.character_view import (CharacterGetUI,
-                                                  CharacterManageUI,
-                                                  CharacterSettingsUI,
-                                                  RPPostUI)
+from Resolute.models.views.applications import (
+    CharacterSelectUI,
+    LevelUpRequestModal,
+    NewCharacterRequestUI,
+)
+from Resolute.models.views.character_view import (
+    CharacterGetUI,
+    CharacterManageUI,
+    CharacterSettingsUI,
+    RPPostUI,
+)
 
 log = logging.getLogger(__name__)
+
 
 def setup(bot: G0T0Bot):
     bot.add_cog(Character(bot))
@@ -52,17 +61,17 @@ class Character(commands.Cog):
         edit_application(ctx: discord.ApplicationContext, application_id: discord.Option):
             Command for editing an application.
     """
+
     bot: G0T0Bot
-    character_admin_commands = discord.SlashCommandGroup("character_admin", "Character administration commands", guild_only=True)
+    character_admin_commands = discord.SlashCommandGroup(
+        "character_admin", "Character administration commands", guild_only=True
+    )
 
     def __init__(self, bot):
         self.bot = bot
-        log.info(f'Cog \'Characters\' loaded')    
+        log.info(f"Cog 'Characters' loaded")
 
-    @commands.command(
-        name="say",
-        guild_only=True
-    )
+    @commands.command(name="say", guild_only=True)
     async def character_say(self, ctx: G0T0Context):
         """
         Handles the character say command, allowing a player to send a message as one of their characters.
@@ -84,15 +93,17 @@ class Character(commands.Cog):
         """
         await G0T0Webhook(ctx).send()
         await try_delete(ctx.message)
-        
 
-                
     @character_admin_commands.command(
-        name="manage",
-        description="Manage a players character(s)"
+        name="manage", description="Manage a players character(s)"
     )
-    async def character_manage(self, ctx: G0T0Context,
-                               member: discord.Option(discord.SlashCommandOptionType(6), description="Player", required=True)):
+    async def character_manage(
+        self,
+        ctx: G0T0Context,
+        member: discord.Option(
+            discord.SlashCommandOptionType(6), description="Player", required=True
+        ),
+    ):
         """
         Manages a player's character.
         Args:
@@ -109,11 +120,17 @@ class Character(commands.Cog):
 
     @commands.slash_command(
         name="get",
-        description="Displays character information for a player's character"
+        description="Displays character information for a player's character",
     )
-    async def character_get(self, ctx: G0T0Context,
-                            member: discord.Option(discord.SlashCommandOptionType(6), description="Player to get the information of",
-                                           required=False)):
+    async def character_get(
+        self,
+        ctx: G0T0Context,
+        member: discord.Option(
+            discord.SlashCommandOptionType(6),
+            description="Player to get the information of",
+            required=False,
+        ),
+    ):
         """
         Retrieves and displays information about a player's characters.
         Parameters:
@@ -124,21 +141,24 @@ class Character(commands.Cog):
         """
         await ctx.defer()
 
-        player = ctx.player if not member else await self.bot.get_player(member.id, ctx.guild.id if ctx.guild else None,
-                                                    ctx=ctx)
+        player = (
+            ctx.player
+            if not member
+            else await self.bot.get_player(
+                member.id, ctx.guild.id if ctx.guild else None, ctx=ctx
+            )
+        )
 
         if len(player.characters) == 0:
-            return await ctx.respond(embed=PlayerOverviewEmbed(player, self.bot.compendium))
-
+            return await ctx.respond(
+                embed=PlayerOverviewEmbed(player, self.bot.compendium)
+            )
 
         ui = CharacterGetUI.new(self.bot, ctx.author, player)
         await ui.send_to(ctx)
         await ctx.delete()
-    
-    @commands.slash_command(
-            name="settings",
-            description="Character settings"
-    )
+
+    @commands.slash_command(name="settings", description="Character settings")
     async def character_settings(self, ctx: G0T0Context):
         """
         Handles the character settings command.
@@ -149,17 +169,17 @@ class Character(commands.Cog):
             CharacterNotFound: If the player has no characters.
         Returns:
             None
-        """       
+        """
         if not ctx.player.characters:
             raise CharacterNotFound(ctx.player.member)
-        
+
         ui = CharacterSettingsUI.new(self.bot, ctx.author, ctx.player)
         await ui.send_to(ctx)
         await ctx.delete()
 
     @commands.slash_command(
-            name="rp_request",
-            description="RP Board Request",
+        name="rp_request",
+        description="RP Board Request",
     )
     async def rp_request(self, ctx: G0T0Context):
         """
@@ -175,16 +195,12 @@ class Character(commands.Cog):
         """
         if not ctx.player.characters:
             raise CharacterNotFound(ctx.player.member)
-        
+
         ui = RPPostUI.new(self.bot, ctx.player)
         await ui.send_to(ctx)
         await ctx.delete()
-        
 
-    @commands.slash_command(
-        name="level_request",
-        description="Level Request"
-    )
+    @commands.slash_command(name="level_request", description="Level Request")
     async def character_level_request(self, ctx: G0T0Context):
         """
         Handles a character level request from a user.
@@ -199,7 +215,9 @@ class Character(commands.Cog):
             CharacterNotFound: If the user has no characters.
             G0T0Error: If the user's character is already at the maximum level for the server.
         """
-        application = PlayerApplication(self.bot, ctx.author, type=ApplicationType.level)
+        application = PlayerApplication(
+            self.bot, ctx.author, type=ApplicationType.level
+        )
         if not ctx.player.characters:
             raise CharacterNotFound(ctx.player.member)
         elif len(ctx.player.characters) == 1:
@@ -214,8 +232,7 @@ class Character(commands.Cog):
             await ctx.delete()
 
     @commands.slash_command(
-        name="new_character_request",
-        description="New Character Request"
+        name="new_character_request", description="New Character Request"
     )
     async def new_character_request(self, ctx: G0T0Context):
         """
@@ -229,10 +246,14 @@ class Character(commands.Cog):
         """
         application: PlayerApplication = PlayerApplication(self.bot, ctx.author)
         await application.load()
-        if application.application and application.application.type not in [ApplicationType.death, ApplicationType.freeroll, ApplicationType.new]:
+        if application.application and application.application.type not in [
+            ApplicationType.death,
+            ApplicationType.freeroll,
+            ApplicationType.new,
+        ]:
             application.application = PlayerApplication(self.bot, ctx.author)
             application.cached = False
-        
+
         if ctx.player.characters:
             ui = CharacterSelectUI.new(application, ctx.player)
         else:
@@ -241,12 +262,16 @@ class Character(commands.Cog):
         await ui.send_to(ctx)
         await ctx.delete()
 
-    @commands.slash_command(
-        name="edit_application",
-        description="Edit an application"
-    )
-    async def edit_application(self, ctx: G0T0Context,
-                               application_id: discord.Option(discord.SlashCommandOptionType(3), description="Application ID", required=False)):
+    @commands.slash_command(name="edit_application", description="Edit an application")
+    async def edit_application(
+        self,
+        ctx: G0T0Context,
+        application_id: discord.Option(
+            discord.SlashCommandOptionType(3),
+            description="Application ID",
+            required=False,
+        ),
+    ):
         """
         Edits an application based on the provided application ID or the current channel ID.
         Args:
@@ -258,32 +283,42 @@ class Character(commands.Cog):
             CharacterNotFound: If no characters are found for the player.
         Returns:
             None
-        """        
+        """
         if ctx.player.guild.application_channel:
             if application_id:
                 try:
-                    message = await ctx.player.guild.application_channel.fetch_message(int(application_id))
+                    message = await ctx.player.guild.application_channel.fetch_message(
+                        int(application_id)
+                    )
                 except ValueError:
                     raise G0T0Error("Invalid application identifier")
                 except discord.NotFound:
                     raise ApplicationNotFound()
             else:
                 try:
-                    message = await ctx.player.guild.application_channel.fetch_message(ctx.channel.id)
+                    message = await ctx.player.guild.application_channel.fetch_message(
+                        ctx.channel.id
+                    )
                 except:
                     raise ApplicationNotFound()
-        
 
-        emoji = [x.emoji.name if hasattr(x.emoji, 'name') else x.emoji for x in message.reactions]
+        emoji = [
+            x.emoji.name if hasattr(x.emoji, "name") else x.emoji
+            for x in message.reactions
+        ]
         if any(e in APPROVAL_EMOJI for e in emoji):
             raise G0T0Error("Application is already approved. Cannot edit at this time")
         elif any(e in DENIED_EMOJI for e in emoji):
             raise G0T0Error("Application marked as invalid and cannot me modified")
-        
+
         application = PlayerApplication(self.bot, ctx.author, edit=True)
         await application.load(message)
 
-        if application.application.type in [ApplicationType.new, ApplicationType.death, ApplicationType.freeroll]:
+        if application.application.type in [
+            ApplicationType.new,
+            ApplicationType.death,
+            ApplicationType.freeroll,
+        ]:
             if ctx.player.characters:
                 ui = CharacterSelectUI.new(application, ctx.player)
             else:
@@ -302,4 +337,3 @@ class Character(commands.Cog):
                 ui = CharacterSelectUI.new(application, ctx.player)
                 await ui.send_to(ctx)
                 await ctx.delete()
-        

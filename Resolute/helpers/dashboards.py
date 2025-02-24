@@ -10,12 +10,14 @@ from texttable import Texttable
 from Resolute.bot import G0T0Bot
 from Resolute.models.categories.categories import DashboardType
 from Resolute.models.embeds.dashboards import RPDashboardEmbed
-from Resolute.models.objects.dashboards import (RefDashboard,
-                                                RefDashboardSchema,
-                                                RPDashboardCategory,
-                                                get_class_census,
-                                                get_dashboard_by_type,
-                                                get_level_distribution)
+from Resolute.models.objects.dashboards import (
+    RefDashboard,
+    RefDashboardSchema,
+    RPDashboardCategory,
+    get_class_census,
+    get_dashboard_by_type,
+    get_level_distribution,
+)
 from Resolute.models.objects.financial import Financial
 
 
@@ -40,7 +42,7 @@ async def get_last_message_in_channel(channel: discord.TextChannel) -> discord.M
                 last_message = await channel.fetch_message(channel.last_message_id)
             except:
                 return None
-            
+
     return last_message
 
 
@@ -65,6 +67,7 @@ async def get_financial_dashboards(bot: G0T0Bot) -> list[RefDashboard]:
 
     return dashboards
 
+
 async def get_class_census_data(bot: G0T0Bot) -> []:
     """
     Fetches class census data from the database.
@@ -78,9 +81,10 @@ async def get_class_census_data(bot: G0T0Bot) -> []:
     async with bot.db.acquire() as conn:
         async for row in conn.execute(get_class_census()):
             result = dict(row)
-            census.append([result['Class'], result['#']])
-    
+            census.append([result["Class"], result["#"]])
+
     return census
+
 
 async def get_level_distribution_data(bot: G0T0Bot) -> []:
     """
@@ -94,8 +98,9 @@ async def get_level_distribution_data(bot: G0T0Bot) -> []:
     async with bot.db.acquire() as conn:
         async for row in conn.execute(get_level_distribution()):
             result = dict(row)
-            data.append([result['level'], result['#']])
+            data.append([result["level"], result["#"]])
     return data
+
 
 async def update_financial_dashboards(bot: G0T0Bot) -> None:
     """
@@ -110,6 +115,7 @@ async def update_financial_dashboards(bot: G0T0Bot) -> None:
 
     for d in dashboards:
         await update_dashboard(bot, d)
+
 
 async def update_dashboard(bot: G0T0Bot, dashboard: RefDashboard) -> None:
     """
@@ -133,80 +139,93 @@ async def update_dashboard(bot: G0T0Bot, dashboard: RefDashboard) -> None:
 
     if not original_message or not original_message.pinned:
         return await dashboard.delete()
-    
+
     guild = await bot.get_player_guild(original_message.guild.id)
-    
+
     if dashboard.dashboard_type.value.upper() == "RP":
         channels = dashboard.channels_to_search()
         category = bot.get_channel(dashboard.category_channel_id)
 
-        archivist_field = RPDashboardCategory(title="Archivist",
-                                                name="<:pencil:989284061786808380> -- Awaiting Archivist")
-        available_field = RPDashboardCategory(title="Available",
-                                                name="<:white_check_mark:983576747381518396> -- Available")
-        unavailable_field = RPDashboardCategory(title="Unvailable",
-                                                name="<:x:983576786447245312> -- Unavailable")
-        
+        archivist_field = RPDashboardCategory(
+            title="Archivist", name="<:pencil:989284061786808380> -- Awaiting Archivist"
+        )
+        available_field = RPDashboardCategory(
+            title="Available",
+            name="<:white_check_mark:983576747381518396> -- Available",
+        )
+        unavailable_field = RPDashboardCategory(
+            title="Unvailable", name="<:x:983576786447245312> -- Unavailable"
+        )
+
         all_fields = [archivist_field, available_field, unavailable_field]
-        
+
         for c in channels:
             if last_message := await get_last_message_in_channel(c):
                 if last_message.content in ["```\n​\n```", "```\n \n```"]:
                     available_field.channels.append(c)
-                elif guild.staff_role and guild.staff_role.mention in last_message.content:
+                elif (
+                    guild.staff_role
+                    and guild.staff_role.mention in last_message.content
+                ):
                     archivist_field.channels.append(c)
                 else:
                     unavailable_field.channels.append(c)
             else:
                 available_field.channels.append(c)
 
-
         all_fields = [f for f in all_fields if f.channels or f.title != "Archivist"]
-        return await original_message.edit(content="", embed=RPDashboardEmbed(all_fields, category.name))
+        return await original_message.edit(
+            content="", embed=RPDashboardEmbed(all_fields, category.name)
+        )
 
-    
     elif dashboard.dashboard_type.value.upper() == "CCENSUS":
         data = await get_class_census_data(bot)
 
         class_table = Texttable()
-        class_table.set_cols_align(['l', 'r'])
-        class_table.set_cols_valign(['m', 'm'])
+        class_table.set_cols_align(["l", "r"])
+        class_table.set_cols_valign(["m", "m"])
         class_table.set_cols_width([15, 5])
-        class_table.header(['Class', '#'])
+        class_table.header(["Class", "#"])
         class_table.add_rows(data, header=False)
 
         footer = f"Last Updated - <t:{calendar.timegm(datetime.now(timezone.utc).timetuple())}:F>"
 
-        return await original_message.edit(content=f"```\n{class_table.draw()}```{footer}", embed=None)
-    
+        return await original_message.edit(
+            content=f"```\n{class_table.draw()}```{footer}", embed=None
+        )
+
     elif dashboard.dashboard_type.value.upper() == "LDIST":
         data = await get_level_distribution_data(bot)
 
         dist_table = Texttable()
-        dist_table.set_cols_align(['l', 'r'])
-        dist_table.set_cols_valign(['m', 'm'])
+        dist_table.set_cols_align(["l", "r"])
+        dist_table.set_cols_valign(["m", "m"])
         dist_table.set_cols_width([10, 5])
-        dist_table.header(['Level', '#'])
+        dist_table.header(["Level", "#"])
         dist_table.add_rows(data, header=False)
 
         footer = f"Last Updated - <t:{calendar.timegm(datetime.now(timezone.utc).timetuple())}:F>"
 
-        return await original_message.edit(content=f"```\n{dist_table.draw()}```{footer}", embed=None)
-    
+        return await original_message.edit(
+            content=f"```\n{dist_table.draw()}```{footer}", embed=None
+        )
+
     elif dashboard.dashboard_type.value.upper() == "FINANCIAL":
         fin: Financial = await bot.get_financial_data()
 
-        res = requests.get("https://res.cloudinary.com/jerrick/image/upload/d_642250b563292b35f27461a7.png,f_jpg,fl_progressive,q_auto,w_1024/y3mdgvccfyvmemabidd0.jpg")
+        res = requests.get(
+            "https://res.cloudinary.com/jerrick/image/upload/d_642250b563292b35f27461a7.png,f_jpg,fl_progressive,q_auto,w_1024/y3mdgvccfyvmemabidd0.jpg"
+        )
         if res.status_code != 200:
             raise Exception("Failed to download image")
-        
-        background = Image.open(BytesIO(res.content)).convert("RGBA")
-        background = background.resize((800, 400))
 
         background = Image.open(BytesIO(res.content)).convert("RGBA")
         background = background.resize((800, 400))
 
-        # Progress bar properties   
+        background = Image.open(BytesIO(res.content)).convert("RGBA")
+        background = background.resize((800, 400))
+
+        # Progress bar properties
         bar_width = 700
         bar_height = 50
         bar_x = 50
@@ -215,12 +234,14 @@ async def update_dashboard(bot: G0T0Bot, dashboard: RefDashboard) -> None:
         shadow_offset = 10
 
         # Calculate progress
-        progress = min(fin.adjusted_total / fin.monthly_goal, 1)  # Cap progress at 100% for the main bar
+        progress = min(
+            fin.adjusted_total / fin.monthly_goal, 1
+        )  # Cap progress at 100% for the main bar
 
         shadow = Image.new("RGBA", background.size, (0, 0, 0, 0))
         shadow_draw = ImageDraw.Draw(shadow)
 
-        shadow_color = (0, 0, 0, 100)  
+        shadow_color = (0, 0, 0, 100)
 
         shadow_rect = [
             bar_x + shadow_offset,
@@ -228,8 +249,10 @@ async def update_dashboard(bot: G0T0Bot, dashboard: RefDashboard) -> None:
             bar_x + bar_width + shadow_offset,
             bar_y + bar_height + shadow_offset,
         ]
-        shadow_draw.rounded_rectangle(shadow_rect, fill=shadow_color, radius=corner_radius)
-        shadow = shadow.filter(ImageFilter.GaussianBlur(10))  
+        shadow_draw.rounded_rectangle(
+            shadow_rect, fill=shadow_color, radius=corner_radius
+        )
+        shadow = shadow.filter(ImageFilter.GaussianBlur(10))
 
         background = Image.alpha_composite(background, shadow)
 
@@ -253,20 +276,23 @@ async def update_dashboard(bot: G0T0Bot, dashboard: RefDashboard) -> None:
         background.save(image_buffer, format="PNG")
         image_buffer.seek(0)
 
-        embed = discord.Embed(title="G0-T0 Financial Progress",
-                              description=f"Current Monthly Progress: ${fin.adjusted_total:.2f}\n"
-                                            f"Monthly Goal: ${fin.monthly_goal:.2f}\n"
-                                            f"Reserve: ${fin.reserve:.2f}",
-                              color=discord.Color.gold(),
-                              timestamp=discord.utils.utcnow())
-        
-        embed.add_field(name="Stretch Goals",
-                        value="If we end up with enough reserve funds, we will look at making a website to house our content rulings / updates and work on better integrations with the bot.")
-        
+        embed = discord.Embed(
+            title="G0-T0 Financial Progress",
+            description=f"Current Monthly Progress: ${fin.adjusted_total:.2f}\n"
+            f"Monthly Goal: ${fin.monthly_goal:.2f}\n"
+            f"Reserve: ${fin.reserve:.2f}",
+            color=discord.Color.gold(),
+            timestamp=discord.utils.utcnow(),
+        )
+
+        embed.add_field(
+            name="Stretch Goals",
+            value="If we end up with enough reserve funds, we will look at making a website to house our content rulings / updates and work on better integrations with the bot.",
+        )
+
         embed.set_image(url="attachment://progress.png")
         embed.set_footer(text="Last Updated")
 
         file = discord.File(image_buffer, filename="progress.png")
         original_message.attachments.clear()
         return await original_message.edit(file=file, embed=embed, content="")
-

@@ -36,13 +36,12 @@ class InteractiveView(discord.ui.View):
             Refreshes the content of the view based on the interaction.
         prompt_modal(interaction: discord.Interaction, modal):
             Prompts the user with a modal and waits for their response.
-        """
-
+    """
 
     def __init__(self, owner: discord.Member, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.owner = owner
-        self.message = None # type: Optional[discord.Message]
+        self.message = None  # type: Optional[discord.Message]
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         """
@@ -55,9 +54,11 @@ class InteractiveView(discord.ui.View):
         """
         if interaction.user.id == self.owner.id:
             return True
-        await interaction.response.send_message("You are not the owner of this interaction", ephemeral=True)
+        await interaction.response.send_message(
+            "You are not the owner of this interaction", ephemeral=True
+        )
         return False
-    
+
     async def on_error(self, error, item, interaction):
         """
         Handles errors that occur during an interaction.
@@ -70,10 +71,12 @@ class InteractiveView(discord.ui.View):
                        otherwise calls the superclass's on_error method.
         """
         if isinstance(error, G0T0Error):
-            return await interaction.response.send_message(embed=ErrorEmbed(error), ephemeral=True)
+            return await interaction.response.send_message(
+                embed=ErrorEmbed(error), ephemeral=True
+            )
 
         return await super().on_error(error, item, interaction)
-    
+
     @classmethod
     def from_menu(cls, other: "InteractiveView"):
         """
@@ -97,7 +100,7 @@ class InteractiveView(discord.ui.View):
                 value = getattr(cls, attr, None)
             setattr(inst, attr, value)
         return inst
-    
+
     async def _before_send(self):
         """
         An asynchronous method that is intended to be executed before sending a request or performing an action.
@@ -157,7 +160,12 @@ class InteractiveView(discord.ui.View):
         self.message = message
         return message
 
-    async def defer_to(self, view_type: Type["InteractiveView"], interaction: discord.Interaction, stop=True):
+    async def defer_to(
+        self,
+        view_type: Type["InteractiveView"],
+        interaction: discord.Interaction,
+        stop=True,
+    ):
         """
         Defers the current view to another view of the specified type.
         This method stops the current view (if specified) and transitions to a new view
@@ -201,11 +209,15 @@ class InteractiveView(discord.ui.View):
         await self._before_send()
         if interaction.response.is_done():
             try:
-                await interaction.edit_original_response(view=self, **content_kwargs, **kwargs)
+                await interaction.edit_original_response(
+                    view=self, **content_kwargs, **kwargs
+                )
             except:
                 pass
         else:
-            await interaction.response.edit_message(view=self, **content_kwargs, **kwargs)
+            await interaction.response.edit_message(
+                view=self, **content_kwargs, **kwargs
+            )
 
     @staticmethod
     async def prompt_modal(interaction: discord.Interaction, modal):

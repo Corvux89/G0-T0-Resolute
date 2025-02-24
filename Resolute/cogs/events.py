@@ -13,8 +13,10 @@ from Resolute.models.objects.players import Player
 
 log = logging.getLogger(__name__)
 
+
 def setup(bot: G0T0Bot):
     bot.add_cog(Events(bot))
+
 
 class Events(commands.Cog):
     """
@@ -31,11 +33,12 @@ class Events(commands.Cog):
         on_entitlement_update(entitlement: Entitlement):
             Handles the event when an entitlement is updated.
     """
+
     bot: G0T0Bot
 
     def __init__(self, bot: G0T0Bot):
         self.bot = bot
-        log.info(f'Cog \'Events\' loaded')
+        log.info(f"Cog 'Events' loaded")
 
     @commands.Cog.listener()
     async def on_raw_member_remove(self, payload: discord.RawMemberRemoveEvent):
@@ -57,12 +60,13 @@ class Events(commands.Cog):
         # Reference Table Cleanup
         await PlayerApplication(self.bot, payload.user).delete()
 
-        if player := await self.bot.get_player(int(payload.user.id), payload.guild_id, 
-                                               lookup_only=True):
+        if player := await self.bot.get_player(
+            int(payload.user.id), payload.guild_id, lookup_only=True
+        ):
             # Cleanup Arena Board
             def predicate(message):
                 return message.author == payload.user
-            
+
             if player.guild.arena_board_channel:
                 try:
                     await player.guild.arena_board_channel.purge(check=predicate)
@@ -71,20 +75,23 @@ class Events(commands.Cog):
                         pass
                     else:
                         log.error(error)
-                        
+
             if player.guild.exit_channel:
                 player.member = payload.user
         else:
             g: PlayerGuild = await self.bot.get_player_guild(payload.guild_id)
-            player: Player = Player(payload.user.id, payload.guild_id, member=payload.user, guild=g)
+            player: Player = Player(
+                payload.user.id, payload.guild_id, member=payload.user, guild=g
+            )
 
-        
         try:
             await player.guild.exit_channel.send(embed=MemberLeaveEmbed(player))
         except Exception as error:
             if isinstance(error, discord.HTTPException):
-                log.error(f"ON_MEMBER_REMOVE: Error sending message to exit channel in "
-                        f"{player.guild.guild.name} [ {player.guild.id} ] for {payload.user.display_name} [ {payload.user.id} ]")     
+                log.error(
+                    f"ON_MEMBER_REMOVE: Error sending message to exit channel in "
+                    f"{player.guild.guild.name} [ {player.guild.id} ] for {payload.user.display_name} [ {payload.user.id} ]"
+                )
 
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member):
@@ -101,7 +108,6 @@ class Events(commands.Cog):
         if g.entrance_channel and g.greeting != None and g.greeting != "":
             message = process_message(g.greeting, member.guild, member)
             await g.entrance_channel.send(message)
-        
 
     @commands.Cog.listener()
     async def on_entitlement_create(self, entitlement: discord.Entitlement):
@@ -111,7 +117,7 @@ class Events(commands.Cog):
         It processes the entitlement using the handle_entitlements function.
         Args:
             entitlement (Entitlement): The entitlement object that was created.
-        """       
+        """
         await self._handle_entitlements(entitlement)
 
     @commands.Cog.listener()
@@ -144,12 +150,11 @@ class Events(commands.Cog):
 
         if store := next((s for s in store_items if s.sku == entitlement.sku_id), None):
             fin.monthly_total += store.user_cost
-            
+
             if fin.adjusted_total > fin.monthly_goal:
-                fin.reserve += max(0, min(store.user_cost, fin.adjusted_total - fin.monthly_goal))
+                fin.reserve += max(
+                    0, min(store.user_cost, fin.adjusted_total - fin.monthly_goal)
+                )
 
         await fin.update()
         await update_financial_dashboards(self.bot)
-        
-
-        

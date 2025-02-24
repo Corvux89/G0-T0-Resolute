@@ -5,54 +5,74 @@ from Resolute.models.objects.arenas import Arena
 
 
 class ArenaStatusEmbed(discord.Embed):
-    def __init__(self, ctx: discord.ApplicationContext | discord.Interaction, arena: Arena):
+    def __init__(
+        self, ctx: discord.ApplicationContext | discord.Interaction, arena: Arena
+    ):
         self.arena = arena
         self.ctx = ctx
-        super().__init__(title=f"{arena.type.value.title()} Arena Status", color=discord.Color.random())
+        super().__init__(
+            title=f"{arena.type.value.title()} Arena Status",
+            color=discord.Color.random(),
+        )
         self.set_thumbnail(url=THUMBNAIL)
 
-        self.description = f"**Tier**: {arena.tier.id}\n"\
-                           f"**Completed Phases**: {arena.completed_phases} / {arena.tier.max_phases}"
-        
+        self.description = (
+            f"**Tier**: {arena.tier.id}\n"
+            f"**Completed Phases**: {arena.completed_phases} / {arena.tier.max_phases}"
+        )
+
         if arena.completed_phases == 0:
             self.description += f"\n\nUse the button below to join!"
         elif arena.completed_phases >= arena.tier.max_phases / 2:
             self.description += f"\nBonus active!"
 
-        self.add_field(name=f"**Host**:",
-                       value=f"{ZWSP3}- {ctx.guild.get_member(arena.host_id).mention}",
-                       inline=False)
-        
+        self.add_field(
+            name=f"**Host**:",
+            value=f"{ZWSP3}- {ctx.guild.get_member(arena.host_id).mention}",
+            inline=False,
+        )
+
         if arena.player_characters:
-            self.add_field(name="**Players**:",
-                        value="\n".join([f"{ZWSP3}- [{c.level}] {c.name}{' *inactive*' if not c.active else ''} ({ctx.guild.get_member(c.player_id).mention})" for c in arena.player_characters]),
-                        inline=False)
-            
+            self.add_field(
+                name="**Players**:",
+                value="\n".join(
+                    [
+                        f"{ZWSP3}- [{c.level}] {c.name}{' *inactive*' if not c.active else ''} ({ctx.guild.get_member(c.player_id).mention})"
+                        for c in arena.player_characters
+                    ]
+                ),
+                inline=False,
+            )
+
     async def update(self):
         message = await self.ctx.channel.fetch_message(self.arena.pin_message_id)
-        
+
         if message:
             await message.edit(embed=self)
-            
+
+
 class ArenaPhaseEmbed(discord.Embed):
     def __init__(self, ctx: discord.ApplicationContext, arena: Arena, result: str):
         super().__init__(
             title=f"Phase {arena.completed_phases} Complete!",
             description=f"Complete phases: **{arena.completed_phases} / {arena.tier.max_phases}**",
-            color=discord.Color.random()
+            color=discord.Color.random(),
         )
 
         self.set_thumbnail(url=THUMBNAIL)
 
         bonus = (arena.completed_phases > arena.tier.max_phases / 2) and result == "WIN"
 
-        field_str = [f"{ctx.guild.get_member(arena.host_id).mention or 'Player not found'}: 'HOST'"]
+        field_str = [
+            f"{ctx.guild.get_member(arena.host_id).mention or 'Player not found'}: 'HOST'"
+        ]
 
         for character in arena.player_characters:
             text = f"{character.name} ({ctx.guild.get_member(character.player_id).mention or 'Player not found'}): '{result}'{f', `BONUS`' if bonus else ''}"
             field_str.append(text)
-        
-        self.add_field(name="The following rewards have been applied:",
-                       value="\n".join(field_str),
-                       inline=False)
-        
+
+        self.add_field(
+            name="The following rewards have been applied:",
+            value="\n".join(field_str),
+            inline=False,
+        )

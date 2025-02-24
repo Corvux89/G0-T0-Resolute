@@ -15,26 +15,26 @@ from Resolute.models.views.base import InteractiveView
 
 log = logging.getLogger(__name__)
 
-owner_overwrites = discord.PermissionOverwrite(view_channel=True,
-                                    manage_messages=True,
-                                    send_messages=True)
+owner_overwrites = discord.PermissionOverwrite(
+    view_channel=True, manage_messages=True, send_messages=True
+)
 
-general_overwrites = discord.PermissionOverwrite(view_channel=True,
-                                        send_messages=False)
+general_overwrites = discord.PermissionOverwrite(view_channel=True, send_messages=False)
 
-bot_overwrites = discord.PermissionOverwrite(view_channel=True,
-                                    send_messages=True,
-                                    manage_messages=True,
-                                    manage_channels=True)                                             
+bot_overwrites = discord.PermissionOverwrite(
+    view_channel=True, send_messages=True, manage_messages=True, manage_channels=True
+)
 
-readonly_overwrites = discord.PermissionOverwrite(view_channel=True,
-                                        send_messages=False,
-                                        add_reactions=False,
-                                        read_messages=True,
-                                        send_tts_messages=False,
-                                        manage_messages=False,
-                                        manage_roles=False,
-                                        send_messages_in_threads=False)
+readonly_overwrites = discord.PermissionOverwrite(
+    view_channel=True,
+    send_messages=False,
+    add_reactions=False,
+    read_messages=True,
+    send_tts_messages=False,
+    manage_messages=False,
+    manage_roles=False,
+    send_messages_in_threads=False,
+)
 
 
 class ChannelAdmin(InteractiveView):
@@ -53,6 +53,7 @@ class ChannelAdmin(InteractiveView):
 
     async def commit(self):
         self.player = await self.bot.get_player(self.player.id, self.player.guild.id)
+
 
 class ChannelAdminUI(ChannelAdmin):
     """
@@ -80,7 +81,7 @@ class ChannelAdminUI(ChannelAdmin):
         inst.bot = bot
         inst.player = player
         return inst
-    
+
     async def _before_send(self):
         self.player_channel.disabled = False if self.channel else True
         if self.get_item("archive_channel"):
@@ -88,42 +89,74 @@ class ChannelAdminUI(ChannelAdmin):
 
             if self.player.guild.archive_user:
                 self.remove_item(self.archive_channel)
-        
+
         elif not self.player.guild.archive_user:
             self.add_item(self.archive_channel)
 
-    @discord.ui.channel_select(placeholder="Channel to manage", channel_types=[discord.ChannelType(0), discord.ChannelType(11), discord.ChannelType(15)])
-    async def channel_select(self, c : discord.ui.Select, interaction: discord.Interaction):
+    @discord.ui.channel_select(
+        placeholder="Channel to manage",
+        channel_types=[
+            discord.ChannelType(0),
+            discord.ChannelType(11),
+            discord.ChannelType(15),
+        ],
+    )
+    async def channel_select(
+        self, c: discord.ui.Select, interaction: discord.Interaction
+    ):
         self.channel = c.values[0]
         await self.refresh_content(interaction)
 
-    @discord.ui.button(label="New Player Channel", style=discord.ButtonStyle.primary, row=2)
-    async def new_player_channel(self, _: discord.ui.Button, interaction: discord.Interaction):
+    @discord.ui.button(
+        label="New Player Channel", style=discord.ButtonStyle.primary, row=2
+    )
+    async def new_player_channel(
+        self, _: discord.ui.Button, interaction: discord.Interaction
+    ):
         await self.defer_to(_NewPlayerchannel, interaction)
 
-    @discord.ui.button(label="Edit Player Channel", style=discord.ButtonStyle.primary, row=2)
-    async def player_channel(self, _: discord.ui.Button, interaction: discord.Interaction):
+    @discord.ui.button(
+        label="Edit Player Channel", style=discord.ButtonStyle.primary, row=2
+    )
+    async def player_channel(
+        self, _: discord.ui.Button, interaction: discord.Interaction
+    ):
         managed = False
         for target in self.channel.overwrites:
             if isinstance(target, discord.Member):
                 if self.channel.overwrites[target].manage_messages == True:
                     managed = True
-        
+
         if not managed:
             raise G0T0Error("This doesn't look to be a player managed channel")
         else:
             await self.defer_to(_EditPlayerChannel, interaction)
 
-    @discord.ui.button(label="Archive Channel", style=discord.ButtonStyle.primary, row=3, custom_id="archive_channel")
-    async def archive_channel(self, _: discord.ui.Button, interaction: discord.Interaction):
+    @discord.ui.button(
+        label="Archive Channel",
+        style=discord.ButtonStyle.primary,
+        row=3,
+        custom_id="archive_channel",
+    )
+    async def archive_channel(
+        self, _: discord.ui.Button, interaction: discord.Interaction
+    ):
         if self.player.guild.archive_user:
-            return await interaction.channel.send(embed=ErrorEmbed("Already archiving a channel. Please wait for it to finish first"), delete_after=5)
+            return await interaction.channel.send(
+                embed=ErrorEmbed(
+                    "Already archiving a channel. Please wait for it to finish first"
+                ),
+                delete_after=5,
+            )
         else:
             self.player.guild.archive_user = self.player.member
             await self.player.guild.upsert()
 
             asyncio.create_task(_archive_channel(self.bot, self.channel, self.player))
-            await interaction.channel.send("Archiving done in background process. You can only archive one channel at a time.", delete_after=5)
+            await interaction.channel.send(
+                "Archiving done in background process. You can only archive one channel at a time.",
+                delete_after=5,
+            )
             await self.refresh_content(interaction)
 
     @discord.ui.button(label="Exit", style=discord.ButtonStyle.danger, row=4)
@@ -135,31 +168,52 @@ class ChannelAdminUI(ChannelAdmin):
             return {"embed": None, "content": "Pick an option"}
         else:
             return {"embed": ChannelEmbed(self.channel), "content": ""}
-    
+
+
 class _EditPlayerChannel(ChannelAdmin):
     member: discord.Member = None
 
     @discord.ui.user_select(placeholder="Channel Owner")
-    async def channel_owner(self, m: discord.ui.Select, interaction: discord.Interaction):
+    async def channel_owner(
+        self, m: discord.ui.Select, interaction: discord.Interaction
+    ):
         self.member = m.values[0]
         await self.refresh_content(interaction)
 
     @discord.ui.button(label="Add Owner", style=discord.ButtonStyle.primary, row=2)
     async def add_owner(self, _: discord.ui.Button, interaction: discord.Interaction):
-        if self.member in self.channel.overwrites.keys() and self.channel.overwrites_for(self.member).manage_messages == True:
-            await interaction.channel.send(embed=ErrorEmbed(f"{self.member.mention} is already a channel owner."), delete_after=5)
+        if (
+            self.member in self.channel.overwrites.keys()
+            and self.channel.overwrites_for(self.member).manage_messages == True
+        ):
+            await interaction.channel.send(
+                embed=ErrorEmbed(f"{self.member.mention} is already a channel owner."),
+                delete_after=5,
+            )
         else:
-            log.info(f"CHANNEL ADMIN: {self.member} [ {self.member.id} ] added to {self.channel.name} [ {self.channel.id} ] by {interaction.user} [ {interaction.user.id} ]")
+            log.info(
+                f"CHANNEL ADMIN: {self.member} [ {self.member.id} ] added to {self.channel.name} [ {self.channel.id} ] by {interaction.user} [ {interaction.user.id} ]"
+            )
             await self.channel.set_permissions(self.member, overwrite=owner_overwrites)
         await self.refresh_content(interaction)
 
     @discord.ui.button(label="Remove Owner", style=discord.ButtonStyle.red, row=2)
-    async def remove_owner(self, _: discord.ui.Button, interaction: discord.Interaction):
-        if self.member in self.channel.overwrites.keys() and self.channel.overwrites_for(self.member).manage_messages == True:
-            log.info(f"CHANNEL ADMIN: {self.member} [ {self.member.id} ] removed from {self.channel.name} [ {self.channel.id} ] by {interaction.user} [ {interaction.user.id} ]")
+    async def remove_owner(
+        self, _: discord.ui.Button, interaction: discord.Interaction
+    ):
+        if (
+            self.member in self.channel.overwrites.keys()
+            and self.channel.overwrites_for(self.member).manage_messages == True
+        ):
+            log.info(
+                f"CHANNEL ADMIN: {self.member} [ {self.member.id} ] removed from {self.channel.name} [ {self.channel.id} ] by {interaction.user} [ {interaction.user.id} ]"
+            )
             await self.channel.set_permissions(self.member, overwrite=None)
         else:
-            await interaction.channel.send(embed=ErrorEmbed(f"{self.member.mention} is not a channel owner."), delete_after=5)
+            await interaction.channel.send(
+                embed=ErrorEmbed(f"{self.member.mention} is not a channel owner."),
+                delete_after=5,
+            )
         await self.refresh_content(interaction)
 
     @discord.ui.button(label="Back", style=discord.ButtonStyle.grey, row=3)
@@ -168,37 +222,56 @@ class _EditPlayerChannel(ChannelAdmin):
 
     async def get_content(self) -> Mapping:
         return {"embed": ChannelEmbed(self.channel), "content": ""}
-    
+
+
 class _NewPlayerchannel(ChannelAdmin):
     category: discord.TextChannel = None
     member: discord.Member = None
     name = None
-    
+
     @discord.ui.user_select(placeholder="Channel Owner")
-    async def channel_owner(self, m: discord.ui.Select, interaction: discord.Interaction):
+    async def channel_owner(
+        self, m: discord.ui.Select, interaction: discord.Interaction
+    ):
         self.member = m.values[0]
         await self.refresh_content(interaction)
 
-    @discord.ui.channel_select(placeholder="Category", channel_types=[discord.ChannelType(4)])
-    async def channel_category(self, cat: discord.ui.Select, interaction: discord.Interaction):
+    @discord.ui.channel_select(
+        placeholder="Category", channel_types=[discord.ChannelType(4)]
+    )
+    async def channel_category(
+        self, cat: discord.ui.Select, interaction: discord.Interaction
+    ):
         self.category = cat.values[0]
         await self.refresh_content(interaction)
 
-    @discord.ui.button(label="Channel Information", style=discord.ButtonStyle.primary, row=3)
-    async def channel_info(self, _: discord.ui.Button, interaction: discord.Interaction):
+    @discord.ui.button(
+        label="Channel Information", style=discord.ButtonStyle.primary, row=3
+    )
+    async def channel_info(
+        self, _: discord.ui.Button, interaction: discord.Interaction
+    ):
         modal = ChannelInfoModal(self.name)
         response = await self.prompt_modal(interaction, modal)
         self.name = response.name
         await self.refresh_content(interaction)
 
-    @discord.ui.button(label="Create Channel", style=discord.ButtonStyle.green, row=3, disabled=True)
-    async def channel_create(self, _: discord.ui.Button, interaction: discord.Interaction):
+    @discord.ui.button(
+        label="Create Channel", style=discord.ButtonStyle.green, row=3, disabled=True
+    )
+    async def channel_create(
+        self, _: discord.ui.Button, interaction: discord.Interaction
+    ):
         self.channel = await self._create_channel(self.name)
-        log.info(f"CHANNEL ADMIN: {self.channel.name} [ {self.channel.id} ] created for {self.member} [ {self.member.id} ] by {interaction.user} [ {interaction.user.id} ]")
-        await self.channel.send(f"{self.member.mention} welcome to your new channel.\n"
-                                f"Go ahead and set everything up.\n"
-                                f"1. Make sure you can delete this message.\n"
-                                f"2. Use `/room settings` to see your management options")
+        log.info(
+            f"CHANNEL ADMIN: {self.channel.name} [ {self.channel.id} ] created for {self.member} [ {self.member.id} ] by {interaction.user} [ {interaction.user.id} ]"
+        )
+        await self.channel.send(
+            f"{self.member.mention} welcome to your new channel.\n"
+            f"Go ahead and set everything up.\n"
+            f"1. Make sure you can delete this message.\n"
+            f"2. Use `/room settings` to see your management options"
+        )
         await self.defer_to(ChannelAdminUI, interaction)
 
     @discord.ui.button(label="Back", style=discord.ButtonStyle.grey, row=4)
@@ -206,18 +279,24 @@ class _NewPlayerchannel(ChannelAdmin):
         await self.defer_to(ChannelAdminUI, interaction)
 
     async def _before_send(self):
-        if self.name is not None and self.member is not None and self.category is not None:
+        if (
+            self.name is not None
+            and self.member is not None
+            and self.category is not None
+        ):
             self.channel_create.disabled = False
         else:
-            self.channel_create.disabled=True
+            self.channel_create.disabled = True
 
     async def get_content(self) -> Mapping:
         embed = discord.Embed(title="New Character Channel Information")
-        embed.description = f"**Channel Name**: {self.name}\n"\
-                            f"**Channel Owner**: {self.member.mention if self.member else 'None'}\n"\
-                            f"**Channel Category**: {self.category.mention if self.category else 'None'}\n"
+        embed.description = (
+            f"**Channel Name**: {self.name}\n"
+            f"**Channel Owner**: {self.member.mention if self.member else 'None'}\n"
+            f"**Channel Category**: {self.category.mention if self.category else 'None'}\n"
+        )
         return {"embed": embed, "content": ""}
-    
+
     async def _create_channel(self, name: str) -> discord.TextChannel:
         channel_overwrites = self.category.overwrites
         guild = await self.bot.get_player_guild(self.category.guild.id)
@@ -237,18 +316,26 @@ class _NewPlayerchannel(ChannelAdmin):
             name=name,
             category=self.category,
             overwrites=channel_overwrites,
-            reason=f"Channel admin command"
+            reason=f"Channel admin command",
         )
 
         return channel
 
+
 class ChannelInfoModal(discord.ui.Modal):
     name = None
 
-    def __init__(self, name = None):
+    def __init__(self, name=None):
         super().__init__(title="New Player Channel Information")
 
-        self.add_item(discord.ui.InputText(label="Channel Name", placeholder="Channel Name", max_length=100, value=f"{name}"))
+        self.add_item(
+            discord.ui.InputText(
+                label="Channel Name",
+                placeholder="Channel Name",
+                max_length=100,
+                value=f"{name}",
+            )
+        )
 
     async def callback(self, interaction: discord.Interaction):
         self.name = self.children[0].value
@@ -261,17 +348,22 @@ class ChannelInfoModal(discord.ui.Modal):
 # Private Methods
 # --------------------------- #
 
-async def _archive_channel(bot: G0T0Bot, channel: discord.TextChannel | discord.Thread | discord.ForumChannel, player: Player):
-    transcript = await chat_exporter.export(channel,
-                                            guild=player.guild.guild,
-                                            bot=bot)
-    
+
+async def _archive_channel(
+    bot: G0T0Bot,
+    channel: discord.TextChannel | discord.Thread | discord.ForumChannel,
+    player: Player,
+):
+    transcript = await chat_exporter.export(channel, guild=player.guild.guild, bot=bot)
+
     if transcript is None:
         return
-    
-    transcript_file = discord.File(io.BytesIO(transcript.encode()),
-                                   filename=f"{player.guild.guild.name} - {channel.name} [{channel.id}].html")
-    
+
+    transcript_file = discord.File(
+        io.BytesIO(transcript.encode()),
+        filename=f"{player.guild.guild.name} - {channel.name} [{channel.id}].html",
+    )
+
     await player.member.send(file=transcript_file)
     player.guild.archive_user = None
     await player.guild.upsert()

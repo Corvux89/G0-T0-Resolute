@@ -31,14 +31,16 @@ class NPC(object):
             Sends a message via webhook to the specified context.
     """
 
-    def __init__(self, db: aiopg.sa.Engine, guild_id: int, key: str, name: str, **kwargs):
+    def __init__(
+        self, db: aiopg.sa.Engine, guild_id: int, key: str, name: str, **kwargs
+    ):
         self._db = db
         self.guild_id: int = guild_id
         self.key: str = key
         self.name: str = name
-        self.avatar_url: str = kwargs.get('avatar_url')
-        self.roles: list[int] = kwargs.get('roles', [])
-        self.adventure_id: int = kwargs.get('adventure_id')
+        self.avatar_url: str = kwargs.get("avatar_url")
+        self.roles: list[int] = kwargs.get("roles", [])
+        self.adventure_id: int = kwargs.get("adventure_id")
 
     async def delete(self) -> None:
         async with self._db.acquire() as conn:
@@ -48,25 +50,35 @@ class NPC(object):
         async with self._db.acquire() as conn:
             await conn.execute(upsert_npc_query(self))
 
-    async def send_webhook_message(self, ctx: discord.ApplicationContext, content: str) -> None:
+    async def send_webhook_message(
+        self, ctx: discord.ApplicationContext, content: str
+    ) -> None:
         webhook = await gh.get_webhook(ctx.channel)
 
         if isinstance(ctx.channel, discord.Thread):
-            await webhook.send(username=self.name,
-                               avatar_url=self.avatar_url if self.avatar_url else None,
-                               content=content,
-                               thread=ctx.channel)
-            
+            await webhook.send(
+                username=self.name,
+                avatar_url=self.avatar_url if self.avatar_url else None,
+                content=content,
+                thread=ctx.channel,
+            )
+
         else:
-            await webhook.send(username=self.name,
-                               avatar_url=self.avatar_url if self.avatar_url else None,
-                               content=content)
-            
+            await webhook.send(
+                username=self.name,
+                avatar_url=self.avatar_url if self.avatar_url else None,
+                content=content,
+            )
+
     async def register_command(self, bot):
         async def npc_command(ctx):
             from Resolute.models.objects.webhook import G0T0Webhook
-            await G0T0Webhook(ctx, type=WebhookType.adventure if self.adventure_id else WebhookType.npc).send()
-        
+
+            await G0T0Webhook(
+                ctx,
+                type=WebhookType.adventure if self.adventure_id else WebhookType.npc,
+            ).send()
+
         if bot.get_command(self.key) is None:
             bot.add_command(commands.Command(npc_command, name=self.key))
 
@@ -80,24 +92,23 @@ npc_table = sa.Table(
     sa.Column("avatar_url", sa.String, nullable=True),
     sa.Column("roles", ARRAY(sa.BigInteger), nullable=False),
     sa.Column("adventure_id", sa.Integer, nullable=True),
-    sa.PrimaryKeyConstraint("guild_id", "key")
+    sa.PrimaryKeyConstraint("guild_id", "key"),
 )
 
 
 class NPCSchema(Schema):
     db: aiopg.sa.Engine
 
-    guild_id=fields.Integer(required=True)
-    key=fields.String(required=True)
-    name=fields.String(required=True)
-    avatar_url=fields.String(required=False, allow_none=True)
-    roles=fields.List(fields.Integer, required=True)
-    adventure_id=fields.Integer(required=False, allow_none=True)
+    guild_id = fields.Integer(required=True)
+    key = fields.String(required=True)
+    name = fields.String(required=True)
+    avatar_url = fields.String(required=False, allow_none=True)
+    roles = fields.List(fields.Integer, required=True)
+    adventure_id = fields.Integer(required=False, allow_none=True)
 
     def __init__(self, db: aiopg.sa.Engine, **kwargs):
         super().__init__(**kwargs)
         self.db = db
-
 
     @post_load
     def make_npc(self, data, **kwargs):
@@ -110,20 +121,29 @@ def get_npc_query(guild_id: int, key: str) -> FromClause:
         sa.and_(npc_table.c.guild_id == guild_id, npc_table.c.key == key)
     )
 
+
 def get_all_npc_query() -> FromClause:
     return npc_table.select().order_by(npc_table.c.key.asc())
 
 
 def get_guild_npcs_query(guild_id: int) -> FromClause:
-    return npc_table.select().where(
-        sa.and_(npc_table.c.guild_id == guild_id, npc_table.c.adventure_id == sa.null())
-    ).order_by(npc_table.c.key.asc())
+    return (
+        npc_table.select()
+        .where(
+            sa.and_(
+                npc_table.c.guild_id == guild_id, npc_table.c.adventure_id == sa.null()
+            )
+        )
+        .order_by(npc_table.c.key.asc())
+    )
 
 
 def get_adventure_npcs_query(adventure_id: int) -> FromClause:
-    return npc_table.select().where(
-        sa.and_(npc_table.c.adventure_id == adventure_id)
-    ).order_by(npc_table.c.key.asc())
+    return (
+        npc_table.select()
+        .where(sa.and_(npc_table.c.adventure_id == adventure_id))
+        .order_by(npc_table.c.key.asc())
+    )
 
 
 def upsert_npc_query(npc: NPC):
@@ -133,19 +153,19 @@ def upsert_npc_query(npc: NPC):
         "name": npc.name,
         "avatar_url": npc.avatar_url,
         "adventure_id": npc.adventure_id,
-        "roles": npc.roles
+        "roles": npc.roles,
     }
 
     statement = insert(npc_table).values(insert_dict)
 
     statement = statement.on_conflict_do_update(
-        index_elements=['guild_id', 'key'],
+        index_elements=["guild_id", "key"],
         set_={
-            'name': statement.excluded.name,
-            'avatar_url': statement.excluded.avatar_url,
-            'adventure_id': statement.excluded.adventure_id,
-            'roles': statement.excluded.roles
-        }
+            "name": statement.excluded.name,
+            "avatar_url": statement.excluded.avatar_url,
+            "adventure_id": statement.excluded.adventure_id,
+            "roles": statement.excluded.roles,
+        },
     )
 
     return statement.returning(npc_table)

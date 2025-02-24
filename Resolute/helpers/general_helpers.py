@@ -15,7 +15,7 @@ def is_owner(ctx: discord.ApplicationContext) -> bool:
     :param ctx: Context
     :return: True if user is in BOT_OWNERS constant, otherwise False
     """
-    if hasattr(ctx, 'author'):
+    if hasattr(ctx, "author"):
         author = ctx.author
     else:
         author = ctx.user
@@ -35,7 +35,7 @@ async def is_admin(ctx: discord.ApplicationContext | discord.Interaction) -> boo
 
     r_list = [g.admin_role] if g.admin_role else []
 
-    if hasattr(ctx, 'author'):
+    if hasattr(ctx, "author"):
         author = ctx.author
     else:
         author = ctx.user
@@ -46,7 +46,8 @@ async def is_admin(ctx: discord.ApplicationContext | discord.Interaction) -> boo
         return True
     else:
         return False
-    
+
+
 async def is_staff(ctx: discord.ApplicationContext | discord.Interaction) -> bool:
     """
     Check if the user is a staff member.
@@ -58,16 +59,16 @@ async def is_staff(ctx: discord.ApplicationContext | discord.Interaction) -> boo
         bool: True if the user is a staff member or the owner, False otherwise.
     """
     g = await ctx.bot.get_player_guild(ctx.guild.id)
-    
+
     r_list = []
-    
+
     if g.admin_role:
         r_list.append(g.admin_role)
-    
+
     if g.staff_role:
         r_list.append(g.staff_role)
 
-    if hasattr(ctx, 'author'):
+    if hasattr(ctx, "author"):
         author = ctx.author
     else:
         author = ctx.user
@@ -78,7 +79,6 @@ async def is_staff(ctx: discord.ApplicationContext | discord.Interaction) -> boo
         return True
     else:
         return False
-
 
 
 def get_positivity(string) -> bool:
@@ -102,7 +102,14 @@ def get_positivity(string) -> bool:
         return None
 
 
-async def confirm(ctx, message, delete_msgs=False, bot = None, response_check=get_positivity, full_reply: bool = False) -> bool|str:
+async def confirm(
+    ctx,
+    message,
+    delete_msgs=False,
+    bot=None,
+    response_check=get_positivity,
+    full_reply: bool = False,
+) -> bool | str:
     """
     Asks for user confirmation by sending a message and waiting for a response.
     Args:
@@ -116,7 +123,7 @@ async def confirm(ctx, message, delete_msgs=False, bot = None, response_check=ge
         bool | str: The result of the response check, the full reply, or the reply content, depending on the parameters.
     """
     msg = await ctx.channel.send(message)
-    
+
     if bot is None:
         bot = ctx.bot
 
@@ -148,7 +155,7 @@ def auth_and_chan(ctx) -> bool:
         bool: A function that takes a message as an argument and returns True if the message
               is from the same author and channel as the context, otherwise False.
     """
-    if hasattr(ctx, 'author'):
+    if hasattr(ctx, "author"):
         author = ctx.author
     else:
         author = ctx.user
@@ -158,7 +165,10 @@ def auth_and_chan(ctx) -> bool:
 
     return chk
 
-def find_character(name: str, characters: list[PlayerCharacter]) -> list[PlayerCharacter]:
+
+def find_character(
+    name: str, characters: list[PlayerCharacter]
+) -> list[PlayerCharacter]:
     """
     Finds characters in a list of PlayerCharacter objects that match a given name.
     Args:
@@ -177,8 +187,15 @@ def find_character(name: str, characters: list[PlayerCharacter]) -> list[PlayerC
     return direct_match
 
 
-def process_message(message: str, g: PlayerGuild,  member: discord.Member = None, mappings: dict = None) -> str:
-    def process_message(message: str, g: PlayerGuild, member: discord.Member = None, mappings: dict = None) -> str:
+def process_message(
+    message: str, g: PlayerGuild, member: discord.Member = None, mappings: dict = None
+) -> str:
+    def process_message(
+        message: str,
+        g: PlayerGuild,
+        member: discord.Member = None,
+        mappings: dict = None,
+    ) -> str:
         """
         Processes a message by replacing placeholders with actual mentions and values.
         Args:
@@ -189,25 +206,27 @@ def process_message(message: str, g: PlayerGuild,  member: discord.Member = None
         Returns:
             str: The processed message with placeholders replaced by actual mentions and values.
         """
-    channel_mentions = re.findall(r'{#([^}]*)}', message)
-    role_mentions = re.findall(r'{@([^}]*)}', message)
+
+    channel_mentions = re.findall(r"{#([^}]*)}", message)
+    role_mentions = re.findall(r"{@([^}]*)}", message)
 
     for chan in channel_mentions:
-        if (channel := discord.utils.get(g.guild.channels, name=chan)):
-            message = message.replace("{#"+chan+"}", f"{channel.mention}")
+        if channel := discord.utils.get(g.guild.channels, name=chan):
+            message = message.replace("{#" + chan + "}", f"{channel.mention}")
 
     for r in role_mentions:
-        if (role := discord.utils.get(g.guild.roles, name=r)):
-            message = message.replace("{@"+r+"}", f"{role.mention}")
+        if role := discord.utils.get(g.guild.roles, name=r):
+            message = message.replace("{@" + r + "}", f"{role.mention}")
 
     if mappings:
         for mnemonic, value in mappings.items():
-            message = message.replace("{"+mnemonic+"}", value)
+            message = message.replace("{" + mnemonic + "}", value)
 
     if member:
         message = message.replace("{user}", f"{member.mention}")
 
     return message
+
 
 async def get_webhook(channel: discord.TextChannel) -> discord.Webhook:
     """
@@ -228,13 +247,15 @@ async def get_webhook(channel: discord.TextChannel) -> discord.Webhook:
     webhooks = await text_channel.webhooks()
 
     for hook in webhooks:
-        if (hook.token):
+        if hook.token:
             return hook
-        
-    hook = await text_channel.create_webhook(name="G0T0 Hook",
-                                 reason="G0T0 Bot Webhook")
-    
+
+    hook = await text_channel.create_webhook(
+        name="G0T0 Hook", reason="G0T0 Bot Webhook"
+    )
+
     return hook
+
 
 def paginate(choices: list[str], per_page: int) -> list[list[str]]:
     """
@@ -247,8 +268,9 @@ def paginate(choices: list[str], per_page: int) -> list[list[str]]:
     """
     out = []
     for idx in range(0, len(choices), per_page):
-        out.append(choices[idx:idx+per_page])
+        out.append(choices[idx : idx + per_page])
     return out
+
 
 async def try_delete(message: discord.Message) -> None:
     """
@@ -265,7 +287,16 @@ async def try_delete(message: discord.Message) -> None:
     except:
         pass
 
-async def get_selection(ctx: discord.ApplicationContext, choices: list[str], delete: bool = True, dm: bool=False, message: str = None, force_select: bool = False, query_message: str = None) -> str:
+
+async def get_selection(
+    ctx: discord.ApplicationContext,
+    choices: list[str],
+    delete: bool = True,
+    dm: bool = False,
+    message: str = None,
+    force_select: bool = False,
+    query_message: str = None,
+) -> str:
     """
     Asynchronously prompts the user to select an option from a list of choices.
     Parameters:
@@ -283,7 +314,7 @@ async def get_selection(ctx: discord.ApplicationContext, choices: list[str], del
     """
     if len(choices) == 1 and not force_select:
         return choices[0]
-    
+
     page = 0
     pages = paginate(choices, 10)
     m = None
@@ -314,19 +345,16 @@ async def get_selection(ctx: discord.ApplicationContext, choices: list[str], del
 
         for i, r in enumerate(_choices):
             select_str += f"**[{i+1+page*10}]** - {r}\n"
-        
+
         embed.description = select_str
         embed.color = discord.Color.random()
 
         if message:
-            embed.add_field(
-                name="Note",
-                value=message,
-                inline=False)
+            embed.add_field(name="Note", value=message, inline=False)
 
         if select_msg:
             await try_delete(select_msg)
-        
+
         if not dm:
             select_msg = await ctx.channel.send(embed=embed)
         else:
@@ -340,14 +368,14 @@ async def get_selection(ctx: discord.ApplicationContext, choices: list[str], del
         if m is None:
             break
 
-        if m.content.lower() == 'n':
-            if page+1 < len(pages):
+        if m.content.lower() == "n":
+            if page + 1 < len(pages):
                 page += 1
             else:
                 await ctx.channel.send("You are already on the last page")
-        elif m.content.lower() == 'p':
-            if page-1 >=0:
-                page -=1
+        elif m.content.lower() == "p":
+            if page - 1 >= 0:
+                page -= 1
             else:
                 await ctx.channel.send("You are already on the first page")
         else:
@@ -359,12 +387,13 @@ async def get_selection(ctx: discord.ApplicationContext, choices: list[str], del
         if m is not None:
             await try_delete(m)
 
-    if m is None or m.content.lower() == 'c':
+    if m is None or m.content.lower() == "c":
         return None
-    
+
     idx = int(m.content) - 1
 
     return choices[idx]
+
 
 def split_content(content: str, chunk_size: int = 2000) -> list[str]:
     """
@@ -389,4 +418,4 @@ def split_content(content: str, chunk_size: int = 2000) -> list[str]:
     if current_chunk:
         out.append(current_chunk)
 
-    return out   
+    return out

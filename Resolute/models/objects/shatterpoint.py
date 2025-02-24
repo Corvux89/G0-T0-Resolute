@@ -1,4 +1,3 @@
-
 import aiopg.sa
 import discord
 import sqlalchemy as sa
@@ -38,15 +37,15 @@ class Shatterpoint(object):
 
     def __init__(self, db: aiopg.sa.Engine, **kwargs):
         self._db = db
-        self.guild_id = kwargs.get('guild_id')
-        self.name = kwargs.get('name', "New Shatterpoint")
-        self.base_cc = kwargs.get('base_cc', 0)
-        self.channels: list[int] = kwargs.get('channels', [])
-        self.busy_member: discord.Member | discord.User = kwargs.get('busy_member')
+        self.guild_id = kwargs.get("guild_id")
+        self.name = kwargs.get("name", "New Shatterpoint")
+        self.base_cc = kwargs.get("base_cc", 0)
+        self.channels: list[int] = kwargs.get("channels", [])
+        self.busy_member: discord.Member | discord.User = kwargs.get("busy_member")
 
-        self.players: list[ShatterpointPlayer] = kwargs.get('players', [])
-        self.renown: list[ShatterpointRenown] = kwargs.get('renown', [])
-    
+        self.players: list[ShatterpointPlayer] = kwargs.get("players", [])
+        self.renown: list[ShatterpointRenown] = kwargs.get("renown", [])
+
     async def upsert(self) -> None:
         async with self._db.acquire() as conn:
             await conn.execute(upsert_shatterpoint_query(self))
@@ -57,16 +56,24 @@ class Shatterpoint(object):
             await conn.execute(delete_shatterpoint_players(self.guild_id))
             await conn.execute(delete_all_shatterpoint_renown_query(self.guild_id))
 
-    async def scrape_channel(self, bot, channel: discord.TextChannel | discord.Thread | discord.ForumChannel, guild: PlayerGuild, user: discord.User) -> None:
+    async def scrape_channel(
+        self,
+        bot,
+        channel: discord.TextChannel | discord.Thread | discord.ForumChannel,
+        guild: PlayerGuild,
+        user: discord.User,
+    ) -> None:
         messages = []
         channels = self.channels
 
         def get_char_name_from_message(message: discord.Message) -> str:
             try:
-                char_name = message.author.name.split(' // ')[0].split('] ', 1)[1].strip()
+                char_name = (
+                    message.author.name.split(" // ")[0].split("] ", 1)[1].strip()
+                )
             except:
                 return None
-            
+
             return char_name
 
         try:
@@ -87,32 +94,46 @@ class Shatterpoint(object):
         for message in messages:
             player: ShatterpointPlayer = None
             if not message.author.bot:
-                player = next((p for p in self.players if p.player_id == message.author.id), 
-                                ShatterpointPlayer(bot.db, guild_id=self.guild_id,
-                                                    player_id=message.author.id,
-                                                    cc=self.base_cc))
-            elif (char_name := get_char_name_from_message(message)) and (character := next((c for c in characters if c.name.lower() == char_name.lower()), None)):
-                player = next((p for p in self.players if p.player_id == character.player_id), 
-                                ShatterpointPlayer(bot.db, guild_id=self.guild_id,
-                                                    player_id=character.player_id,
-                                                    cc=self.base_cc))
+                player = next(
+                    (p for p in self.players if p.player_id == message.author.id),
+                    ShatterpointPlayer(
+                        bot.db,
+                        guild_id=self.guild_id,
+                        player_id=message.author.id,
+                        cc=self.base_cc,
+                    ),
+                )
+            elif (char_name := get_char_name_from_message(message)) and (
+                character := next(
+                    (c for c in characters if c.name.lower() == char_name.lower()), None
+                )
+            ):
+                player = next(
+                    (p for p in self.players if p.player_id == character.player_id),
+                    ShatterpointPlayer(
+                        bot.db,
+                        guild_id=self.guild_id,
+                        player_id=character.player_id,
+                        cc=self.base_cc,
+                    ),
+                )
                 if character.id not in player.characters:
                     player.characters.append(character.id)
-                    
+
             if player:
-                player.num_messages +=1 
+                player.num_messages += 1
 
                 if message.channel.id not in player.channels:
                     player.channels.append(message.channel.id)
 
                 if player.player_id not in [p.player_id for p in self.players]:
                     self.players.append(player)
-        
+
         if message.channel.id not in channels:
             channels.append(message.channel.id)
 
         shatterpoint: Shatterpoint = await bot.get_shatterpoint(self.guild_id)
-        shatterpoint.busy_member=None
+        shatterpoint.busy_member = None
         for c in channels:
             if c not in shatterpoint.channels:
                 shatterpoint.channels.append(c)
@@ -121,19 +142,23 @@ class Shatterpoint(object):
         for p in self.players:
             await p.upsert()
 
-        await user.send(f"**{shatterpoint.name}**: Finished scraping {len(messages):,} messages in {channel.jump_url}")
+        await user.send(
+            f"**{shatterpoint.name}**: Finished scraping {len(messages):,} messages in {channel.jump_url}"
+        )
 
-        
 
 ref_gb_staging_table = sa.Table(
     "ref_gb_staging",
     metadata,
-    sa.Column("guild_id", sa.BigInteger, primary_key=True, nullable=False),  # ref: > guilds.id
+    sa.Column(
+        "guild_id", sa.BigInteger, primary_key=True, nullable=False
+    ),  # ref: > guilds.id
     sa.Column("name", sa.String, nullable=False),
     sa.Column("base_cc", sa.Integer, nullable=False),
     sa.Column("channels", ARRAY(sa.BigInteger), nullable=True, default=[]),
-    sa.Column("busy_member", sa.BigInteger, nullable=True)
+    sa.Column("busy_member", sa.BigInteger, nullable=True),
 )
+
 
 class ShatterPointSchema(Schema):
     bot = None
@@ -157,54 +182,77 @@ class ShatterPointSchema(Schema):
         if shatterpoint.busy_member:
             shatterpoint.busy_member = self.bot.get_user(shatterpoint.busy_member)
         return shatterpoint
-    
+
     async def get_players(self, shatterpoint: Shatterpoint):
         async with self.bot.db.acquire() as conn:
-            results = await conn.execute(get_all_shatterpoint_players_query(shatterpoint.guild_id))
+            results = await conn.execute(
+                get_all_shatterpoint_players_query(shatterpoint.guild_id)
+            )
             rows = await results.fetchall()
 
-        shatterpoint.players = [await ShatterPointPlayerSchema(self.bot).load(row) for row in rows]
+        shatterpoint.players = [
+            await ShatterPointPlayerSchema(self.bot).load(row) for row in rows
+        ]
 
     async def get_renown(self, shatterpoint: Shatterpoint):
         async with self.bot.db.acquire() as conn:
-            results = await conn.execute(get_shatterpoint_renown_query(shatterpoint.guild_id))
+            results = await conn.execute(
+                get_shatterpoint_renown_query(shatterpoint.guild_id)
+            )
             rows = await results.fetchall()
 
-        shatterpoint.renown = [RefRenownSchema(self.bot.db, self.bot.compendium).load(row) for row in rows]
+        shatterpoint.renown = [
+            RefRenownSchema(self.bot.db, self.bot.compendium).load(row) for row in rows
+        ]
+
 
 def upsert_shatterpoint_query(shatterpoint: Shatterpoint):
-    insert_statement = insert(ref_gb_staging_table).values(
-        guild_id=shatterpoint.guild_id,
-        name=shatterpoint.name,
-        base_cc=shatterpoint.base_cc,
-        channels=shatterpoint.channels,
-        busy_member=shatterpoint.busy_member.id if shatterpoint.busy_member else None
-    ).returning(ref_gb_staging_table)
+    insert_statement = (
+        insert(ref_gb_staging_table)
+        .values(
+            guild_id=shatterpoint.guild_id,
+            name=shatterpoint.name,
+            base_cc=shatterpoint.base_cc,
+            channels=shatterpoint.channels,
+            busy_member=(
+                shatterpoint.busy_member.id if shatterpoint.busy_member else None
+            ),
+        )
+        .returning(ref_gb_staging_table)
+    )
 
     update_dict = {
         "name": shatterpoint.name,
         "base_cc": shatterpoint.base_cc,
         "channels": shatterpoint.channels,
-        "busy_member": shatterpoint.busy_member.id if shatterpoint.busy_member else None
+        "busy_member": (
+            shatterpoint.busy_member.id if shatterpoint.busy_member else None
+        ),
     }
 
     upsert_statement = insert_statement.on_conflict_do_update(
-        index_elements=['guild_id'],
-        set_=update_dict
+        index_elements=["guild_id"], set_=update_dict
     )
 
     return upsert_statement
 
+
 def get_busy_shatterpoints_query():
-    return ref_gb_staging_table.select().where(ref_gb_staging_table.c.busy_member.isnot(None))
+    return ref_gb_staging_table.select().where(
+        ref_gb_staging_table.c.busy_member.isnot(None)
+    )
+
 
 def get_shatterpoint_query(guild_id: int) -> FromClause:
     return ref_gb_staging_table.select().where(
         ref_gb_staging_table.c.guild_id == guild_id
     )
 
+
 def delete_shatterpoint_query(guild_id: int) -> TableClause:
-    return ref_gb_staging_table.delete().where(ref_gb_staging_table.c.guild_id == guild_id)
+    return ref_gb_staging_table.delete().where(
+        ref_gb_staging_table.c.guild_id == guild_id
+    )
 
 
 class ShatterpointPlayer(object):
@@ -229,17 +277,19 @@ class ShatterpointPlayer(object):
     def __init__(self, db: aiopg.sa.Engine, **kwargs):
         self._db = db
 
-        self.guild_id = kwargs.get('guild_id')
-        self.player_id = kwargs.get('player_id')
-        self.cc = kwargs.get('cc')
-        self.update = kwargs.get('update', True)
-        self.active = kwargs.get('active', True)
-        self.num_messages = kwargs.get('num_messages', 0)
-        self.channels: list[int] = kwargs.get('channels', [])
-        self.characters: list[int] = kwargs.get('characters', [])
-        self.renown_override: int = kwargs.get('renown_override')
+        self.guild_id = kwargs.get("guild_id")
+        self.player_id = kwargs.get("player_id")
+        self.cc = kwargs.get("cc")
+        self.update = kwargs.get("update", True)
+        self.active = kwargs.get("active", True)
+        self.num_messages = kwargs.get("num_messages", 0)
+        self.channels: list[int] = kwargs.get("channels", [])
+        self.characters: list[int] = kwargs.get("characters", [])
+        self.renown_override: int = kwargs.get("renown_override")
 
-        self.player_characters: list[PlayerCharacter] = kwargs.get('player_characters', [])
+        self.player_characters: list[PlayerCharacter] = kwargs.get(
+            "player_characters", []
+        )
 
     async def upsert(self) -> None:
         async with self._db.acquire() as conn:
@@ -250,15 +300,18 @@ ref_gb_staging_player_table = sa.Table(
     "ref_gb_staging_player",
     metadata,
     sa.Column("guild_id", sa.BigInteger, nullable=False),  # ref: > ref_gb_staging.id
-    sa.Column("player_id", sa.BigInteger, nullable=False),  # ref: > characters.player_id
+    sa.Column(
+        "player_id", sa.BigInteger, nullable=False
+    ),  # ref: > characters.player_id
     sa.Column("cc", sa.Integer, nullable=False),
     sa.Column("update", sa.BOOLEAN, nullable=False, default=True),
     sa.Column("active", sa.BOOLEAN, nullable=False, default=True),
     sa.Column("num_messages", sa.Integer, nullable=False, default=0),
     sa.Column("channels", ARRAY(sa.BigInteger), nullable=True, default=[]),
     sa.Column("characters", ARRAY(sa.Integer), nullable=False, default=[]),
-    sa.Column("renown_override", sa.Integer, nullable=True)
+    sa.Column("renown_override", sa.Integer, nullable=True),
 )
+
 
 class ShatterPointPlayerSchema(Schema):
     bot = None
@@ -283,11 +336,12 @@ class ShatterPointPlayerSchema(Schema):
         player = ShatterpointPlayer(self.bot.db, **data)
         await self.get_characters(player)
         return player
-    
+
     async def get_characters(self, player: ShatterpointPlayer):
         player.player_characters = [
             await self.bot.get_character(c) for c in player.characters
         ]
+
 
 def upsert_shatterpoint_player_query(spplayer: ShatterpointPlayer):
     insert_dict = {
@@ -299,7 +353,7 @@ def upsert_shatterpoint_player_query(spplayer: ShatterpointPlayer):
         "num_messages": spplayer.num_messages,
         "channels": spplayer.channels,
         "characters": spplayer.characters,
-        "renown_override": spplayer.renown_override
+        "renown_override": spplayer.renown_override,
     }
 
     statement = insert(ref_gb_staging_player_table).values(insert_dict)
@@ -312,27 +366,32 @@ def upsert_shatterpoint_player_query(spplayer: ShatterpointPlayer):
             "num_messages": statement.excluded.num_messages,
             "channels": statement.excluded.channels,
             "characters": statement.excluded.characters,
-            "update": statement.excluded.get('update', False),
-            "active": statement.excluded.get('active', True)
-        }
+            "update": statement.excluded.get("update", False),
+            "active": statement.excluded.get("active", True),
+        },
     )
 
     return statement.returning(ref_gb_staging_player_table)
+
 
 def get_all_shatterpoint_players_query(guild_id: int) -> FromClause:
     return ref_gb_staging_player_table.select().where(
         ref_gb_staging_player_table.c.guild_id == guild_id
     )
 
+
 def delete_shatterpoint_players(guild_id: int) -> TableClause:
-    return ref_gb_staging_player_table.delete().where(ref_gb_staging_player_table.c.guild_id == guild_id)
+    return ref_gb_staging_player_table.delete().where(
+        ref_gb_staging_player_table.c.guild_id == guild_id
+    )
+
 
 class ShatterpointRenown(object):
     def __init__(self, db: aiopg.sa.Engine, **kwargs):
         self._db = db
-        self.guild_id = kwargs.get('guild_id')
-        self.faction: Faction = kwargs.get('faction')
-        self.renown = kwargs.get('renown', 0)
+        self.guild_id = kwargs.get("guild_id")
+        self.faction: Faction = kwargs.get("faction")
+        self.renown = kwargs.get("renown", 0)
 
     async def upsert(self):
         async with self._db.acquire() as conn:
@@ -342,14 +401,16 @@ class ShatterpointRenown(object):
         async with self._db.acquire() as conn:
             await conn.execute(delete_specific_shatterpoint_renown_query(self))
 
+
 ref_gb_renown_table = sa.Table(
     "ref_gb_renown",
     metadata,
     sa.Column("guild_id", sa.Integer, nullable=False),
     sa.Column("faction", sa.Integer, nullable=False),
     sa.Column("renown", sa.Integer, nullable=False, default=0),
-    sa.PrimaryKeyConstraint("guild_id", "faction")
+    sa.PrimaryKeyConstraint("guild_id", "faction"),
 )
+
 
 class RefRenownSchema(Schema):
     compendium: Compendium
@@ -370,33 +431,40 @@ class RefRenownSchema(Schema):
     def make_gbrenown(self, data, **kwargs):
         return ShatterpointRenown(self.db, **data)
 
+
 def upsert_shatterpoint_renown_query(renown: ShatterpointRenown):
     insert_dict = {
         "guild_id": renown.guild_id,
         "faction": renown.faction.id,
-        "renown": renown.renown
+        "renown": renown.renown,
     }
 
     statement = insert(ref_gb_renown_table).values(insert_dict)
 
     statement = statement.on_conflict_do_update(
         index_elements=["guild_id", "faction"],
-        set_={
-            "renown": statement.excluded.renown
-        }
+        set_={"renown": statement.excluded.renown},
     )
 
     return statement.returning(ref_gb_renown_table)
+
 
 def get_shatterpoint_renown_query(guild_id: int) -> FromClause:
     return ref_gb_renown_table.select().where(
         ref_gb_renown_table.c.guild_id == guild_id
     )
 
-def delete_specific_shatterpoint_renown_query(renown: ShatterpointRenown) -> TableClause:
+
+def delete_specific_shatterpoint_renown_query(
+    renown: ShatterpointRenown,
+) -> TableClause:
     return ref_gb_renown_table.delete().where(
-        sa.and_(ref_gb_renown_table.c.guild_id == renown.guild_id, ref_gb_renown_table.c.faction == renown.faction.id)
+        sa.and_(
+            ref_gb_renown_table.c.guild_id == renown.guild_id,
+            ref_gb_renown_table.c.faction == renown.faction.id,
+        )
     )
+
 
 def delete_all_shatterpoint_renown_query(guild_id: int) -> TableClause:
     return ref_gb_renown_table.delete().where(

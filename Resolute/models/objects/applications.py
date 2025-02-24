@@ -35,19 +35,20 @@ class AppBaseScores(object):
     output():
         Returns a formatted string of the attributes.
     """
+
     def __init__(self, **kwargs):
-        self.str = kwargs.get('str',"")
-        self.dex = kwargs.get('dex',"")
-        self.con = kwargs.get('con',"")
-        self.int = kwargs.get('int',"")
-        self.wis = kwargs.get('wis',"")
-        self.cha = kwargs.get('cha',"")
+        self.str = kwargs.get("str", "")
+        self.dex = kwargs.get("dex", "")
+        self.con = kwargs.get("con", "")
+        self.int = kwargs.get("int", "")
+        self.wis = kwargs.get("wis", "")
+        self.cha = kwargs.get("cha", "")
 
     def status(self) -> str:
         """
         Returns the status of the object based on its attributes.
-        This method collects the object's attributes (strength, dexterity, 
-        constitution, intelligence, wisdom, and charisma) into a list and 
+        This method collects the object's attributes (strength, dexterity,
+        constitution, intelligence, wisdom, and charisma) into a list and
         returns their status.
         Returns:
             status: The status of the object based on its attributes.
@@ -60,15 +61,17 @@ class AppBaseScores(object):
         """
         Generates a formatted string representing the character's attributes.
         Returns:
-            str: A string containing the character's attributes (STR, DEX, CON, INT, WIS, CHA) 
+            str: A string containing the character's attributes (STR, DEX, CON, INT, WIS, CHA)
                  formatted with their respective values.
         """
-        return (f"**STR:** {self.str}\n" 
-               f"**DEX:** {self.dex}\n" 
-               f"**CON:** {self.con}\n"
-               f"**INT:** {self.int}\n"
-               f"**WIS:** {self.wis}\n"
-               f"**CHA:** {self.cha}\n")
+        return (
+            f"**STR:** {self.str}\n"
+            f"**DEX:** {self.dex}\n"
+            f"**CON:** {self.con}\n"
+            f"**INT:** {self.int}\n"
+            f"**WIS:** {self.wis}\n"
+            f"**CHA:** {self.cha}\n"
+        )
 
 
 class AppSpecies(object):
@@ -91,10 +94,11 @@ class AppSpecies(object):
     output():
         Returns a formatted string with the species, ASIs, and features.
     """
+
     def __init__(self, **kwargs):
-        self.species = kwargs.get('species', "")
-        self.asi = kwargs.get('asi', "")
-        self.feats = kwargs.get('feats', "")
+        self.species = kwargs.get("species", "")
+        self.asi = kwargs.get("asi", "")
+        self.feats = kwargs.get("feats", "")
 
     def get_field(self) -> str:
         """
@@ -118,7 +122,7 @@ class AppSpecies(object):
         """
         attributes = [self.species, self.asi, self.feats]
 
-        return status(attributes )
+        return status(attributes)
 
     def output(self) -> str:
         """
@@ -126,9 +130,11 @@ class AppSpecies(object):
         Returns:
             str: A formatted string with the species, ASI, and features.
         """
-        return (f"**Species:** {self.species}\n"
-                f"**ASI:** {self.asi}\n"
-                f"**Features:** {self.feats}\n")
+        return (
+            f"**Species:** {self.species}\n"
+            f"**ASI:** {self.asi}\n"
+            f"**Features:** {self.feats}\n"
+        )
 
 
 class AppClass(object):
@@ -153,11 +159,12 @@ class AppClass(object):
     output():
         Returns a formatted string representation of the application's attributes.
     """
+
     def __init__(self, **kwargs):
-        self.char_class = kwargs.get('char_class',"")
-        self.skills = kwargs.get('skills',"")
-        self.feats = kwargs.get('feats',"")
-        self.equipment = kwargs.get('equipment',"")
+        self.char_class = kwargs.get("char_class", "")
+        self.skills = kwargs.get("skills", "")
+        self.feats = kwargs.get("feats", "")
+        self.equipment = kwargs.get("equipment", "")
 
     def status(self) -> str:
         """
@@ -177,10 +184,12 @@ class AppClass(object):
         Returns:
             str: A formatted string with the character's class, skills, features, and equipment.
         """
-        return (f"**Class:** {self.char_class}\n"
-                f"**Skills:** {self.skills}\n"
-                f"**Features:** {self.feats}\n"
-                f"**Equipment:** {self.equipment}")
+        return (
+            f"**Class:** {self.char_class}\n"
+            f"**Skills:** {self.skills}\n"
+            f"**Features:** {self.feats}\n"
+            f"**Equipment:** {self.equipment}"
+        )
 
 
 class AppBackground(object):
@@ -207,6 +216,7 @@ class AppBackground(object):
     output():
         Returns a formatted string representation of the background information.
     """
+
     background: str = ""
     skills: str = ""
     tools: str = ""
@@ -214,22 +224,28 @@ class AppBackground(object):
     equipment: str = ""
 
     def __init__(self, **kwargs):
-        self.background = kwargs.get('background',"")
-        self.skills = kwargs.get('skills',"")
-        self.tools = kwargs.get('tools',"")
-        self.feat = kwargs.get('feat',"")
-        self.equipment = kwargs.get('equipment',"")
+        self.background = kwargs.get("background", "")
+        self.skills = kwargs.get("skills", "")
+        self.tools = kwargs.get("tools", "")
+        self.feat = kwargs.get("feat", "")
+        self.equipment = kwargs.get("equipment", "")
 
     def status(self) -> str:
         """
         Returns the status of the application based on its attributes.
-        This method collects various attributes of the application, such as 
-        background, skills, tools, feat, and equipment, and returns their 
+        This method collects various attributes of the application, such as
+        background, skills, tools, feat, and equipment, and returns their
         combined status.
         Returns:
             status: The combined status of the application's attributes.
         """
-        attributes = [self.background, self.skills, self.tools, self.feat, self.equipment]
+        attributes = [
+            self.background,
+            self.skills,
+            self.tools,
+            self.feat,
+            self.equipment,
+        ]
         return status(attributes)
 
     def output(self) -> str:
@@ -243,11 +259,13 @@ class AppBackground(object):
                 - Feat
                 - Equipment
         """
-        return (f"**Background:** {self.background}\n"
-                f"**Skills:** {self.skills}\n"
-                f"**Tools/Languages:** {self.tools}\n"
-                f"**Feat:** {self.feat}\n"
-                f"**Equipment:** {self.equipment}")
+        return (
+            f"**Background:** {self.background}\n"
+            f"**Skills:** {self.skills}\n"
+            f"**Tools/Languages:** {self.tools}\n"
+            f"**Feat:** {self.feat}\n"
+            f"**Equipment:** {self.equipment}"
+        )
 
 
 class NewCharacterApplication(object):
@@ -294,22 +312,23 @@ class NewCharacterApplication(object):
     async load(bot, content: str = None, message: Message = None):
         Loads the application from the given content or message.
     """
+
     def __init__(self, **kwargs):
-        self.message: discord.Message = kwargs.get('message')
-        self.character: PlayerCharacter = kwargs.get('character')
-        self.name = kwargs.get('name',"")
-        self.type: ApplicationType = kwargs.get('type', ApplicationType.new)
-        self.base_scores: AppBaseScores = kwargs.get('base_scores', AppBaseScores())
-        self.species: AppSpecies = kwargs.get('species', AppSpecies())
-        self.char_class: AppClass = kwargs.get('char_class', AppClass())
-        self.background: AppBackground = kwargs.get('background', AppBackground())
-        self.credits = kwargs.get('credits', "0")
-        self.homeworld = kwargs.get('homeworld',"")
-        self.join_motivation = kwargs.get('join_motivation',"")
+        self.message: discord.Message = kwargs.get("message")
+        self.character: PlayerCharacter = kwargs.get("character")
+        self.name = kwargs.get("name", "")
+        self.type: ApplicationType = kwargs.get("type", ApplicationType.new)
+        self.base_scores: AppBaseScores = kwargs.get("base_scores", AppBaseScores())
+        self.species: AppSpecies = kwargs.get("species", AppSpecies())
+        self.char_class: AppClass = kwargs.get("char_class", AppClass())
+        self.background: AppBackground = kwargs.get("background", AppBackground())
+        self.credits = kwargs.get("credits", "0")
+        self.homeworld = kwargs.get("homeworld", "")
+        self.join_motivation = kwargs.get("join_motivation", "")
         self.good_motivation = kwargs.get("good_motivation", "")
-        self.link = kwargs.get('link',"")
-        self.hp = kwargs.get('hp',"")
-        self.level = kwargs.get('level', "1")
+        self.link = kwargs.get("link", "")
+        self.hp = kwargs.get("hp", "")
+        self.level = kwargs.get("level", "1")
 
     def can_submit(self) -> bool:
         """
@@ -330,14 +349,13 @@ class NewCharacterApplication(object):
             self.name,
             self.link,
             self.homeworld,
-            self.good_motivation
+            self.good_motivation,
         ]
 
-        if all('Complete' in field or field for field in required_fields):
+        if all("Complete" in field or field for field in required_fields):
             return True
         else:
             return False
-
 
     def format_app(self, owner: discord.Member, staff: discord.Role = None) -> str:
         """
@@ -348,9 +366,17 @@ class NewCharacterApplication(object):
         Returns:
             str: A formatted string containing the application details.
         """
-        hp_str = f"**HP:** {self.hp}\n\n" if self.hp != "" and self.hp != "None" and self.hp is not None else ""
-        level_str=f"**Level:** {self.level}\n" if self.level != "" else "" 
-        reroll_str=f"**Reroll From:** {self.character.name} [{self.character.id}]\n" if self.type in [ApplicationType.death, ApplicationType.freeroll] else ""
+        hp_str = (
+            f"**HP:** {self.hp}\n\n"
+            if self.hp != "" and self.hp != "None" and self.hp is not None
+            else ""
+        )
+        level_str = f"**Level:** {self.level}\n" if self.level != "" else ""
+        reroll_str = (
+            f"**Reroll From:** {self.character.name} [{self.character.id}]\n"
+            if self.type in [ApplicationType.death, ApplicationType.freeroll]
+            else ""
+        )
         return (
             f"**{self.type.value}** | {staff.mention if staff else 'Archivist'}\n"
             f"{reroll_str}"
@@ -384,7 +410,7 @@ class NewCharacterApplication(object):
             f"**Motivation for doing good:** {self.good_motivation}\n\n"
             f"**Link:** {self.link}"
         )
-    
+
     async def load(self, bot, content: str = None, message: discord.Message = None):
         """
         Asynchronously loads a new character application from the provided content or message.
@@ -399,74 +425,111 @@ class NewCharacterApplication(object):
 
         def get_match(pattern, text, group=1, default=None):
             match = re.search(pattern, text, re.DOTALL)
-            return match.group(group) if match and match.group(group) != 'None' else default
-        
+            return (
+                match.group(group)
+                if match and match.group(group) != "None"
+                else default
+            )
 
         type_match = re.search(r"^\*\*(.*?)\*\*\s\|", app_text, re.MULTILINE)
 
-        base_scores_match = re.search(r"STR: (.*?)\n"
-                                    r"DEX: (.*?)\n"
-                                    r"CON: (.*?)\n"
-                                    r"INT: (.*?)\n"
-                                    r"WIS: (.*?)\n"
-                                    r"CHA: (.*?)\n", app_text)
-        
-        species_match = re.search(r"\*\*Species:\*\* (.+?)\n"
-                                r"ASIs: (.+?)\n"
-                                r"Features: (.+?)\n", app_text, re.DOTALL)
-        
-        char_class_match = re.search(r"\*\*Class:\*\* (.+?)\n"
-                                    r"Skills: (.*?)(?=\nFeatures:)\n"
-                                    r"Features: (.*?)(?=\n\n\*\*)", app_text, re.DOTALL)
-        
-        background_match = re.search(r"\*\*Background:\*\* (.+?)\n"
-                                    r"Skills: (.+?)\n"
-                                    r"Tools/Languages: (.+?)\n"
-                                    r"Feat: (.+?)\n\n", app_text)
-        
-        equip_match = re.search(r"\*\*Equipment:\*\*\n"
-                                r"Class: (.*?)(?=\nBackground:)\n"
-                                r"Background: (.*?)(?=\nCredits:)", app_text, re.DOTALL)
+        base_scores_match = re.search(
+            r"STR: (.*?)\n"
+            r"DEX: (.*?)\n"
+            r"CON: (.*?)\n"
+            r"INT: (.*?)\n"
+            r"WIS: (.*?)\n"
+            r"CHA: (.*?)\n",
+            app_text,
+        )
+
+        species_match = re.search(
+            r"\*\*Species:\*\* (.+?)\n" r"ASIs: (.+?)\n" r"Features: (.+?)\n",
+            app_text,
+            re.DOTALL,
+        )
+
+        char_class_match = re.search(
+            r"\*\*Class:\*\* (.+?)\n"
+            r"Skills: (.*?)(?=\nFeatures:)\n"
+            r"Features: (.*?)(?=\n\n\*\*)",
+            app_text,
+            re.DOTALL,
+        )
+
+        background_match = re.search(
+            r"\*\*Background:\*\* (.+?)\n"
+            r"Skills: (.+?)\n"
+            r"Tools/Languages: (.+?)\n"
+            r"Feat: (.+?)\n\n",
+            app_text,
+        )
+
+        equip_match = re.search(
+            r"\*\*Equipment:\*\*\n"
+            r"Class: (.*?)(?=\nBackground:)\n"
+            r"Background: (.*?)(?=\nCredits:)",
+            app_text,
+            re.DOTALL,
+        )
 
         char_id = get_match(r"\*\*Reroll\sFrom:\*\*(.*?)\s\[(\d+)\]\n", app_text, 2)
 
         application = NewCharacterApplication(
             message=message,
             name=get_match(r"\*\*Name:\*\* (.+?)\n\*\*Player", app_text),
-            type=next((a for a in ApplicationType if a.value == type_match.group(1).strip().replace('*', '')), ApplicationType.new) if type_match else ApplicationType.new,
+            type=(
+                next(
+                    (
+                        a
+                        for a in ApplicationType
+                        if a.value == type_match.group(1).strip().replace("*", "")
+                    ),
+                    ApplicationType.new,
+                )
+                if type_match
+                else ApplicationType.new
+            ),
             base_scores=AppBaseScores(
-                str=base_scores_match.group(1) if base_scores_match else "", 
+                str=base_scores_match.group(1) if base_scores_match else "",
                 dex=base_scores_match.group(2) if base_scores_match else "",
                 con=base_scores_match.group(3) if base_scores_match else "",
                 int=base_scores_match.group(4) if base_scores_match else "",
                 wis=base_scores_match.group(5) if base_scores_match else "",
-                cha=base_scores_match.group(6) if base_scores_match else ""
+                cha=base_scores_match.group(6) if base_scores_match else "",
             ),
             species=AppSpecies(
                 species=species_match.group(1) if species_match else "",
                 asi=species_match.group(2) if species_match else "",
-                feats=species_match.group(3) if species_match else ""
+                feats=species_match.group(3) if species_match else "",
             ),
             char_class=AppClass(
                 char_class=char_class_match.group(1) if char_class_match else "",
                 skills=char_class_match.group(2) if char_class_match else "",
                 feats=char_class_match.group(3) if char_class_match else "",
-                equipment=equip_match.group(1) if equip_match else ""
+                equipment=equip_match.group(1) if equip_match else "",
             ),
             background=AppBackground(
                 background=background_match.group(1) if background_match else "",
                 skills=background_match.group(2) if background_match else "",
                 tools=background_match.group(3) if background_match else "",
                 feat=background_match.group(4) if background_match else "",
-                equipment=equip_match.group(2) if equip_match else ""
+                equipment=equip_match.group(2) if equip_match else "",
             ),
             credits=get_match(r"Credits: (.+?)\n", app_text, 1, "0"),
-            homeworld=get_match(r"\*\*Homeworld:\*\* (.*?)(?=\n\*\*Motivation)", app_text),
-            join_motivation=get_match(r"\*\*Motivation for joining the Wardens of the Sky:\*\* (.*?)(?=\n\n\*\*)", app_text),
-            good_motivation=get_match(r"\*\*Motivation for doing good:\*\* (.*?)(?=\n\n\*\*)", app_text),
+            homeworld=get_match(
+                r"\*\*Homeworld:\*\* (.*?)(?=\n\*\*Motivation)", app_text
+            ),
+            join_motivation=get_match(
+                r"\*\*Motivation for joining the Wardens of the Sky:\*\* (.*?)(?=\n\n\*\*)",
+                app_text,
+            ),
+            good_motivation=get_match(
+                r"\*\*Motivation for doing good:\*\* (.*?)(?=\n\n\*\*)", app_text
+            ),
             link=get_match(r"\*\*Link:\*\* (.+)", app_text),
             level=get_match(r"\*\*Level:\*\* (.+?)\n", app_text),
-            hp=get_match(r"\*\*HP:\*\* (.+?)\n", app_text)
+            hp=get_match(r"\*\*HP:\*\* (.+?)\n", app_text),
         )
 
         if char_id:
@@ -474,34 +537,33 @@ class NewCharacterApplication(object):
 
         return application
 
-    
+
 ref_applications_table = sa.Table(
     "ref_character_applications",
     metadata,
     sa.Column("id", sa.BigInteger, primary_key=True),
-    sa.Column("application", sa.String, nullable=False)
+    sa.Column("application", sa.String, nullable=False),
 )
+
 
 class ApplicationSchema(Schema):
     id = fields.Integer(required=True)
     application = fields.String(required=True)
 
+
 def get_player_application(char_id: int) -> FromClause:
-    return ref_applications_table.select().where(
-        ref_applications_table.c.id == char_id
-    )
+    return ref_applications_table.select().where(ref_applications_table.c.id == char_id)
+
 
 def insert_player_application(char_id: int, application: str) -> TableClause:
-    return ref_applications_table.insert().values(
-        id = char_id,
-        application = application
-    )
+    return ref_applications_table.insert().values(id=char_id, application=application)
+
 
 def delete_player_application(char_id: int) -> TableClause:
-    return ref_applications_table.delete() \
-    .where(ref_applications_table.c.id == char_id)
-    
-def status(attributes = []) -> str:
+    return ref_applications_table.delete().where(ref_applications_table.c.id == char_id)
+
+
+def status(attributes=[]) -> str:
     """
     Determine the status of an application based on its attributes.
     Args:
@@ -513,11 +575,12 @@ def status(attributes = []) -> str:
              - "<:pencil:989284061786808380> -- In-Progress" if some attributes are empty and some are non-empty.
     """
     if all(a is None or a == "" for a in attributes):
-        return "<:x:983576786447245312> -- Incomplete" 
+        return "<:x:983576786447245312> -- Incomplete"
     elif all(a is not None and a != "" for a in attributes):
         return "<:white_check_mark:983576747381518396> -- Complete"
     else:
         return "<:pencil:989284061786808380> -- In-Progress"
+
 
 class LevelUpApplication(object):
     """
@@ -547,31 +610,30 @@ class LevelUpApplication(object):
     async load(bot, content: str = None, message: Message = None):
         Loads the application details from a message or content string.
     """
+
     def __init__(self, **kwargs):
-        self.message: discord.Message = kwargs.get('message')
-        self.level = kwargs.get('level')
-        self.hp = kwargs.get('hp')
-        self.feats = kwargs.get('feats')
-        self.changes = kwargs.get('changes')
-        self.link = kwargs.get('link')
-        self._character: PlayerCharacter = kwargs.get('character')
-        self.type=ApplicationType.level
+        self.message: discord.Message = kwargs.get("message")
+        self.level = kwargs.get("level")
+        self.hp = kwargs.get("hp")
+        self.feats = kwargs.get("feats")
+        self.changes = kwargs.get("changes")
+        self.link = kwargs.get("link")
+        self._character: PlayerCharacter = kwargs.get("character")
+        self.type = ApplicationType.level
 
         if not self.level and self._character:
-            self.level = self._character.level+1
+            self.level = self._character.level + 1
 
-    
     @property
     def character(self):
         return self._character
-    
+
     @character.setter
     def character(self, value):
         self._character = value
 
         if not self.level:
-            self.level = self._character.level+1
-
+            self.level = self._character.level + 1
 
     def format_app(self, owner: discord.Member, staff: discord.Role = None) -> str:
         """
@@ -592,7 +654,7 @@ class LevelUpApplication(object):
             f"**Changes:** {self.changes}\n"
             f"**Link:** {self.link}\n\n"
         )
-    
+
     async def load(self, bot, content: str = None, message: discord.Message = None):
         """
         Asynchronously loads an application from the provided content or message.
@@ -607,24 +669,27 @@ class LevelUpApplication(object):
 
         def get_match(pattern, text, group=1, default=None):
             match = re.search(pattern, text, re.DOTALL)
-            return match.group(group) if match and match.group(group) != 'None' else default
-        
+            return (
+                match.group(group)
+                if match and match.group(group) != "None"
+                else default
+            )
+
         char_id = get_match(r"\*\*Name:\*\*(.*?)\s\[(\d+)\]\n", app_text, 2)
-        
+
         application = LevelUpApplication(
             message=message,
             level=get_match(r"\*\*New Level:\*\* (.+?)\n", app_text),
             hp=get_match(r"\*\*HP:\*\* (.+?)\n", app_text),
             feats=get_match(r"\*\*New Features:\*\* (.+?)(?=\n\*\*)", app_text),
             changes=get_match(r"\*\*Changes:\*\* (.+?)(?=\n\*\*)", app_text),
-            link=get_match(r"\*\*Link:\*\* (.+)", app_text)
+            link=get_match(r"\*\*Link:\*\* (.+)", app_text),
         )
 
         if char_id:
             application.character = await bot.get_character(char_id)
 
         return application
-
 
 
 class PlayerApplication(object):
@@ -651,15 +716,20 @@ class PlayerApplication(object):
     async load(message: Message = None):
         Loads the player's application from the database or a given message.
     """
-    cached: bool = False 
+
+    cached: bool = False
 
     def __init__(self, bot, owner: discord.Member | discord.User, **kwargs):
         self._bot = bot
         self.owner = owner
-        type = kwargs.get('type', ApplicationType.new)
-        self.edit = kwargs.get('edit', False)
+        type = kwargs.get("type", ApplicationType.new)
+        self.edit = kwargs.get("edit", False)
 
-        if type in [ApplicationType.new, ApplicationType.death, ApplicationType.freeroll]:
+        if type in [
+            ApplicationType.new,
+            ApplicationType.death,
+            ApplicationType.freeroll,
+        ]:
             self.application = NewCharacterApplication(type=type)
         else:
             self.application = LevelUpApplication()
@@ -667,14 +737,18 @@ class PlayerApplication(object):
     async def upsert(self) -> None:
         """
         Asynchronously inserts or updates the player's application in the database.
-        If the application exists, it formats the application data for the owner and 
+        If the application exists, it formats the application data for the owner and
         inserts or updates it in the database using an asynchronous connection.
         Returns:
             None
         """
         if self.application:
             async with self._bot.db.acquire() as conn:
-                await conn.execute(insert_player_application(self.owner.id, self.application.format_app(self.owner)))
+                await conn.execute(
+                    insert_player_application(
+                        self.owner.id, self.application.format_app(self.owner)
+                    )
+                )
 
     async def delete(self) -> None:
         """
@@ -708,31 +782,31 @@ class PlayerApplication(object):
                 return PlayerApplication(self._bot, self.owner)
             application = ApplicationSchema().load(row)
             self.cached = True
-            content = application["application"] 
+            content = application["application"]
         else:
             content = message.content
 
         player_match = re.search(r"^\*\*Player:\*\* (.+)", content, re.MULTILINE)
         type_match = re.search(r"^\*\*(.*?)\*\*\s\|", content, re.MULTILINE)
-        type_string = type_match.group(1).strip().replace('*', '') if type_match else None
+        type_string = (
+            type_match.group(1).strip().replace("*", "") if type_match else None
+        )
         type = ApplicationType(type_string) if type_string else None
 
         if player_match and str(self.owner.id) in player_match.group(1):
-            if type and type in [ApplicationType.death, ApplicationType.freeroll, ApplicationType.new]:
-                self.application = await NewCharacterApplication().load(self._bot, content, message)
+            if type and type in [
+                ApplicationType.death,
+                ApplicationType.freeroll,
+                ApplicationType.new,
+            ]:
+                self.application = await NewCharacterApplication().load(
+                    self._bot, content, message
+                )
             elif type and type in [ApplicationType.level]:
-                self.application = await LevelUpApplication().load(self._bot, content, message)
+                self.application = await LevelUpApplication().load(
+                    self._bot, content, message
+                )
             else:
                 raise G0T0Error("Unsure what tye of application this is")
         else:
             raise G0T0Error("Not your application")
-
-
-            
-
-
-
-
-        
-
-    

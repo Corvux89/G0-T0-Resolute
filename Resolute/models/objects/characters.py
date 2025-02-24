@@ -7,8 +7,11 @@ from sqlalchemy.sql import FromClause
 
 from Resolute.compendium import Compendium
 from Resolute.models import metadata
-from Resolute.models.categories import (CharacterArchetype, CharacterClass,
-                                        CharacterSpecies)
+from Resolute.models.categories import (
+    CharacterArchetype,
+    CharacterClass,
+    CharacterSpecies,
+)
 from Resolute.models.categories.categories import Faction
 from Resolute.models.objects.guilds import PlayerGuild
 from Resolute.models.objects.ref_objects import RefServerCalendar
@@ -30,6 +33,7 @@ class CharacterRenown(object):
         async upsert():
             Inserts or updates the character renown in the database and returns the updated renown object.
     """
+
     def __init__(self, db: aiopg.sa.Engine, compendium: Compendium, **kwargs):
         self._db = db
         self._compendium = compendium
@@ -50,7 +54,7 @@ class CharacterRenown(object):
             str: The formatted renown string in the format "**<faction>**: <renown>".
         """
         return f"**{self.faction.value}**: {max(0, self.renown)}"
-    
+
     async def upsert(self):
         """
         Asynchronously upserts a character's renown data into the database.
@@ -67,14 +71,16 @@ class CharacterRenown(object):
 
         return renown
 
+
 renown_table = sa.Table(
     "renown",
     metadata,
-    sa.Column("id", sa.Integer, primary_key=True, autoincrement='auto'),
+    sa.Column("id", sa.Integer, primary_key=True, autoincrement="auto"),
     sa.Column("character_id", sa.Integer, nullable=False),  # ref: > characters.id
     sa.Column("faction", sa.Integer, nullable=False),
-    sa.Column("renown", sa.Integer)
+    sa.Column("renown", sa.Integer),
 )
+
 
 class RenownSchema(Schema):
     db: aiopg.sa.Engine
@@ -98,29 +104,43 @@ class RenownSchema(Schema):
     def load_faction(self, value):
         return self.compendium.get_object(Faction, value)
 
+
 def get_character_renown(char_id: int) -> FromClause:
-    return renown_table.select().where(
-        renown_table.c.character_id == char_id
-    ).order_by(renown_table.c.id.asc())
+    return (
+        renown_table.select()
+        .where(renown_table.c.character_id == char_id)
+        .order_by(renown_table.c.id.asc())
+    )
+
 
 def upsert_character_renown_query(renown: CharacterRenown):
     if hasattr(renown, "id") and renown.id is not None:
         update_dict = {
             "character_id": renown.character_id,
             "faction": renown.faction.id,
-            "renown": renown.renown
+            "renown": renown.renown,
         }
 
-        update_statement = renown_table.update().where(renown_table.c.id == renown.id).values(**update_dict).returning(renown_table)
+        update_statement = (
+            renown_table.update()
+            .where(renown_table.c.id == renown.id)
+            .values(**update_dict)
+            .returning(renown_table)
+        )
         return update_statement
 
-    insert_statement = insert(renown_table).values(
-        character_id=renown.character_id,
-        faction=renown.faction.id,
-        renown=renown.renown
-    ).returning(renown_table)
+    insert_statement = (
+        insert(renown_table)
+        .values(
+            character_id=renown.character_id,
+            faction=renown.faction.id,
+            renown=renown.renown,
+        )
+        .returning(renown_table)
+    )
 
     return insert_statement
+
 
 class PlayerCharacterClass(object):
     """
@@ -144,15 +164,15 @@ class PlayerCharacterClass(object):
             Inserts or updates the player character class in the database.
     """
 
-    def __init__(self,db: aiopg.sa.Engine, compendium: Compendium, **kwargs):
+    def __init__(self, db: aiopg.sa.Engine, compendium: Compendium, **kwargs):
         self._db = db
         self._compendium = compendium
 
-        self.id = kwargs.get('id')
-        self.character_id = kwargs.get('character_id')
-        self.primary_class: CharacterClass = kwargs.get('primary_class')
-        self.archetype: CharacterArchetype = kwargs.get('archetype')
-        self.active = kwargs.get('active', True)
+        self.id = kwargs.get("id")
+        self.character_id = kwargs.get("character_id")
+        self.primary_class: CharacterClass = kwargs.get("primary_class")
+        self.archetype: CharacterArchetype = kwargs.get("archetype")
+        self.active = kwargs.get("active", True)
 
     def is_valid(self) -> bool:
         """
@@ -163,17 +183,17 @@ class PlayerCharacterClass(object):
             bool: True if the character object has a `primary_class` attribute that is not None, False otherwise.
         """
         self.active = True if not hasattr(self, "active") else self.active
-        return (hasattr(self, "primary_class") and self.primary_class is not None)
+        return hasattr(self, "primary_class") and self.primary_class is not None
 
     def get_formatted_class(self) -> str:
         """
         Returns a formatted string representing the character's class.
-        The format of the returned string depends on the presence and value of the 
+        The format of the returned string depends on the presence and value of the
         `archetype` and `primary_class` attributes of the character object.
         Returns:
-            str: A formatted string combining the `archetype` and `primary_class` 
-                 values if both are present, or just the `primary_class` value if 
-                 `archetype` is not present. Returns an empty string if neither 
+            str: A formatted string combining the `archetype` and `primary_class`
+                 values if both are present, or just the `primary_class` value if
+                 `archetype` is not present. Returns an empty string if neither
                  attribute is present or both are None.
         """
         if hasattr(self, "archetype") and self.archetype is not None:
@@ -182,12 +202,12 @@ class PlayerCharacterClass(object):
             return f"{self.primary_class.value}"
         else:
             return ""
-        
+
     async def upsert(self):
         """
         Asynchronously upserts the current player character class into the database.
-        This method acquires a database connection, executes an upsert query for the 
-        current player character class, and loads the resulting row into a new 
+        This method acquires a database connection, executes an upsert query for the
+        current player character class, and loads the resulting row into a new
         PlayerCharacterClass instance.
         Returns:
             PlayerCharacterClass: The newly upserted player character class.
@@ -199,17 +219,21 @@ class PlayerCharacterClass(object):
         new_class = PlayerCharacterClassSchema(self._db, self._compendium).load(row)
 
         return new_class
-        
+
+
 character_class_table = sa.Table(
     "character_class",
     metadata,
-    sa.Column("id", sa.Integer, primary_key=True, autoincrement='auto'),
+    sa.Column("id", sa.Integer, primary_key=True, autoincrement="auto"),
     sa.Column("character_id", sa.Integer, nullable=False),  # ref: > characters.id
-    sa.Column("primary_class", sa.Integer, nullable=False),  # ref: > c_character_class.id
+    sa.Column(
+        "primary_class", sa.Integer, nullable=False
+    ),  # ref: > c_character_class.id
     sa.Column("archetype", sa.Integer, nullable=True),  # ref: > c_character_subclass.id
-    sa.Column("active", sa.BOOLEAN, nullable=False, default=True)
+    sa.Column("active", sa.BOOLEAN, nullable=False, default=True),
 )
-        
+
+
 class PlayerCharacterClassSchema(Schema):
     db: aiopg.sa.Engine
     compendium: Compendium
@@ -236,33 +260,59 @@ class PlayerCharacterClassSchema(Schema):
     def load_archetype(self, value):
         return self.compendium.get_object(CharacterArchetype, value)
 
-    
+
 def get_character_class(char_id: int) -> FromClause:
-    return character_class_table.select().where(
-        sa.and_(character_class_table.c.character_id == char_id, character_class_table.c.active == True)
-    ).order_by(character_class_table.c.id.asc())
+    return (
+        character_class_table.select()
+        .where(
+            sa.and_(
+                character_class_table.c.character_id == char_id,
+                character_class_table.c.active == True,
+            )
+        )
+        .order_by(character_class_table.c.id.asc())
+    )
+
 
 def upsert_class_query(char_class: PlayerCharacterClass):
     if hasattr(char_class, "id") and char_class.id is not None:
         update_dict = {
-            'character_id': char_class.character_id,
-            'primary_class': char_class.primary_class.id,
-            'archetype': None if not hasattr(char_class.archetype, 'id') else char_class.archetype.id,
-            'active': char_class.active
+            "character_id": char_class.character_id,
+            "primary_class": char_class.primary_class.id,
+            "archetype": (
+                None
+                if not hasattr(char_class.archetype, "id")
+                else char_class.archetype.id
+            ),
+            "active": char_class.active,
         }
-        
-        update_statement = character_class_table.update().where(character_class_table.c.id == char_class.id).values(**update_dict).returning(character_class_table)
+
+        update_statement = (
+            character_class_table.update()
+            .where(character_class_table.c.id == char_class.id)
+            .values(**update_dict)
+            .returning(character_class_table)
+        )
         return update_statement
-    
-    insert_statement = insert(character_class_table).values(
-        character_id=char_class.character_id,
-        primary_class=char_class.primary_class.id,
-        archetype=None if not hasattr(char_class.archetype, "id") else char_class.archetype.id
-    ).returning(character_class_table)
+
+    insert_statement = (
+        insert(character_class_table)
+        .values(
+            character_id=char_class.character_id,
+            primary_class=char_class.primary_class.id,
+            archetype=(
+                None
+                if not hasattr(char_class.archetype, "id")
+                else char_class.archetype.id
+            ),
+        )
+        .returning(character_class_table)
+    )
 
     return insert_statement
 
-class PlayerCharacter(object): 
+
+class PlayerCharacter(object):
     """
     Represents a player character in the game.
     Attributes:
@@ -296,22 +346,22 @@ class PlayerCharacter(object):
         self._db = db
         self._compendium = compendium
 
-        self.id = kwargs.get('id')
-        self.name = kwargs.get('name')
-        self.species: CharacterSpecies = kwargs.get('species')
-        self.credits = kwargs.get('credits', 0)
-        self.level = kwargs.get('level', 1)
-        self.player_id = kwargs.get('player_id')
-        self.guild_id = kwargs.get('guild_id')
-        self.reroll = kwargs.get('reroll', False)
-        self.active = kwargs.get('active', True)
-        self.freeroll_from = kwargs.get('freeroll_from', None)
-        self.primary_character = kwargs.get('primary_character', False)
-        self.channels: list = kwargs.get('channels', [])
-        self.faction: Faction = kwargs.get('faction')
-        self.avatar_url = kwargs.get('avatar_url')
-        self.nickname = kwargs.get('nickname')
-        self.dob = kwargs.get('dob')
+        self.id = kwargs.get("id")
+        self.name = kwargs.get("name")
+        self.species: CharacterSpecies = kwargs.get("species")
+        self.credits = kwargs.get("credits", 0)
+        self.level = kwargs.get("level", 1)
+        self.player_id = kwargs.get("player_id")
+        self.guild_id = kwargs.get("guild_id")
+        self.reroll = kwargs.get("reroll", False)
+        self.active = kwargs.get("active", True)
+        self.freeroll_from = kwargs.get("freeroll_from", None)
+        self.primary_character = kwargs.get("primary_character", False)
+        self.channels: list = kwargs.get("channels", [])
+        self.faction: Faction = kwargs.get("faction")
+        self.avatar_url = kwargs.get("avatar_url")
+        self.nickname = kwargs.get("nickname")
+        self.dob = kwargs.get("dob")
 
         # Virtual Attributes
         self.classes: list[PlayerCharacterClass] = []
@@ -324,21 +374,28 @@ class PlayerCharacter(object):
         if hasattr(self, "renown") and self.renown:
             total += sum(ren.renown for ren in self.renown)
         return total
-    
+
     def formatted_dob(self, guild: PlayerGuild) -> str:
         return f"{f'{guild.epoch_notation}::' if guild.epoch_notation else ''}{self.dob_year(guild):02}:{self.dob_month(guild).display_name}:{self.dob_day(guild):02}"
-    
+
     def dob_year(self, guild: PlayerGuild) -> int:
         if not guild.calendar or self.dob is None:
             return None
         return floor(self.dob / guild.days_in_server_year)
-    
+
     def dob_month(self, guild: PlayerGuild) -> RefServerCalendar:
         if not guild.calendar or self.dob is None:
             return None
         days_in_year = self.dob % guild.days_in_server_year
-        return next((month for month in guild.calendar if month.day_start <= days_in_year <= month.day_end), None)
-    
+        return next(
+            (
+                month
+                for month in guild.calendar
+                if month.day_start <= days_in_year <= month.day_end
+            ),
+            None,
+        )
+
     def dob_day(self, guild: PlayerGuild) -> int:
         month = self.dob_month(guild)
 
@@ -346,11 +403,11 @@ class PlayerCharacter(object):
             return None
         days_in_year = self.dob % guild.days_in_server_year
 
-        return days_in_year - month.day_start+1
-    
+        return days_in_year - month.day_start + 1
+
     def age(self, guild: PlayerGuild) -> int:
-        return guild.server_year-self.dob_year(guild)
-    
+        return guild.server_year - self.dob_year(guild)
+
     def inline_class_description(self) -> str:
         """
         Generates a formatted string that describes the character's name, level, species, and classes.
@@ -358,8 +415,9 @@ class PlayerCharacter(object):
             str: A string in the format "**<name>** - Level <level> <species> [<class1> <class2> ...]"
         """
         class_str = "".join([f" {c.get_formatted_class()}" for c in self.classes])
-        return f"**{self.name}** - Level {self.level} {self.species.value} [{class_str}]" 
-
+        return (
+            f"**{self.name}** - Level {self.level} {self.species.value} [{class_str}]"
+        )
 
     def is_valid(self, max_level: int) -> bool:
         """
@@ -371,9 +429,14 @@ class PlayerCharacter(object):
         Returns:
             bool: True if the character is valid, False otherwise.
         """
-        return (hasattr(self, "name") and self.name is not None and 
-                hasattr(self, "species") and self.species is not None and
-                hasattr(self, "level") and 0 < self.level <= max_level)
+        return (
+            hasattr(self, "name")
+            and self.name is not None
+            and hasattr(self, "species")
+            and self.species is not None
+            and hasattr(self, "level")
+            and 0 < self.level <= max_level
+        )
 
     async def upsert(self):
         """
@@ -387,11 +450,12 @@ class PlayerCharacter(object):
             results = await conn.execute(upsert_character_query(self))
             row = await results.first()
 
-        character: PlayerCharacter = await CharacterSchema(self._db, self._compendium).load(row)
+        character: PlayerCharacter = await CharacterSchema(
+            self._db, self._compendium
+        ).load(row)
 
         return character
 
-    
     async def update_renown(self, faction: Faction, renown: int) -> CharacterRenown:
         """
         Updates the renown of the character for a given faction.
@@ -403,10 +467,12 @@ class PlayerCharacter(object):
         Returns:
             CharacterRenown: The updated or newly created CharacterRenown object.
         """
-        character_renown = next((r for r in self.renown if r.faction.id == faction.id), 
-                                CharacterRenown(self._db, self._compendium,
-                                    faction=faction,
-                                    character_id=self.id))
+        character_renown = next(
+            (r for r in self.renown if r.faction.id == faction.id),
+            CharacterRenown(
+                self._db, self._compendium, faction=faction, character_id=self.id
+            ),
+        )
         character_renown.renown += renown
         await character_renown.upsert()
 
@@ -416,7 +482,7 @@ class PlayerCharacter(object):
 characters_table = sa.Table(
     "characters",
     metadata,
-    sa.Column("id", sa.Integer, primary_key=True, autoincrement='auto'),
+    sa.Column("id", sa.Integer, primary_key=True, autoincrement="auto"),
     sa.Column("name", sa.String, nullable=False),
     sa.Column("species", sa.Integer, nullable=False),  # ref: > c_character_race.id
     sa.Column("credits", sa.Integer, nullable=False, default=0),
@@ -431,8 +497,9 @@ characters_table = sa.Table(
     sa.Column("faction", sa.Integer, nullable=True),
     sa.Column("avatar_url", sa.String, nullable=True),
     sa.Column("nickname", sa.String, nullable=True),
-    sa.Column("dob", sa.Integer, nullable=True)
+    sa.Column("dob", sa.Integer, nullable=True),
 )
+
 
 class CharacterSchema(Schema):
     db: aiopg.sa.Engine
@@ -469,97 +536,144 @@ class CharacterSchema(Schema):
 
     def load_species(self, value):
         return self.compendium.get_object(CharacterSpecies, value)
-    
+
     def load_faction(self, value):
         return self.compendium.get_object(Faction, value)
-    
+
     async def get_classes(self, character: PlayerCharacter):
         async with self.db.acquire() as conn:
             class_results = await conn.execute(get_character_class(character.id))
             class_rows = await class_results.fetchall()
 
-        character.classes = [PlayerCharacterClassSchema(self.db, self.compendium).load(row) for row in class_rows]
+        character.classes = [
+            PlayerCharacterClassSchema(self.db, self.compendium).load(row)
+            for row in class_rows
+        ]
 
     async def get_renown(self, character: PlayerCharacter):
         async with self.db.acquire() as conn:
             renown_results = await conn.execute(get_character_renown(character.id))
             renown_rows = await renown_results.fetchall()
 
-        character.renown = [RenownSchema(self.db, self.compendium).load(row) for row in renown_rows]
-
+        character.renown = [
+            RenownSchema(self.db, self.compendium).load(row) for row in renown_rows
+        ]
 
 
 def get_active_player_characters(player_id: int, guild_id: int) -> FromClause:
     return characters_table.select().where(
-        sa.and_(characters_table.c.player_id == player_id, characters_table.c.guild_id == guild_id,
-             characters_table.c.active == True)
+        sa.and_(
+            characters_table.c.player_id == player_id,
+            characters_table.c.guild_id == guild_id,
+            characters_table.c.active == True,
+        )
     )
 
+
 def get_all_player_characters(player_id: int, guild_id: int) -> FromClause:
-    return characters_table.select().where(sa.and_(characters_table.c.player_id == player_id, characters_table.c.guild_id == guild_id))
+    return characters_table.select().where(
+        sa.and_(
+            characters_table.c.player_id == player_id,
+            characters_table.c.guild_id == guild_id,
+        )
+    )
+
 
 def get_player_character_history(player_id: int, guild_id: int) -> FromClause:
-    return characters_table.select().where(
-        sa.and_(characters_table.c.player_id == player_id, characters_table.c.guild_id == guild_id)
-    ).order_by(characters_table.c.id.desc())
+    return (
+        characters_table.select()
+        .where(
+            sa.and_(
+                characters_table.c.player_id == player_id,
+                characters_table.c.guild_id == guild_id,
+            )
+        )
+        .order_by(characters_table.c.id.desc())
+    )
 
 
 def get_character_from_id(char_id: int) -> FromClause:
-   return characters_table.select().where(characters_table.c.id == char_id)
+    return characters_table.select().where(characters_table.c.id == char_id)
+
 
 def get_charcters_from_player_list(players: list[int], guild_id: int) -> FromClause:
-    return characters_table.select().where(
-        sa.and_(characters_table.c.player_id.in_(players), characters_table.c.active == True,
-             characters_table.c.guild_id == guild_id)
-    ).order_by(characters_table.c.id.desc())
+    return (
+        characters_table.select()
+        .where(
+            sa.and_(
+                characters_table.c.player_id.in_(players),
+                characters_table.c.active == True,
+                characters_table.c.guild_id == guild_id,
+            )
+        )
+        .order_by(characters_table.c.id.desc())
+    )
+
 
 def get_guild_characters_query(guild_id: int) -> FromClause:
-    return characters_table.select().where(
-        sa.and_(characters_table.c.active == True, characters_table.c.guild_id == guild_id)
-    ).order_by(characters_table.c.id.desc())
+    return (
+        characters_table.select()
+        .where(
+            sa.and_(
+                characters_table.c.active == True,
+                characters_table.c.guild_id == guild_id,
+            )
+        )
+        .order_by(characters_table.c.id.desc())
+    )
 
 
 def upsert_character_query(character: PlayerCharacter):
     if hasattr(character, "id") and character.id is not None:
         update_dict = {
-        'name': character.name,
-        'species': character.species.id,
-        'credits': character.credits,
-        'level': character.level,
-        'player_id': character.player_id,
-        'guild_id': character.guild_id,
-        'reroll': character.reroll,
-        'active': character.active,
-        'freeroll_from': character.freeroll_from if hasattr(character, 'freeroll_from') else None,
-        "avatar_url": character.avatar_url,
-        "channels": character.channels,
-        "primary_character": character.primary_character,
-        "faction": character.faction.id if character.faction else None,
-        "nickname": character.nickname,
-        "dob": character.dob
+            "name": character.name,
+            "species": character.species.id,
+            "credits": character.credits,
+            "level": character.level,
+            "player_id": character.player_id,
+            "guild_id": character.guild_id,
+            "reroll": character.reroll,
+            "active": character.active,
+            "freeroll_from": (
+                character.freeroll_from if hasattr(character, "freeroll_from") else None
+            ),
+            "avatar_url": character.avatar_url,
+            "channels": character.channels,
+            "primary_character": character.primary_character,
+            "faction": character.faction.id if character.faction else None,
+            "nickname": character.nickname,
+            "dob": character.dob,
         }
-        
-        update_statement = characters_table.update().where(characters_table.c.id == character.id).values(**update_dict).returning(characters_table)
+
+        update_statement = (
+            characters_table.update()
+            .where(characters_table.c.id == character.id)
+            .values(**update_dict)
+            .returning(characters_table)
+        )
         return update_statement
 
-
-    insert_statement = insert(characters_table).values(
-        name=character.name,
-        species=character.species.id,
-        credits=character.credits,
-        level=character.level,
-        player_id=character.player_id,
-        guild_id=character.guild_id,
-        reroll=character.reroll,
-        active=character.active,
-        freeroll_from=character.freeroll_from if hasattr(character, "freeroll_from") else None,
-        avatar_url=character.avatar_url,
-        channels=character.channels,
-        primary_character=character.primary_character,
-        faction=character.faction.id if character.faction else None,
-        dob=character.dob
-    ).returning(characters_table)
+    insert_statement = (
+        insert(characters_table)
+        .values(
+            name=character.name,
+            species=character.species.id,
+            credits=character.credits,
+            level=character.level,
+            player_id=character.player_id,
+            guild_id=character.guild_id,
+            reroll=character.reroll,
+            active=character.active,
+            freeroll_from=(
+                character.freeroll_from if hasattr(character, "freeroll_from") else None
+            ),
+            avatar_url=character.avatar_url,
+            channels=character.channels,
+            primary_character=character.primary_character,
+            faction=character.faction.id if character.faction else None,
+            dob=character.dob,
+        )
+        .returning(characters_table)
+    )
 
     return insert_statement
-
-

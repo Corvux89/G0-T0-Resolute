@@ -16,26 +16,35 @@ from Resolute.helpers.general_helpers import get_webhook
 from Resolute.models import metadata
 from Resolute.models.categories.categories import ArenaType, LevelTier
 from Resolute.models.embeds.arenas import ArenaStatusEmbed
-from Resolute.models.objects.adventures import (Adventure, AdventureSchema,
-                                                get_adventures_by_dm_query,
-                                                get_character_adventures_query)
+from Resolute.models.objects.adventures import (
+    Adventure,
+    AdventureSchema,
+    get_adventures_by_dm_query,
+    get_character_adventures_query,
+)
 from Resolute.models.objects.enum import ApplicationType, ArenaPostType
-from Resolute.models.objects.arenas import (Arena, ArenaSchema,
-                                            get_arena_by_host_query,
-                                            get_character_arena_query)
-from Resolute.models.objects.characters import (CharacterSchema,
-                                                PlayerCharacter,
-                                                PlayerCharacterClass,
-                                                PlayerCharacterClassSchema,
-                                                RenownSchema,
-                                                get_active_player_characters,
-                                                get_all_player_characters,
-                                                get_character_class,
-                                                get_character_renown)
+from Resolute.models.objects.arenas import (
+    Arena,
+    ArenaSchema,
+    get_arena_by_host_query,
+    get_character_arena_query,
+)
+from Resolute.models.objects.characters import (
+    CharacterSchema,
+    PlayerCharacter,
+    PlayerCharacterClass,
+    PlayerCharacterClassSchema,
+    RenownSchema,
+    get_active_player_characters,
+    get_all_player_characters,
+    get_character_class,
+    get_character_renown,
+)
 from Resolute.models.objects.exceptions import G0T0Error
 from Resolute.models.objects.guilds import PlayerGuild
 
 log = logging.getLogger(__name__)
+
 
 class Player(object):
     """
@@ -79,22 +88,22 @@ class Player(object):
 
         self.id = id
         self.guild_id = guild_id
-        self.handicap_amount: int = kwargs.get('handicap_amount', 0)
-        self.cc: int = kwargs.get('cc', 0)
-        self.div_cc: int = kwargs.get('div_cc', 0)
-        self.points: int = kwargs.get('points', 0)
-        self.activity_points: int = kwargs.get('activity_points', 0)
-        self.activity_level: int = kwargs.get('activity_level', 0)
-        self.statistics: str = kwargs.get('statistics', "{}")
+        self.handicap_amount: int = kwargs.get("handicap_amount", 0)
+        self.cc: int = kwargs.get("cc", 0)
+        self.div_cc: int = kwargs.get("div_cc", 0)
+        self.points: int = kwargs.get("points", 0)
+        self.activity_points: int = kwargs.get("activity_points", 0)
+        self.activity_level: int = kwargs.get("activity_level", 0)
+        self.statistics: str = kwargs.get("statistics", "{}")
 
         # Virtual Attributes
         self.characters: list[PlayerCharacter] = []
-        self.member: discord.Member = kwargs.get('member', None)
+        self.member: discord.Member = kwargs.get("member", None)
         self.completed_rps: int = None
         self.completed_arenas: int = None
         self.needed_rps: int = None
         self.needed_arenas: int = None
-        self.guild: PlayerGuild = kwargs.get('guild')
+        self.guild: PlayerGuild = kwargs.get("guild")
         self.arenas: list[Arena] = []
         self.adventures: list[Adventure] = []
 
@@ -103,61 +112,82 @@ class Player(object):
         if hasattr(self, "characters") and self.characters:
             return max(self.characters, key=lambda char: char.level)
         return None
-    
+
     def has_character_in_tier(self, compendium: Compendium, tier: int) -> bool:
         if hasattr(self, "characters") and self.characters:
             for character in self.characters:
-                level_tier: LevelTier = compendium.get_object(LevelTier, character.level)
+                level_tier: LevelTier = compendium.get_object(
+                    LevelTier, character.level
+                )
                 if level_tier.tier == tier:
                     return True
         return False
-    
-    def get_channel_character(self, channel: discord.TextChannel | discord.Thread | discord.ForumChannel) -> PlayerCharacter:
+
+    def get_channel_character(
+        self, channel: discord.TextChannel | discord.Thread | discord.ForumChannel
+    ) -> PlayerCharacter:
         for char in self.characters:
             if channel.id in char.channels:
                 return char
-            
+
     def get_primary_character(self) -> PlayerCharacter:
         for char in self.characters:
             if char.primary_character:
                 return char
-            
-    async def get_webhook_character(self, channel: discord.TextChannel | discord.Thread | discord.ForumChannel) -> PlayerCharacter:
+
+    async def get_webhook_character(
+        self, channel: discord.TextChannel | discord.Thread | discord.ForumChannel
+    ) -> PlayerCharacter:
         if character := self.get_channel_character(channel):
             return character
         elif character := self.get_primary_character():
             character.channels.append(channel.id)
             await character.upsert()
             return character
-        
+
         character = self.characters[0]
         character.primary_character = True
         character.channels.append(channel.id)
         await character.upsert()
         return character
 
-
-    async def send_webhook_message(self, ctx: discord.ApplicationContext, character: PlayerCharacter, content: str) -> None:
+    async def send_webhook_message(
+        self, ctx: discord.ApplicationContext, character: PlayerCharacter, content: str
+    ) -> None:
         webhook = await get_webhook(ctx.channel)
-        
+
         if isinstance(ctx.channel, discord.Thread):
-            await webhook.send(username=f"[{character.level}] {character.name} // {self.member.display_name}",
-                            avatar_url=self.member.display_avatar.url if not character.avatar_url else character.avatar_url,
-                            content=content,
-                            thread=ctx.channel)
+            await webhook.send(
+                username=f"[{character.level}] {character.name} // {self.member.display_name}",
+                avatar_url=(
+                    self.member.display_avatar.url
+                    if not character.avatar_url
+                    else character.avatar_url
+                ),
+                content=content,
+                thread=ctx.channel,
+            )
         else:
-            await webhook.send(username=f"[{character.level}] {character.name} // {self.member.display_name}",
-                            avatar_url=self.member.display_avatar.url if not character.avatar_url else character.avatar_url,
-                            content=content)
-            
-    async def edit_webhook_message(self, ctx: discord.ApplicationContext, message_id: int, content: str) -> None:
+            await webhook.send(
+                username=f"[{character.level}] {character.name} // {self.member.display_name}",
+                avatar_url=(
+                    self.member.display_avatar.url
+                    if not character.avatar_url
+                    else character.avatar_url
+                ),
+                content=content,
+            )
+
+    async def edit_webhook_message(
+        self, ctx: discord.ApplicationContext, message_id: int, content: str
+    ) -> None:
         webhook = await get_webhook(ctx.channel)
 
         if isinstance(ctx.channel, (discord.Thread, discord.ForumChannel)):
             await webhook.edit_message(message_id, content=content, thread=ctx.channel)
         else:
             await webhook.edit_message(message_id, content=content)
-    
+
     async def update_command_count(self, command: str) -> None:
         stats = json.loads(self.statistics if self.statistics else "{}")
         if "commands" not in stats:
@@ -172,21 +202,23 @@ class Player(object):
 
         async with self._db.acquire() as conn:
             await conn.execute(upsert_player_query(self))
-    
-    async def update_post_stats(self, character: PlayerCharacter | npc.NPC, post: discord.Message, **kwargs) -> None:
-        content = kwargs.get('content', post.content)
-        retract = kwargs.get('retract', False)
+
+    async def update_post_stats(
+        self, character: PlayerCharacter | npc.NPC, post: discord.Message, **kwargs
+    ) -> None:
+        content = kwargs.get("content", post.content)
+        retract = kwargs.get("retract", False)
 
         stats = json.loads(self.statistics)
 
-        current_date = post.created_at.strftime('%Y-%m-%d')
+        current_date = post.created_at.strftime("%Y-%m-%d")
 
         if isinstance(character, PlayerCharacter):
-            key="say"
-            id=character.id   
+            key = "say"
+            id = character.id
         else:
-            key="npc"
-            id=character.key
+            key = "npc"
+            id = character.key
 
         if key not in stats:
             stats[key] = {}
@@ -199,7 +231,7 @@ class Player(object):
                 "num_lines": 0,
                 "num_words": 0,
                 "num_characters": 0,
-                "count": 0
+                "count": 0,
             }
 
         daily_stats = stats[key][str(id)][current_date]
@@ -224,39 +256,62 @@ class Player(object):
         async with self._db.acquire() as conn:
             await conn.execute(upsert_player_query(self))
 
-    async def remove_arena_board_post(self, ctx: discord.ApplicationContext | discord.Interaction) -> None:
+    async def remove_arena_board_post(
+        self, ctx: discord.ApplicationContext | discord.Interaction
+    ) -> None:
         def predicate(message: discord.Message):
             if message.author.bot:
                 return message.embeds[0].footer.text == f"{self.id}"
-            
+
             return message.author == self.member
 
         if self.guild.arena_board_channel:
-            if not self.guild.arena_board_channel.permissions_for(ctx.guild.me).manage_messages:
-                return log.warning(f"Bot does not have permission to manage arena board messages in {self.guild.guild.name} [{self.guild.guild.id}]")
-            
+            if not self.guild.arena_board_channel.permissions_for(
+                ctx.guild.me
+            ).manage_messages:
+                return log.warning(
+                    f"Bot does not have permission to manage arena board messages in {self.guild.guild.name} [{self.guild.guild.id}]"
+                )
+
             try:
-                deleted_message = await self.guild.arena_board_channel.purge(check=predicate)
-                log.info(f"{len(deleted_message)} message{'s' if len(deleted_message)>1 else ''} by {self.member.name} deleted from #{self.guild.arena_board_channel.name}")
+                deleted_message = await self.guild.arena_board_channel.purge(
+                    check=predicate
+                )
+                log.info(
+                    f"{len(deleted_message)} message{'s' if len(deleted_message)>1 else ''} by {self.member.name} deleted from #{self.guild.arena_board_channel.name}"
+                )
             except Exception as error:
                 if isinstance(error, discord.HTTPException):
-                    await ctx.send(f'Warning: deleting users\'s post(s) from {self.guild.arena_board_channel.mention} failed')
+                    await ctx.send(
+                        f"Warning: deleting users's post(s) from {self.guild.arena_board_channel.mention} failed"
+                    )
                 else:
                     log.error(error)
 
-    async def add_to_arena(self, interaction: discord.Interaction | discord.ApplicationContext, character: PlayerCharacter, arena: Arena) -> None:
+    async def add_to_arena(
+        self,
+        interaction: discord.Interaction | discord.ApplicationContext,
+        character: PlayerCharacter,
+        arena: Arena,
+    ) -> None:
         if character.id in arena.characters:
             raise G0T0Error("character already in the arena")
         elif not self.can_join_arena(arena.type, character):
-            raise G0T0Error(f"Character is already in an {arena.type.value.lower()} arena")
-        
+            raise G0T0Error(
+                f"Character is already in an {arena.type.value.lower()} arena"
+            )
+
         if self.id in {c.player_id for c in arena.player_characters}:
-            remove_char = next((c for c in arena.player_characters if c.player_id == self.id), None)
+            remove_char = next(
+                (c for c in arena.player_characters if c.player_id == self.id), None
+            )
             arena.player_characters.remove(remove_char)
             arena.characters.remove(remove_char.id)
 
         await self.remove_arena_board_post(interaction)
-        await interaction.response.send_message(f"{self.member.mention} has joined the arena with {character.name}")
+        await interaction.response.send_message(
+            f"{self.member.mention} has joined the arena with {character.name}"
+        )
 
         arena.player_characters.append(character)
         arena.characters.append(character.id)
@@ -266,36 +321,59 @@ class Player(object):
         await arena.upsert()
         await ArenaStatusEmbed(interaction, arena).update()
 
-    def can_join_arena(self, arena_type: ArenaType = None, character: PlayerCharacter = None) -> bool:
-        participating_arenas = [a for a in self.arenas if any([c.id in a.characters for c in self.characters])]
+    def can_join_arena(
+        self, arena_type: ArenaType = None, character: PlayerCharacter = None
+    ) -> bool:
+        participating_arenas = [
+            a
+            for a in self.arenas
+            if any([c.id in a.characters for c in self.characters])
+        ]
         filtered_arenas = []
 
         if len(participating_arenas) >= 2:
             return False
-        elif arena_type and arena_type.value == "NARRATIVE" and self.guild.member_role and self.guild.member_role not in self.member.roles:
+        elif (
+            arena_type
+            and arena_type.value == "NARRATIVE"
+            and self.guild.member_role
+            and self.guild.member_role not in self.member.roles
+        ):
             return False
-        
+
         if arena_type:
-            filtered_arenas = [a for a in participating_arenas if a.type.id == arena_type.id]
-        
-        if character and (arena := next((a for a in filtered_arenas if character.id in a.characters), None)):
+            filtered_arenas = [
+                a for a in participating_arenas if a.type.id == arena_type.id
+            ]
+
+        if character and (
+            arena := next(
+                (a for a in filtered_arenas if character.id in a.characters), None
+            )
+        ):
             return False
-        
+
         return True
-    
-    async def create_character(self, type: ApplicationType, new_character: PlayerCharacter, new_class: PlayerCharacterClass, **kwargs) -> PlayerCharacter:
+
+    async def create_character(
+        self,
+        type: ApplicationType,
+        new_character: PlayerCharacter,
+        new_class: PlayerCharacterClass,
+        **kwargs,
+    ) -> PlayerCharacter:
         start = timer()
 
-        old_character: PlayerCharacter = kwargs.get('old_character')
+        old_character: PlayerCharacter = kwargs.get("old_character")
 
         # Character Setup
         new_character.player_id = self.id
         new_character.guild_id = self.guild_id
 
-        if type in [ApplicationType.freeroll ,ApplicationType.death]:
+        if type in [ApplicationType.freeroll, ApplicationType.death]:
             if not old_character:
                 raise G0T0Error("Missing required information to process this request")
-            
+
             new_character.reroll = True
             old_character.active = False
 
@@ -318,8 +396,9 @@ class Player(object):
 
         log.info(f"Time to create character {new_character.id}: [ {end-start:.2f} ]s")
 
-        return new_character        
-    
+        return new_character
+
+
 player_table = sa.Table(
     "players",
     metadata,
@@ -331,8 +410,9 @@ player_table = sa.Table(
     sa.Column("points", sa.Integer),
     sa.Column("activity_points", sa.Integer),
     sa.Column("activity_level", sa.Integer),
-    sa.Column("statistics", sa.String)
+    sa.Column("statistics", sa.String),
 )
+
 
 class PlayerSchema(Schema):
     bot = None
@@ -362,16 +442,23 @@ class PlayerSchema(Schema):
         player.guild = await self.bot.get_player_guild(player.guild_id)
         player._db = self.bot.db
         return player
-    
+
     async def get_characters(self, player: Player):
         async with self.bot.db.acquire() as conn:
             if self.inactive:
-                results = await conn.execute(get_all_player_characters(player.id, player.guild_id))
+                results = await conn.execute(
+                    get_all_player_characters(player.id, player.guild_id)
+                )
             else:
-                results = await conn.execute(get_active_player_characters(player.id, player.guild_id))
+                results = await conn.execute(
+                    get_active_player_characters(player.id, player.guild_id)
+                )
             rows = await results.fetchall()
 
-        character_list: list[PlayerCharacter] = [await CharacterSchema(self.bot.db, self.bot.compendium).load(row) for row in rows]
+        character_list: list[PlayerCharacter] = [
+            await CharacterSchema(self.bot.db, self.bot.compendium).load(row)
+            for row in rows
+        ]
 
         for character in character_list:
             async with self.bot.db.acquire() as conn:
@@ -381,25 +468,47 @@ class PlayerSchema(Schema):
                 renown_results = await conn.execute(get_character_renown(character.id))
                 renown_rows = await renown_results.fetchall()
 
-            character.classes = [PlayerCharacterClassSchema(self.bot.db, self.bot.compendium).load(row) for row in class_rows]
-            character.renown = [RenownSchema(self.bot.db, self.bot.compendium).load(row) for row in renown_rows]
-        
+            character.classes = [
+                PlayerCharacterClassSchema(self.bot.db, self.bot.compendium).load(row)
+                for row in class_rows
+            ]
+            character.renown = [
+                RenownSchema(self.bot.db, self.bot.compendium).load(row)
+                for row in renown_rows
+            ]
+
         player.characters = character_list
 
     async def get_player_quests(self, player: Player):
-        if len(player.characters) == 0 or (player.highest_level_character and player.highest_level_character.level >= 3):
+        if len(player.characters) == 0 or (
+            player.highest_level_character and player.highest_level_character.level >= 3
+        ):
             return
-        
+
         rp_activity = self.bot.compendium.get_activity("RP")
         arena_activity = self.bot.compendium.get_activity("ARENA")
         arena_host_activity = self.bot.compendium.get_activity("ARENA_HOST")
 
         async with self.bot.db.acquire() as conn:
-            rp_result = await conn.execute(logs.get_log_count_by_player_and_activity(player.id, player.guild_id, rp_activity.id))
-            areana_result = await conn.execute(logs.get_log_count_by_player_and_activity(player.id, player.guild_id, arena_activity.id))
-            arena_host_result = await conn.execute(logs.get_log_count_by_player_and_activity(player.id, player.guild_id, arena_host_activity.id))
+            rp_result = await conn.execute(
+                logs.get_log_count_by_player_and_activity(
+                    player.id, player.guild_id, rp_activity.id
+                )
+            )
+            areana_result = await conn.execute(
+                logs.get_log_count_by_player_and_activity(
+                    player.id, player.guild_id, arena_activity.id
+                )
+            )
+            arena_host_result = await conn.execute(
+                logs.get_log_count_by_player_and_activity(
+                    player.id, player.guild_id, arena_host_activity.id
+                )
+            )
             player.completed_rps = await rp_result.scalar()
-            player.completed_arenas = await areana_result.scalar() + await arena_host_result.scalar()
+            player.completed_arenas = (
+                await areana_result.scalar() + await arena_host_result.scalar()
+            )
 
         player.needed_rps = 1 if player.highest_level_character.level == 1 else 2
         player.needed_arenas = 1 if player.highest_level_character.level == 1 else 2
@@ -413,13 +522,17 @@ class PlayerSchema(Schema):
 
         for character in player.characters:
             async with self.bot.db.acquire() as conn:
-                player_adventures = await conn.execute(get_character_adventures_query(character.id))
+                player_adventures = await conn.execute(
+                    get_character_adventures_query(character.id)
+                )
                 rows.extend(await player_adventures.fetchall())
 
-        player.adventures.extend([await AdventureSchema(self.bot).load(row) for row in rows])
+        player.adventures.extend(
+            [await AdventureSchema(self.bot).load(row) for row in rows]
+        )
 
     async def get_arenas(self, player: Player):
-        rows =[]
+        rows = []
 
         async with self.bot.db.acquire() as conn:
             host_arenas = await conn.execute(get_arena_by_host_query(player.id))
@@ -427,12 +540,13 @@ class PlayerSchema(Schema):
 
         for character in player.characters:
             async with self.bot.db.acquire() as conn:
-                player_arenas = await conn.execute(get_character_arena_query(character.id))
+                player_arenas = await conn.execute(
+                    get_character_arena_query(character.id)
+                )
                 rows.extend(await player_arenas.fetchall())
 
         player.arenas.extend(ArenaSchema(self.bot).load(row) for row in rows)
-        
-    
+
 
 def get_player_query(player_id: int, guild_id: int = None) -> FromClause:
 
@@ -440,45 +554,53 @@ def get_player_query(player_id: int, guild_id: int = None) -> FromClause:
         return player_table.select().where(
             sa.and_(player_table.c.id == player_id, player_table.c.guild_id == guild_id)
         )
-    
-    return player_table.select().where(
-        sa.and_(player_table.c.id == player_id)
-    )
+
+    return player_table.select().where(sa.and_(player_table.c.id == player_id))
+
 
 def reset_div_cc(guild_id: int):
-    return sa.update(player_table).where(player_table.c.guild_id == guild_id).values(div_cc=0, activity_points=0, activity_level=0)
+    return (
+        sa.update(player_table)
+        .where(player_table.c.guild_id == guild_id)
+        .values(div_cc=0, activity_points=0, activity_level=0)
+    )
+
 
 def upsert_player_query(player: Player):
-    insert_statement = insert(player_table).values(
-        id=player.id,
-        guild_id=player.guild_id,
-        handicap_amount=player.handicap_amount,
-        cc=player.cc,
-        div_cc=player.div_cc,
-        points=player.points,
-        activity_points=player.activity_points,
-        activity_level=player.activity_level,
-        statistics=player.statistics
-    ).returning(player_table)
+    insert_statement = (
+        insert(player_table)
+        .values(
+            id=player.id,
+            guild_id=player.guild_id,
+            handicap_amount=player.handicap_amount,
+            cc=player.cc,
+            div_cc=player.div_cc,
+            points=player.points,
+            activity_points=player.activity_points,
+            activity_level=player.activity_level,
+            statistics=player.statistics,
+        )
+        .returning(player_table)
+    )
 
     update_dict = {
-        'id': player.id,
-        'guild_id': player.guild_id,
-        'handicap_amount': player.handicap_amount,
-        'cc': player.cc,
-        'div_cc': player.div_cc,
-        'points': player.points,
-        'activity_points': player.activity_points,
-        'activity_level': player.activity_level,
-        'statistics': player.statistics
+        "id": player.id,
+        "guild_id": player.guild_id,
+        "handicap_amount": player.handicap_amount,
+        "cc": player.cc,
+        "div_cc": player.div_cc,
+        "points": player.points,
+        "activity_points": player.activity_points,
+        "activity_level": player.activity_level,
+        "statistics": player.statistics,
     }
 
     upsert_statement = insert_statement.on_conflict_do_update(
-        index_elements=['id', 'guild_id'],
-        set_=update_dict
+        index_elements=["id", "guild_id"], set_=update_dict
     )
 
     return upsert_statement
+
 
 class ArenaPost(object):
     """
@@ -495,10 +617,12 @@ class ArenaPost(object):
         **kwargs: Additional keyword arguments.
     """
 
-    def __init__(self, player: Player, characters: list[PlayerCharacter] = [], *args, **kwargs):
+    def __init__(
+        self, player: Player, characters: list[PlayerCharacter] = [], *args, **kwargs
+    ):
         self.player = player
         self.characters = characters
-        self.type: ArenaPostType = kwargs.get('type', ArenaPostType.COMBAT)
+        self.type: ArenaPostType = kwargs.get("type", ArenaPostType.COMBAT)
 
         self.message: discord.Message = kwargs.get("message")
 
@@ -517,7 +641,7 @@ class RPPost(object):
     __init__(character: PlayerCharacter, *args, **kwargs)
         Initializes the RPPost with a character and optional note.
     """
-    
+
     def __init__(self, character: PlayerCharacter, *args, **kwargs):
         self.character = character
-        self.note = kwargs.get('note')
+        self.note = kwargs.get("note")

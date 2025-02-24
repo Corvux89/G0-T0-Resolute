@@ -15,12 +15,15 @@ async def get_table_values(conn, comp: CompendiumObject) -> list:
 
         d1[val.id] = val
         attr_list = ["value", "avg_level", "name", "cc", "points", "tier"]
-        key = next((getattr(val, attr) for attr in attr_list if hasattr(val, attr)), None)
+        key = next(
+            (getattr(val, attr) for attr in attr_list if hasattr(val, attr)), None
+        )
 
         if key is not None:
             d2[key] = val
 
     return [d1, d2]
+
 
 class Compendium:
     """
@@ -43,28 +46,39 @@ class Compendium:
 
     def __init__(self) -> None:
         self.categories = [
-            rarity, char_class, char_archetype,
-            char_species, arena_tier, activity, 
-            dashboard_type, cc_conversion, arena_type, transaction_type, transaction_subtype,
-            level_cost, faction, activity_points, level_tier
-            ]
+            rarity,
+            char_class,
+            char_archetype,
+            char_species,
+            arena_tier,
+            activity,
+            dashboard_type,
+            cc_conversion,
+            arena_type,
+            transaction_type,
+            transaction_subtype,
+            level_cost,
+            faction,
+            activity_points,
+            level_tier,
+        ]
 
         for category in self.categories:
             setattr(self, category.key, [])
-    
+
     async def reload_categories(self, bot):
         if not hasattr(bot, "db"):
             return
-        
+
         start = timer()
         async with bot.db.acquire() as conn:
             for category in self.categories:
                 setattr(self, category.key, await get_table_values(conn, category))
 
         end = timer()
-        log.info(f'COMPENDIUM: Categories reloaded in [ {end - start:.2f} ]s')
+        log.info(f"COMPENDIUM: Categories reloaded in [ {end - start:.2f} ]s")
         bot.dispatch("compendium_loaded")
-        
+
     def get_object(self, cls, value: str | int = None):
         """
         Retrieve an object from the compendium based on the provided class and value.
@@ -79,27 +93,37 @@ class Compendium:
         try:
             for category in self.categories:
                 if category.obj == cls:
-                    for cat_value in getattr(self, category.key)[0 if isinstance(value, int) else 1]:
+                    for cat_value in getattr(self, category.key)[
+                        0 if isinstance(value, int) else 1
+                    ]:
                         if isinstance(cat_value, str) and isinstance(value, str):
                             if cat_value.lower() == value.lower():
-                                return getattr(self, category.key)[0 if isinstance(value, int) else 1][cat_value]
+                                return getattr(self, category.key)[
+                                    0 if isinstance(value, int) else 1
+                                ][cat_value]
                         elif cat_value == value:
-                            return getattr(self, category.key)[0 if isinstance(value, int) else 1][cat_value]
-                    
+                            return getattr(self, category.key)[
+                                0 if isinstance(value, int) else 1
+                            ][cat_value]
+
                     # Approximate match for strings
-                    for cat_value in getattr(self, category.key)[0 if isinstance(value, int) else 1]:
+                    for cat_value in getattr(self, category.key)[
+                        0 if isinstance(value, int) else 1
+                    ]:
                         if isinstance(cat_value, str) and isinstance(value, str):
                             if cat_value.lower().startswith(value.lower()):
-                                return getattr(self, category.key)[0 if isinstance(value, int) else 1][cat_value]
+                                return getattr(self, category.key)[
+                                    0 if isinstance(value, int) else 1
+                                ][cat_value]
         except:
             raise ObjectNotFound()
         return None
-    
+
     def get_activity(self, activity: str | int = None):
         """
         Retrieve an activity by its name or ID.
         Args:
-            activity (str | int, optional): The name or ID of the activity to retrieve. 
+            activity (str | int, optional): The name or ID of the activity to retrieve.
                                             If not provided, defaults to None.
         Returns:
             Activity: The activity object if found.
@@ -108,5 +132,5 @@ class Compendium:
         """
         if act := self.get_object(Activity, activity):
             return act
-        
+
         raise ActivityNotFound(activity)

@@ -35,20 +35,21 @@ class Financial(object):
 
     def __init__(self, db, **kwargs):
         self._db: aiopg.sa.Engine = db
-        self.month_count = kwargs.get('month_count', 0)
-        self.monthly_goal = kwargs.get('monthly_goal', 0)
-        self.monthly_total = kwargs.get('monthly_total', 0)
-        self.reserve = kwargs.get('reserve', 0)
-        self.last_reset: datetime.datetime = kwargs.get('last_reset')
+        self.month_count = kwargs.get("month_count", 0)
+        self.monthly_goal = kwargs.get("monthly_goal", 0)
+        self.monthly_total = kwargs.get("monthly_total", 0)
+        self.reserve = kwargs.get("reserve", 0)
+        self.last_reset: datetime.datetime = kwargs.get("last_reset")
 
     @property
     def adjusted_total(self) -> float:
         # Adjusted for what Discord takes
-        return self.monthly_total*.9
-    
+        return self.monthly_total * 0.9
+
     async def update(self) -> None:
         async with self._db.acquire() as conn:
             await conn.execute(update_financial_query(self))
+
 
 financial_table = sa.Table(
     "financial",
@@ -57,8 +58,14 @@ financial_table = sa.Table(
     sa.Column("monthly_goal", sa.Numeric, nullable=False),
     sa.Column("monthly_total", sa.Numeric, nullable=False),
     sa.Column("reserve", sa.Numeric, nullable=False),
-    sa.Column("last_reset", sa.TIMESTAMP(timezone=datetime.timezone.utc), nullable=True, default=sa.null())
+    sa.Column(
+        "last_reset",
+        sa.TIMESTAMP(timezone=datetime.timezone.utc),
+        nullable=True,
+        default=sa.null(),
+    ),
 )
+
 
 class FinancialSchema(Schema):
     db: aiopg.sa.Engine = None
@@ -72,22 +79,34 @@ class FinancialSchema(Schema):
         self.db = db
         super().__init__(**kwargs)
 
-    def load_timestamp(self, value):  # Marshmallow doesn't like loading DateTime for some reason. This is a workaround
-        return datetime.datetime(value.year, value.month, value.day, value.hour, value.minute, value.second, tzinfo=datetime.timezone.utc)
-    
+    def load_timestamp(
+        self, value
+    ):  # Marshmallow doesn't like loading DateTime for some reason. This is a workaround
+        return datetime.datetime(
+            value.year,
+            value.month,
+            value.day,
+            value.hour,
+            value.minute,
+            value.second,
+            tzinfo=datetime.timezone.utc,
+        )
+
     @post_load
     def make_finance(self, data, **kwargs):
         return Financial(self.db, **data)
-    
+
+
 def get_financial_query() -> TableClause:
     return financial_table.select()
+
 
 def update_financial_query(fin: Financial):
     update_dict = {
         "month_count": fin.month_count,
         "monthly_total": fin.monthly_total,
         "reserve": fin.reserve,
-        "last_reset": fin.last_reset
+        "last_reset": fin.last_reset,
     }
 
     return financial_table.update().values(**update_dict)

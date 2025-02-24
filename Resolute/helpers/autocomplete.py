@@ -1,5 +1,6 @@
 import discord
 
+
 async def get_faction_autocomplete(ctx: discord.AutocompleteContext) -> list[str]:
     """
     Fetches a list of faction names for autocomplete suggestions.
@@ -11,6 +12,7 @@ async def get_faction_autocomplete(ctx: discord.AutocompleteContext) -> list[str
     factions = ctx.bot.compendium.faction[0].values()
 
     return [f.value for f in factions] or []
+
 
 async def get_arena_type_autocomplete(ctx: discord.AutocompleteContext) -> list[str]:
     """

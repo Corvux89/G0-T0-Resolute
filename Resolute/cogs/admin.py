@@ -16,12 +16,13 @@ from Resolute.models.views.automation_request import AutomationRequestView
 
 log = logging.getLogger(__name__)
 
+
 def setup(bot: G0T0Bot):
     bot.add_cog(Admin(bot))
 
 
 class Admin(commands.Cog):
-    '''
+    """
     A Cog that handles administrative commands and tasks for the bot.
     Attributes:
         bot (G0T0Bot): The bot instance.
@@ -45,13 +46,16 @@ class Admin(commands.Cog):
             Task that reloads the compendium categories every 30 minutes.
         check_financials():
             Task that checks and updates financial data every 24 hours.
-    '''
-    bot: G0T0Bot  
-    admin_commands = discord.SlashCommandGroup("admin", "Bot administrative commands", guild_ids=ADMIN_GUILDS)
+    """
+
+    bot: G0T0Bot
+    admin_commands = discord.SlashCommandGroup(
+        "admin", "Bot administrative commands", guild_ids=ADMIN_GUILDS
+    )
 
     def __init__(self, bot):
         self.bot = bot
-        log.info(f'Cog \'Admin\' loaded')
+        log.info(f"Cog 'Admin' loaded")
 
     @commands.Cog.listener()
     async def on_db_connected(self):
@@ -67,8 +71,7 @@ class Admin(commands.Cog):
         self.bot.player_guilds[str(guild.id)] = guild
 
     @commands.slash_command(
-        name="automation_request",
-        description="Log an automation request"
+        name="automation_request", description="Log an automation request"
     )
     async def automation_request(self, ctx: G0T0Context):
         """
@@ -83,10 +86,7 @@ class Admin(commands.Cog):
         modal = AutomationRequestView(ctx.player.guild)
         await ctx.send_modal(modal)
 
-    @admin_commands.command(
-        name="admin",
-        description="Main administration command"
-    )
+    @admin_commands.command(name="admin", description="Main administration command")
     @commands.check(is_admin)
     async def admin_admin(self, ctx: discord.ApplicationContext):
         """
@@ -102,11 +102,18 @@ class Admin(commands.Cog):
 
     @admin_commands.command(
         name="reload",
-        description="Reloads either a specific cog, refresh DB information, or reload everything"
+        description="Reloads either a specific cog, refresh DB information, or reload everything",
     )
     @commands.check(is_owner)
-    async def reload_cog(self, ctx: G0T0Context,
-                         cog: discord.Option(discord.SlashCommandOptionType(3), description="Cog name, ALL, or DB", required=True)):
+    async def reload_cog(
+        self,
+        ctx: G0T0Context,
+        cog: discord.Option(
+            discord.SlashCommandOptionType(3),
+            description="Cog name, ALL, or DB",
+            required=True,
+        ),
+    ):
         """
         Used to reload a cog, refresh DB information, or reload all cogs and DB information
 
@@ -115,29 +122,30 @@ class Admin(commands.Cog):
         """
         await ctx.defer()
 
-        if str(cog).upper() == 'ALL':
-            for file_name in os.listdir('./Resolute/cogs'):
-                if file_name.endswith('.py'):
-                    ext = file_name.replace('.py', '')
-                    self.bot.unload_extension(f'Resolute.cogs.{ext}')
-                    self.bot.load_extension(f'Resolute.cogs.{ext}')
+        if str(cog).upper() == "ALL":
+            for file_name in os.listdir("./Resolute/cogs"):
+                if file_name.endswith(".py"):
+                    ext = file_name.replace(".py", "")
+                    self.bot.unload_extension(f"Resolute.cogs.{ext}")
+                    self.bot.load_extension(f"Resolute.cogs.{ext}")
             await ctx.respond("All cogs reloaded")
-        elif str(cog).upper() in ['DB', 'COMPENDIUM']:
+        elif str(cog).upper() in ["DB", "COMPENDIUM"]:
             await self._reload_DB(ctx)
-            await ctx.respond(f'Done')
+            await ctx.respond(f"Done")
         else:
             try:
-                self.bot.unload_extension(f'Resolute.cogs.{cog}')
+                self.bot.unload_extension(f"Resolute.cogs.{cog}")
             except discord.ExtensionNotLoaded:
-                return await ctx.respond(f'Cog was already unloaded', ephemeral=True)
+                return await ctx.respond(f"Cog was already unloaded", ephemeral=True)
             except discord.ExtensionNotFound:
-                return await ctx.respond(f'No cog found by the name: {cog}', ephemeral=True)
+                return await ctx.respond(
+                    f"No cog found by the name: {cog}", ephemeral=True
+                )
             except:
-                return await ctx.respond(f'Something went wrong', ephemeral=True)
+                return await ctx.respond(f"Something went wrong", ephemeral=True)
 
-            self.bot.load_extension(f'Resolute.cogs.{cog}')
-            await ctx.respond(f'Cog {cog} reloaded')
-       
+            self.bot.load_extension(f"Resolute.cogs.{cog}")
+            await ctx.respond(f"Cog {cog} reloaded")
 
     # --------------------------- #
     # Private Methods
@@ -172,4 +180,3 @@ class Admin(commands.Cog):
             await fin.update()
             await update_financial_dashboards(self.bot)
             log.info("Finanical month reset")
-

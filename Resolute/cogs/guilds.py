@@ -11,8 +11,11 @@ from Resolute.bot import G0T0Bot, G0T0Context
 from Resolute.helpers.general_helpers import confirm, is_admin
 from Resolute.models.embeds.guilds import ResetEmbed
 from Resolute.models.objects.characters import PlayerCharacter
-from Resolute.models.objects.guilds import (GuildSchema, PlayerGuild,
-                                            get_guilds_with_reset_query)
+from Resolute.models.objects.guilds import (
+    GuildSchema,
+    PlayerGuild,
+    get_guilds_with_reset_query,
+)
 from Resolute.models.objects.players import reset_div_cc
 from Resolute.models.views.guild_settings import GuildSettingsUI
 
@@ -51,12 +54,15 @@ class Guilds(commands.Cog):
         cleanup_rp_posts():
             Scheduled task that cleans up roleplay posts older than 72 hours in the guild's RP post channel.
     """
+
     bot: G0T0Bot
-    guilds_commands = discord.SlashCommandGroup("guild", "Commands related to guild specific settings", guild_only=True)
+    guilds_commands = discord.SlashCommandGroup(
+        "guild", "Commands related to guild specific settings", guild_only=True
+    )
 
     def __init__(self, bot):
         self.bot = bot
-        log.info(f'Cog \'Guilds\' loaded')
+        log.info(f"Cog 'Guilds' loaded")
 
     @commands.Cog.listener()
     async def on_compendium_loaded(self):
@@ -76,10 +82,9 @@ class Guilds(commands.Cog):
 
         if not self.cleanup_rp_posts.is_running():
             asyncio.ensure_future(self.cleanup_rp_posts.start())
-    
+
     @guilds_commands.command(
-            name="settings",
-            description="Modify the current guild/server settings"
+        name="settings", description="Modify the current guild/server settings"
     )
     @commands.check(is_admin)
     async def guild_settings(self, ctx: G0T0Context):
@@ -98,10 +103,8 @@ class Guilds(commands.Cog):
         await ui.send_to(ctx)
         return await ctx.delete()
 
-
     @guilds_commands.command(
-        name="weekly_reset",
-        description="Performs a weekly reset for the server"
+        name="weekly_reset", description="Performs a weekly reset for the server"
     )
     @commands.check(is_admin)
     async def guild_weekly_reset(self, ctx: G0T0Context):
@@ -116,19 +119,25 @@ class Guilds(commands.Cog):
             None
         """
         await ctx.defer()
-        conf = await confirm(ctx, f"Are you sure you want to manually do a weekly reset? (Reply with yes/no)", True)
+        conf = await confirm(
+            ctx,
+            f"Are you sure you want to manually do a weekly reset? (Reply with yes/no)",
+            True,
+        )
 
         if conf is None:
-            return await ctx.respond(f"Times oud waiting for a response or invalid response.", delete_after=10)
+            return await ctx.respond(
+                f"Times oud waiting for a response or invalid response.",
+                delete_after=10,
+            )
         elif not conf:
             return await ctx.respond(f"Ok, cancelling.", delete_after=10)
 
         await self.perform_weekly_reset(ctx.player.guild)
         return await ctx.respond("Weekly reset manually completed")
-    
+
     @guilds_commands.command(
-        name="send_announcements",
-        description="Send announcements only"
+        name="send_announcements", description="Send announcements only"
     )
     @commands.check(is_admin)
     async def guild_announcements(self, ctx: G0T0Context):
@@ -145,19 +154,30 @@ class Guilds(commands.Cog):
         """
         await ctx.defer()
 
-        conf = await confirm(ctx, f"Are you sure you want to manually push announcements? (Reply with yes/no)", True)
+        conf = await confirm(
+            ctx,
+            f"Are you sure you want to manually push announcements? (Reply with yes/no)",
+            True,
+        )
 
         if conf is None:
-            return await ctx.respond(f"Times oud waiting for a response or invalid response.", delete_after=10)
+            return await ctx.respond(
+                f"Times oud waiting for a response or invalid response.",
+                delete_after=10,
+            )
         elif not conf:
             return await ctx.respond(f"Ok, cancelling.", delete_after=10)
-        
-        ctx.player.guild = await self.push_announcements(ctx.player.guild, None, title="Announcements")
+
+        ctx.player.guild = await self.push_announcements(
+            ctx.player.guild, None, title="Announcements"
+        )
         await ctx.player.guild.upsert()
         self.bot.dispatch("refresh_guild_cache", ctx.player.guild)
         return await ctx.respond("Announcements manually completed")
-        
-    async def push_announcements(self, guild: PlayerGuild, complete_time: float = None, **kwargs) -> PlayerGuild:
+
+    async def push_announcements(
+        self, guild: PlayerGuild, complete_time: float = None, **kwargs
+    ) -> PlayerGuild:
         """
         Sends announcement messages to the guild's announcement channel.
         This function sends announcement messages to the specified guild's announcement channel.
@@ -176,17 +196,26 @@ class Guilds(commands.Cog):
         if guild.announcement_channel:
             try:
                 embeds = ResetEmbed.chunk_announcements(guild, complete_time, **kwargs)
-                if guild.ping_announcement == True and guild.entry_role and guild.member_role:
-                    await guild.announcement_channel.send(embeds=embeds, content=f"{guild.entry_role.mention}{guild.member_role.mention}")
+                if (
+                    guild.ping_announcement == True
+                    and guild.entry_role
+                    and guild.member_role
+                ):
+                    await guild.announcement_channel.send(
+                        embeds=embeds,
+                        content=f"{guild.entry_role.mention}{guild.member_role.mention}",
+                    )
                 else:
                     await guild.announcement_channel.send(embeds=embeds)
-                
+
                 guild.weekly_announcement = []
                 guild.ping_announcement = False
             except Exception as error:
                 if isinstance(error, discord.HTTPException):
-                    log.error(f"WEEKLY RESET: Error sending message to announcements channel in "
-                              f"{guild.guild.name} [ {guild.id} ]")
+                    log.error(
+                        f"WEEKLY RESET: Error sending message to announcements channel in "
+                        f"{guild.guild.name} [ {guild.id} ]"
+                    )
                 else:
                     log.error(error)
 
@@ -217,37 +246,52 @@ class Guilds(commands.Cog):
             g.server_date += random.randint(13, 16)
 
         if start_date and g.calendar:
-            birthdays = await self._get_characters_with_birthdays(g, start_date)        
+            birthdays = await self._get_characters_with_birthdays(g, start_date)
 
         # Reset Player CC's and Activity Points
         async with self.bot.db.acquire() as conn:
             await conn.execute(reset_div_cc(g.id))
-        
+
         # Stipends
         leadership_stipend_players = set()
         for stipend in g.stipends:
             if stipend_role := self.bot.get_guild(g.id).get_role(stipend.role_id):
                 members = stipend_role.members
                 if stipend.leadership:
-                    members = list(filter(lambda m: m.id not in leadership_stipend_players, members))
-                    leadership_stipend_players.update(m.id for m in stipend_role.members)
+                    members = list(
+                        filter(
+                            lambda m: m.id not in leadership_stipend_players, members
+                        )
+                    )
+                    leadership_stipend_players.update(
+                        m.id for m in stipend_role.members
+                    )
 
-                player_list = await asyncio.gather(*(self.bot.get_player(m.id, g.id) for m in members))
-                
+                player_list = await asyncio.gather(
+                    *(self.bot.get_player(m.id, g.id) for m in members)
+                )
+
                 for player in player_list:
-                    stipend_task.append(self.bot.log(None, player, self.bot.user, "STIPEND",
-                                                     notes=stipend.reason or "Weekly Stipend",
-                                                     cc=stipend.amount,
-                                                     silent=True))                
+                    stipend_task.append(
+                        self.bot.log(
+                            None,
+                            player,
+                            self.bot.user,
+                            "STIPEND",
+                            notes=stipend.reason or "Weekly Stipend",
+                            cc=stipend.amount,
+                            silent=True,
+                        )
+                    )
             else:
                 await stipend.delete()
 
-        await asyncio.gather(*stipend_task)                 
+        await asyncio.gather(*stipend_task)
 
         end = timer()
 
         # Announce we're all done!
-        g = await self.push_announcements(g, end-start, birthdays=birthdays)
+        g = await self.push_announcements(g, end - start, birthdays=birthdays)
         await g.upsert()
         self.bot.dispatch("refresh_guild_cache", g)
 
@@ -267,22 +311,40 @@ class Guilds(commands.Cog):
             results = await conn.execute(get_guilds_with_reset_query(day, hour))
             rows = await results.fetchall()
 
-        guild_list = [await GuildSchema(self.bot.db, self.bot.get_guild(row["id"])).load(row) for row in rows]
+        guild_list = [
+            await GuildSchema(self.bot.db, self.bot.get_guild(row["id"])).load(row)
+            for row in rows
+        ]
 
         return guild_list
-    
-    async def _get_characters_with_birthdays(self, guild: PlayerGuild, start_date: int) -> list[PlayerCharacter]:
-        all_characters: list[PlayerCharacter] = await guild.get_all_characters(self.bot.compendium)
+
+    async def _get_characters_with_birthdays(
+        self, guild: PlayerGuild, start_date: int
+    ) -> list[PlayerCharacter]:
+        all_characters: list[PlayerCharacter] = await guild.get_all_characters(
+            self.bot.compendium
+        )
         birthdays = []
 
         start_days_in_year = start_date % guild.days_in_server_year
-        start_month = next((month for month in guild.calendar if month.day_start <= start_days_in_year <= month.day_end), None)
+        start_month = next(
+            (
+                month
+                for month in guild.calendar
+                if month.day_start <= start_days_in_year <= month.day_end
+            ),
+            None,
+        )
 
         for character in all_characters:
             if character.dob:
                 character_days_in_year = character.dob % guild.days_in_server_year
 
-                if start_month.day_start <= character_days_in_year <= guild.server_month.day_end:
+                if (
+                    start_month.day_start
+                    <= character_days_in_year
+                    <= guild.server_month.day_end
+                ):
                     birthdays.append(character)
 
         return birthdays
@@ -332,14 +394,17 @@ class Guilds(commands.Cog):
 
             if g.rp_post_channel:
                 try:
-                    deleted_messages = await g.rp_post_channel.purge(limit=None, before=cutoff_time, check=predicate)
+                    deleted_messages = await g.rp_post_channel.purge(
+                        limit=None, before=cutoff_time, check=predicate
+                    )
                     if len(deleted_messages) > 0:
-                        log.info(f"RP BOARD: {len(deleted_messages)} message{'s' if len(deleted_messages) > 1 else ''} deleted from {g.rp_post_channel.name} for {g.guild.name} [{g.guild.id}]")
+                        log.info(
+                            f"RP BOARD: {len(deleted_messages)} message{'s' if len(deleted_messages) > 1 else ''} deleted from {g.rp_post_channel.name} for {g.guild.name} [{g.guild.id}]"
+                        )
                 except Exception as error:
                     if isinstance(error, discord.HTTPException):
-                        log.error(f"RP BOARD: Error purging messages in {g.rp_post_channel.name}")
+                        log.error(
+                            f"RP BOARD: Error purging messages in {g.rp_post_channel.name}"
+                        )
                     else:
                         log.error(error)
-
-
-

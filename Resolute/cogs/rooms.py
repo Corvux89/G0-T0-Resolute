@@ -10,6 +10,7 @@ from Resolute.models.views.rooms import RoomSettingsUI
 
 log = logging.getLogger(__name__)
 
+
 def setup(bot: G0T0Bot):
     bot.add_cog(Room(bot))
 
@@ -27,18 +28,16 @@ class Room(commands.Cog):
             Handles the room settings command. Checks if the user has the necessary permissions
             and then provides a UI for managing room settings.
     """
+
     bot: G0T0Bot
 
     room_commands = discord.SlashCommandGroup("room", "Room commands", guild_only=True)
-    
+
     def __init__(self, bot):
         self.bot = bot
-        log.info(f'Cog \'Room\' loaded')
+        log.info(f"Cog 'Room' loaded")
 
-    @room_commands.command(
-        name="settings",
-        description="Room settings"
-    )
+    @room_commands.command(name="settings", description="Room settings")
     async def room_settings(self, ctx: G0T0Context):
         """
         Handles the room settings for a given context.
@@ -54,14 +53,18 @@ class Room(commands.Cog):
                        process.
         """
         channel = ctx.guild.get_channel(ctx.channel.id)
-        if (ctx.author in channel.overwrites or is_admin(ctx)):
+        if ctx.author in channel.overwrites or is_admin(ctx):
             roles = []
             guild = await self.bot.get_player_guild(ctx.guild.id)
 
-            if (adventure := await self.bot.get_adventure_from_category(ctx.channel.category.id)) and guild.quest_role:
-                roles.append(guild.quest_role)    
+            if (
+                adventure := await self.bot.get_adventure_from_category(
+                    ctx.channel.category.id
+                )
+            ) and guild.quest_role:
+                roles.append(guild.quest_role)
             elif guild.entry_role and guild.member_role:
-                roles+=[guild.entry_role, guild.member_role]
+                roles += [guild.entry_role, guild.member_role]
             else:
                 raise G0T0Error("Something went wrong")
             if roles:

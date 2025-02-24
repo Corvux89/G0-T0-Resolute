@@ -11,14 +11,20 @@ from sqlalchemy.sql import FromClause
 
 from Resolute.compendium import Compendium
 from Resolute.models import metadata
-from Resolute.models.objects.dashboards import (RefDashboard,
-                                                RefDashboardSchema,
-                                                get_dashboards)
+from Resolute.models.objects.dashboards import (
+    RefDashboard,
+    RefDashboardSchema,
+    get_dashboards,
+)
 from Resolute.models.objects.npc import NPC, NPCSchema, get_guild_npcs_query
 from Resolute.models.objects.ref_objects import (
-    RefServerCalendar, RefServerCalendarSchema, RefWeeklyStipend,
-    RefWeeklyStipendSchema, get_guild_weekly_stipends_query,
-    get_server_calendar)
+    RefServerCalendar,
+    RefServerCalendarSchema,
+    RefWeeklyStipend,
+    RefWeeklyStipendSchema,
+    get_guild_weekly_stipends_query,
+    get_server_calendar,
+)
 
 
 class PlayerGuild(object):
@@ -96,65 +102,81 @@ class PlayerGuild(object):
     def __init__(self, db: aiopg.sa.Engine, **kwargs):
         self._db = db
 
-        self.id: int = kwargs.get('id')
-        self.max_level: int = kwargs.get('max_level', 3)
-        self.weeks: int = kwargs.get('weeks', 0)
-        self._reset_day: int = kwargs.get('reset_day')
-        self._reset_hour: int = kwargs.get('reset_hour')
-        self._last_reset: datetime = kwargs.get('last_reset', datetime.now(timezone.utc))
-        self.greeting: str = kwargs.get('greeting')
-        self.handicap_cc: int = kwargs.get('handicap_cc', 0)
-        self.max_characters: int = kwargs.get('max_characters', 1)
-        self.div_limit: int = kwargs.get('div_limit', 10)
-        self.reset_message: str = kwargs.get('reset_message')
-        self.weekly_announcement: list[str] = kwargs.get('weekly_announcement', [])
-        self.server_date: int = kwargs.get('server_date')
-        self.epoch_notation: str = kwargs.get('epoch_notation')
-        self.first_character_message: str = kwargs.get('first_character_message')
-        self.ping_announcement: bool = kwargs.get('ping_announcement', False)
-        self.reward_threshold: int = kwargs.get('reward_threshold')
-        self.archive_user: discord.User | discord.Member = kwargs.get('archive_user')
+        self.id: int = kwargs.get("id")
+        self.max_level: int = kwargs.get("max_level", 3)
+        self.weeks: int = kwargs.get("weeks", 0)
+        self._reset_day: int = kwargs.get("reset_day")
+        self._reset_hour: int = kwargs.get("reset_hour")
+        self._last_reset: datetime = kwargs.get(
+            "last_reset", datetime.now(timezone.utc)
+        )
+        self.greeting: str = kwargs.get("greeting")
+        self.handicap_cc: int = kwargs.get("handicap_cc", 0)
+        self.max_characters: int = kwargs.get("max_characters", 1)
+        self.div_limit: int = kwargs.get("div_limit", 10)
+        self.reset_message: str = kwargs.get("reset_message")
+        self.weekly_announcement: list[str] = kwargs.get("weekly_announcement", [])
+        self.server_date: int = kwargs.get("server_date")
+        self.epoch_notation: str = kwargs.get("epoch_notation")
+        self.first_character_message: str = kwargs.get("first_character_message")
+        self.ping_announcement: bool = kwargs.get("ping_announcement", False)
+        self.reward_threshold: int = kwargs.get("reward_threshold")
+        self.archive_user: discord.User | discord.Member = kwargs.get("archive_user")
 
         # Virtual attributes
         self.calendar: list[RefServerCalendar] = None
-        self.guild: discord.Guild = kwargs.get('guild')
+        self.guild: discord.Guild = kwargs.get("guild")
         self.npcs: list[NPC] = []
         self.stipends: list[RefWeeklyStipend] = []
 
         # Roles
-        self.entry_role: discord.Role = kwargs.get('entry_role')
-        self.member_role: discord.Role = kwargs.get('member_role')
-        self.tier_2_role: discord.Role = kwargs.get('tier_2_role')
-        self.tier_3_role: discord.Role = kwargs.get('tier_3_role')
-        self.tier_4_role: discord.Role = kwargs.get('tier_4_role')
-        self.tier_5_role: discord.Role = kwargs.get('tier_5_role')
-        self.tier_6_role: discord.Role = kwargs.get('tier_6_role')
-        self.admin_role: discord.Role = kwargs.get('admin_role')
-        self.staff_role: discord.Role = kwargs.get('staff_role')
-        self.bot_role: discord.Role = kwargs.get('bot_role')
-        self.quest_role: discord.Role = kwargs.get('quest_role')
-        
-        # Channels
-        self.application_channel: discord.TextChannel = kwargs.get('application_channel')
-        self.market_channel: discord.TextChannel = kwargs.get('market_channel')
-        self.announcement_channel: discord.TextChannel = kwargs.get('announcement_channel')
-        self.staff_channel: discord.TextChannel = kwargs.get('staff_channel')
-        self.help_channel: discord.TextChannel = kwargs.get('help_channel')
-        self.arena_board_channel: discord.TextChannel = kwargs.get('arena_board_channel')
-        self.exit_channel: discord.TextChannel = kwargs.get('exit_channel')
-        self.entrance_channel: discord.TextChannel = kwargs.get('entrance_channel')
-        self.activity_points_channel: discord.TextChannel = kwargs.get('activity_points_channel')
-        self.rp_post_channel: discord.TextChannel = kwargs.get('rp_post_channel')
-        self.dev_channels: list[discord.TextChannel] = kwargs.get('dev_channels', [])
+        self.entry_role: discord.Role = kwargs.get("entry_role")
+        self.member_role: discord.Role = kwargs.get("member_role")
+        self.tier_2_role: discord.Role = kwargs.get("tier_2_role")
+        self.tier_3_role: discord.Role = kwargs.get("tier_3_role")
+        self.tier_4_role: discord.Role = kwargs.get("tier_4_role")
+        self.tier_5_role: discord.Role = kwargs.get("tier_5_role")
+        self.tier_6_role: discord.Role = kwargs.get("tier_6_role")
+        self.admin_role: discord.Role = kwargs.get("admin_role")
+        self.staff_role: discord.Role = kwargs.get("staff_role")
+        self.bot_role: discord.Role = kwargs.get("bot_role")
+        self.quest_role: discord.Role = kwargs.get("quest_role")
 
+        # Channels
+        self.application_channel: discord.TextChannel = kwargs.get(
+            "application_channel"
+        )
+        self.market_channel: discord.TextChannel = kwargs.get("market_channel")
+        self.announcement_channel: discord.TextChannel = kwargs.get(
+            "announcement_channel"
+        )
+        self.staff_channel: discord.TextChannel = kwargs.get("staff_channel")
+        self.help_channel: discord.TextChannel = kwargs.get("help_channel")
+        self.arena_board_channel: discord.TextChannel = kwargs.get(
+            "arena_board_channel"
+        )
+        self.exit_channel: discord.TextChannel = kwargs.get("exit_channel")
+        self.entrance_channel: discord.TextChannel = kwargs.get("entrance_channel")
+        self.activity_points_channel: discord.TextChannel = kwargs.get(
+            "activity_points_channel"
+        )
+        self.rp_post_channel: discord.TextChannel = kwargs.get("rp_post_channel")
+        self.dev_channels: list[discord.TextChannel] = kwargs.get("dev_channels", [])
 
         if not self.id and self.guild:
             self.id = self.guild.id
 
-
     @property
     def get_reset_day(self) -> str:
-        weekDays = ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
+        weekDays = (
+            "Monday",
+            "Tuesday",
+            "Wednesday",
+            "Thursday",
+            "Friday",
+            "Saturday",
+            "Sunday",
+        )
         return weekDays[self._reset_day]
 
     @property
@@ -164,14 +186,26 @@ class PlayerGuild(object):
             day_offset = (self._reset_day - now.weekday() + 7) % 7
             run_date = now + timedelta(days=day_offset)
 
-            run_date = datetime(run_date.year, run_date.month, run_date.day, run_date.hour, 0, 0, tzinfo=timezone.utc)
+            run_date = datetime(
+                run_date.year,
+                run_date.month,
+                run_date.day,
+                run_date.hour,
+                0,
+                0,
+                tzinfo=timezone.utc,
+            )
 
-            if (self._reset_hour < now.hour and run_date <= now) \
-                    or (run_date < (self._last_reset + timedelta(days=6))):
+            if (self._reset_hour < now.hour and run_date <= now) or (
+                run_date < (self._last_reset + timedelta(days=6))
+            ):
                 run_date += timedelta(days=7)
 
             dt = calendar.timegm(
-                datetime(run_date.year, run_date.month, run_date.day, self._reset_hour, 0, 0).utctimetuple())
+                datetime(
+                    run_date.year, run_date.month, run_date.day, self._reset_hour, 0, 0
+                ).utctimetuple()
+            )
 
             return dt
         else:
@@ -180,27 +214,33 @@ class PlayerGuild(object):
     @property
     def get_last_reset(self) -> int:
         return calendar.timegm(self._last_reset.utctimetuple())
-    
+
     @property
     def formatted_server_date(self) -> str:
         return f"{f'{self.epoch_notation}::' if self.epoch_notation else ''}{self.server_year:02}:{self.server_month.display_name}:{self.server_day:02}"
-    
+
     @property
     def server_year(self) -> int:
         if not self.calendar or self.server_date is None:
             return None
         return floor(self.server_date / self.days_in_server_year)
-    
+
     @property
     def server_month(self) -> RefServerCalendar:
         if not self.calendar or self.server_date is None:
             return None
         days_in_year = self.server_date % self.days_in_server_year
-        return next((month for month in self.calendar if month.day_start <= days_in_year <= month.day_end), None)
-        
-    
-    @property 
-    def server_day(self) -> int:        
+        return next(
+            (
+                month
+                for month in self.calendar
+                if month.day_start <= days_in_year <= month.day_end
+            ),
+            None,
+        )
+
+    @property
+    def server_day(self) -> int:
         month = self.server_month
 
         if not month:
@@ -209,26 +249,28 @@ class PlayerGuild(object):
         days_in_year = self.server_date % self.days_in_server_year
 
         return days_in_year - month.day_start + 1
-    
+
     @property
     def days_in_server_year(self):
         if not self.calendar:
             return None
         return max(month.day_end for month in self.calendar)
-    
+
     def get_internal_date(self, day: int, month: int, year: int) -> int:
         if not self.calendar:
             return None
-        
-        epoch_time = (year * self.days_in_server_year) + (self.calendar[month-1].day_start+day-1)
+
+        epoch_time = (year * self.days_in_server_year) + (
+            self.calendar[month - 1].day_start + day - 1
+        )
 
         return epoch_time
-    
+
     def is_dev_channel(self, channel: discord.TextChannel) -> bool:
         if not self.dev_channels:
             return False
         return channel in self.dev_channels
-    
+
     # Add event listener for this
     async def upsert(self):
         async with self._db.acquire() as conn:
@@ -247,23 +289,27 @@ class PlayerGuild(object):
             if guild_row is None:
                 guild = PlayerGuild(self._db, id=self.id)
                 guild: PlayerGuild = await guild.upsert()
-            else: 
+            else:
                 guild = await GuildSchema(self._db, guild=self.guild).load(guild_row)
 
         return guild
-    
+
     async def get_all_characters(self, compendium: Compendium):
-        from Resolute.models.objects.characters import (CharacterSchema,
-                                                get_guild_characters_query)
-        
+        from Resolute.models.objects.characters import (
+            CharacterSchema,
+            get_guild_characters_query,
+        )
+
         async with self._db.acquire() as conn:
             results = await conn.execute(get_guild_characters_query(self.id))
             rows = await results.fetchall()
 
-        character_list = [await CharacterSchema(self._db, compendium).load(row) for row in rows]
+        character_list = [
+            await CharacterSchema(self._db, compendium).load(row) for row in rows
+        ]
 
         return character_list
-    
+
     async def get_dashboards(self, bot) -> list[RefDashboard]:
         dashboards = []
 
@@ -274,15 +320,24 @@ class PlayerGuild(object):
                     dashboards.append(dashboard)
 
         return dashboards
-    
+
     def get_npc(self, **kwargs) -> NPC:
-        if kwargs.get('key'):
-            return next((npc for npc in self.npcs if npc.key == kwargs.get('key')), None)
-        elif kwargs.get('name'):
-            return next((npc for npc in self.npcs if npc.name.lower() == kwargs.get('name').lower()), None)
-        
+        if kwargs.get("key"):
+            return next(
+                (npc for npc in self.npcs if npc.key == kwargs.get("key")), None
+            )
+        elif kwargs.get("name"):
+            return next(
+                (
+                    npc
+                    for npc in self.npcs
+                    if npc.name.lower() == kwargs.get("name").lower()
+                ),
+                None,
+            )
+
         return None
-        
+
 
 guilds_table = sa.Table(
     "guilds",
@@ -326,8 +381,9 @@ guilds_table = sa.Table(
     sa.Column("activity_points_channel", sa.BigInteger, nullable=True),
     sa.Column("rp_post_channel", sa.BigInteger, nullable=True),
     sa.Column("dev_channels", ARRAY(sa.BigInteger), nullable=True, default=[]),
-    sa.Column("archive_user", sa.BigInteger, nullable=True)
+    sa.Column("archive_user", sa.BigInteger, nullable=True),
 )
+
 
 class GuildSchema(Schema):
     _db: aiopg.sa.Engine
@@ -388,12 +444,22 @@ class GuildSchema(Schema):
         await self.load_weekly_stipends(guild)
         return guild
 
-    def load_timestamp(self, value):  # Marshmallow doesn't like loading DateTime for some reason. This is a workaround
-        return datetime(value.year, value.month, value.day, value.hour, value.minute, value.second, tzinfo=timezone.utc)
-    
+    def load_timestamp(
+        self, value
+    ):  # Marshmallow doesn't like loading DateTime for some reason. This is a workaround
+        return datetime(
+            value.year,
+            value.month,
+            value.day,
+            value.hour,
+            value.minute,
+            value.second,
+            tzinfo=timezone.utc,
+        )
+
     def load_role(self, value):
         return self._guild.get_role(value)
-    
+
     def load_channel(self, value):
         return self._guild.get_channel(value)
 
@@ -403,96 +469,103 @@ class GuildSchema(Schema):
             channels.append(self._guild.get_channel(c))
 
         return channels
-    
+
     def load_member(self, value):
         return self._guild.get_member(value)
-    
+
     async def load_calendar(self, guild: PlayerGuild):
         async with self._db.acquire() as conn:
             results = await conn.execute(get_server_calendar(guild.id))
             rows = await results.fetchall()
 
         guild.calendar = [RefServerCalendarSchema().load(row) for row in rows]
-    
+
     async def load_npcs(self, guild: PlayerGuild):
         async with self._db.acquire() as conn:
             results = await conn.execute(get_guild_npcs_query(guild.id))
             rows = await results.fetchall()
         guild.npcs = [NPCSchema(self._db).load(row) for row in rows]
-    
+
     async def load_weekly_stipends(self, guild: PlayerGuild):
         async with self._db.acquire() as conn:
             results = await conn.execute(get_guild_weekly_stipends_query(guild.id))
             rows = await results.fetchall()
-    
+
         guild.stipends = [RefWeeklyStipendSchema(self._db).load(row) for row in rows]
-    
+
 
 def get_guild_from_id(guild_id: int) -> FromClause:
-    return guilds_table.select().where(
-        guilds_table.c.id == guild_id
-    )
+    return guilds_table.select().where(guilds_table.c.id == guild_id)
+
 
 def get_guilds_with_reset_query(day: int, hour: int) -> FromClause:
     six_days_ago = datetime.today() - timedelta(days=6)
 
-    return guilds_table.select().where(
-        sa.and_(guilds_table.c.reset_day == day, guilds_table.c.reset_hour == hour,
-             guilds_table.c.last_reset < six_days_ago)
-    ).order_by(guilds_table.c.id.desc())
-
-def get_busy_guilds_query() -> FromClause:
-    return guilds_table.select().where(
-        guilds_table.c.archive_user.isnot(None)
+    return (
+        guilds_table.select()
+        .where(
+            sa.and_(
+                guilds_table.c.reset_day == day,
+                guilds_table.c.reset_hour == hour,
+                guilds_table.c.last_reset < six_days_ago,
+            )
+        )
+        .order_by(guilds_table.c.id.desc())
     )
 
+
+def get_busy_guilds_query() -> FromClause:
+    return guilds_table.select().where(guilds_table.c.archive_user.isnot(None))
+
+
 def upsert_guild(guild: PlayerGuild):
-    insert_statment = insert(guilds_table).values(
-        id=guild.id,
-        max_level=guild.max_level,
-        weeks=guild.weeks,
-        reset_day=guild._reset_day,
-        reset_hour=guild._reset_hour,
-        last_reset=guild._last_reset,
-        greeting=guild.greeting,
-        handicap_cc=guild.handicap_cc,
-        max_characters=guild.max_characters,
-        div_limit=guild.div_limit,
-        reset_message=guild.reset_message,
-        weekly_announcement=guild.weekly_announcement,
-        server_date=guild.server_date,
-        epoch_notation=guild.epoch_notation,
-        first_character_message=guild.first_character_message,
-        ping_announcement=guild.ping_announcement,
-        reward_threshold=guild.reward_threshold,
-        archive_user=guild.archive_user.id if guild.archive_user else None
-    ).returning(guilds_table)
+    insert_statment = (
+        insert(guilds_table)
+        .values(
+            id=guild.id,
+            max_level=guild.max_level,
+            weeks=guild.weeks,
+            reset_day=guild._reset_day,
+            reset_hour=guild._reset_hour,
+            last_reset=guild._last_reset,
+            greeting=guild.greeting,
+            handicap_cc=guild.handicap_cc,
+            max_characters=guild.max_characters,
+            div_limit=guild.div_limit,
+            reset_message=guild.reset_message,
+            weekly_announcement=guild.weekly_announcement,
+            server_date=guild.server_date,
+            epoch_notation=guild.epoch_notation,
+            first_character_message=guild.first_character_message,
+            ping_announcement=guild.ping_announcement,
+            reward_threshold=guild.reward_threshold,
+            archive_user=guild.archive_user.id if guild.archive_user else None,
+        )
+        .returning(guilds_table)
+    )
 
     update_dict = {
-        'max_level': guild.max_level,
-        'weeks': guild.weeks,
-        'reset_day': guild._reset_day, 
-        'reset_hour': guild._reset_hour, 
-        'last_reset': guild._last_reset,
-        'handicap_cc': guild.handicap_cc,
-        'max_characters': guild.max_characters,
-        'div_limit': guild.div_limit,
-        'reset_message': guild.reset_message,
-        'weekly_announcement': guild.weekly_announcement,
-        'server_date': guild.server_date,
-        'epoch_notation': guild.epoch_notation,
-        'greeting': guild.greeting,
-        'first_character_message': guild.first_character_message,
-        'ping_announcement': guild.ping_announcement,
-        'reward_threshold': guild.reward_threshold,
-        "archive_user": guild.archive_user.id if guild.archive_user else None
+        "max_level": guild.max_level,
+        "weeks": guild.weeks,
+        "reset_day": guild._reset_day,
+        "reset_hour": guild._reset_hour,
+        "last_reset": guild._last_reset,
+        "handicap_cc": guild.handicap_cc,
+        "max_characters": guild.max_characters,
+        "div_limit": guild.div_limit,
+        "reset_message": guild.reset_message,
+        "weekly_announcement": guild.weekly_announcement,
+        "server_date": guild.server_date,
+        "epoch_notation": guild.epoch_notation,
+        "greeting": guild.greeting,
+        "first_character_message": guild.first_character_message,
+        "ping_announcement": guild.ping_announcement,
+        "reward_threshold": guild.reward_threshold,
+        "archive_user": guild.archive_user.id if guild.archive_user else None,
     }
 
     upsert_statement = insert_statment.on_conflict_do_update(
-        index_elements=['id'],
-        set_=update_dict
+        index_elements=["id"], set_=update_dict
     )
 
     return upsert_statement
-
-

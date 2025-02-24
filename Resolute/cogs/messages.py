@@ -5,8 +5,7 @@ import discord
 from discord.ext import commands
 
 from Resolute.bot import G0T0Bot, G0T0Context
-from Resolute.constants import (APPROVAL_EMOJI, DENIED_EMOJI, EDIT_EMOJI,
-                                NULL_EMOJI)
+from Resolute.constants import APPROVAL_EMOJI, DENIED_EMOJI, EDIT_EMOJI, NULL_EMOJI
 from Resolute.helpers.general_helpers import confirm, is_admin, is_staff
 from Resolute.models.embeds.logs import LogEmbed
 from Resolute.models.objects.enum import WebhookType
@@ -22,6 +21,7 @@ from Resolute.models.views.messages import MessageLogUI
 
 log = logging.getLogger(__name__)
 
+
 def setup(bot: G0T0Bot):
     bot.add_cog(Messages(bot))
 
@@ -31,16 +31,17 @@ class Messages(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
-        log.info(f'Cog \'Messages\' loaded') 
+        log.info(f"Cog 'Messages' loaded")
 
-    @commands.message_command(
-        name="Edit"
-    )
+    @commands.message_command(name="Edit")
     async def message_edit(self, ctx: G0T0Context, message: discord.Message):
         player = ctx.player
 
         # Market
-        if player.guild.market_channel and message.channel.id == player.guild.market_channel.id:
+        if (
+            player.guild.market_channel
+            and message.channel.id == player.guild.market_channel.id
+        ):
             if transaction := await MarketTransaction.get_request(self.bot, message):
                 transaction: MarketTransaction
 
@@ -51,22 +52,36 @@ class Messages(commands.Cog):
                             users = await reaction.users().flatten()
                             for user in users:
                                 if is_staff(ctx) or user.id == self.bot.user.id:
-                                    raise G0T0Error(f"Transaction was previously denied. Please make a new request")
-                                
+                                    raise G0T0Error(
+                                        f"Transaction was previously denied. Please make a new request"
+                                    )
+
                 if transaction.player.id != ctx.author.id:
                     raise G0T0Error("You can only edit your own transactions")
-                
+
                 await message.add_reaction(EDIT_EMOJI[0])
-                ui = TransactionPromptUI.new(self.bot, transaction.player.member, transaction.player, transaction)
+                ui = TransactionPromptUI.new(
+                    self.bot, transaction.player.member, transaction.player, transaction
+                )
                 await ui.send_to(ctx.author)
 
         # Arena Board
-        elif player.guild.arena_board_channel and message.channel.id == player.guild.arena_board_channel.id:
-            if not message.author.bot or message.embeds[0].footer.text != f"{ctx.author.id}":
+        elif (
+            player.guild.arena_board_channel
+            and message.channel.id == player.guild.arena_board_channel.id
+        ):
+            if (
+                not message.author.bot
+                or message.embeds[0].footer.text != f"{ctx.author.id}"
+            ):
                 raise G0T0Error("You cannot edit this arena board post")
-            elif len(player.characters) <= 1 and player.guild.member_role and player.guild.member_role not in player.member.roles:
+            elif (
+                len(player.characters) <= 1
+                and player.guild.member_role
+                and player.guild.member_role not in player.member.roles
+            ):
                 raise G0T0Error(f"There is nothing to edit")
-            
+
             post = ArenaPost(player)
             post.message = message
 
@@ -74,38 +89,53 @@ class Messages(commands.Cog):
             await ui.send_to(ctx.author)
 
         # RP Post
-        elif player.guild.rp_post_channel and message.channel.id == player.guild.rp_post_channel.id:
-            if not message.author.bot or message.embeds[0].footer.text != f"{ctx.author.id}":
+        elif (
+            player.guild.rp_post_channel
+            and message.channel.id == player.guild.rp_post_channel.id
+        ):
+            if (
+                not message.author.bot
+                or message.embeds[0].footer.text != f"{ctx.author.id}"
+            ):
                 raise G0T0Error("You cannot edit this roleplay board post")
-            
+
             ui = RPPostUI.new(self.bot, player, message)
-            await ui.send_to(ctx.author)            
-            
-        # Character Say 
-        elif (webhook := G0T0Webhook(ctx, message=message)) and await webhook.is_valid_message():
+            await ui.send_to(ctx.author)
+
+        # Character Say
+        elif (
+            webhook := G0T0Webhook(ctx, message=message)
+        ) and await webhook.is_valid_message():
             modal = SayEditModal(self.bot, webhook)
-            return await ctx.send_modal(modal) 
-        
+            return await ctx.send_modal(modal)
+
         else:
             raise G0T0Error("This message cannot be edited")
-        
+
         await ctx.delete()
 
-    @commands.message_command(
-        name="Delete"
-    )
+    @commands.message_command(name="Delete")
     async def message_delete(self, ctx: G0T0Context, message: discord.Message):
         player = ctx.player
 
         # Arena Board
-        if player.guild.arena_board_channel and message.channel.id == player.guild.arena_board_channel.id:
-            if not message.author.bot or message.embeds[0].footer.text != f"{ctx.author.id}":
+        if (
+            player.guild.arena_board_channel
+            and message.channel.id == player.guild.arena_board_channel.id
+        ):
+            if (
+                not message.author.bot
+                or message.embeds[0].footer.text != f"{ctx.author.id}"
+            ):
                 raise G0T0Error("You cannot edit this arena board post")
 
             await message.delete()
 
         # Market
-        elif player.guild.market_channel and message.channel.id == player.guild.market_channel.id:
+        elif (
+            player.guild.market_channel
+            and message.channel.id == player.guild.market_channel.id
+        ):
             if transaction := await MarketTransaction.get_request(self.bot, message):
                 transaction: MarketTransaction
                 if len(message.reactions) > 0:
@@ -115,44 +145,60 @@ class Messages(commands.Cog):
 
                             for user in users:
                                 if is_staff(ctx) or user.id == self.bot.user.id:
-                                    raise G0T0Error(f"Transaction was previously denied. Please make a new request")
-                
+                                    raise G0T0Error(
+                                        f"Transaction was previously denied. Please make a new request"
+                                    )
+
                 if transaction.player.id != ctx.author.id:
                     raise G0T0Error("You can only edit your own transactions")
-                
+
                 await message.delete()
 
         # RP Post
-        elif player.guild.rp_post_channel and message.channel.id == player.guild.rp_post_channel.id:
-            if not message.author.bot or message.embeds[0].footer.text != f"{ctx.author.id}":
+        elif (
+            player.guild.rp_post_channel
+            and message.channel.id == player.guild.rp_post_channel.id
+        ):
+            if (
+                not message.author.bot
+                or message.embeds[0].footer.text != f"{ctx.author.id}"
+            ):
                 raise G0T0Error("You cannot edit this roleplay board post")
-            
+
             await message.delete()
 
         # Character Say
-        elif (webhook := G0T0Webhook(ctx, message=message)) and await webhook.is_valid_message():
+        elif (
+            webhook := G0T0Webhook(ctx, message=message)
+        ) and await webhook.is_valid_message():
             await webhook.delete()
 
         # Staff Say Delete
-        elif is_staff and (webhook := G0T0Webhook(ctx, message=message)) and await webhook.is_valid_message(update_player=True):
+        elif (
+            is_staff
+            and (webhook := G0T0Webhook(ctx, message=message))
+            and await webhook.is_valid_message(update_player=True)
+        ):
             await webhook.delete()
 
         # Adventure NPC
-        elif (webhook := G0T0Webhook(ctx, type=WebhookType.adventure, message=message)) and await webhook.is_valid_message():
+        elif (
+            webhook := G0T0Webhook(ctx, type=WebhookType.adventure, message=message)
+        ) and await webhook.is_valid_message():
             await webhook.delete()
 
         # Global NPC
-        elif (webhook := G0T0Webhook(ctx, type=WebhookType.npc, message=message)) and await webhook.is_valid_message():
+        elif (
+            webhook := G0T0Webhook(ctx, type=WebhookType.npc, message=message)
+        ) and await webhook.is_valid_message():
             await webhook.delete()
-        
+
         else:
             raise G0T0Error("This message cannot be deleted")
 
         await ctx.delete()
 
-    @commands.message_command(
-        name="Approve"
-    )
+    @commands.message_command(name="Approve")
     @commands.check(is_staff)
     async def message_approve(self, ctx: G0T0Context, message: discord.Message):
         guild = ctx.player.guild
@@ -168,60 +214,79 @@ class Messages(commands.Cog):
                             users = await reaction.users().flatten()
                             for user in users:
                                 if is_staff(ctx) or user.id == self.bot.user.id:
-                                    raise G0T0Error(f"Transaction was previously denied. Please make a new request")
-        
+                                    raise G0T0Error(
+                                        f"Transaction was previously denied. Please make a new request"
+                                    )
+
                 # Selling items
                 if transaction.type.value == "Sell Items":
                     await message.add_reaction(APPROVAL_EMOJI[0])
-                    log_entry = await self.bot.log(ctx, transaction.player, ctx.author, "SELL",
-                                                   character=transaction.character,
-                                                   notes=transaction.log_notes,
-                                                   cc=transaction.cc,
-                                                   credits=transaction.credits,
-                                                   ignore_handicap=True,
-                                                   show_values=True,
-                                                   silent=True)                    
+                    log_entry = await self.bot.log(
+                        ctx,
+                        transaction.player,
+                        ctx.author,
+                        "SELL",
+                        character=transaction.character,
+                        notes=transaction.log_notes,
+                        cc=transaction.cc,
+                        credits=transaction.credits,
+                        ignore_handicap=True,
+                        show_values=True,
+                        silent=True,
+                    )
                     await message.edit(content=None, embed=LogEmbed(log_entry, True))
 
                 else:
                     try:
-                        log_entry = await self.bot.log(ctx, transaction.player, ctx.author, "BUY",
-                                                       character=transaction.character,
-                                                       notes=transaction.log_notes,
-                                                       cc=-transaction.cc,
-                                                       credits=-transaction.credits,
-                                                       show_values=True,
-                                                       ignore_handicap=True)
+                        log_entry = await self.bot.log(
+                            ctx,
+                            transaction.player,
+                            ctx.author,
+                            "BUY",
+                            character=transaction.character,
+                            notes=transaction.log_notes,
+                            cc=-transaction.cc,
+                            credits=-transaction.credits,
+                            show_values=True,
+                            ignore_handicap=True,
+                        )
                         await message.add_reaction(APPROVAL_EMOJI[0])
                         await message.edit(content="", embed=LogEmbed(log_entry, True))
                     except Exception as error:
                         await message.clear_reactions
                         await message.add_reaction(DENIED_EMOJI[0])
-                        raise error                    
+                        raise error
 
         # RP
-        elif guild.staff_role and guild.staff_role.mention in message.content and len(message.mentions) > 0:
+        elif (
+            guild.staff_role
+            and guild.staff_role.mention in message.content
+            and len(message.mentions) > 0
+        ):
             ui = await MessageLogUI.new(self.bot, ctx.author, message)
             await ui.send_to(ctx)
-        
+
         else:
             raise G0T0Error("Nothing to approve here. Move along.")
-        
+
         await ctx.delete()
 
-    @commands.message_command(
-        name="Null"
-    )
+    @commands.message_command(name="Null")
     @commands.check(is_admin)
     async def message_null(self, ctx: G0T0Context, message: discord.Message):
         await ctx.defer()
         log_entry = await self._get_log_from_entry(message)
-        
-        reason = await confirm(ctx, f"What is the reason for nulling the log?", True, self.bot, response_check=None)
-        await log_entry.null(ctx, reason)        
+
+        reason = await confirm(
+            ctx,
+            f"What is the reason for nulling the log?",
+            True,
+            self.bot,
+            response_check=None,
+        )
+        await log_entry.null(ctx, reason)
         await message.add_reaction(NULL_EMOJI[0])
-        
-    
+
     # --------------------------- #
     # Private Methods
     # --------------------------- #
@@ -236,7 +301,7 @@ class Messages(commands.Cog):
             raise LogNotFound()
 
         return log_entry
-    
+
     def _get_match(self, pattern, text, group=1, default=None):
         match = re.search(pattern, text, re.DOTALL)
-        return match.group(group) if match and match.group(group) != 'None' else default
+        return match.group(group) if match and match.group(group) != "None" else default

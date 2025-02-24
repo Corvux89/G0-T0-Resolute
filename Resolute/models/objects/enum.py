@@ -10,6 +10,7 @@ class ApplicationType(Enum):
         freeroll (str): Represents a free reroll application.
         level (str): Represents a level up application.
     """
+
     new = "New Character"
     death = "Death Reroll"
     freeroll = "Free Reroll"
@@ -25,9 +26,9 @@ class ArenaPostType(Enum):
         BOTH (str): Represents a post type that can be either combat or narrative.
     """
 
-    COMBAT = 'Combat'
-    NARRATIVE = 'Narrative'
-    BOTH = 'Combat or Narrative'
+    COMBAT = "Combat"
+    NARRATIVE = "Narrative"
+    BOTH = "Combat or Narrative"
 
 
 class AdjustOperator(Enum):

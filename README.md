@@ -12,18 +12,22 @@ For the Resolute discord bot
 | `DATABASE_URL`               | Full Postgres database URL. Example: `postgresql://<user>:<password>@<server>:<port>/<database>`                                                         | Connection to DB                   | **Yes**  |
 | `GUILD`                      | Debug guilds for the bot. Used for non-production versions only.                                                                                         | Guild IDs for debugging            | No       |
 | `ERROR_CHANNEL`              | 
+| `AUTH_TOKEN`                 | Validation token for the Quart webservices                                                                                                               | Quart                               | No      |
+| `PORT`                       | Port for the webserver                                                                                                                                   | Quart                               | No      |  
 
-## Roles:
-All assumed roles by the bot.
-* **Loremaster**: Adventure/Lore overseer
-* **Lead DM**: Helps manage adventures/DM's
-* **Quester**: Players eligible for adventures
-* **Fledgling**: Members who have yet to create a character 
+## Committing, Formatting, and Linting
 
-### Faction Roles
-Used by the faction commands. Each faction should have a Role with the same name
-* **Guild Initiate -> Acolyte**: Inital role for starting characters 
-* **Guild Member -> Citizen**: Role for characters who have completed initial quests
+G0-T0 uses [Black](https://black.readthedocs.io/) to format and lint its Python code.
+Black is automatically run on every commit via pre-commit hook, and takes its configuration options from the `pyproject.toml` file.
 
-### Arena Roles
-For any TextChannel used for the `Arena` command group, should have a corresponding Role with the same name.
+The pre-commit hook is installed by by running `pre-commit install` from the repo root.
+The hook's configuration is governed by the `.pre-commit-config.yaml` file.
+
+#### Dependencies
+
+In order to run `pre-commit` or `black`, they must be installed.
+These dependencies are contained within the `tests/requirements.txt` file, and can be installed like so:
+
+```bash
+(venv) $ pip install -r tests/requirements.txt
+```

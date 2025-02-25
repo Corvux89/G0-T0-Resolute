@@ -7,7 +7,6 @@ import discord
 import sqlalchemy as sa
 from marshmallow import Schema, fields, post_load
 from sqlalchemy.dialects.postgresql import ARRAY
-from sqlalchemy.sql.selectable import FromClause
 
 from Resolute.compendium import Compendium
 from Resolute.models import metadata
@@ -38,6 +37,84 @@ class Arena(object):
         upsert(): Inserts or updates the arena in the database.
         close(): Closes the arena, updates the end timestamp, and deletes the pinned message in the channel.
     """
+
+    arenas_table = sa.Table(
+        "arenas",
+        metadata,
+        sa.Column("id", sa.Integer, primary_key=True, autoincrement="auto"),
+        sa.Column("channel_id", sa.BigInteger, nullable=False),
+        sa.Column("pin_message_id", sa.BigInteger, nullable=False),
+        sa.Column(
+            "host_id", sa.BigInteger, nullable=False
+        ),  # ref: > characters.player_id
+        sa.Column(
+            "tier", sa.Integer, nullable=False, default=1
+        ),  # ref: > c_arena_tier.id
+        sa.Column(
+            "type", sa.Integer, nullable=False, default=1
+        ),  # ref: > c_arena_type.id
+        sa.Column("completed_phases", sa.Integer, nullable=False, default=0),
+        sa.Column("created_ts", sa.TIMESTAMP(timezone=timezone.utc)),
+        sa.Column(
+            "end_ts",
+            sa.TIMESTAMP(timezone=timezone.utc),
+            nullable=True,
+            default=sa.null(),
+        ),
+        sa.Column("characters", ARRAY(sa.Integer), nullable=True),
+    )
+
+    class ArenaSchema(Schema):
+        bot = None
+
+        id = fields.Integer(data_key="id", required=True)
+        channel_id = fields.Integer(data_key="channel_id", required=True)
+        pin_message_id = fields.Integer(data_key="pin_message_id", required=True)
+        host_id = fields.Integer(data_key="host_id", required=True)
+        tier = fields.Method(None, "load_tier")
+        type = fields.Method(None, "load_type")
+        completed_phases = fields.Integer(
+            data_key="completed_phases", required=True, default=0
+        )
+        created_ts = fields.Method(None, "load_timestamp")
+        end_ts = fields.Method(None, "load_timestamp", allow_none=True)
+        characters = fields.List(
+            fields.Integer, required=False, allow_none=True, default=[]
+        )
+
+        def __init__(self, bot, **kwargs):
+            super().__init__(**kwargs)
+            self.bot = bot
+
+        @post_load
+        async def make_arena(self, data, **kwargs):
+            arena = Arena(self.bot.db, self.bot.compendium, **data)
+            arena.channel = self.bot.get_channel(data.get("channel_id"))
+            await self.get_characters(arena)
+            return arena
+
+        def load_tier(self, value):
+            return self.bot.compendium.get_object(ArenaTier, value)
+
+        def load_type(self, value):
+            return self.bot.compendium.get_object(ArenaType, value)
+
+        def load_timestamp(
+            self, value
+        ):  # Marshmallow doesn't like loading DateTime for some reason. This is a workaround
+            return datetime(
+                value.year,
+                value.month,
+                value.day,
+                value.hour,
+                value.minute,
+                value.second,
+                tzinfo=timezone.utc,
+            )
+
+        async def get_characters(self, arena):
+            for char in arena.characters:
+                arena.player_characters.append(await self.bot.get_character(char))
 
     def __init__(
         self,
@@ -97,8 +174,41 @@ class Arena(object):
         Raises:
             Exception: If the database operation fails.
         """
+        if hasattr(self, "id") and self.id is not None:
+            update_dict = {
+                "pin_message_id": self.pin_message_id,
+                "host_id": self.host_id,
+                "tier": self.tier.id,
+                "type": self.type.id,
+                "characters": self.characters,
+                "completed_phases": self.completed_phases,
+                "end_ts": self.end_ts,
+            }
+
+            query = (
+                Arena.arenas_table.update()
+                .where(Arena.arenas_table.c.id == self.id)
+                .values(**update_dict)
+                .returning(Arena.arenas_table)
+            )
+        else:
+            query = (
+                Arena.arenas_table.insert()
+                .values(
+                    channel_id=self.channel.id if self.channel else self.channel_id,
+                    pin_message_id=self.pin_message_id,
+                    host_id=self.host_id,
+                    tier=self.tier.id,
+                    type=self.type.id,
+                    characters=self.characters,
+                    created_ts=self.created_ts,
+                    completed_phases=self.completed_phases,
+                )
+                .returning(Arena.arenas_table)
+            )
+
         async with self._db.acquire() as conn:
-            await conn.execute(upsert_arena_query(self))
+            await conn.execute(query)
 
     async def close(self) -> None:
         """
@@ -118,133 +228,3 @@ class Arena(object):
 
         if message := await self.channel.fetch_message(self.pin_message_id):
             await message.delete(reason="Closing Arena")
-
-
-arenas_table = sa.Table(
-    "arenas",
-    metadata,
-    sa.Column("id", sa.Integer, primary_key=True, autoincrement="auto"),
-    sa.Column("channel_id", sa.BigInteger, nullable=False),
-    sa.Column("pin_message_id", sa.BigInteger, nullable=False),
-    sa.Column("host_id", sa.BigInteger, nullable=False),  # ref: > characters.player_id
-    sa.Column("tier", sa.Integer, nullable=False, default=1),  # ref: > c_arena_tier.id
-    sa.Column("type", sa.Integer, nullable=False, default=1),  # ref: > c_arena_type.id
-    sa.Column("completed_phases", sa.Integer, nullable=False, default=0),
-    sa.Column("created_ts", sa.TIMESTAMP(timezone=timezone.utc)),
-    sa.Column(
-        "end_ts", sa.TIMESTAMP(timezone=timezone.utc), nullable=True, default=sa.null()
-    ),
-    sa.Column("characters", ARRAY(sa.Integer), nullable=True),
-)
-
-
-class ArenaSchema(Schema):
-    bot = None
-
-    id = fields.Integer(data_key="id", required=True)
-    channel_id = fields.Integer(data_key="channel_id", required=True)
-    pin_message_id = fields.Integer(data_key="pin_message_id", required=True)
-    host_id = fields.Integer(data_key="host_id", required=True)
-    tier = fields.Method(None, "load_tier")
-    type = fields.Method(None, "load_type")
-    completed_phases = fields.Integer(
-        data_key="completed_phases", required=True, default=0
-    )
-    created_ts = fields.Method(None, "load_timestamp")
-    end_ts = fields.Method(None, "load_timestamp", allow_none=True)
-    characters = fields.List(
-        fields.Integer, required=False, allow_none=True, default=[]
-    )
-
-    def __init__(self, bot, **kwargs):
-        super().__init__(**kwargs)
-        self.bot = bot
-
-    @post_load
-    async def make_arena(self, data, **kwargs):
-        arena = Arena(self.bot.db, self.bot.compendium, **data)
-        arena.channel = self.bot.get_channel(data.get("channel_id"))
-        await self.get_characters(arena)
-        return arena
-
-    def load_tier(self, value):
-        return self.bot.compendium.get_object(ArenaTier, value)
-
-    def load_type(self, value):
-        return self.bot.compendium.get_object(ArenaType, value)
-
-    def load_timestamp(
-        self, value
-    ):  # Marshmallow doesn't like loading DateTime for some reason. This is a workaround
-        return datetime(
-            value.year,
-            value.month,
-            value.day,
-            value.hour,
-            value.minute,
-            value.second,
-            tzinfo=timezone.utc,
-        )
-
-    async def get_characters(self, arena: Arena):
-        for char in arena.characters:
-            arena.player_characters.append(await self.bot.get_character(char))
-
-
-def get_arena_by_channel_query(channel_id: int) -> FromClause:
-    return arenas_table.select().where(
-        sa.and_(
-            arenas_table.c.channel_id == channel_id, arenas_table.c.end_ts == sa.null()
-        )
-    )
-
-
-def get_arena_by_host_query(member_id: int) -> FromClause:
-    return arenas_table.select().where(
-        sa.and_(arenas_table.c.host_id == member_id, arenas_table.c.end_ts == sa.null())
-    )
-
-
-def get_character_arena_query(char_id: int) -> FromClause:
-    return arenas_table.select().where(
-        sa.and_(
-            arenas_table.c.characters.contains([char_id]),
-            arenas_table.c.end_ts == sa.null(),
-        )
-    )
-
-
-def upsert_arena_query(arena: Arena):
-    if hasattr(arena, "id") and arena.id is not None:
-        update_dict = {
-            "pin_message_id": arena.pin_message_id,
-            "host_id": arena.host_id,
-            "tier": arena.tier.id,
-            "type": arena.type.id,
-            "characters": arena.characters,
-            "completed_phases": arena.completed_phases,
-            "end_ts": arena.end_ts,
-        }
-
-        update_statement = (
-            arenas_table.update()
-            .where(arenas_table.c.id == arena.id)
-            .values(**update_dict)
-            .returning(arenas_table)
-        )
-        return update_statement
-
-    return (
-        arenas_table.insert()
-        .values(
-            channel_id=arena.channel_id,
-            pin_message_id=arena.pin_message_id,
-            host_id=arena.host_id,
-            tier=arena.tier.id,
-            type=arena.type.id,
-            characters=arena.characters,
-            created_ts=arena.created_ts,
-            completed_phases=arena.completed_phases,
-        )
-        .returning(arenas_table)
-    )

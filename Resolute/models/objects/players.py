@@ -14,26 +14,21 @@ import Resolute.models.objects.npc as npc
 from Resolute.compendium import Compendium
 from Resolute.helpers.general_helpers import get_webhook
 from Resolute.models import metadata
-from Resolute.models.categories.categories import ArenaType, LevelTier
+from Resolute.models.categories.categories import Activity, ArenaType, LevelTier
 from Resolute.models.embeds.arenas import ArenaStatusEmbed
 from Resolute.models.objects.enum import ApplicationType, ArenaPostType
 from Resolute.models.objects.adventures import Adventure
-from Resolute.models.objects.arenas import (
-    Arena,
-    ArenaSchema,
-    get_arena_by_host_query,
-    get_character_arena_query,
-)
+from Resolute.models.objects.arenas import Arena
+
 from Resolute.models.objects.characters import (
     CharacterSchema,
     PlayerCharacter,
     PlayerCharacterClass,
     PlayerCharacterClassSchema,
-    RenownSchema,
+    CharacterRenown,
     get_active_player_characters,
     get_all_player_characters,
     get_character_class,
-    get_character_renown,
 )
 from Resolute.models.objects.exceptions import G0T0Error
 from Resolute.models.objects.guilds import PlayerGuild
@@ -433,6 +428,7 @@ class PlayerSchema(Schema):
         await self.get_characters(player)
         await self.get_player_quests(player)
         await self.get_adventures(player)
+        await self.get_arenas(player)
         player.member = self.bot.get_guild(player.guild_id).get_member(player.id)
         player.guild = await self.bot.get_player_guild(player.guild_id)
         player._db = self.bot.db
@@ -456,20 +452,23 @@ class PlayerSchema(Schema):
         ]
 
         for character in character_list:
+            renown_query = (
+                CharacterRenown.renown_table.select()
+                .where(CharacterRenown.renown_table.c.character_id == character.id)
+                .order_by(CharacterRenown.renown_table.c.id.asc())
+            )
+
             async with self.bot.db.acquire() as conn:
                 class_results = await conn.execute(get_character_class(character.id))
                 class_rows = await class_results.fetchall()
-
-                renown_results = await conn.execute(get_character_renown(character.id))
-                renown_rows = await renown_results.fetchall()
 
             character.classes = [
                 PlayerCharacterClassSchema(self.bot.db, self.bot.compendium).load(row)
                 for row in class_rows
             ]
             character.renown = [
-                RenownSchema(self.bot.db, self.bot.compendium).load(row)
-                for row in renown_rows
+                CharacterRenown.RenownSchema(self.bot.db, self.bot.compendium).load(row)
+                for row in await self.bot.query(renown_query, False)
             ]
 
         player.characters = character_list
@@ -480,26 +479,28 @@ class PlayerSchema(Schema):
         ):
             return
 
+        def build_query(activity: Activity):
+            query = (
+                sa.select([sa.func.count()])
+                .select_from(logs.DBLog.log_table)
+                .where(
+                    sa.and_(
+                        logs.DBLog.log_table.c.player_id == player.id,
+                        logs.DBLog.log_table.c.guild_id == player.guild_id,
+                        logs.DBLog.log_table.c.invalid == False,
+                        logs.DBLog.log_table.c.activity == activity.id,
+                    )
+                )
+            )
+
         rp_activity = self.bot.compendium.get_activity("RP")
         arena_activity = self.bot.compendium.get_activity("ARENA")
         arena_host_activity = self.bot.compendium.get_activity("ARENA_HOST")
 
         async with self.bot.db.acquire() as conn:
-            rp_result = await conn.execute(
-                logs.get_log_count_by_player_and_activity(
-                    player.id, player.guild_id, rp_activity.id
-                )
-            )
-            areana_result = await conn.execute(
-                logs.get_log_count_by_player_and_activity(
-                    player.id, player.guild_id, arena_activity.id
-                )
-            )
-            arena_host_result = await conn.execute(
-                logs.get_log_count_by_player_and_activity(
-                    player.id, player.guild_id, arena_host_activity.id
-                )
-            )
+            rp_result = await conn.execute(build_query(rp_activity))
+            areana_result = await conn.execute(build_query(arena_activity))
+            arena_host_result = await conn.execute(build_query(arena_host_activity))
             player.completed_rps = await rp_result.scalar()
             player.completed_arenas = (
                 await areana_result.scalar() + await arena_host_result.scalar()
@@ -509,19 +510,39 @@ class PlayerSchema(Schema):
         player.needed_arenas = 1 if player.highest_level_character.level == 1 else 2
 
     async def get_adventures(self, player: Player):
+        dm_query = (
+            Adventure.adventures_table.select()
+            .where(
+                sa.and_(
+                    Adventure.adventures_table.c.dms.contains([player.id]),
+                    Adventure.adventures_table.c.end_ts == sa.null(),
+                )
+            )
+            .order_by(Adventure.adventures_table.c.id.asc())
+        )
+
         rows = []
 
         async with self.bot.db.acquire() as conn:
-            dm_adventures = await conn.execute(
-                Adventure.get_adventures_by_dm_query(player.id)
-            )
+            dm_adventures = await conn.execute(dm_query)
             rows = await dm_adventures.fetchall()
 
         for character in player.characters:
-            async with self.bot.db.acquire() as conn:
-                player_adventures = await conn.execute(
-                    Adventure.get_character_adventures_query(character.id)
+            char_query = (
+                Adventure.adventures_table.select()
+                .where(
+                    sa.and_(
+                        Adventure.adventures_table.c.characters.contains(
+                            [character.id]
+                        ),
+                        Adventure.adventures_table.c.end_ts == sa.null(),
+                    )
                 )
+                .order_by(Adventure.adventures_table.c.id.asc())
+            )
+
+            async with self.bot.db.acquire() as conn:
+                player_adventures = await conn.execute(char_query)
                 rows.extend(await player_adventures.fetchall())
 
         player.adventures.extend(
@@ -531,18 +552,28 @@ class PlayerSchema(Schema):
     async def get_arenas(self, player: Player):
         rows = []
 
-        async with self.bot.db.acquire() as conn:
-            host_arenas = await conn.execute(get_arena_by_host_query(player.id))
-            rows = await host_arenas.fetchall()
+        host_arena_query = Arena.arenas_table.select().where(
+            sa.and_(
+                Arena.arenas_table.c.host_id == player.id,
+                Arena.arenas_table.c.end_ts == sa.null(),
+            )
+        )
+
+        rows = await self.bot.query(host_arena_query, False)
 
         for character in player.characters:
-            async with self.bot.db.acquire() as conn:
-                player_arenas = await conn.execute(
-                    get_character_arena_query(character.id)
+            char_query = Arena.arenas_table.select().where(
+                sa.and_(
+                    Arena.arenas_table.c.characters.contains([character.id]),
+                    Arena.arenas_table.c.end_ts == sa.null(),
                 )
-                rows.extend(await player_arenas.fetchall())
+            )
 
-        player.arenas.extend(ArenaSchema(self.bot).load(row) for row in rows)
+            rows.extend(await self.bot.query(char_query, False))
+
+        arenas = [await Arena.ArenaSchema(self.bot).load(row) for row in rows]
+
+        player.arenas.extend(arenas)
 
 
 def get_player_query(player_id: int, guild_id: int = None) -> FromClause:

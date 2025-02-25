@@ -2,7 +2,7 @@ import aiopg.sa
 import discord
 import sqlalchemy as sa
 from marshmallow import Schema, fields, post_load
-from sqlalchemy.dialects.postgresql import ARRAY
+from sqlalchemy.dialects.postgresql import ARRAY, insert
 
 from Resolute.compendium import Compendium
 from Resolute.models import metadata
@@ -104,8 +104,9 @@ class Shatterpoint(object):
         self.renown: list[ShatterpointRenown] = kwargs.get("renown", [])
 
     async def upsert(self) -> None:
-        insert_statement = (
-            Shatterpoint.ref_gb_staging_table.insert()
+
+        query = (
+            insert(Shatterpoint.ref_gb_staging_table)
             .values(
                 guild_id=self.guild_id,
                 name=self.name,
@@ -123,7 +124,7 @@ class Shatterpoint(object):
             "busy_member": (self.busy_member.id if self.busy_member else None),
         }
 
-        query = insert_statement.on_conflict_do_update(
+        query = query.on_conflict_do_update(
             index_elements=["guild_id"], set_=update_dict
         )
 
@@ -338,7 +339,7 @@ class ShatterpointPlayer(object):
         }
 
         query = (
-            ShatterpointPlayer.ref_gb_staging_player_table.insert()
+            insert(ShatterpointPlayer.ref_gb_staging_player_table)
             .values(**insert_dict)
             .returning(ShatterpointPlayer.ref_gb_staging_player_table)
         )
@@ -402,7 +403,7 @@ class ShatterpointRenown(object):
         }
 
         query = (
-            ShatterpointRenown.ref_gb_renown_table.insert()
+            insert(ShatterpointRenown.ref_gb_renown_table)
             .values(**insert_dict)
             .returning(ShatterpointRenown.ref_gb_renown_table)
         )

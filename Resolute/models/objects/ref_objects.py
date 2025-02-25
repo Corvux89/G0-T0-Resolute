@@ -2,7 +2,6 @@ import aiopg.sa
 import sqlalchemy as sa
 from marshmallow import Schema, fields, post_load
 from sqlalchemy.dialects.postgresql import insert
-from sqlalchemy.sql import FromClause, TableClause
 
 from Resolute.models import metadata
 
@@ -77,7 +76,7 @@ class RefWeeklyStipend(object):
         self.leadership = leadership
 
     async def upsert(self) -> None:
-        update_dict = {
+        obj_dict = {
             "role_id": self.role_id,
             "guild_id": self.guild_id,
             "amount": self.amount,
@@ -85,17 +84,9 @@ class RefWeeklyStipend(object):
             "leadership": self.leadership,
         }
 
-        query = RefWeeklyStipend.ref_weekly_stipend_table.insert().values(
-            role_id=self.role_id,
-            guild_id=self.guild_id,
-            amount=self.amount,
-            reason=self.reason,
-            leadership=self.leadership,
-        )
+        query = insert(RefWeeklyStipend.ref_weekly_stipend_table).values(**obj_dict)
 
-        query = query.on_conflict_do_update(
-            index_elements=["role_id"], set_=update_dict
-        )
+        query = query.on_conflict_do_update(index_elements=["role_id"], set_=obj_dict)
 
         async with self._db.acquire() as conn:
             await conn.execute(query)

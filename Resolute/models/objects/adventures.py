@@ -5,7 +5,6 @@ import discord
 import sqlalchemy as sa
 from marshmallow import Schema, fields, post_load
 from sqlalchemy.dialects.postgresql import ARRAY
-from sqlalchemy.sql import FromClause
 
 from Resolute.models import metadata
 from Resolute.models.categories.categories import Faction
@@ -139,13 +138,8 @@ class Adventure(object):
                         adventure.player_characters.append(char)
 
         async def get_npcs(self, adventure):
-            query = (
-                NPC.npc_table.select()
-                .where(
-                    sa.and_(
-                        NPC.npc_table.c.adventure_id == adventure.id
-                    )
-                )
+            query = NPC.npc_table.select().where(
+                sa.and_(NPC.npc_table.c.adventure_id == adventure.id)
             )
 
             async with self.bot.db.acquire() as conn:
@@ -289,44 +283,3 @@ class Adventure(object):
             )
 
         return None
-
-    @staticmethod
-    def get_character_adventures_query(char_id: int) -> FromClause:
-        return (
-            Adventure.adventures_table.select()
-            .where(
-                sa.and_(
-                    Adventure.adventures_table.c.characters.contains([char_id]),
-                    Adventure.adventures_table.c.end_ts == sa.null(),
-                )
-            )
-            .order_by(Adventure.adventures_table.c.id.asc())
-        )
-
-    def get_adventures_by_dm_query(member_id: int) -> FromClause:
-        return (
-            Adventure.adventures_table.select()
-            .where(
-                sa.and_(
-                    Adventure.adventures_table.c.dms.contains([member_id]),
-                    Adventure.adventures_table.c.end_ts == sa.null(),
-                )
-            )
-            .order_by(Adventure.adventures_table.c.id.asc())
-        )
-
-    def get_adventure_by_role_query(role_id: int) -> FromClause:
-        return Adventure.adventures_table.select().where(
-            sa.and_(
-                Adventure.adventures_table.c.role_id == role_id,
-                Adventure.adventures_table.c.end_ts == sa.null(),
-            )
-        )
-
-    def get_adventure_by_category_channel_query(category_channel_id: int) -> FromClause:
-        return Adventure.adventures_table.select().where(
-            sa.and_(
-                Adventure.adventures_table.c.category_channel_id == category_channel_id,
-                Adventure.adventures_table.c.end_ts == sa.null(),
-            )
-        )

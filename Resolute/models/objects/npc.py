@@ -3,8 +3,7 @@ import discord
 from discord.ext import commands
 import sqlalchemy as sa
 from marshmallow import Schema, fields, post_load
-from sqlalchemy.dialects.postgresql import ARRAY
-from sqlalchemy.sql import TableClause
+from sqlalchemy.dialects.postgresql import ARRAY, insert
 
 import Resolute.helpers.general_helpers as gh
 from Resolute.models import metadata
@@ -94,7 +93,7 @@ class NPC(object):
             "roles": self.roles,
         }
 
-        query = NPC.npc_table.insert().values(**insert_dict).returning(NPC.npc_table)
+        query = insert(NPC.npc_table).values(**insert_dict).returning(NPC.npc_table)
 
         query = query.on_conflict_do_update(
             index_elements=["guild_id", "key"],

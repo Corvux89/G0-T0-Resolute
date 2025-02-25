@@ -7,10 +7,13 @@ from timeit import default_timer as timer
 import traceback
 
 import discord
-from aiopg.sa import Engine, SAConnection, create_engine
+from aiopg.sa import Engine, SAConnection, create_engine, result
+import sqlalchemy as sa
 from discord.ext import commands
 from quart import Quart
 from sqlalchemy.schema import CreateTable
+from sqlalchemy.sql import FromClause, TableClause
+
 
 from Resolute.compendium import Compendium
 from Resolute.constants import DB_URL, ERROR_CHANNEL, PORT
@@ -25,11 +28,7 @@ from Resolute.models.categories.categories import (
 from Resolute.models.embeds import ErrorEmbed
 from Resolute.models.embeds.logs import LogEmbed
 from Resolute.models.objects.adventures import Adventure
-from Resolute.models.objects.arenas import (
-    Arena,
-    ArenaSchema,
-    get_arena_by_channel_query,
-)
+from Resolute.models.objects.arenas import Arena
 from Resolute.models.objects.characters import (
     CharacterSchema,
     PlayerCharacter,
@@ -54,15 +53,7 @@ from Resolute.models.objects.guilds import (
     PlayerGuild,
     get_busy_guilds_query,
 )
-from Resolute.models.objects.logs import (
-    DBLog,
-    LogSchema,
-    character_stats_query,
-    get_log_by_id,
-    get_n_player_logs_query,
-    player_stats_query,
-    upsert_log,
-)
+from Resolute.models.objects.logs import DBLog
 from Resolute.models.objects.npc import NPC
 from Resolute.models.objects.players import (
     Player,
@@ -323,6 +314,17 @@ class G0T0Bot(commands.Bot):
         except:
             log.warning("Unable to respond")
 
+    async def query(
+        self, query: FromClause | TableClause, single_result: bool = True
+    ) -> result.RowProxy | list[result.RowProxy]:
+        async with self.db.acquire() as conn:
+            results = await conn.execute(query)
+
+            if single_result:
+                return await results.first()
+            else:
+                return await results.fetchall()
+
     async def get_player_guild(self, guild_id: int) -> PlayerGuild:
         """
         Asynchronously retrieves a PlayerGuild object for the given guild ID.
@@ -387,10 +389,14 @@ class G0T0Bot(commands.Bot):
         Returns:
             Adventure: The adventure associated with the given role ID, or None if no such adventure exists.
         """
+        query = Adventure.adventures_table.select().where(
+            sa.and_(
+                Adventure.adventures_table.c.role_id == role_id,
+                Adventure.adventures_table.c.end_ts == sa.null(),
+            )
+        )
 
-        async with self.db.acquire() as conn:
-            results = await conn.execute(Adventure.get_adventure_by_role_query(role_id))
-            row = await results.first()
+        row = await self.query(query)
 
         if row is None:
             return None
@@ -407,12 +413,14 @@ class G0T0Bot(commands.Bot):
         Returns:
             Adventure: The adventure associated with the given category channel ID, or None if no adventure is found.
         """
-
-        async with self.db.acquire() as conn:
-            results = await conn.execute(
-                Adventure.get_adventure_by_category_channel_query(category_channel_id)
+        query = Adventure.adventures_table.select().where(
+            sa.and_(
+                Adventure.adventures_table.c.category_channel_id == category_channel_id,
+                Adventure.adventures_table.c.end_ts == sa.null(),
             )
-            row = await results.first()
+        )
+
+        row = await self.query(query)
 
         if row is None:
             return None
@@ -429,15 +437,19 @@ class G0T0Bot(commands.Bot):
         Returns:
             Arena: The Arena object associated with the given channel ID, or None if no such Arena exists.
         """
+        query = Arena.arenas_table.select().where(
+            sa.and_(
+                Arena.arenas_table.c.channel_id == channel_id,
+                Arena.arenas_table.c.end_ts == sa.null(),
+            )
+        )
 
-        async with self.db.acquire() as conn:
-            results = await conn.execute(get_arena_by_channel_query(channel_id))
-            row = await results.first()
+        row = await self.query(query)
 
         if row is None:
             return None
 
-        arena: Arena = await ArenaSchema(self).load(row)
+        arena: Arena = await Arena.ArenaSchema(self).load(row)
 
         return arena
 
@@ -830,15 +842,12 @@ class G0T0Bot(commands.Bot):
         )
 
         async with self.db.acquire() as conn:
-            results = await conn.execute(upsert_log(log_entry))
-            row = await results.first()
-
             await conn.execute(upsert_player_query(player))
 
             if character:
                 await conn.execute(upsert_character_query(character))
 
-        log_entry = await LogSchema(self).load(row)
+        log_entry = await log_entry.upsert()
 
         # Author Rewards
         if author.guild.reward_threshold and activity.value != "LOG_REWARD":
@@ -887,14 +896,14 @@ class G0T0Bot(commands.Bot):
         Returns:
             DBLog: The log entry corresponding to the given ID, or None if no entry is found.
         """
-        async with self.db.acquire() as conn:
-            results = await conn.execute(get_log_by_id(log_id))
-            row = await results.first()
+        query = DBLog.log_table.select().where(DBLog.log_table.c.id == log_id)
+
+        row = await self.query(query)
 
         if not row:
             return None
 
-        log_entry = await LogSchema(self).load(row)
+        log_entry = await DBLog.LogSchema(self).load(row)
 
         return log_entry
 
@@ -907,16 +916,24 @@ class G0T0Bot(commands.Bot):
         Returns:
             list[DBLog]: A list of the most recent logs for the given player.
         """
-        async with self.db.acquire() as conn:
-            results = await conn.execute(
-                get_n_player_logs_query(player.id, player.guild.id, n)
+        query = (
+            DBLog.log_table.select()
+            .where(
+                sa.and_(
+                    DBLog.log_table.c.player_id == player.id,
+                    DBLog.log_table.c.guild_id == player.guild.id,
+                )
             )
-            rows = await results.fetchall()
+            .order_by(DBLog.log_table.c.id.desc())
+            .limit(n)
+        )
+
+        rows = await self.query(query, False)
 
         if not rows:
             return None
 
-        logs = [await LogSchema(self).load(row) for row in rows]
+        logs = [await DBLog.LogSchema(self).load(row) for row in rows]
 
         return logs
 
@@ -928,11 +945,81 @@ class G0T0Bot(commands.Bot):
         Returns:
             dict: A dictionary containing the player's statistics.
         """
-        async with self.db.acquire() as conn:
-            results = await conn.execute(
-                player_stats_query(self.compendium, player.id, player.guild_id)
+        new_character_activity = self.compendium.get_activity("NEW_CHARACTER")
+        activities = [
+            x
+            for x in self.compendium.activity[0].values()
+            if x.value in ["RP", "ARENA", "ARENA_HOST", "GLOBAL", "SNAPSHOT"]
+        ]
+        columns = [
+            sa.func.sum(
+                sa.case([(DBLog.log_table.c.activity == act.id, 1)], else_=0)
+            ).label(f"Activity {act.value}")
+            for act in activities
+        ]
+
+        query = (
+            sa.select(
+                DBLog.log_table.c.player_id,
+                sa.func.count(DBLog.log_table.c.id).label("#"),
+                sa.func.sum(
+                    sa.case(
+                        [
+                            (
+                                sa.and_(
+                                    DBLog.log_table.c.cc > 0,
+                                    DBLog.log_table.c.activity
+                                    != new_character_activity.id,
+                                ),
+                                DBLog.log_table.c.cc,
+                            )
+                        ],
+                        else_=0,
+                    )
+                ).label("debt"),
+                sa.func.sum(
+                    sa.case(
+                        [
+                            (
+                                sa.and_(
+                                    DBLog.log_table.c.cc < 0,
+                                    DBLog.log_table.c.activity
+                                    != new_character_activity.id,
+                                ),
+                                DBLog.log_table.c.cc,
+                            )
+                        ],
+                        else_=0,
+                    )
+                ).label("credit"),
+                sa.func.sum(
+                    sa.case(
+                        [
+                            (
+                                sa.and_(
+                                    DBLog.log_table.c.cc > 0,
+                                    DBLog.log_table.c.activity
+                                    == new_character_activity.id,
+                                ),
+                                DBLog.log_table.c.cc,
+                            )
+                        ],
+                        else_=0,
+                    )
+                ).label("starting"),
+                *columns,
             )
-            row = await results.first()
+            .group_by(DBLog.log_table.c.player_id)
+            .where(
+                sa.and_(
+                    DBLog.log_table.c.player_id == player.player_id,
+                    DBLog.log_table.c.guild_id == player.guild_id,
+                    DBLog.log_table.c.invalid == False,
+                )
+            )
+        )
+
+        row = await self.query(query)
 
         return dict(row)
 
@@ -944,11 +1031,125 @@ class G0T0Bot(commands.Bot):
         Returns:
             dict: A dictionary containing the character's statistics if found, otherwise None.
         """
-        async with self.db.acquire() as conn:
-            results = await conn.execute(
-                character_stats_query(self.compendium, character.id)
+        new_character_activity = self.compendium.get_activity("NEW_CHARACTER")
+        conversion_activity = self.compendium.get_activity("CONVERSION")
+
+        query = (
+            sa.select(
+                DBLog.log_table.c.character_id,
+                sa.func.count(DBLog.log_table.c.id).label("#"),
+                sa.func.sum(
+                    sa.case(
+                        [
+                            (
+                                sa.and_(
+                                    DBLog.log_table.c.cc > 0,
+                                    DBLog.log_table.c.activity
+                                    != new_character_activity.id,
+                                ),
+                                DBLog.log_table.c.cc,
+                            )
+                        ],
+                        else_=0,
+                    )
+                ).label("cc debt"),
+                sa.func.sum(
+                    sa.case(
+                        [
+                            (
+                                sa.and_(
+                                    DBLog.log_table.c.cc > 0,
+                                    DBLog.log_table.c.activity
+                                    != new_character_activity.id,
+                                ),
+                                DBLog.log_table.c.cc,
+                            )
+                        ],
+                        else_=0,
+                    )
+                ).label("cc credit"),
+                sa.func.sum(
+                    sa.case(
+                        [
+                            (
+                                sa.and_(
+                                    DBLog.log_table.c.cc > 0,
+                                    DBLog.log_table.c.activity
+                                    == new_character_activity.id,
+                                ),
+                                DBLog.log_table.c.cc,
+                            )
+                        ],
+                        else_=0,
+                    )
+                ).label("cc starting"),
+                sa.func.sum(
+                    sa.case(
+                        [
+                            (
+                                sa.and_(
+                                    DBLog.log_table.c.credits > 0,
+                                    DBLog.log_table.c.activity
+                                    != new_character_activity.id,
+                                ),
+                                DBLog.log_table.c.credits,
+                            )
+                        ],
+                        else_=0,
+                    )
+                ).label("credit debt"),
+                sa.func.sum(
+                    sa.case(
+                        [
+                            (
+                                sa.and_(
+                                    DBLog.log_table.c.cc < 0,
+                                    DBLog.log_table.c.activity
+                                    != new_character_activity.id,
+                                ),
+                                DBLog.log_table.c.credits,
+                            )
+                        ],
+                        else_=0,
+                    )
+                ).label("credit credit"),
+                sa.func.sum(
+                    sa.case(
+                        [
+                            (
+                                sa.and_(
+                                    DBLog.log_table.c.credits > 0,
+                                    DBLog.log_table.c.activity
+                                    == new_character_activity.id,
+                                ),
+                                DBLog.log_table.c.credits,
+                            )
+                        ],
+                        else_=0,
+                    )
+                ).label("credit starting"),
+                sa.func.sum(
+                    sa.case(
+                        [
+                            (
+                                DBLog.log_table.c.activity == conversion_activity.id,
+                                DBLog.log_table.c.credits,
+                            )
+                        ],
+                        else_=0,
+                    )
+                ).label("credits converted"),
             )
-            row = await results.first()
+            .group_by(DBLog.log_table.c.character_id)
+            .where(
+                sa.and_(
+                    DBLog.log_table.c.character_id == character.id,
+                    DBLog.log_table.c.invalid == False,
+                )
+            )
+        )
+
+        row = await self.query(query)
 
         if row is None:
             return None
@@ -1116,12 +1317,11 @@ class G0T0Bot(commands.Bot):
     async def get_all_npcs(self) -> list[NPC]:
         if not is_admin:
             return
-        
-        query = (
-            NPC.npc_table.select()
-            .order_by(NPC.npc_table.key.asc())
-        )
 
-        npcs = [NPC.NPCSchema(self.db).load(row) for row in await self.query(query, False)]
+        query = NPC.npc_table.select().order_by(NPC.npc_table.key.asc())
+
+        npcs = [
+            NPC.NPCSchema(self.db).load(row) for row in await self.query(query, False)
+        ]
 
         return npcs

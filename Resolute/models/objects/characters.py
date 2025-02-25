@@ -34,6 +34,37 @@ class CharacterRenown(object):
             Inserts or updates the character renown in the database and returns the updated renown object.
     """
 
+    renown_table = sa.Table(
+        "renown",
+        metadata,
+        sa.Column("id", sa.Integer, primary_key=True, autoincrement="auto"),
+        sa.Column("character_id", sa.Integer, nullable=False),  # ref: > characters.id
+        sa.Column("faction", sa.Integer, nullable=False),
+        sa.Column("renown", sa.Integer),
+    )
+
+    class RenownSchema(Schema):
+        db: aiopg.sa.Engine
+        compendium: Compendium
+
+        id = fields.Integer(required=True)
+        character_id = fields.Integer(required=True)
+        faction = fields.Method(None, "load_faction")
+        renown = fields.Integer()
+
+        def __init__(self, db: aiopg.sa.Engine, compendium: Compendium, **kwargs):
+            super().__init__(**kwargs)
+            self.compendium = compendium
+            self.db = db
+
+        @post_load
+        def make_renown(self, data, **kwargs):
+            renown = CharacterRenown(self.db, self.compendium, **data)
+            return renown
+
+        def load_faction(self, value):
+            return self.compendium.get_object(Faction, value)
+
     def __init__(self, db: aiopg.sa.Engine, compendium: Compendium, **kwargs):
         self._db = db
         self._compendium = compendium
@@ -63,83 +94,38 @@ class CharacterRenown(object):
         Returns:
             CharacterRenown: The renown data loaded from the database.
         """
+        if hasattr(self, "id") and self.id is not None:
+            update_dict = {
+                "character_id": self.character_id,
+                "faction": self.faction.id,
+                "renown": self.renown,
+            }
+
+            query = (
+                CharacterRenown.renown_table.update()
+                .where(CharacterRenown.renown_table.c.id == self.id)
+                .values(**update_dict)
+                .returning(CharacterRenown.renown_table)
+            )
+
+        else:
+            query = (
+                CharacterRenown.renown_table.insert()
+                .values(
+                    character_id=self.character_id,
+                    faction=self.faction.id,
+                    renown=self.renown,
+                )
+                .returning(CharacterRenown.renown_table)
+            )
+
         async with self._db.acquire() as conn:
-            results = await conn.execute(upsert_character_renown_query(self))
+            results = await conn.execute(query)
             row = await results.first()
 
-        renown = RenownSchema(self._db, self._compendium).load(row)
+        renown = CharacterRenown.RenownSchema(self._db, self._compendium).load(row)
 
         return renown
-
-
-renown_table = sa.Table(
-    "renown",
-    metadata,
-    sa.Column("id", sa.Integer, primary_key=True, autoincrement="auto"),
-    sa.Column("character_id", sa.Integer, nullable=False),  # ref: > characters.id
-    sa.Column("faction", sa.Integer, nullable=False),
-    sa.Column("renown", sa.Integer),
-)
-
-
-class RenownSchema(Schema):
-    db: aiopg.sa.Engine
-    compendium: Compendium
-
-    id = fields.Integer(required=True)
-    character_id = fields.Integer(required=True)
-    faction = fields.Method(None, "load_faction")
-    renown = fields.Integer()
-
-    def __init__(self, db: aiopg.sa.Engine, compendium: Compendium, **kwargs):
-        super().__init__(**kwargs)
-        self.compendium = compendium
-        self.db = db
-
-    @post_load
-    def make_renown(self, data, **kwargs):
-        renown = CharacterRenown(self.db, self.compendium, **data)
-        return renown
-
-    def load_faction(self, value):
-        return self.compendium.get_object(Faction, value)
-
-
-def get_character_renown(char_id: int) -> FromClause:
-    return (
-        renown_table.select()
-        .where(renown_table.c.character_id == char_id)
-        .order_by(renown_table.c.id.asc())
-    )
-
-
-def upsert_character_renown_query(renown: CharacterRenown):
-    if hasattr(renown, "id") and renown.id is not None:
-        update_dict = {
-            "character_id": renown.character_id,
-            "faction": renown.faction.id,
-            "renown": renown.renown,
-        }
-
-        update_statement = (
-            renown_table.update()
-            .where(renown_table.c.id == renown.id)
-            .values(**update_dict)
-            .returning(renown_table)
-        )
-        return update_statement
-
-    insert_statement = (
-        insert(renown_table)
-        .values(
-            character_id=renown.character_id,
-            faction=renown.faction.id,
-            renown=renown.renown,
-        )
-        .returning(renown_table)
-    )
-
-    return insert_statement
 
 
 class PlayerCharacterClass(object):
@@ -551,12 +537,18 @@ class CharacterSchema(Schema):
         ]
 
     async def get_renown(self, character: PlayerCharacter):
+        query = (
+            CharacterRenown.renown_table.select()
+            .where(CharacterRenown.renown_table.c.character_id == character.id)
+            .order_by(CharacterRenown.renown_table.c.id.asc())
+        )
         async with self.db.acquire() as conn:
-            renown_results = await conn.execute(get_character_renown(character.id))
+            renown_results = await conn.execute(query)
             renown_rows = await renown_results.fetchall()
 
         character.renown = [
-            RenownSchema(self.db, self.compendium).load(row) for row in renown_rows
+            CharacterRenown.RenownSchema(self.db, self.compendium).load(row)
+            for row in renown_rows
         ]
 
 

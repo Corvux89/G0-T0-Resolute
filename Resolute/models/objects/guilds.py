@@ -17,10 +17,7 @@ from Resolute.models.objects.dashboards import (
     get_dashboards,
 )
 from Resolute.models.objects.npc import NPC
-from Resolute.models.objects.ref_objects import (
-    RefServerCalendar,
-    RefWeeklyStipend
-)
+from Resolute.models.objects.ref_objects import RefServerCalendar, RefWeeklyStipend
 
 
 class PlayerGuild(object):
@@ -480,7 +477,9 @@ class GuildSchema(Schema):
             results = await conn.execute(query)
             rows = await results.fetchall()
 
-        guild.calendar = [RefServerCalendar.RefServerCalendarSchema().load(row) for row in rows]
+        guild.calendar = [
+            RefServerCalendar.RefServerCalendarSchema().load(row) for row in rows
+        ]
 
     async def load_npcs(self, guild: PlayerGuild):
         query = (
@@ -488,7 +487,7 @@ class GuildSchema(Schema):
             .where(
                 sa.and_(
                     NPC.npc_table.c.guild_id == guild.id,
-                    NPC.npc_table.c.adventure_id == sa.null()
+                    NPC.npc_table.c.adventure_id == sa.null(),
                 )
             )
             .order_by(NPC.npc_table.c.key.asc())
@@ -502,7 +501,7 @@ class GuildSchema(Schema):
     async def load_weekly_stipends(self, guild: PlayerGuild):
         query = (
             RefWeeklyStipend.ref_weekly_stipend_table.select()
-            .where(RefWeeklyStipend.c.guild_id == guild.id)
+            .where(RefWeeklyStipend.ref_weekly_stipend_table.c.guild_id == guild.id)
             .order_by(RefWeeklyStipend.ref_weekly_stipend_table.c.amount.desc())
         )
 
@@ -510,7 +509,9 @@ class GuildSchema(Schema):
             results = await conn.execute(query)
             rows = await results.fetchall()
 
-        guild.stipends = [RefWeeklyStipend.RefWeeklyStipendSchema(self._db).load(row) for row in rows]
+        guild.stipends = [
+            RefWeeklyStipend.RefWeeklyStipendSchema(self._db).load(row) for row in rows
+        ]
 
 
 def get_guild_from_id(guild_id: int) -> FromClause:

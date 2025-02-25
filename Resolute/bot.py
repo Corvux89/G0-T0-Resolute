@@ -63,19 +63,14 @@ from Resolute.models.objects.logs import (
     player_stats_query,
     upsert_log,
 )
-from Resolute.models.objects.npc import NPC, NPCSchema, get_all_npc_query
+from Resolute.models.objects.npc import NPC
 from Resolute.models.objects.players import (
     Player,
     PlayerSchema,
     get_player_query,
     upsert_player_query,
 )
-from Resolute.models.objects.shatterpoint import (
-    Shatterpoint,
-    ShatterPointSchema,
-    get_busy_shatterpoints_query,
-    get_shatterpoint_query,
-)
+from Resolute.models.objects.shatterpoint import Shatterpoint
 from Resolute.models.objects.store import Store, StoreSchema, get_store_items_query
 
 log = logging.getLogger(__name__)
@@ -608,15 +603,18 @@ class G0T0Bot(commands.Bot):
         Returns:
             Shatterpoint: The Shatterpoint object associated with the given guild ID, or None if not found.
         """
+        query = Shatterpoint.ref_gb_staging_table.select().where(
+            Shatterpoint.ref_gb_staging_table.c.guild_id == guild_id
+        )
 
-        async with self.db.acquire() as conn:
-            results = await conn.execute(get_shatterpoint_query(guild_id))
-            row = await results.first()
+        row = await self.query(query)
 
         if row is None:
             return None
 
-        shatterpoint: Shatterpoint = await ShatterPointSchema(self).load(row)
+        shatterpoint: Shatterpoint = await Shatterpoint.ShatterPointSchema(self).load(
+            row
+        )
 
         return shatterpoint
 
@@ -624,11 +622,14 @@ class G0T0Bot(commands.Bot):
         if not is_admin:
             return
 
-        async with self.db.acquire() as conn:
-            results = await conn.execute(get_busy_shatterpoints_query())
-            rows = await results.fetchall()
+        query = Shatterpoint.ref_gb_staging_table.select().where(
+            Shatterpoint.ref_gb_staging_table.c.busy_member.isnot(None)
+        )
 
-        shatterpoints = [await ShatterPointSchema(self).load(row) for row in rows]
+        shatterpoints = [
+            await Shatterpoint.ShatterPointSchema(self).load(row)
+            for row in await self.query(query, False)
+        ]
 
         return shatterpoints
 
@@ -1115,11 +1116,12 @@ class G0T0Bot(commands.Bot):
     async def get_all_npcs(self) -> list[NPC]:
         if not is_admin:
             return
+        
+        query = (
+            NPC.npc_table.select()
+            .order_by(NPC.npc_table.key.asc())
+        )
 
-        async with self.db.acquire() as conn:
-            results = await conn.execute(get_all_npc_query())
-            rows = await results.fetchall()
-
-        npcs = [NPCSchema(self.db).load(row) for row in rows]
+        npcs = [NPC.NPCSchema(self.db).load(row) for row in await self.query(query, False)]
 
         return npcs

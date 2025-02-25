@@ -10,7 +10,7 @@ from sqlalchemy.sql import FromClause
 from Resolute.models import metadata
 from Resolute.models.categories.categories import Faction
 from Resolute.models.objects.characters import PlayerCharacter
-from Resolute.models.objects.npc import NPC, NPCSchema, get_adventure_npcs_query
+from Resolute.models.objects.npc import NPC
 
 
 class Adventure(object):
@@ -139,11 +139,20 @@ class Adventure(object):
                         adventure.player_characters.append(char)
 
         async def get_npcs(self, adventure):
+            query = (
+                NPC.npc_table.select()
+                .where(
+                    sa.and_(
+                        NPC.npc_table.c.adventure_id == adventure.id
+                    )
+                )
+            )
+
             async with self.bot.db.acquire() as conn:
-                results = await conn.execute(get_adventure_npcs_query(adventure.id))
+                results = await conn.execute(query)
                 rows = await results.fetchall()
 
-            adventure.npcs = [NPCSchema(self.bot.db).load(row) for row in rows]
+            adventure.npcs = [NPC.NPCSchema(self.bot.db).load(row) for row in rows]
 
     def __init__(
         self,

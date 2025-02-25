@@ -16,14 +16,10 @@ from Resolute.models.objects.dashboards import (
     RefDashboardSchema,
     get_dashboards,
 )
-from Resolute.models.objects.npc import NPC, NPCSchema, get_guild_npcs_query
+from Resolute.models.objects.npc import NPC
 from Resolute.models.objects.ref_objects import (
     RefServerCalendar,
-    RefServerCalendarSchema,
-    RefWeeklyStipend,
-    RefWeeklyStipendSchema,
-    get_guild_weekly_stipends_query,
-    get_server_calendar,
+    RefWeeklyStipend
 )
 
 
@@ -474,24 +470,47 @@ class GuildSchema(Schema):
         return self._guild.get_member(value)
 
     async def load_calendar(self, guild: PlayerGuild):
+        query = (
+            RefServerCalendar.ref_server_calendar_table.select()
+            .where(RefServerCalendar.ref_server_calendar_table.c.guild_id == guild.id)
+            .order_by(RefServerCalendar.ref_server_calendar_table.c.day_start.asc())
+        )
+
         async with self._db.acquire() as conn:
-            results = await conn.execute(get_server_calendar(guild.id))
+            results = await conn.execute(query)
             rows = await results.fetchall()
 
-        guild.calendar = [RefServerCalendarSchema().load(row) for row in rows]
+        guild.calendar = [RefServerCalendar.RefServerCalendarSchema().load(row) for row in rows]
 
     async def load_npcs(self, guild: PlayerGuild):
+        query = (
+            NPC.npc_table.select()
+            .where(
+                sa.and_(
+                    NPC.npc_table.c.guild_id == guild.id,
+                    NPC.npc_table.c.adventure_id == sa.null()
+                )
+            )
+            .order_by(NPC.npc_table.c.key.asc())
+        )
+
         async with self._db.acquire() as conn:
-            results = await conn.execute(get_guild_npcs_query(guild.id))
+            results = await conn.execute(query)
             rows = await results.fetchall()
-        guild.npcs = [NPCSchema(self._db).load(row) for row in rows]
+        guild.npcs = [NPC.NPCSchema(self._db).load(row) for row in rows]
 
     async def load_weekly_stipends(self, guild: PlayerGuild):
+        query = (
+            RefWeeklyStipend.ref_weekly_stipend_table.select()
+            .where(RefWeeklyStipend.c.guild_id == guild.id)
+            .order_by(RefWeeklyStipend.ref_weekly_stipend_table.c.amount.desc())
+        )
+
         async with self._db.acquire() as conn:
-            results = await conn.execute(get_guild_weekly_stipends_query(guild.id))
+            results = await conn.execute(query)
             rows = await results.fetchall()
 
-        guild.stipends = [RefWeeklyStipendSchema(self._db).load(row) for row in rows]
+        guild.stipends = [RefWeeklyStipend.RefWeeklyStipendSchema(self._db).load(row) for row in rows]
 
 
 def get_guild_from_id(guild_id: int) -> FromClause:

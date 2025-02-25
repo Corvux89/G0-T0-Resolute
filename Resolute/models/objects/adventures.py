@@ -185,18 +185,24 @@ class Adventure(object):
         Returns:
             None
         """
-        if hasattr(self, "id") and self.id is not None:
-            update_dict = {
-                "name": self.name,
-                "role_id": self.role_id,
-                "dms": self.dms,
-                "category_channel_id": self.category_channel_id,
-                "cc": self.cc,
-                "end_ts": self.end_ts,
-                "characters": self.characters,
-                "factions": [f.id for f in self.factions],
-            }
+        update_dict = {
+            "name": self.name,
+            "role_id": self.role_id,
+            "dms": self.dms,
+            "category_channel_id": self.category_channel_id,
+            "cc": self.cc,
+            "end_ts": self.end_ts,
+            "characters": self.characters,
+            "factions": [f.id for f in self.factions],
+        }
 
+        insert_dict = {
+            **update_dict,
+            "guild_id": self.guild_id,
+            "created_ts": self.created_ts,
+        }
+
+        if hasattr(self, "id") and self.id is not None:
             query = (
                 self.adventures_table.update()
                 .where(self.adventures_table.c.id == self.id)
@@ -206,17 +212,7 @@ class Adventure(object):
         else:
             query = (
                 self.adventures_table.insert()
-                .values(
-                    guild_id=self.guild_id,
-                    name=self.name,
-                    role_id=self.role_id,
-                    dms=self.dms,
-                    category_channel_id=self.category_channel_id,
-                    cc=self.cc,
-                    created_ts=self.created_ts,
-                    characters=self.characters,
-                    factions=[f.id for f in self.factions],
-                )
+                .values(**insert_dict)
                 .returning(self.adventures_table)
             )
 

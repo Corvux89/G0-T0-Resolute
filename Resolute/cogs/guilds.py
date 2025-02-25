@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import random
+import sqlalchemy as sa
 from datetime import datetime, timedelta, timezone
 from timeit import default_timer as timer
 
@@ -11,11 +12,7 @@ from Resolute.bot import G0T0Bot, G0T0Context
 from Resolute.helpers.general_helpers import confirm, is_admin
 from Resolute.models.embeds.guilds import ResetEmbed
 from Resolute.models.objects.characters import PlayerCharacter
-from Resolute.models.objects.guilds import (
-    GuildSchema,
-    PlayerGuild,
-    get_guilds_with_reset_query,
-)
+from Resolute.models.objects.guilds import PlayerGuild
 from Resolute.models.objects.players import reset_div_cc
 from Resolute.models.views.guild_settings import GuildSettingsUI
 
@@ -307,12 +304,25 @@ class Guilds(commands.Cog):
         Returns:
             list[PlayerGuild]: A list of PlayerGuild objects that have a reset scheduled at the specified day and hour.
         """
-        async with self.bot.db.acquire() as conn:
-            results = await conn.execute(get_guilds_with_reset_query(day, hour))
-            rows = await results.fetchall()
+        six_days_ago = datetime.today() - timedelta(days=6)
+        query = (
+            PlayerGuild.guilds_table.select()
+            .where(
+                sa.and_(
+                    PlayerGuild.guilds_table.c.reset_day == day,
+                    PlayerGuild.guilds_table.c.reset_hour == hour,
+                    PlayerGuild.guilds_table.c.last_reset < six_days_ago,
+                )
+            )
+            .order_by(PlayerGuild.guilds_table.c.id.desc())
+        )
+
+        rows = await self.bot.query(query, False)
 
         guild_list = [
-            await GuildSchema(self.bot.db, self.bot.get_guild(row["id"])).load(row)
+            await PlayerGuild.GuildSchema(
+                self.bot.db, self.bot.get_guild(row["id"])
+            ).load(row)
             for row in rows
         ]
 

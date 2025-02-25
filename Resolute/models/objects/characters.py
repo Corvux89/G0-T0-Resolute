@@ -94,13 +94,15 @@ class CharacterRenown(object):
         Returns:
             CharacterRenown: The renown data loaded from the database.
         """
-        if hasattr(self, "id") and self.id is not None:
-            update_dict = {
-                "character_id": self.character_id,
-                "faction": self.faction.id,
-                "renown": self.renown,
-            }
+        update_dict = {
+            "character_id": self.character_id,
+            "faction": self.faction.id,
+            "renown": self.renown,
+        }
 
+        insert_dict = {**update_dict}
+
+        if hasattr(self, "id") and self.id is not None:
             query = (
                 CharacterRenown.renown_table.update()
                 .where(CharacterRenown.renown_table.c.id == self.id)
@@ -111,11 +113,7 @@ class CharacterRenown(object):
         else:
             query = (
                 CharacterRenown.renown_table.insert()
-                .values(
-                    character_id=self.character_id,
-                    faction=self.faction.id,
-                    renown=self.renown,
-                )
+                .values(**insert_dict)
                 .returning(CharacterRenown.renown_table)
             )
 

@@ -84,25 +84,23 @@ class NPC(object):
             await conn.execute(query)
 
     async def upsert(self) -> None:
-        insert_dict = {
-            "key": self.key,
-            "guild_id": self.guild_id,
+        update_dict = {
             "name": self.name,
             "avatar_url": self.avatar_url,
             "adventure_id": self.adventure_id,
             "roles": self.roles,
         }
 
+        insert_dict = {
+            **update_dict,
+            "key": self.key,
+            "guild_id": self.guild_id,
+        }
+
         query = insert(NPC.npc_table).values(**insert_dict).returning(NPC.npc_table)
 
         query = query.on_conflict_do_update(
-            index_elements=["guild_id", "key"],
-            set_={
-                "name": self.name,
-                "avatar_url": self.avatar_url,
-                "adventure_id": self.adventure_id,
-                "roles": self.roles,
-            },
+            index_elements=["guild_id", "key"], set_=update_dict
         )
 
         async with self._db.acquire() as conn:

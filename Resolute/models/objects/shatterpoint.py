@@ -82,7 +82,8 @@ class Shatterpoint(object):
 
         async def get_renown(self, shatterpoint):
             query = ShatterpointRenown.ref_gb_renown_table.select().where(
-                ShatterpointRenown.c.guild_id == shatterpoint.guild_id
+                ShatterpointRenown.ref_gb_renown_table.c.guild_id
+                == shatterpoint.guild_id
             )
 
             shatterpoint.renown = [
@@ -105,24 +106,20 @@ class Shatterpoint(object):
 
     async def upsert(self) -> None:
 
-        query = (
-            insert(Shatterpoint.ref_gb_staging_table)
-            .values(
-                guild_id=self.guild_id,
-                name=self.name,
-                base_cc=self.base_cc,
-                channels=self.channels,
-                busy_member=(self.busy_member.id if self.busy_member else None),
-            )
-            .returning(Shatterpoint.ref_gb_staging_table)
-        )
-
         update_dict = {
             "name": self.name,
             "base_cc": self.base_cc,
             "channels": self.channels,
             "busy_member": (self.busy_member.id if self.busy_member else None),
         }
+
+        insert_duct = {**update_dict, "guild_id": self.guild_id}
+
+        query = (
+            insert(Shatterpoint.ref_gb_staging_table)
+            .values(**insert_duct)
+            .returning(Shatterpoint.ref_gb_staging_table)
+        )
 
         query = query.on_conflict_do_update(
             index_elements=["guild_id"], set_=update_dict
@@ -137,14 +134,12 @@ class Shatterpoint(object):
         )
 
         player_query = Shatterpoint.ref_gb_staging_table.delete().where(
-            ShatterpointPlayer.c.guild_id == self.guild_id
+            ShatterpointPlayer.ref_gb_staging_player_table.c.guild_id == self.guild_id
         )
 
-        renown_query = {
-            ShatterpointRenown.ref_gb_renown_table.delete().where(
-                ShatterpointRenown.c.guild_id == self.guild_id
-            )
-        }
+        renown_query = ShatterpointRenown.ref_gb_renown_table.delete().where(
+            ShatterpointRenown.ref_gb_renown_table.c.guild_id == self.guild_id
+        )
 
         async with self._db.acquire() as conn:
             await conn.execute(shatterpoint_query)
@@ -326,16 +321,20 @@ class ShatterpointPlayer(object):
         )
 
     async def upsert(self) -> None:
-        insert_dict = {
-            "guild_id": self.guild_id,
-            "player_id": self.player_id,
+        update_dict = {
             "cc": self.cc,
-            "update": self.update,
-            "active": self.active,
+            "renown_override": self.renown_override,
             "num_messages": self.num_messages,
             "channels": self.channels,
+            "update": self.update,
+            "active": self.active,
             "characters": self.characters,
-            "renown_override": self.renown_override,
+        }
+
+        insert_dict = {
+            **update_dict,
+            "guild_id": self.guild_id,
+            "player_id": self.player_id,
         }
 
         query = (
@@ -345,15 +344,7 @@ class ShatterpointPlayer(object):
         )
 
         query = query.on_conflict_do_update(
-            index_elements=["guild_id", "player_id"],
-            set_={
-                "cc": self.cc,
-                "renown_override": self.renown_override,
-                "num_messages": self.num_messages,
-                "channels": self.channels,
-                "update": self.update,
-                "active": self.active,
-            },
+            index_elements=["guild_id", "player_id"], set_=update_dict
         )
 
         async with self._db.acquire() as conn:
@@ -396,10 +387,12 @@ class ShatterpointRenown(object):
         self.renown = kwargs.get("renown", 0)
 
     async def upsert(self):
+        update_dict = {"renown": self.renown}
+
         insert_dict = {
+            **update_dict,
             "guild_id": self.guild_id,
             "faction": self.faction.id,
-            "renown": self.renown,
         }
 
         query = (
@@ -409,7 +402,7 @@ class ShatterpointRenown(object):
         )
 
         query = query.on_conflict_do_update(
-            index_elements=["guild_id", "faction"], set_={"renown": self.renown}
+            index_elements=["guild_id", "faction"], set_=update_dict
         )
 
         async with self._db.acquire() as conn:

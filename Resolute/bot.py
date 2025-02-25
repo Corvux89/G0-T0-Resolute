@@ -48,11 +48,7 @@ from Resolute.models.objects.financial import (
     FinancialSchema,
     get_financial_query,
 )
-from Resolute.models.objects.guilds import (
-    GuildSchema,
-    PlayerGuild,
-    get_busy_guilds_query,
-)
+from Resolute.models.objects.guilds import PlayerGuild
 from Resolute.models.objects.logs import DBLog
 from Resolute.models.objects.npc import NPC
 from Resolute.models.objects.players import (
@@ -351,12 +347,16 @@ class G0T0Bot(commands.Bot):
         if not is_admin:
             return
 
-        async with self.db.acquire() as conn:
-            results = await conn.execute(get_busy_guilds_query())
-            rows = await results.fetchall()
+        query = PlayerGuild.guilds_table.select().where(
+            PlayerGuild.c.archive_user.isnot(None)
+        )
+
+        rows = await self.query(query, False)
 
         guilds = [
-            await GuildSchema(self.db, guild=self.get_guild(row["id"])).load(row)
+            await PlayerGuild.GuildSchema(
+                self.db, guild=self.get_guild(row["id"])
+            ).load(row)
             for row in rows
         ]
 
@@ -1318,7 +1318,7 @@ class G0T0Bot(commands.Bot):
         if not is_admin:
             return
 
-        query = NPC.npc_table.select().order_by(NPC.npc_table.key.asc())
+        query = NPC.npc_table.select().order_by(NPC.npc_table.c.key.asc())
 
         npcs = [
             NPC.NPCSchema(self.db).load(row) for row in await self.query(query, False)

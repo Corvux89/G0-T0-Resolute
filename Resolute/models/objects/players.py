@@ -492,6 +492,7 @@ class PlayerSchema(Schema):
                     )
                 )
             )
+            return query
 
         rp_activity = self.bot.compendium.get_activity("RP")
         arena_activity = self.bot.compendium.get_activity("ARENA")

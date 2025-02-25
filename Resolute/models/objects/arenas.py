@@ -174,17 +174,27 @@ class Arena(object):
         Raises:
             Exception: If the database operation fails.
         """
-        if hasattr(self, "id") and self.id is not None:
-            update_dict = {
-                "pin_message_id": self.pin_message_id,
-                "host_id": self.host_id,
-                "tier": self.tier.id,
-                "type": self.type.id,
-                "characters": self.characters,
-                "completed_phases": self.completed_phases,
-                "end_ts": self.end_ts,
-            }
+        update_dict = {
+            "pin_message_id": self.pin_message_id,
+            "host_id": self.host_id,
+            "tier": self.tier.id,
+            "type": self.type.id,
+            "characters": self.characters,
+            "completed_phases": self.completed_phases,
+            "end_ts": self.end_ts,
+        }
 
+        insert_dict = {
+            **update_dict,
+            "channel_id": (
+                self.channel.id
+                if hasattr(self, "channel") and self.channel
+                else self.channel_id
+            ),
+            "created_ts": self.created_ts,
+        }
+
+        if hasattr(self, "id") and self.id is not None:
             query = (
                 Arena.arenas_table.update()
                 .where(Arena.arenas_table.c.id == self.id)
@@ -194,16 +204,7 @@ class Arena(object):
         else:
             query = (
                 Arena.arenas_table.insert()
-                .values(
-                    channel_id=self.channel.id if self.channel else self.channel_id,
-                    pin_message_id=self.pin_message_id,
-                    host_id=self.host_id,
-                    tier=self.tier.id,
-                    type=self.type.id,
-                    characters=self.characters,
-                    created_ts=self.created_ts,
-                    completed_phases=self.completed_phases,
-                )
+                .values(**insert_dict)
                 .returning(Arena.arenas_table)
             )
 

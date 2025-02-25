@@ -140,16 +140,37 @@ class DBLog(object):
         return calendar.timegm(self.created_ts.utctimetuple())
 
     async def upsert(self):
-        if hasattr(self, "id") and self.id is not None:
-            update_dict = {
-                "activity": self.activity.id,
-                "notes": getattr(self, "notes", None),
-                "credits": self.credits,
-                "cc": self.cc,
-                "renown": self.cc,
-                "invalid": self.invalid,
-            }
+        update_dict = {
+            "activity": self.activity.id,
+            "notes": getattr(self, "notes", None),
+            "credits": self.credits,
+            "cc": self.cc,
+            "renown": self.cc,
+            "invalid": self.invalid,
+        }
 
+        insert_dict = {
+            **update_dict,
+            "author": self.author.id,
+            "player_id": (
+                self.player.id
+                if hasattr(self, "player") and self.player
+                else self.player_id
+            ),
+            "created_ts": datetime.now(timezone.utc),
+            "character_id": (
+                self.character.id
+                if hasattr(self, "character") and self.character
+                else self.character_id
+            ),
+            "guild_id": self.guild_id,
+            "adventure_id": getattr(self, "adventure_id", None),
+            "faction": (
+                self.faction.id if hasattr(self, "faction") and self.faction else None
+            ),
+        }
+
+        if hasattr(self, "id") and self.id is not None:
             query = (
                 DBLog.log_table.update()
                 .where(DBLog.log_table.c.id == self.id)
@@ -158,32 +179,7 @@ class DBLog(object):
         else:
             query = (
                 DBLog.log_table.insert()
-                .values(
-                    author=self.author.id,
-                    player=(
-                        self.player.id
-                        if hasattr(self, "player") and self.player
-                        else self.player_id
-                    ),
-                    cc=self.cc,
-                    credits=self.credits,
-                    created_ts=datetime.now(timezone.utc),
-                    character_id=(
-                        self.character.id
-                        if hasattr(self, "character") and self.character
-                        else self.character_id
-                    ),
-                    guild_id=self.guild_id,
-                    activity=self.activity.id,
-                    notes=getattr(self, "notes", None),
-                    adventure_id=getattr(self, "adventure_id", None),
-                    faction=(
-                        self.faction.id
-                        if hasattr(self, "faction") and self.faction
-                        else None
-                    ),
-                    invalid=self.invalid,
-                )
+                .values(**insert_dict)
                 .returning(DBLog.log_table)
             )
 

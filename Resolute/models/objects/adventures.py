@@ -56,6 +56,95 @@ class Adventure(object):
         Inserts or updates the adventure in the database.
     """
 
+    adventures_table = sa.Table(
+        "adventures",
+        metadata,
+        sa.Column("id", sa.Integer, primary_key=True, autoincrement="auto"),
+        sa.Column("guild_id", sa.BigInteger, nullable=False),
+        sa.Column("name", sa.String, nullable=False),
+        sa.Column("role_id", sa.BigInteger, nullable=False),
+        sa.Column(
+            "dms", ARRAY(sa.BigInteger), nullable=False
+        ),  # ref: <> characters.player_id
+        sa.Column("category_channel_id", sa.BigInteger, nullable=False),
+        sa.Column("cc", sa.Integer, nullable=False, default=0),
+        sa.Column("created_ts", sa.TIMESTAMP(timezone=timezone.utc)),
+        sa.Column(
+            "end_ts",
+            sa.TIMESTAMP(timezone=timezone.utc),
+            nullable=True,
+            default=sa.null(),
+        ),
+        sa.Column("characters", ARRAY(sa.Integer), nullable=False),
+        sa.Column("factions", ARRAY(sa.Integer), nullable=False),
+    )
+
+    class AdventureSchema(Schema):
+        bot = None
+
+        id = fields.Integer(required=True)
+        guild_id = fields.Integer(required=True)
+        name = fields.String(required=True)
+        role_id = fields.Integer(required=True)
+        dms = fields.List(fields.Integer, required=True)
+        category_channel_id = fields.Integer(required=True)
+        cc = fields.Integer(data_key="cc", required=True)
+        created_ts = fields.Method(None, "load_timestamp")
+        end_ts = fields.Method(None, "load_timestamp", allow_none=True)
+        characters = fields.List(
+            fields.Integer, required=False, allow_none=True, default=[]
+        )
+        factions = fields.Method(None, "load_factions")
+
+        def __init__(self, bot, **kwargs):
+            super().__init__(**kwargs)
+            self.bot = bot
+
+        @post_load
+        async def make_adventure(self, data, **kwargs):
+            guild = self.bot.get_guild(data["guild_id"])
+            adventure = Adventure(
+                self.bot.db,
+                **data,
+                role=guild.get_role(data["role_id"]),
+                category_channel=self.bot.get_channel(data["category_channel_id"]),
+            )
+            await self.get_characters(adventure)
+            await self.get_npcs(adventure)
+            return adventure
+
+        def load_timestamp(
+            self, value
+        ):  # Marshmallow doesn't like loading DateTime for some reason. This is a workaround
+            return datetime(
+                value.year,
+                value.month,
+                value.day,
+                value.hour,
+                value.minute,
+                value.second,
+                tzinfo=timezone.utc,
+            )
+
+        def load_factions(self, value):
+            factions = []
+            for f in value:
+                factions.append(self.bot.compendium.get_object(Faction, f))
+            return factions
+
+        async def get_characters(self, adventure):
+            if adventure.characters:
+                for char_id in adventure.characters:
+                    if char := await self.bot.get_character(char_id):
+                        adventure.player_characters.append(char)
+
+        async def get_npcs(self, adventure):
+            async with self.bot.db.acquire() as conn:
+                results = await conn.execute(get_adventure_npcs_query(adventure.id))
+                rows = await results.fetchall()
+
+            adventure.npcs = [NPCSchema(self.bot.db).load(row) for row in rows]
+
     def __init__(
         self,
         db: aiopg.sa.Engine,
@@ -93,8 +182,43 @@ class Adventure(object):
         Returns:
             None
         """
+        if hasattr(self, "id") and self.id is not None:
+            update_dict = {
+                "name": self.name,
+                "role_id": self.role_id,
+                "dms": self.dms,
+                "category_channel_id": self.category_channel_id,
+                "cc": self.cc,
+                "end_ts": self.end_ts,
+                "characters": self.characters,
+                "factions": [f.id for f in self.factions],
+            }
+
+            query = (
+                self.adventures_table.update()
+                .where(self.adventures_table.c.id == self.id)
+                .values(**update_dict)
+                .returning(self.adventures_table)
+            )
+        else:
+            query = (
+                self.adventures_table.insert()
+                .values(
+                    guild_id=self.guild_id,
+                    name=self.name,
+                    role_id=self.role_id,
+                    dms=self.dms,
+                    category_channel_id=self.category_channel_id,
+                    cc=self.cc,
+                    created_ts=self.created_ts,
+                    characters=self.characters,
+                    factions=[f.id for f in self.factions],
+                )
+                .returning(self.adventures_table)
+            )
+
         async with self._db.acquire() as conn:
-            await conn.execute(upsert_adventure_query(self))
+            await conn.execute(query)
 
     async def update_dm_permissions(
         self, member: discord.Member, remove: bool = False
@@ -157,174 +281,43 @@ class Adventure(object):
 
         return None
 
-
-adventures_table = sa.Table(
-    "adventures",
-    metadata,
-    sa.Column("id", sa.Integer, primary_key=True, autoincrement="auto"),
-    sa.Column("guild_id", sa.BigInteger, nullable=False),
-    sa.Column("name", sa.String, nullable=False),
-    sa.Column("role_id", sa.BigInteger, nullable=False),
-    sa.Column(
-        "dms", ARRAY(sa.BigInteger), nullable=False
-    ),  # ref: <> characters.player_id
-    sa.Column("category_channel_id", sa.BigInteger, nullable=False),
-    sa.Column("cc", sa.Integer, nullable=False, default=0),
-    sa.Column("created_ts", sa.TIMESTAMP(timezone=timezone.utc)),
-    sa.Column(
-        "end_ts", sa.TIMESTAMP(timezone=timezone.utc), nullable=True, default=sa.null()
-    ),
-    sa.Column("characters", ARRAY(sa.Integer), nullable=False),
-    sa.Column("factions", ARRAY(sa.Integer), nullable=False),
-)
-
-
-class AdventureSchema(Schema):
-    bot = None
-
-    id = fields.Integer(required=True)
-    guild_id = fields.Integer(required=True)
-    name = fields.String(required=True)
-    role_id = fields.Integer(required=True)
-    dms = fields.List(fields.Integer, required=True)
-    category_channel_id = fields.Integer(required=True)
-    cc = fields.Integer(data_key="cc", required=True)
-    created_ts = fields.Method(None, "load_timestamp")
-    end_ts = fields.Method(None, "load_timestamp", allow_none=True)
-    characters = fields.List(
-        fields.Integer, required=False, allow_none=True, default=[]
-    )
-    factions = fields.Method(None, "load_factions")
-
-    def __init__(self, bot, **kwargs):
-        super().__init__(**kwargs)
-        self.bot = bot
-
-    @post_load
-    async def make_adventure(self, data, **kwargs):
-        guild = self.bot.get_guild(data["guild_id"])
-        adventure = Adventure(
-            self.bot.db,
-            **data,
-            role=guild.get_role(data["role_id"]),
-            category_channel=self.bot.get_channel(data["category_channel_id"]),
-        )
-        await self.get_characters(adventure)
-        await self.get_npcs(adventure)
-        return adventure
-
-    def load_timestamp(
-        self, value
-    ):  # Marshmallow doesn't like loading DateTime for some reason. This is a workaround
-        return datetime(
-            value.year,
-            value.month,
-            value.day,
-            value.hour,
-            value.minute,
-            value.second,
-            tzinfo=timezone.utc,
+    @staticmethod
+    def get_character_adventures_query(char_id: int) -> FromClause:
+        return (
+            Adventure.adventures_table.select()
+            .where(
+                sa.and_(
+                    Adventure.adventures_table.c.characters.contains([char_id]),
+                    Adventure.adventures_table.c.end_ts == sa.null(),
+                )
+            )
+            .order_by(Adventure.adventures_table.c.id.asc())
         )
 
-    def load_factions(self, value):
-        factions = []
-        for f in value:
-            factions.append(self.bot.compendium.get_object(Faction, f))
-        return factions
-
-    async def get_characters(self, adventure: Adventure):
-        if adventure.characters:
-            for char_id in adventure.characters:
-                if char := await self.bot.get_character(char_id):
-                    adventure.player_characters.append(char)
-
-    async def get_npcs(self, adventure: Adventure):
-        async with self.bot.db.acquire() as conn:
-            results = await conn.execute(get_adventure_npcs_query(adventure.id))
-            rows = await results.fetchall()
-
-        adventure.npcs = [NPCSchema(self.bot.db).load(row) for row in rows]
-
-
-def upsert_adventure_query(adventure: Adventure):
-    if hasattr(adventure, "id") and adventure.id is not None:
-        update_dict = {
-            "guild_id": adventure.guild_id,
-            "name": adventure.name,
-            "role_id": adventure.role_id,
-            "dms": adventure.dms,
-            "category_channel_id": adventure.category_channel_id,
-            "cc": adventure.cc,
-            "created_ts": adventure.created_ts,
-            "end_ts": adventure.end_ts,
-            "characters": adventure.characters,
-            "factions": [f.id for f in adventure.factions],
-        }
-
-        update_statment = (
-            adventures_table.update()
-            .where(adventures_table.c.id == adventure.id)
-            .values(**update_dict)
-            .returning(adventures_table)
+    def get_adventures_by_dm_query(member_id: int) -> FromClause:
+        return (
+            Adventure.adventures_table.select()
+            .where(
+                sa.and_(
+                    Adventure.adventures_table.c.dms.contains([member_id]),
+                    Adventure.adventures_table.c.end_ts == sa.null(),
+                )
+            )
+            .order_by(Adventure.adventures_table.c.id.asc())
         )
-        return update_statment
 
-    return (
-        adventures_table.insert()
-        .values(
-            guild_id=adventure.guild_id,
-            name=adventure.name,
-            role_id=adventure.role_id,
-            dms=adventure.dms,
-            category_channel_id=adventure.category_channel_id,
-            cc=adventure.cc,
-            created_ts=adventure.created_ts,
-            characters=adventure.characters,
-            factions=[f.id for f in adventure.factions],
-        )
-        .returning(adventures_table)
-    )
-
-
-def get_character_adventures_query(char_id: int) -> FromClause:
-    return (
-        adventures_table.select()
-        .where(
+    def get_adventure_by_role_query(role_id: int) -> FromClause:
+        return Adventure.adventures_table.select().where(
             sa.and_(
-                adventures_table.c.characters.contains([char_id]),
-                adventures_table.c.end_ts == sa.null(),
+                Adventure.adventures_table.c.role_id == role_id,
+                Adventure.adventures_table.c.end_ts == sa.null(),
             )
         )
-        .order_by(adventures_table.c.id.asc())
-    )
 
-
-def get_adventures_by_dm_query(member_id: int) -> FromClause:
-    return (
-        adventures_table.select()
-        .where(
+    def get_adventure_by_category_channel_query(category_channel_id: int) -> FromClause:
+        return Adventure.adventures_table.select().where(
             sa.and_(
-                adventures_table.c.dms.contains([member_id]),
-                adventures_table.c.end_ts == sa.null(),
+                Adventure.adventures_table.c.category_channel_id == category_channel_id,
+                Adventure.adventures_table.c.end_ts == sa.null(),
             )
         )
-        .order_by(adventures_table.c.id.asc())
-    )
-
-
-def get_adventure_by_role_query(role_id: int) -> FromClause:
-    return adventures_table.select().where(
-        sa.and_(
-            adventures_table.c.role_id == role_id,
-            adventures_table.c.end_ts == sa.null(),
-        )
-    )
-
-
-def get_adventure_by_category_channel_query(category_channel_id: int) -> FromClause:
-    return adventures_table.select().where(
-        sa.and_(
-            adventures_table.c.category_channel_id == category_channel_id,
-            adventures_table.c.end_ts == sa.null(),
-        )
-    )

@@ -16,13 +16,8 @@ from Resolute.helpers.general_helpers import get_webhook
 from Resolute.models import metadata
 from Resolute.models.categories.categories import ArenaType, LevelTier
 from Resolute.models.embeds.arenas import ArenaStatusEmbed
-from Resolute.models.objects.adventures import (
-    Adventure,
-    AdventureSchema,
-    get_adventures_by_dm_query,
-    get_character_adventures_query,
-)
 from Resolute.models.objects.enum import ApplicationType, ArenaPostType
+from Resolute.models.objects.adventures import Adventure
 from Resolute.models.objects.arenas import (
     Arena,
     ArenaSchema,
@@ -517,18 +512,20 @@ class PlayerSchema(Schema):
         rows = []
 
         async with self.bot.db.acquire() as conn:
-            dm_adventures = await conn.execute(get_adventures_by_dm_query(player.id))
+            dm_adventures = await conn.execute(
+                Adventure.get_adventures_by_dm_query(player.id)
+            )
             rows = await dm_adventures.fetchall()
 
         for character in player.characters:
             async with self.bot.db.acquire() as conn:
                 player_adventures = await conn.execute(
-                    get_character_adventures_query(character.id)
+                    Adventure.get_character_adventures_query(character.id)
                 )
                 rows.extend(await player_adventures.fetchall())
 
         player.adventures.extend(
-            [await AdventureSchema(self.bot).load(row) for row in rows]
+            [await Adventure.AdventureSchema(self.bot).load(row) for row in rows]
         )
 
     async def get_arenas(self, player: Player):

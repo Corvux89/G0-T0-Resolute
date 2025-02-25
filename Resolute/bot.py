@@ -24,12 +24,7 @@ from Resolute.models.categories.categories import (
 )
 from Resolute.models.embeds import ErrorEmbed
 from Resolute.models.embeds.logs import LogEmbed
-from Resolute.models.objects.adventures import (
-    Adventure,
-    AdventureSchema,
-    get_adventure_by_category_channel_query,
-    get_adventure_by_role_query,
-)
+from Resolute.models.objects.adventures import Adventure
 from Resolute.models.objects.arenas import (
     Arena,
     ArenaSchema,
@@ -399,13 +394,13 @@ class G0T0Bot(commands.Bot):
         """
 
         async with self.db.acquire() as conn:
-            results = await conn.execute(get_adventure_by_role_query(role_id))
+            results = await conn.execute(Adventure.get_adventure_by_role_query(role_id))
             row = await results.first()
 
         if row is None:
             return None
 
-        adventure = await AdventureSchema(self).load(row)
+        adventure = await Adventure.AdventureSchema(self).load(row)
 
         return adventure
 
@@ -420,14 +415,14 @@ class G0T0Bot(commands.Bot):
 
         async with self.db.acquire() as conn:
             results = await conn.execute(
-                get_adventure_by_category_channel_query(category_channel_id)
+                Adventure.get_adventure_by_category_channel_query(category_channel_id)
             )
             row = await results.first()
 
         if row is None:
             return None
 
-        adventure = await AdventureSchema(self).load(row)
+        adventure = await Adventure.AdventureSchema(self).load(row)
 
         return adventure
 

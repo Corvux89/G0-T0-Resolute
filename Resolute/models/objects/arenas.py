@@ -87,20 +87,22 @@ class Arena(object):
             self.bot = bot
 
         @post_load
-        async def make_arena(self, data, **kwargs):
+        async def make_arena(self, data, **kwargs) -> "Arena":
             arena = Arena(self.bot.db, self.bot.compendium, **data)
             arena.channel = self.bot.get_channel(data.get("channel_id"))
             await self.get_characters(arena)
             return arena
 
-        def load_tier(self, value):
+        def load_tier(self, value) -> ArenaTier:
             return self.bot.compendium.get_object(ArenaTier, value)
 
-        def load_type(self, value):
+        def load_type(self, value) -> ArenaType:
             return self.bot.compendium.get_object(ArenaType, value)
 
         def load_timestamp(
             self, value
+        ) -> (
+            datetime
         ):  # Marshmallow doesn't like loading DateTime for some reason. This is a workaround
             return datetime(
                 value.year,
@@ -112,7 +114,7 @@ class Arena(object):
                 tzinfo=timezone.utc,
             )
 
-        async def get_characters(self, arena):
+        async def get_characters(self, arena: "Arena") -> None:
             for char in arena.characters:
                 arena.player_characters.append(await self.bot.get_character(char))
 

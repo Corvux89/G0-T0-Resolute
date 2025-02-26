@@ -1,22 +1,24 @@
+from __future__ import annotations
+
 import calendar
 from datetime import datetime, timedelta, timezone
 from math import floor
+
+from typing import TYPE_CHECKING
 
 import aiopg.sa
 import discord
 import sqlalchemy as sa
 from marshmallow import Schema, fields, post_load
 from sqlalchemy.dialects.postgresql import ARRAY, insert
-
 from Resolute.compendium import Compendium
 from Resolute.models import metadata
-from Resolute.models.objects.dashboards import (
-    RefDashboard,
-    RefDashboardSchema,
-    get_dashboards,
-)
+from Resolute.models.objects.dashboards import RefDashboard
 from Resolute.models.objects.npc import NPC
 from Resolute.models.objects.ref_objects import RefServerCalendar, RefWeeklyStipend
+
+if TYPE_CHECKING:
+    from Resolute.bot import G0T0Bot
 
 
 class PlayerGuild(object):
@@ -506,29 +508,41 @@ class PlayerGuild(object):
         return guild
 
     async def get_all_characters(self, compendium: Compendium):
-        from Resolute.models.objects.characters import (
-            CharacterSchema,
-            get_guild_characters_query,
+        from Resolute.models.objects.characters import PlayerCharacter
+
+        query = (
+            PlayerCharacter.characters_table.select()
+            .where(
+                sa.and_(
+                    PlayerCharacter.characters_table.c.active == True,
+                    PlayerCharacter.characters_table.c.guild_id == self.id,
+                )
+            )
+            .order_by(PlayerCharacter.characters_table.c.id.desc())
         )
 
         async with self._db.acquire() as conn:
-            results = await conn.execute(get_guild_characters_query(self.id))
+            results = await conn.execute(query)
             rows = await results.fetchall()
 
         character_list = [
-            await CharacterSchema(self._db, compendium).load(row) for row in rows
+            await PlayerCharacter.CharacterSchema(self._db, compendium).load(row)
+            for row in rows
         ]
 
         return character_list
 
-    async def get_dashboards(self, bot) -> list[RefDashboard]:
+    async def get_dashboards(self, bot: G0T0Bot) -> list[RefDashboard]:
         dashboards = []
 
-        async with self._db.acquire() as conn:
-            async for row in conn.execute(get_dashboards()):
-                dashboard: RefDashboard = RefDashboardSchema(bot).load(row)
-                if dashboard.channel.guild.id == self.id:
-                    dashboards.append(dashboard)
+        rows = await bot.query(RefDashboard.ref_dashboard_table.select(), False)
+        db_dashboards: list[RefDashboard] = [
+            RefDashboard.RefDashboardSchema(bot).load(row) for row in rows
+        ]
+
+        for dashboard in db_dashboards:
+            if dashboard.channel.guild.id == self.id:
+                dashboards.append(dashboard)
 
         return dashboards
 

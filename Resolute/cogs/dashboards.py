@@ -10,9 +10,7 @@ from Resolute.helpers.dashboards import update_dashboard
 from Resolute.models.embeds.dashboards import RPDashboardEmbed
 from Resolute.models.objects.dashboards import (
     RefDashboard,
-    RefDashboardSchema,
     RPDashboardCategory,
-    get_dashboards,
 )
 from Resolute.models.views.dashboards import DashboardSettingsUI
 
@@ -219,10 +217,19 @@ class Dashboards(commands.Cog):
             None
         """
         start = timer()
-        async with self.bot.db.acquire() as conn:
-            async for row in conn.execute(get_dashboards()):
-                dashboard: RefDashboard = RefDashboardSchema(self.bot).load(row)
-                await update_dashboard(self.bot, dashboard)
+
+        rows = await self.bot.query(RefDashboard.ref_dashboard_table.select(), False)
+
+        for row in rows:
+            dashboard: RefDashboard = RefDashboard.RefDashboardSchema(self.bot).load(
+                row
+            )
+            await update_dashboard(self.bot, dashboard)
+
+        # async with self.bot.db.acquire() as conn:
+        #     async for row in conn.execute(get_dashboards()):
+        #         dashboard: RefDashboard = RefDashboardSchema(self.bot).load(row)
+        #         await update_dashboard(self.bot, dashboard)
         end = timer()
         log.info(
             f"DASHBOARD: Channel status dashboards updated in [ {end - start:.2f} ]s"

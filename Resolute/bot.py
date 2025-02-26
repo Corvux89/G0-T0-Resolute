@@ -30,18 +30,10 @@ from Resolute.models.embeds.logs import LogEmbed
 from Resolute.models.objects.adventures import Adventure
 from Resolute.models.objects.arenas import Arena
 from Resolute.models.objects.characters import (
-    CharacterSchema,
     PlayerCharacter,
     PlayerCharacterClass,
-    get_character_from_id,
-    upsert_character_query,
 )
-from Resolute.models.objects.dashboards import (
-    RefDashboard,
-    RefDashboardSchema,
-    get_dashboard_by_category_channel_query,
-    get_dashboard_by_post_id,
-)
+from Resolute.models.objects.dashboards import RefDashboard
 from Resolute.models.objects.exceptions import G0T0Error, TransactionError
 from Resolute.models.objects.financial import (
     Financial,
@@ -370,12 +362,16 @@ class G0T0Bot(commands.Bot):
         Returns:
             PlayerCharacter: The character object corresponding to the provided ID.
         """
+        query = PlayerCharacter.characters_table.select().where(
+            PlayerCharacter.characters_table.c.id == char_id
+        )
 
-        async with self.db.acquire() as conn:
-            results = await conn.execute(get_character_from_id(char_id))
-            row = await results.first()
+        row = await self.query(query)
 
-        character: PlayerCharacter = await CharacterSchema(
+        if row is None:
+            return None
+
+        character: PlayerCharacter = await PlayerCharacter.CharacterSchema(
             self.db, self.compendium
         ).load(row)
 
@@ -654,16 +650,16 @@ class G0T0Bot(commands.Bot):
             RefDashboard: The dashboard associated with the given category ID, or None if no dashboard is found.
         """
 
-        async with self.db.acquire() as conn:
-            results = await conn.execute(
-                get_dashboard_by_category_channel_query(category_id)
-            )
-            row = await results.first()
+        query = RefDashboard.ref_dashboard_table.select().where(
+            RefDashboard.ref_dashboard_table.c.category_channel_id == category_id
+        )
+
+        row = await self.query(query)
 
         if row is None:
             return None
 
-        d = RefDashboardSchema(self).load(row)
+        d = RefDashboard.RefDashboardSchema(self).load(row)
 
         return d
 
@@ -676,15 +672,16 @@ class G0T0Bot(commands.Bot):
             RefDashboard: The dashboard reference associated with the given message ID.
             None: If no dashboard is found for the given message ID.
         """
+        query = RefDashboard.ref_dashboard_table.select().where(
+            RefDashboard.ref_dashboard_table.c.post_id == message_id
+        )
 
-        async with self.db.acquire() as conn:
-            results = await conn.execute(get_dashboard_by_post_id(message_id))
-            row = await results.first()
+        row = await self.query(query)
 
         if row is None:
             return None
 
-        d = RefDashboardSchema(self).load(row)
+        d = RefDashboard.RefDashboardSchema(self).load(row)
 
         return d
 
@@ -845,7 +842,7 @@ class G0T0Bot(commands.Bot):
             await conn.execute(upsert_player_query(player))
 
             if character:
-                await conn.execute(upsert_character_query(character))
+                await character.upsert()
 
         log_entry = await log_entry.upsert()
 

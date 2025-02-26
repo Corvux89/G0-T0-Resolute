@@ -21,12 +21,9 @@ from Resolute.models.objects.adventures import Adventure
 from Resolute.models.objects.arenas import Arena
 
 from Resolute.models.objects.characters import (
-    CharacterSchema,
     PlayerCharacter,
     PlayerCharacterClass,
     CharacterRenown,
-    get_active_player_characters,
-    get_all_player_characters,
 )
 from Resolute.models.objects.exceptions import G0T0Error
 from Resolute.models.objects.guilds import PlayerGuild
@@ -433,19 +430,28 @@ class PlayerSchema(Schema):
         return player
 
     async def get_characters(self, player: Player):
-        async with self.bot.db.acquire() as conn:
-            if self.inactive:
-                results = await conn.execute(
-                    get_all_player_characters(player.id, player.guild_id)
+        if self.inactive:
+            query = PlayerCharacter.characters_table.select().where(
+                sa.and_(
+                    PlayerCharacter.characters_table.c.player_id == player.id,
+                    PlayerCharacter.characters_table.c.guild_id == player.guild_id,
                 )
-            else:
-                results = await conn.execute(
-                    get_active_player_characters(player.id, player.guild_id)
+            )
+        else:
+            query = PlayerCharacter.characters_table.select().where(
+                sa.and_(
+                    PlayerCharacter.characters_table.c.player_id == player.id,
+                    PlayerCharacter.characters_table.c.guild_id == player.guild_id,
+                    PlayerCharacter.characters_table.c.active == True,
                 )
-            rows = await results.fetchall()
+            )
+
+        rows = await self.bot.query(query, False)
 
         character_list: list[PlayerCharacter] = [
-            await CharacterSchema(self.bot.db, self.bot.compendium).load(row)
+            await PlayerCharacter.CharacterSchema(
+                self.bot.db, self.bot.compendium
+            ).load(row)
             for row in rows
         ]
 

@@ -5,11 +5,11 @@ import discord
 import sqlalchemy as sa
 from marshmallow import Schema, fields, post_load
 from sqlalchemy.dialects.postgresql import ARRAY
-
 from Resolute.models import metadata
+
 from Resolute.models.categories.categories import Faction
-from Resolute.models.objects.characters import PlayerCharacter
 from Resolute.models.objects.npc import NPC
+from Resolute.models.objects.characters import PlayerCharacter
 
 
 class Adventure(object):
@@ -100,7 +100,7 @@ class Adventure(object):
             self.bot = bot
 
         @post_load
-        async def make_adventure(self, data, **kwargs):
+        async def make_adventure(self, data, **kwargs) -> "Adventure":
             guild = self.bot.get_guild(data["guild_id"])
             adventure = Adventure(
                 self.bot.db,
@@ -131,13 +131,13 @@ class Adventure(object):
                 factions.append(self.bot.compendium.get_object(Faction, f))
             return factions
 
-        async def get_characters(self, adventure):
+        async def get_characters(self, adventure: "Adventure") -> None:
             if adventure.characters:
                 for char_id in adventure.characters:
                     if char := await self.bot.get_character(char_id):
                         adventure.player_characters.append(char)
 
-        async def get_npcs(self, adventure):
+        async def get_npcs(self, adventure: "Adventure") -> None:
             query = NPC.npc_table.select().where(
                 sa.and_(NPC.npc_table.c.adventure_id == adventure.id)
             )
@@ -177,7 +177,7 @@ class Adventure(object):
         # Virtual attributes
         self.npcs: list[NPC] = []
 
-    async def upsert(self):
+    async def upsert(self) -> None:
         """
         Asynchronously upserts an adventure record in the database.
         This method acquires a connection from the database pool and executes
@@ -207,14 +207,9 @@ class Adventure(object):
                 self.adventures_table.update()
                 .where(self.adventures_table.c.id == self.id)
                 .values(**update_dict)
-                .returning(self.adventures_table)
             )
         else:
-            query = (
-                self.adventures_table.insert()
-                .values(**insert_dict)
-                .returning(self.adventures_table)
-            )
+            query = self.adventures_table.insert().values(**insert_dict)
 
         async with self._db.acquire() as conn:
             await conn.execute(query)

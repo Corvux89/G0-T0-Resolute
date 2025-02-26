@@ -12,10 +12,8 @@ from Resolute.models.categories.categories import DashboardType
 from Resolute.models.embeds.dashboards import RPDashboardEmbed
 from Resolute.models.objects.dashboards import (
     RefDashboard,
-    RefDashboardSchema,
     RPDashboardCategory,
     get_class_census,
-    get_dashboard_by_type,
     get_level_distribution,
 )
 from Resolute.models.objects.financial import Financial
@@ -60,10 +58,18 @@ async def get_financial_dashboards(bot: G0T0Bot) -> list[RefDashboard]:
 
     d_type = bot.compendium.get_object(DashboardType, "FINANCIAL")
 
-    async with bot.db.acquire() as conn:
-        async for row in conn.execute(get_dashboard_by_type(d_type.id)):
-            dashboard: RefDashboard = RefDashboardSchema(bot).load(row)
-            dashboards.append(dashboard)
+    query = RefDashboard.ref_dashboard_table.select().where(
+        RefDashboard.ref_dashboard_table.c.dashboard_type == d_type.id
+    )
+
+    rows = await bot.query(query, False)
+
+    dashboards = [RefDashboard.RefDashboardSchema(bot).load(row) for row in rows]
+
+    # async with bot.db.acquire() as conn:
+    #     async for row in conn.execute(get_dashboard_by_type(d_type.id)):
+    #         dashboard: RefDashboard = RefDashboardSchema(bot).load(row)
+    #         dashboards.append(dashboard)
 
     return dashboards
 

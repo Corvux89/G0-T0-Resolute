@@ -531,7 +531,7 @@ class G0T0Bot(commands.Bot):
                 guilds = [g for g in self.guilds if g.get_member(player_id)]
 
                 if len(guilds) == 1:
-                    player = await Player(self, player_id, guilds[0].id).upsert()
+                    player = await Player(self, player_id, guilds[0].id).fetch()
 
                 else:
                     choices = [g.name for g in guilds]
@@ -548,11 +548,11 @@ class G0T0Bot(commands.Bot):
                     if choice and (
                         guild := next((g for g in guilds if g.name == choice), None)
                     ):
-                        player = await Player(self, player_id, guild.id).upsert(
+                        player = await Player(self, player_id, guild.id).fetch(
                             inactive=inactive
                         )
             else:
-                player = await Player(self, player_id, rows[0]["guild_id"]).upsert(
+                player = await Player(self, player_id, rows[0]["guild_id"]).fetch(
                     inactive=inactive
                 )
 

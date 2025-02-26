@@ -623,6 +623,22 @@ class Player(object):
 
         return player
 
+    async def fetch(self, **kwargs):
+        inactive = kwargs.get("inactive", False)
+
+        query = Player.player_table.select().where(
+            sa.and_(
+                Player.player_table.c.id == self.id,
+                Player.player_table.c.guild_id == self.guild_id,
+            )
+        )
+
+        player = await Player.PlayerSchema(self._bot, inactive).load(
+            await self._bot.query(query)
+        )
+
+        return player
+
 
 class ArenaPost(object):
     """

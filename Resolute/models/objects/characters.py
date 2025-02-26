@@ -148,6 +148,46 @@ class PlayerCharacterClass(object):
             Inserts or updates the player character class in the database.
     """
 
+    character_class_table = sa.Table(
+        "character_class",
+        metadata,
+        sa.Column("id", sa.Integer, primary_key=True, autoincrement="auto"),
+        sa.Column("character_id", sa.Integer, nullable=False),  # ref: > characters.id
+        sa.Column(
+            "primary_class", sa.Integer, nullable=False
+        ),  # ref: > c_character_class.id
+        sa.Column(
+            "archetype", sa.Integer, nullable=True
+        ),  # ref: > c_character_subclass.id
+        sa.Column("active", sa.BOOLEAN, nullable=False, default=True),
+    )
+
+    class PlayerCharacterClassSchema(Schema):
+        db: aiopg.sa.Engine
+        compendium: Compendium
+
+        id = fields.Integer(required=True)
+        character_id = fields.Integer(required=True)
+        primary_class = fields.Method(None, "load_primary_class")
+        archetype = fields.Method(None, "load_archetype", allow_none=True)
+        active = fields.Boolean(required=True)
+
+        def __init__(self, db: aiopg.sa.Engine, compendium: Compendium, **kwargs):
+            super().__init__(**kwargs)
+            self.db = db
+            self.compendium = compendium
+
+        @post_load
+        def make_class(self, data, **kwargs):
+            cl = PlayerCharacterClass(self.db, self.compendium, **data)
+            return cl
+
+        def load_primary_class(self, value):
+            return self.compendium.get_object(CharacterClass, value)
+
+        def load_archetype(self, value):
+            return self.compendium.get_object(CharacterArchetype, value)
+
     def __init__(self, db: aiopg.sa.Engine, compendium: Compendium, **kwargs):
         self._db = db
         self._compendium = compendium
@@ -196,104 +236,42 @@ class PlayerCharacterClass(object):
         Returns:
             PlayerCharacterClass: The newly upserted player character class.
         """
-        async with self._db.acquire() as conn:
-            results = await conn.execute(upsert_class_query(self))
-            row = await results.first()
-
-        new_class = PlayerCharacterClassSchema(self._db, self._compendium).load(row)
-
-        return new_class
-
-
-character_class_table = sa.Table(
-    "character_class",
-    metadata,
-    sa.Column("id", sa.Integer, primary_key=True, autoincrement="auto"),
-    sa.Column("character_id", sa.Integer, nullable=False),  # ref: > characters.id
-    sa.Column(
-        "primary_class", sa.Integer, nullable=False
-    ),  # ref: > c_character_class.id
-    sa.Column("archetype", sa.Integer, nullable=True),  # ref: > c_character_subclass.id
-    sa.Column("active", sa.BOOLEAN, nullable=False, default=True),
-)
-
-
-class PlayerCharacterClassSchema(Schema):
-    db: aiopg.sa.Engine
-    compendium: Compendium
-
-    id = fields.Integer(required=True)
-    character_id = fields.Integer(required=True)
-    primary_class = fields.Method(None, "load_primary_class")
-    archetype = fields.Method(None, "load_archetype", allow_none=True)
-    active = fields.Boolean(required=True)
-
-    def __init__(self, db: aiopg.sa.Engine, compendium: Compendium, **kwargs):
-        super().__init__(**kwargs)
-        self.db = db
-        self.compendium = compendium
-
-    @post_load
-    def make_class(self, data, **kwargs):
-        cl = PlayerCharacterClass(self.db, self.compendium, **data)
-        return cl
-
-    def load_primary_class(self, value):
-        return self.compendium.get_object(CharacterClass, value)
-
-    def load_archetype(self, value):
-        return self.compendium.get_object(CharacterArchetype, value)
-
-
-def get_character_class(char_id: int) -> FromClause:
-    return (
-        character_class_table.select()
-        .where(
-            sa.and_(
-                character_class_table.c.character_id == char_id,
-                character_class_table.c.active == True,
-            )
-        )
-        .order_by(character_class_table.c.id.asc())
-    )
-
-
-def upsert_class_query(char_class: PlayerCharacterClass):
-    if hasattr(char_class, "id") and char_class.id is not None:
         update_dict = {
-            "character_id": char_class.character_id,
-            "primary_class": char_class.primary_class.id,
+            "character_id": self.character_id,
+            "primary_class": self.primary_class.id,
             "archetype": (
-                None
-                if not hasattr(char_class.archetype, "id")
-                else char_class.archetype.id
+                self.archetype.id
+                if hasattr(self, "archetype") and self.archetype
+                else None
             ),
-            "active": char_class.active,
+            "active": self.active,
         }
 
-        update_statement = (
-            character_class_table.update()
-            .where(character_class_table.c.id == char_class.id)
-            .values(**update_dict)
-            .returning(character_class_table)
-        )
-        return update_statement
+        insert_dict = {**update_dict}
 
-    insert_statement = (
-        insert(character_class_table)
-        .values(
-            character_id=char_class.character_id,
-            primary_class=char_class.primary_class.id,
-            archetype=(
-                None
-                if not hasattr(char_class.archetype, "id")
-                else char_class.archetype.id
-            ),
-        )
-        .returning(character_class_table)
-    )
+        if hasattr(self, "id") and self.id is not None:
+            query = (
+                PlayerCharacterClass.character_class_table.update()
+                .where(PlayerCharacterClass.character_class_table.c.id == self.id)
+                .values(**update_dict)
+                .returning(PlayerCharacterClass.character_class_table)
+            )
+        else:
+            query = (
+                PlayerCharacterClass.character_class_table.insert()
+                .values(**insert_dict)
+                .returning(PlayerCharacterClass.character_class_table)
+            )
 
-    return insert_statement
+        async with self._db.acquire() as conn:
+            results = await conn.execute(query)
+            row = await results.first()
+
+        new_class = PlayerCharacterClass.PlayerCharacterClassSchema(
+            self._db, self._compendium
+        ).load(row)
+
+        return new_class
 
 
 class PlayerCharacter(object):
@@ -525,12 +503,26 @@ class CharacterSchema(Schema):
         return self.compendium.get_object(Faction, value)
 
     async def get_classes(self, character: PlayerCharacter):
+        query = (
+            PlayerCharacterClass.character_class_table.select()
+            .where(
+                sa.and_(
+                    PlayerCharacterClass.character_class_table.c.character_id
+                    == character.id,
+                    PlayerCharacterClass.character_class_table.c.active == True,
+                )
+            )
+            .order_by(PlayerCharacterClass.character_class_table.c.id.asc())
+        )
+
         async with self.db.acquire() as conn:
-            class_results = await conn.execute(get_character_class(character.id))
+            class_results = await conn.execute(query)
             class_rows = await class_results.fetchall()
 
         character.classes = [
-            PlayerCharacterClassSchema(self.db, self.compendium).load(row)
+            PlayerCharacterClass.PlayerCharacterClassSchema(
+                self.db, self.compendium
+            ).load(row)
             for row in class_rows
         ]
 

@@ -24,11 +24,9 @@ from Resolute.models.objects.characters import (
     CharacterSchema,
     PlayerCharacter,
     PlayerCharacterClass,
-    PlayerCharacterClassSchema,
     CharacterRenown,
     get_active_player_characters,
     get_all_player_characters,
-    get_character_class,
 )
 from Resolute.models.objects.exceptions import G0T0Error
 from Resolute.models.objects.guilds import PlayerGuild
@@ -458,13 +456,23 @@ class PlayerSchema(Schema):
                 .order_by(CharacterRenown.renown_table.c.id.asc())
             )
 
-            async with self.bot.db.acquire() as conn:
-                class_results = await conn.execute(get_character_class(character.id))
-                class_rows = await class_results.fetchall()
+            class_query = (
+                PlayerCharacterClass.character_class_table.select()
+                .where(
+                    sa.and_(
+                        PlayerCharacterClass.character_class_table.c.character_id
+                        == character.id,
+                        PlayerCharacterClass.character_class_table.c.active == True,
+                    )
+                )
+                .order_by(PlayerCharacterClass.character_class_table.c.id.asc())
+            )
 
             character.classes = [
-                PlayerCharacterClassSchema(self.bot.db, self.bot.compendium).load(row)
-                for row in class_rows
+                PlayerCharacterClass.PlayerCharacterClassSchema(
+                    self.bot.db, self.bot.compendium
+                ).load(row)
+                for row in await self.bot.query(class_query, False)
             ]
             character.renown = [
                 CharacterRenown.RenownSchema(self.bot.db, self.bot.compendium).load(row)

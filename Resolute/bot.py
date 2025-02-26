@@ -348,7 +348,7 @@ class G0T0Bot(commands.Bot):
             return
 
         query = PlayerGuild.guilds_table.select().where(
-            PlayerGuild.c.archive_user.isnot(None)
+            PlayerGuild.guilds_table.c.archive_user.isnot(None)
         )
 
         rows = await self.query(query, False)

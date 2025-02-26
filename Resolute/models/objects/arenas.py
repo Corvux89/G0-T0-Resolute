@@ -12,11 +12,11 @@ from marshmallow import Schema, fields, post_load
 from sqlalchemy.dialects.postgresql import ARRAY
 from Resolute.models import metadata
 from Resolute.models.categories import ArenaTier, ArenaType
+from Resolute.models.objects import RelatedList
 
 
 if TYPE_CHECKING:
     from Resolute.bot import G0T0Bot
-    from Resolute.models.objects import RelatedList
     from Resolute.models.objects.characters import PlayerCharacter
     from Resolute.compendium import Compendium
 

@@ -5,7 +5,7 @@ import discord
 
 from Resolute.bot import G0T0Bot
 from Resolute.compendium import Compendium
-from Resolute.helpers.general_helpers import get_webhook, is_admin, process_message
+from Resolute.helpers.general_helpers import get_webhook, process_message
 from Resolute.models.categories import CharacterClass, CharacterSpecies
 from Resolute.models.categories.categories import CharacterArchetype, Faction
 from Resolute.models.embeds import ErrorEmbed
@@ -140,7 +140,10 @@ class CharacterManageUI(CharacterManage):
                 )
             self.character_select.options = char_list
 
-        if not is_admin or len(self.player.characters) == 0:
+        if (
+            not self.player.guild.is_admin(self.player.member)
+            or len(self.player.characters) == 0
+        ):
             self.remove_item(self.inactivate_character)
 
     async def get_content(self) -> Mapping:
@@ -455,7 +458,7 @@ class _EditCharacter(CharacterManage):
             self.level_character.disabled = False
         pass
 
-        if not is_admin:
+        if not self.player.guild.is_admin(self.player.member):
             self.remove_item(self.manage_renown)
 
         if not self.player.guild.calendar:

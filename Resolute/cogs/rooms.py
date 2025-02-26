@@ -52,8 +52,11 @@ class Room(commands.Cog):
                        are no roles to manage, or if something goes wrong during the
                        process.
         """
-        channel = ctx.guild.get_channel(ctx.channel.id)
-        if ctx.author in channel.overwrites or is_admin(ctx):
+        if not ctx.channel.category:
+            raise G0T0Error("This command won't work here")
+
+        channel: discord.TextChannel = ctx.guild.get_channel(ctx.channel.id)
+        if ctx.author in channel.overwrites or await is_admin(ctx):
             roles = []
             guild = await self.bot.get_player_guild(ctx.guild.id)
 

@@ -250,9 +250,9 @@ class Arenas(commands.Cog):
         elif len(player.characters) == 1:
             await player.add_to_arena(ctx, player.characters[0], arena)
         else:
-            ui = ArenaCharacterSelect.new(self.bot, player, ctx.author.id)
+            ui = ArenaCharacterSelect.new(self.bot, player, ctx.author.id, True)
             await ui.send_to(ctx)
-        await ctx.delete()
+            await ctx.delete()
 
     @arena_commands.command(
         name="remove", description="Removes the specified player from this arena"

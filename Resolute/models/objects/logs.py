@@ -151,8 +151,12 @@ class DBLog(object):
             "notes": getattr(self, "notes", None),
             "credits": self.credits,
             "cc": self.cc,
-            "renown": self.cc,
+            "renown": self.renown,
             "invalid": self.invalid,
+            "faction": (
+                self.faction.id if hasattr(self, "faction") and self.faction else None
+            ),
+            "adventure_id": getattr(self, "adventure_id", None),
         }
 
         insert_dict = {
@@ -170,10 +174,6 @@ class DBLog(object):
                 else self.character_id
             ),
             "guild_id": self.guild_id,
-            "adventure_id": getattr(self, "adventure_id", None),
-            "faction": (
-                self.faction.id if hasattr(self, "faction") and self.faction else None
-            ),
         }
 
         if hasattr(self, "id") and self.id is not None:
@@ -181,6 +181,7 @@ class DBLog(object):
                 DBLog.log_table.update()
                 .where(DBLog.log_table.c.id == self.id)
                 .values(**update_dict)
+                .returning(DBLog.log_table)
             )
         else:
             query = (
@@ -248,6 +249,7 @@ class DBLog(object):
             credits=-self.credits,
             renown=-self.renown,
             faction=self.faction if self.faction else None,
+            ignore_handicap=True,
         )
 
         self.invalid = True

@@ -17,7 +17,7 @@ from sqlalchemy.sql import FromClause, TableClause
 
 from Resolute.compendium import Compendium
 from Resolute.constants import DB_URL, ERROR_CHANNEL, PORT
-from Resolute.helpers.general_helpers import get_selection, is_admin
+from Resolute.helpers.general_helpers import get_selection
 from Resolute.models import metadata
 from Resolute.models.categories.categories import (
     Activity,
@@ -45,6 +45,7 @@ from Resolute.models.objects.players import Player
 from Resolute.models.objects.shatterpoint import Shatterpoint
 from Resolute.models.objects.store import Store
 
+
 log = logging.getLogger(__name__)
 
 
@@ -58,6 +59,7 @@ class G0T0Context(discord.ApplicationContext):
         super(G0T0Context).__init__(**kwargs)
 
         self.player: Player = None
+        self.playerGuild: PlayerGuild = None
 
 
 class G0T0Bot(commands.Bot):
@@ -186,6 +188,9 @@ class G0T0Bot(commands.Bot):
         ctx.player = await self.get_player(
             ctx.author.id, ctx.guild.id if ctx.guild else None
         )
+        ctx.playerGuild = (
+            await self.get_player_guild(ctx.guild.id) if ctx.guild else None
+        )
 
         await ctx.player.update_command_count(str(ctx.command))
         params = "".join(
@@ -217,9 +222,6 @@ class G0T0Bot(commands.Bot):
             and self.compendium
         ):
             return True
-        await ctx.send(
-            embed=ErrorEmbed(f"Try again in a few seconds. I'm not fully awake yet.")
-        )
         return False
 
     async def error_handling(
@@ -255,12 +257,19 @@ class G0T0Bot(commands.Bot):
 
         elif (
             hasattr(ctx.command, "on_error")
-            or isinstance(error, (commands.CommandNotFound, discord.CheckFailure))
+            or isinstance(error, (commands.CommandNotFound))
             or "Unknown interaction" in str(error)
         ):
             return
 
-        elif isinstance(error, G0T0Error):
+        elif isinstance(
+            error, discord.CheckFailure
+        ) and "The global check functions" in str(error):
+            return await ctx.send(
+                embed=ErrorEmbed("Try again in a few seconds. I'm not fully awake yet")
+            )
+
+        elif isinstance(error, (G0T0Error, discord.CheckFailure)):
             return await ctx.send(embed=ErrorEmbed(error))
 
         if hasattr(ctx, "bot") and hasattr(ctx.bot, "db"):
@@ -335,9 +344,6 @@ class G0T0Bot(commands.Bot):
         return guild
 
     async def get_busy_guilds(self) -> list[PlayerGuild]:
-        if not is_admin:
-            return
-
         query = PlayerGuild.guilds_table.select().where(
             PlayerGuild.guilds_table.c.archive_user.isnot(None)
         )
@@ -486,7 +492,6 @@ class G0T0Bot(commands.Bot):
 
         rows = await self.query(query, QueryResultType.multiple)
 
-        # TODO: Come back and finish this
         if len(rows) == 0 and guild_id and not lookup_only:
             player = await Player(self, player_id, guild_id).upsert(inactive=inactive)
 
@@ -523,21 +528,29 @@ class G0T0Bot(commands.Bot):
                     raise G0T0Error("Unable to find player")
         else:
             if ctx:
-                guilds = [self.get_guild(r["guild_id"]).name for r in rows]
-                guild = await get_selection(
-                    ctx,
-                    guilds,
-                    True,
-                    True,
-                    None,
-                    False,
-                    "Which guild is this command for?\n",
-                )
+                guilds = [g for g in self.guilds if g.get_member(player_id)]
 
-                if guild:
-                    player = await Player(self, player_id, guild.id).upsert(
-                        inactive=inactive
+                if len(guilds) == 1:
+                    player = await Player(self, player_id, guilds[0].id).upsert()
+
+                else:
+                    choices = [g.name for g in guilds]
+                    choice = await get_selection(
+                        ctx,
+                        choices,
+                        True,
+                        True,
+                        None,
+                        False,
+                        "Which guild is this command for?\n",
                     )
+
+                    if choice and (
+                        guild := next((g for g in guilds if g.name == choice), None)
+                    ):
+                        player = await Player(self, player_id, guild.id).upsert(
+                            inactive=inactive
+                        )
             else:
                 player = await Player(self, player_id, rows[0]["guild_id"]).upsert(
                     inactive=inactive
@@ -642,9 +655,6 @@ class G0T0Bot(commands.Bot):
         return shatterpoint
 
     async def get_busy_shatterpoints(self) -> list[Shatterpoint]:
-        if not is_admin:
-            return
-
         query = Shatterpoint.ref_gb_staging_table.select().where(
             Shatterpoint.ref_gb_staging_table.c.busy_member.isnot(None)
         )
@@ -1323,9 +1333,6 @@ class G0T0Bot(commands.Bot):
         return fin
 
     async def get_all_npcs(self) -> list[NPC]:
-        if not is_admin:
-            return
-
         query = NPC.npc_table.select().order_by(NPC.npc_table.c.key.asc())
 
         npcs = [

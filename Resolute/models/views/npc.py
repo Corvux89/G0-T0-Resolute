@@ -3,7 +3,6 @@ from typing import Mapping
 import discord
 
 from Resolute.bot import G0T0Bot
-from Resolute.helpers.general_helpers import is_admin
 from Resolute.models.embeds import ErrorEmbed
 from Resolute.models.embeds.npc import NPCEmbed
 from Resolute.models.objects.adventures import Adventure
@@ -121,7 +120,7 @@ class NPCSettingsUI(NPCSettings):
             self.remove_item(self.remove_npc_role)
             self.remove_item(self.role_select)
 
-            if not is_admin:
+            if not self.guild.is_admin(self.owner):
                 self.remove_item(self.new_npc)
                 self.remove_item(self.delete_npc_button)
                 self.remove_item(self.edit_npc)

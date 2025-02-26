@@ -2,7 +2,7 @@ from typing import Type
 
 import discord
 
-from Resolute.bot import G0T0Bot
+
 from Resolute.models.categories.categories import ArenaType
 from Resolute.models.embeds import ErrorEmbed
 from Resolute.models.embeds.players import ArenaPostEmbed
@@ -14,8 +14,9 @@ from Resolute.models.objects.exceptions import (
     G0T0Error,
 )
 from Resolute.models.objects.guilds import PlayerGuild
-from Resolute.models.objects.players import ArenaPost, Player
 from Resolute.models.views.base import InteractiveView
+from Resolute.bot import G0T0Bot
+from Resolute.models.objects.players import ArenaPost, Player
 
 
 class ArenaView(discord.ui.View):
@@ -99,6 +100,25 @@ class ArenaView(discord.ui.View):
         else:
             await interaction.response.edit_message(view=self, **kwargs)
 
+    async def clear_timeout(self) -> None:
+        """
+        Handles the timeout event for the view.
+        This method is called when the view times out. It attempts to edit the message
+        associated with the view to remove the view and then delete the message. If the
+        message is None, the method returns immediately. If an discord.HTTPException occurs
+        during the process, it is caught and printed.
+        Returns:
+            None
+        """
+        if self.message is None:
+            return
+        try:
+            await self.message.edit(view=None)
+            await self.message.delete()
+        except discord.HTTPException as e:
+            print(e)
+            pass
+
 
 class CharacterArenaViewUI(ArenaView):
     """
@@ -150,12 +170,16 @@ class CharacterArenaViewUI(ArenaView):
 
 class ArenaCharacterSelect(ArenaView):
     owner_id: int = None
+    clear: bool = False
 
     @classmethod
-    def new(cls, bot: G0T0Bot, player: Player, owner_id: int = None):
+    def new(
+        cls, bot: G0T0Bot, player: Player, owner_id: int = None, clear: bool = False
+    ):
         inst = cls(bot=bot)
         inst.player = player
         inst.owner_id = owner_id
+        inst.clear = clear
         return inst
 
     async def send_to(self, destination, *args, **kwargs):
@@ -196,9 +220,10 @@ class ArenaCharacterSelect(ArenaView):
             raise G0T0Error("Thats not your character")
 
         await self.player.add_to_arena(interaction, character, arena)
-
-        # await self.defer_to(CharacterArenaViewUI, interaction)
-        await self.on_timeout()
+        if self.clear:
+            await self.clear_timeout()
+        else:
+            await self.defer_to(CharacterArenaViewUI, interaction)
 
     @discord.ui.button(
         label="Join Arena",

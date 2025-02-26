@@ -13,6 +13,7 @@ import sqlalchemy as sa
 from marshmallow import Schema, fields, post_load
 from sqlalchemy.dialects.postgresql import ARRAY, insert
 from Resolute.compendium import Compendium
+from Resolute.constants import BOT_OWNERS
 from Resolute.models import metadata
 from Resolute.models.objects.characters import PlayerCharacter
 from Resolute.models.objects.dashboards import RefDashboard
@@ -569,3 +570,20 @@ class PlayerGuild(object):
             )
 
         return None
+
+    def is_admin(self, member: discord.Member):
+        if member in BOT_OWNERS:
+            return True
+
+        elif self.admin_role and self.admin_role in member.roles:
+            return True
+
+        return False
+
+    def is_staff(self, member: discord.Member):
+        if self.is_admin(member) or (
+            self.staff_role and self.staff_role in member.roles
+        ):
+            return True
+
+        return False

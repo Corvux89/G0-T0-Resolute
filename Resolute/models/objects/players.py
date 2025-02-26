@@ -500,7 +500,7 @@ class Player(object):
             arena.player_characters.remove(remove_char)
 
         await self.remove_arena_board_post(interaction)
-        await interaction.response.send_message(
+        await interaction.channel.send(
             f"{self.member.mention} has joined the arena with {character.name}"
         )
 

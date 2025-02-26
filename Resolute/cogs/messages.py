@@ -51,7 +51,10 @@ class Messages(commands.Cog):
                         if reaction.emoji in DENIED_EMOJI:
                             users = await reaction.users().flatten()
                             for user in users:
-                                if is_staff(ctx) or user.id == self.bot.user.id:
+                                if (
+                                    player.guild.is_staff(player.member)
+                                    or user.id == self.bot.user.id
+                                ):
                                     raise G0T0Error(
                                         f"Transaction was previously denied. Please make a new request"
                                     )
@@ -144,7 +147,10 @@ class Messages(commands.Cog):
                             users = await reaction.users().flatten()
 
                             for user in users:
-                                if is_staff(ctx) or user.id == self.bot.user.id:
+                                if (
+                                    player.guild.is_staff(player.member)
+                                    or user.id == self.bot.user.id
+                                ):
                                     raise G0T0Error(
                                         f"Transaction was previously denied. Please make a new request"
                                     )
@@ -175,7 +181,7 @@ class Messages(commands.Cog):
 
         # Staff Say Delete
         elif (
-            is_staff
+            player.guild.is_staff(player.member)
             and (webhook := G0T0Webhook(ctx, message=message))
             and await webhook.is_valid_message(update_player=True)
         ):
@@ -213,7 +219,10 @@ class Messages(commands.Cog):
                         if reaction.emoji in DENIED_EMOJI:
                             users = await reaction.users().flatten()
                             for user in users:
-                                if is_staff(ctx) or user.id == self.bot.user.id:
+                                if (
+                                    guild.is_staff(ctx.player.member)
+                                    or user.id == self.bot.user.id
+                                ):
                                     raise G0T0Error(
                                         f"Transaction was previously denied. Please make a new request"
                                     )
@@ -253,7 +262,7 @@ class Messages(commands.Cog):
                         await message.add_reaction(APPROVAL_EMOJI[0])
                         await message.edit(content="", embed=LogEmbed(log_entry, True))
                     except Exception as error:
-                        await message.clear_reactions
+                        await message.clear_reactions()
                         await message.add_reaction(DENIED_EMOJI[0])
                         raise error
 

@@ -12,8 +12,9 @@ from Resolute.bot import G0T0Bot, G0T0Context
 from Resolute.helpers.general_helpers import confirm, is_admin
 from Resolute.models.embeds.guilds import ResetEmbed
 from Resolute.models.objects.characters import PlayerCharacter
+from Resolute.models.objects.enum import QueryResultType
 from Resolute.models.objects.guilds import PlayerGuild
-from Resolute.models.objects.players import reset_div_cc
+from Resolute.models.objects.players import Player
 from Resolute.models.views.guild_settings import GuildSettingsUI
 
 log = logging.getLogger(__name__)
@@ -246,8 +247,11 @@ class Guilds(commands.Cog):
             birthdays = await self._get_characters_with_birthdays(g, start_date)
 
         # Reset Player CC's and Activity Points
-        async with self.bot.db.acquire() as conn:
-            await conn.execute(reset_div_cc(g.id))
+        await self.bot.query(
+            Player.player_table.update()
+            .where(Player.player_table.c.guild_id == g.id)
+            .values(div_cc=0, activity_points=0, activity_level=0)
+        )
 
         # Stipends
         leadership_stipend_players = set()
@@ -317,7 +321,7 @@ class Guilds(commands.Cog):
             .order_by(PlayerGuild.guilds_table.c.id.desc())
         )
 
-        rows = await self.bot.query(query, False)
+        rows = await self.bot.query(query, QueryResultType.multiple)
 
         guild_list = [
             await PlayerGuild.GuildSchema(

@@ -34,23 +34,16 @@ from Resolute.models.objects.characters import (
     PlayerCharacterClass,
 )
 from Resolute.models.objects.dashboards import RefDashboard
+from Resolute.models.objects.enum import QueryResultType
 from Resolute.models.objects.exceptions import G0T0Error, TransactionError
-from Resolute.models.objects.financial import (
-    Financial,
-    FinancialSchema,
-    get_financial_query,
-)
+
+from Resolute.models.objects.financial import Financial
 from Resolute.models.objects.guilds import PlayerGuild
 from Resolute.models.objects.logs import DBLog
 from Resolute.models.objects.npc import NPC
-from Resolute.models.objects.players import (
-    Player,
-    PlayerSchema,
-    get_player_query,
-    upsert_player_query,
-)
+from Resolute.models.objects.players import Player
 from Resolute.models.objects.shatterpoint import Shatterpoint
-from Resolute.models.objects.store import Store, StoreSchema, get_store_items_query
+from Resolute.models.objects.store import Store
 
 log = logging.getLogger(__name__)
 
@@ -303,15 +296,21 @@ class G0T0Bot(commands.Bot):
             log.warning("Unable to respond")
 
     async def query(
-        self, query: FromClause | TableClause, single_result: bool = True
+        self,
+        query: FromClause | TableClause,
+        result_type: QueryResultType = QueryResultType.single,
     ) -> result.RowProxy | list[result.RowProxy]:
         async with self.db.acquire() as conn:
             results = await conn.execute(query)
 
-            if single_result:
+            if result_type == QueryResultType.single:
                 return await results.first()
-            else:
+            elif result_type == QueryResultType.multiple:
                 return await results.fetchall()
+            elif result_type == QueryResultType.scalar:
+                return await results.scalar()
+            else:
+                return None
 
     async def get_player_guild(self, guild_id: int) -> PlayerGuild:
         """
@@ -343,7 +342,7 @@ class G0T0Bot(commands.Bot):
             PlayerGuild.guilds_table.c.archive_user.isnot(None)
         )
 
-        rows = await self.query(query, False)
+        rows = await self.query(query, QueryResultType.multiple)
 
         guilds = [
             await PlayerGuild.GuildSchema(
@@ -449,7 +448,9 @@ class G0T0Bot(commands.Bot):
 
         return arena
 
-    async def get_player(self, player_id: int, guild_id: int, **kwargs) -> Player:
+    async def get_player(
+        self, player_id: int, guild_id: int = None, **kwargs
+    ) -> Player:
         """
         Retrieve a player from the database based on player_id and guild_id.
         Args:
@@ -469,47 +470,39 @@ class G0T0Bot(commands.Bot):
         lookup_only = kwargs.get("lookup_only", False)
         ctx = kwargs.get("ctx")
 
-        async with self.db.acquire() as conn:
-            results = await conn.execute(get_player_query(player_id, guild_id))
-            rows = await results.fetchall()
+        player = None
 
-            if len(rows) == 0 and guild_id and not lookup_only:
-                player = Player(id=player_id, guild_id=guild_id)
-                results = await conn.execute(upsert_player_query(player))
-                row = await results.first()
-            elif len(rows) == 0 and lookup_only:
-                return None
-            elif len(rows) == 0 and not guild_id:
-                if ctx:
-                    guilds = [g for g in self.guilds if g.get_member(player_id)]
+        if guild_id:
+            query = Player.player_table.select().where(
+                sa.and_(
+                    Player.player_table.c.id == player_id,
+                    Player.player_table.c.guild_id == guild_id,
+                )
+            )
+        else:
+            query = Player.player_table.select().where(
+                Player.player_table.c.id == player_id
+            )
 
-                    if len(guilds) == 1:
-                        row = None
-                        player = Player(id=player_id, guild_id=guilds[0].id)
-                        results = await conn.execute(upsert_player_query(player))
-                        row = await results.first()
-                    elif len(guilds) > 1:
-                        guild = await get_selection(
-                            ctx,
-                            guilds,
-                            True,
-                            True,
-                            None,
-                            False,
-                            "Which guild is the command for?\n",
-                        )
+        rows = await self.query(query, QueryResultType.multiple)
 
-                        if guild:
-                            player = Player(id=player_id, guild_id=guild.id)
-                            results = await conn.execute(upsert_player_query(player))
-                            row = await results.first()
-                        else:
-                            raise G0T0Error("No guild selected.")
-                else:
-                    raise G0T0Error("Unable to find player")
-            else:
-                if ctx:
-                    guilds = [self.get_guild(r["guild_id"]).name for r in rows]
+        # TODO: Come back and finish this
+        if len(rows) == 0 and guild_id and not lookup_only:
+            player = await Player(self, player_id, guild_id).upsert(inactive=inactive)
+
+        elif len(rows) == 0 and lookup_only:
+            return None
+
+        elif len(rows) == 0 and not guild_id:
+            if ctx:
+                guilds = [g for g in self.guilds if g.get_member(player_id)]
+
+                if len(guilds) == 1:
+                    player = await Player(self, player_id, guilds[0].id).upsert(
+                        inactive=inactive
+                    )
+                    return player
+                elif len(guilds) > 1:
                     guild = await get_selection(
                         ctx,
                         guilds,
@@ -517,13 +510,38 @@ class G0T0Bot(commands.Bot):
                         True,
                         None,
                         False,
-                        "Which guild is the command for?\n",
+                        "Which guild is this command for?\n",
                     )
-                    row = rows[guilds.index(guild)]
-                else:
-                    row = rows[0]
 
-        player: Player = await PlayerSchema(self, inactive).load(row)
+                    if guild:
+                        player = await Player(self, player_id, guild.id).upsert(
+                            inactive=inactive
+                        )
+                    else:
+                        raise G0T0Error("No guild selected/found.")
+                else:
+                    raise G0T0Error("Unable to find player")
+        else:
+            if ctx:
+                guilds = [self.get_guild(r["guild_id"]).name for r in rows]
+                guild = await get_selection(
+                    ctx,
+                    guilds,
+                    True,
+                    True,
+                    None,
+                    False,
+                    "Which guild is this command for?\n",
+                )
+
+                if guild:
+                    player = await Player(self, player_id, guild.id).upsert(
+                        inactive=inactive
+                    )
+            else:
+                player = await Player(self, player_id, rows[0]["guild_id"]).upsert(
+                    inactive=inactive
+                )
 
         return player
 
@@ -535,12 +553,9 @@ class G0T0Bot(commands.Bot):
         Returns:
             list[Store]: A list of Store objects representing the store items.
         """
+        rows = await self.query(Store.store_table.select(), QueryResultType.multiple)
 
-        async with self.db.acquire() as conn:
-            results = await conn.execute(get_store_items_query())
-            rows = await results.fetchall()
-
-        store_items = [StoreSchema().load(row) for row in rows]
+        store_items = [Store.StoreSchema().load(row) for row in rows]
 
         return store_items
 
@@ -636,7 +651,7 @@ class G0T0Bot(commands.Bot):
 
         shatterpoints = [
             await Shatterpoint.ShatterPointSchema(self).load(row)
-            for row in await self.query(query, False)
+            for row in await self.query(query, QueryResultType.multiple)
         ]
 
         return shatterpoints
@@ -838,11 +853,10 @@ class G0T0Bot(commands.Bot):
             faction=faction,
         )
 
-        async with self.db.acquire() as conn:
-            await conn.execute(upsert_player_query(player))
+        await player.upsert()
 
-            if character:
-                await character.upsert()
+        if character:
+            await character.upsert()
 
         log_entry = await log_entry.upsert()
 
@@ -872,8 +886,7 @@ class G0T0Bot(commands.Bot):
                         embed=LogEmbed(reward_log, True)
                     )
 
-                async with self.db.acquire() as conn:
-                    await conn.execute(upsert_player_query(author))
+                await author.upsert()
 
         # Send output
         if silent is False and ctx:
@@ -925,7 +938,7 @@ class G0T0Bot(commands.Bot):
             .limit(n)
         )
 
-        rows = await self.query(query, False)
+        rows = await self.query(query, QueryResultType.multiple)
 
         if not rows:
             return None
@@ -1222,8 +1235,7 @@ class G0T0Bot(commands.Bot):
                 await player.member.send(embed=LogEmbed(activity_log))
 
         else:
-            async with self.db.acquire() as conn:
-                await conn.execute(upsert_player_query(player))
+            await player.upsert()
 
     async def manage_player_tier_roles(self, player: Player, reason: str = None):
         # Primary Role handling
@@ -1300,14 +1312,13 @@ class G0T0Bot(commands.Bot):
                 )
 
     async def get_financial_data(self) -> Financial:
-        async with self.db.acquire() as conn:
-            results = await conn.execute(get_financial_query())
-            row = await results.first()
+
+        row = await self.query(Financial.financial_table.select())
 
         if row is None:
             return None
 
-        fin = FinancialSchema(self.db).load(row)
+        fin = Financial.FinancialSchema(self.db).load(row)
 
         return fin
 
@@ -1318,7 +1329,8 @@ class G0T0Bot(commands.Bot):
         query = NPC.npc_table.select().order_by(NPC.npc_table.c.key.asc())
 
         npcs = [
-            NPC.NPCSchema(self.db).load(row) for row in await self.query(query, False)
+            NPC.NPCSchema(self.db).load(row)
+            for row in await self.query(query, QueryResultType.multiple)
         ]
 
         return npcs

@@ -1,3 +1,6 @@
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
 import bisect
 from datetime import datetime, timezone
 from statistics import mode
@@ -7,11 +10,15 @@ import discord
 import sqlalchemy as sa
 from marshmallow import Schema, fields, post_load
 from sqlalchemy.dialects.postgresql import ARRAY
-
-from Resolute.compendium import Compendium
 from Resolute.models import metadata
 from Resolute.models.categories import ArenaTier, ArenaType
-from Resolute.models.objects.characters import PlayerCharacter
+
+
+if TYPE_CHECKING:
+    from Resolute.bot import G0T0Bot
+    from Resolute.models.objects import RelatedList
+    from Resolute.models.objects.characters import PlayerCharacter
+    from Resolute.compendium import Compendium
 
 
 class Arena(object):
@@ -65,7 +72,7 @@ class Arena(object):
     )
 
     class ArenaSchema(Schema):
-        bot = None
+        bot: G0T0Bot = None
 
         id = fields.Integer(data_key="id", required=True)
         channel_id = fields.Integer(data_key="channel_id", required=True)
@@ -82,7 +89,7 @@ class Arena(object):
             fields.Integer, required=False, allow_none=True, default=[]
         )
 
-        def __init__(self, bot, **kwargs):
+        def __init__(self, bot: G0T0Bot, **kwargs):
             super().__init__(**kwargs)
             self.bot = bot
 
@@ -100,7 +107,7 @@ class Arena(object):
             return self.bot.compendium.get_object(ArenaType, value)
 
         def load_timestamp(
-            self, value
+            self, value: datetime
         ) -> (
             datetime
         ):  # Marshmallow doesn't like loading DateTime for some reason. This is a workaround
@@ -140,10 +147,31 @@ class Arena(object):
         self.characters: list[int] = kwargs.get("characters", [])
         self.created_ts = kwargs.get("created_ts", datetime.now(timezone.utc))
         self.end_ts = kwargs.get("end_ts")
-        self.player_characters: list[PlayerCharacter] = []
         self.pin_message_id = kwargs.get("pin_message_id")
 
-        self.channel: discord.TextChannel = kwargs.get("channel")
+        self._player_characters: RelatedList = RelatedList(self, self.update_characters)
+        self._channel: discord.TextChannel = kwargs.get("channel")
+
+    def update_characters(self):
+        self.characters = [c.id for c in self._player_characters]
+
+    @property
+    def channel(self) -> discord.TextChannel:
+        return self._channel
+
+    @channel.setter
+    def channel(self, value: discord.TextChannel):
+        self._channel = value
+        self.channel_id = value.id
+
+    @property
+    def player_characters(self) -> list[PlayerCharacter]:
+        return self._player_characters
+
+    @player_characters.setter
+    def player_characters(self, value: list[PlayerCharacter]):
+        self._player_characters = RelatedList(self, self.update_characters)
+        self.update_characters()
 
     def update_tier(self) -> None:
         """

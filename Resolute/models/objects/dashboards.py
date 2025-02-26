@@ -6,11 +6,11 @@ import discord
 import sqlalchemy as sa
 from marshmallow import Schema, fields, post_load
 from sqlalchemy.dialects.postgresql import ARRAY, insert
-from sqlalchemy.sql.selectable import FromClause
 
 from Resolute.constants import ZWSP3
 from Resolute.models import metadata
 from Resolute.models.categories.categories import DashboardType
+from Resolute.models.objects import RelatedList
 
 if TYPE_CHECKING:
     from Resolute.bot import G0T0Bot
@@ -119,9 +119,11 @@ class RefDashboard(object):
 
         def get_channels(self, dashboard: "RefDashboard"):
             dashboard.channel = self.bot.get_channel(dashboard.channel_id)
-            dashboard.excluded_channels = [
-                self.bot.get_channel(c) for c in dashboard.excluded_channel_ids
-            ]
+            dashboard.excluded_channels = RelatedList(
+                dashboard,
+                dashboard.update_channels,
+                [self.bot.get_channel(c) for c in dashboard.excluded_channel_ids],
+            )
             dashboard.category_channel = self.bot.get_channel(
                 dashboard.category_channel_id
             )
@@ -136,9 +138,13 @@ class RefDashboard(object):
         self.dashboard_type: DashboardType = kwargs.get("dashboard_type")
         self.channel: discord.TextChannel = kwargs.get("channel")
         self.category_channel: discord.CategoryChannel = kwargs.get("category_channel")
-        self.excluded_channels: list[discord.TextChannel] = kwargs.get(
-            "excluded_channels"
+
+        self.excluded_channels: RelatedList[discord.TextChannel] = RelatedList(
+            self, self.update_channels, kwargs.get("excluded_channels", [])
         )
+
+    def update_channels(self):
+        self.excluded_channel_ids = [c.id for c in self.excluded_channels]
 
     def channels_to_search(self) -> list[discord.TextChannel]:
         if self.category_channel:
@@ -205,25 +211,17 @@ class RefDashboard(object):
 
 
 # PGSQL Views
-class_census_table = sa.Table(
-    "Class Census",
-    metadata,
-    sa.Column("Class", sa.String, nullable=False),
-    sa.Column("#", sa.Integer, nullable=False),
-)
+class DashboardViews(object):
+    class_census_table = sa.Table(
+        "Class Census",
+        metadata,
+        sa.Column("Class", sa.String, nullable=False),
+        sa.Column("#", sa.Integer, nullable=False),
+    )
 
-
-def get_class_census() -> FromClause:
-    return class_census_table.select()
-
-
-level_distribution_table = sa.Table(
-    "Level Distribution",
-    metadata,
-    sa.Column("level", sa.Integer, nullable=False),
-    sa.Column("#", sa.Integer, nullable=False, default=0),
-)
-
-
-def get_level_distribution() -> FromClause:
-    return level_distribution_table.select()
+    level_distribution_table = sa.Table(
+        "Level Distribution",
+        metadata,
+        sa.Column("level", sa.Integer, nullable=False),
+        sa.Column("#", sa.Integer, nullable=False, default=0),
+    )

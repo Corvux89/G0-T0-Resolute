@@ -1,3 +1,6 @@
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
 from datetime import datetime, timezone
 
 import aiopg.sa
@@ -6,53 +9,41 @@ import sqlalchemy as sa
 from marshmallow import Schema, fields, post_load
 from sqlalchemy.dialects.postgresql import ARRAY
 from Resolute.models import metadata
-
 from Resolute.models.categories.categories import Faction
+from Resolute.models.objects import RelatedList
 from Resolute.models.objects.npc import NPC
 from Resolute.models.objects.characters import PlayerCharacter
+
+if TYPE_CHECKING:
+    from Resolute.bot import G0T0Bot
 
 
 class Adventure(object):
     """
-    A class to represent an adventure in a guild.
+    Represents an adventure in the system.
     Attributes:
-    -----------
-    id : int
-        The unique identifier of the adventure.
-    guild_id : int
-        The unique identifier of the guild.
-    name : str
-        The name of the adventure.
-    role_id : int
-        The unique identifier of the role associated with the adventure.
-    category_channel_id : int
-        The unique identifier of the category channel associated with the adventure.
-    dms : list[int]
-        A list of IDs of the dungeon masters for the adventure.
-    characters : list[int]
-        A list of IDs of the characters in the adventure.
-    cc : Any
-        Custom attribute, purpose unspecified.
-    player_characters : list[PlayerCharacter]
-        A list of player characters in the adventure.
-    created_ts : datetime
-        The timestamp when the adventure was created.
-    end_ts : datetime
-        The timestamp when the adventure ended.
-    factions : list[Faction]
-        A list of factions involved in the adventure.
-    npcs : list[NPC]
-        A list of non-player characters in the adventure.
-    category_channel : CategoryChannel
-        The Discord category channel associated with the adventure.
-    role : Role
-        The Discord role associated with the adventure.
+        adventures_table (Table): SQLAlchemy table definition for adventures.
+        _db (aiopg.sa.Engine): Database engine.
+        id (int): Unique identifier for the adventure.
+        guild_id (int): Identifier for the guild associated with the adventure.
+        name (str): Name of the adventure.
+        category_channel (discord.CategoryChannel): Discord category channel for the adventure.
+        role (discord.Role): Discord role associated with the adventure.
+        role_id (int): Identifier for the role.
+        category_channel_id (int): Identifier for the category channel.
+        dms (list[int]): List of Dungeon Master IDs.
+        characters (list[int]): List of character IDs.
+        cc (int): Custom attribute, purpose not specified.
+        player_characters (list[PlayerCharacter]): List of player characters.
+        created_ts (datetime): Timestamp when the adventure was created.
+        end_ts (datetime): Timestamp when the adventure ended.
+        factions (list[Faction]): List of factions associated with the adventure.
+        npcs (list[NPC]): List of NPCs in the adventure.
     Methods:
-    --------
-    __init__(self, db: aiopg.sa.Engine, guild_id: int, name: str, role_id: int, category_channel_id: int, **kwargs):
-        Constructs all the necessary attributes for the adventure object.
-    async upsert(self):
-        Inserts or updates the adventure in the database.
+        __init__(db, guild_id, name, role, category_channel, **kwargs): Initializes an Adventure instance.
+        upsert(): Asynchronously upserts an adventure record in the database.
+        update_dm_permissions(member, remove=False): Updates the Dungeon Master's permissions for the adventure.
+        get_npc(**kwargs): Retrieves an NPC based on the provided criteria.
     """
 
     adventures_table = sa.Table(
@@ -79,7 +70,7 @@ class Adventure(object):
     )
 
     class AdventureSchema(Schema):
-        bot = None
+        bot: G0T0Bot = None
 
         id = fields.Integer(required=True)
         guild_id = fields.Integer(required=True)
@@ -95,7 +86,7 @@ class Adventure(object):
         )
         factions = fields.Method(None, "load_factions")
 
-        def __init__(self, bot, **kwargs):
+        def __init__(self, bot: G0T0Bot, **kwargs):
             super().__init__(**kwargs)
             self.bot = bot
 
@@ -113,7 +104,7 @@ class Adventure(object):
             return adventure
 
         def load_timestamp(
-            self, value
+            self, value: datetime
         ):  # Marshmallow doesn't like loading DateTime for some reason. This is a workaround
             return datetime(
                 value.year,
@@ -135,7 +126,7 @@ class Adventure(object):
             if adventure.characters:
                 for char_id in adventure.characters:
                     if char := await self.bot.get_character(char_id):
-                        adventure.player_characters.append(char)
+                        adventure._player_characters.append(char)
 
         async def get_npcs(self, adventure: "Adventure") -> None:
             query = NPC.npc_table.select().where(
@@ -162,20 +153,51 @@ class Adventure(object):
         self.id = kwargs.get("id")
         self.guild_id = guild_id
         self.name: str = name
-        self.category_channel: discord.CategoryChannel = category_channel
-        self.role: discord.Role = role
         self.role_id = role.id
         self.category_channel_id = category_channel.id
         self.dms: list[int] = kwargs.get("dms", [])
         self.characters: list[int] = kwargs.get("characters", [])
         self.cc = kwargs.get("cc", 0)
-        self.player_characters: list[PlayerCharacter] = []
+        self._player_characters: RelatedList(self, self.update_characters) = []
         self.created_ts = kwargs.get("created_ts", datetime.now(timezone.utc))
         self.end_ts = kwargs.get("end_ts")
         self.factions: list[Faction] = kwargs.get("factions", [])
 
+        self._category_channel: discord.CategoryChannel = category_channel
+        self._role: discord.Role = role
+
         # Virtual attributes
         self.npcs: list[NPC] = []
+
+    def update_characters(self):
+        self.characters = [c.id for c in self._player_characters]
+
+    @property
+    def player_characters(self) -> list[PlayerCharacter]:
+        return self._player_characters
+
+    @player_characters.setter
+    def player_characters(self, value: list[PlayerCharacter]):
+        self._player_characters = RelatedList(self, self.update_characters, value)
+        self.update_characters()
+
+    @property
+    def category_channel(self) -> discord.CategoryChannel:
+        return self._category_channel
+
+    @category_channel.setter
+    def category_channel(self, value: discord.CategoryChannel):
+        self._category_channel = value
+        self.category_channel_id = value.id
+
+    @property
+    def role(self) -> discord.Role:
+        return self._role
+
+    @role.setter
+    def role(self, value: discord.Role):
+        self.role = value
+        self.role_id = value.id
 
     async def upsert(self) -> None:
         """

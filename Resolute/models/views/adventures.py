@@ -163,7 +163,7 @@ class AdventureSettingsUI(AdventureView):
 
             player_reward = response.cc
 
-            for character in self.adventure.player_characters:
+            for character in self.adventure._player_characters:
                 player = await self.bot.get_player(
                     character.player_id, interaction.guild.id
                 )
@@ -225,7 +225,7 @@ class AdventureSettingsUI(AdventureView):
                 elif not renown:
                     amount = 1 if len(self.adventure.factions) > 1 else 2
 
-                    for char in self.adventure.player_characters:
+                    for char in self.adventure._player_characters:
                         player = await self.bot.get_player(
                             char.player_id, self.adventure.guild_id
                         )
@@ -309,7 +309,7 @@ class _AdventureMemberSelect(AdventureView):
             elif character := next(
                 (
                     ch
-                    for ch in self.adventure.player_characters
+                    for ch in self.adventure._player_characters
                     if ch.player_id == self.player.id
                 ),
                 None,
@@ -344,7 +344,7 @@ class _AdventureMemberSelect(AdventureView):
             elif character := next(
                 (
                     ch
-                    for ch in self.adventure.player_characters
+                    for ch in self.adventure._player_characters
                     if ch.player_id == self.player.id
                 ),
                 None,
@@ -356,7 +356,7 @@ class _AdventureMemberSelect(AdventureView):
                     delete_after=5,
                 )
             else:
-                self.adventure.player_characters.append(self.character)
+                self.adventure._player_characters.append(self.character)
                 self.adventure.characters.append(self.character.id)
 
                 if self.adventure.role not in self.member.roles:
@@ -398,12 +398,12 @@ class _AdventureMemberSelect(AdventureView):
             if character := next(
                 (
                     ch
-                    for ch in self.adventure.player_characters
+                    for ch in self.adventure._player_characters
                     if ch.player_id == self.player.id
                 ),
                 None,
             ):
-                self.adventure.player_characters.remove(character)
+                self.adventure._player_characters.remove(character)
                 self.adventure.characters.remove(character.id)
 
                 if self.adventure.role in self.member.roles:

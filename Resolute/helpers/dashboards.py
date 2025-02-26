@@ -11,11 +11,11 @@ from Resolute.bot import G0T0Bot
 from Resolute.models.categories.categories import DashboardType
 from Resolute.models.embeds.dashboards import RPDashboardEmbed
 from Resolute.models.objects.dashboards import (
+    DashboardViews,
     RefDashboard,
     RPDashboardCategory,
-    get_class_census,
-    get_level_distribution,
 )
+from Resolute.models.objects.enum import QueryResultType
 from Resolute.models.objects.financial import Financial
 
 
@@ -62,7 +62,7 @@ async def get_financial_dashboards(bot: G0T0Bot) -> list[RefDashboard]:
         RefDashboard.ref_dashboard_table.c.dashboard_type == d_type.id
     )
 
-    rows = await bot.query(query, False)
+    rows = await bot.query(query, QueryResultType.multiple)
 
     dashboards = [RefDashboard.RefDashboardSchema(bot).load(row) for row in rows]
 
@@ -85,7 +85,7 @@ async def get_class_census_data(bot: G0T0Bot) -> []:
     census = []
 
     async with bot.db.acquire() as conn:
-        async for row in conn.execute(get_class_census()):
+        async for row in conn.execute(DashboardViews.class_census_table.select()):
             result = dict(row)
             census.append([result["Class"], result["#"]])
 
@@ -102,7 +102,7 @@ async def get_level_distribution_data(bot: G0T0Bot) -> []:
     """
     data = []
     async with bot.db.acquire() as conn:
-        async for row in conn.execute(get_level_distribution()):
+        async for row in conn.execute(DashboardViews.level_distribution_table.select()):
             result = dict(row)
             data.append([result["level"], result["#"]])
     return data

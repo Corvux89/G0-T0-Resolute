@@ -1,4 +1,5 @@
 from __future__ import annotations
+from typing import TYPE_CHECKING
 
 import calendar
 from datetime import datetime, timedelta, timezone
@@ -13,9 +14,12 @@ from marshmallow import Schema, fields, post_load
 from sqlalchemy.dialects.postgresql import ARRAY, insert
 from Resolute.compendium import Compendium
 from Resolute.models import metadata
+from Resolute.models.objects.characters import PlayerCharacter
 from Resolute.models.objects.dashboards import RefDashboard
+from Resolute.models.objects.enum import QueryResultType
 from Resolute.models.objects.npc import NPC
 from Resolute.models.objects.ref_objects import RefServerCalendar, RefWeeklyStipend
+
 
 if TYPE_CHECKING:
     from Resolute.bot import G0T0Bot
@@ -198,7 +202,7 @@ class PlayerGuild(object):
             return guild
 
         def load_timestamp(
-            self, value
+            self, value: datetime
         ):  # Marshmallow doesn't like loading DateTime for some reason. This is a workaround
             return datetime(
                 value.year,
@@ -210,23 +214,23 @@ class PlayerGuild(object):
                 tzinfo=timezone.utc,
             )
 
-        def load_role(self, value):
+        def load_role(self, value: int) -> discord.Role:
             return self._guild.get_role(value)
 
-        def load_channel(self, value):
+        def load_channel(self, value: int) -> discord.TextChannel:
             return self._guild.get_channel(value)
 
-        def load_channels(self, value):
+        def load_channels(self, value: list[int]) -> list[discord.TextChannel]:
             channels = []
             for c in value:
                 channels.append(self._guild.get_channel(c))
 
             return channels
 
-        def load_member(self, value):
+        def load_member(self, value: int) -> discord.Member:
             return self._guild.get_member(value)
 
-        async def load_calendar(self, guild):
+        async def load_calendar(self, guild: "PlayerGuild") -> None:
             query = (
                 RefServerCalendar.ref_server_calendar_table.select()
                 .where(
@@ -243,7 +247,7 @@ class PlayerGuild(object):
                 RefServerCalendar.RefServerCalendarSchema().load(row) for row in rows
             ]
 
-        async def load_npcs(self, guild):
+        async def load_npcs(self, guild: "PlayerGuild") -> None:
             query = (
                 NPC.npc_table.select()
                 .where(
@@ -258,9 +262,10 @@ class PlayerGuild(object):
             async with self._db.acquire() as conn:
                 results = await conn.execute(query)
                 rows = await results.fetchall()
+
             guild.npcs = [NPC.NPCSchema(self._db).load(row) for row in rows]
 
-        async def load_weekly_stipends(self, guild):
+        async def load_weekly_stipends(self, guild: PlayerGuild) -> None:
             query = (
                 RefWeeklyStipend.ref_weekly_stipend_table.select()
                 .where(RefWeeklyStipend.ref_weekly_stipend_table.c.guild_id == guild.id)
@@ -488,7 +493,7 @@ class PlayerGuild(object):
 
         return g
 
-    async def fetch(self):
+    async def fetch(self) -> "PlayerGuild":
         query = PlayerGuild.guilds_table.select().where(
             PlayerGuild.guilds_table.c.id == self.id
         )
@@ -507,7 +512,7 @@ class PlayerGuild(object):
 
         return guild
 
-    async def get_all_characters(self, compendium: Compendium):
+    async def get_all_characters(self, compendium: Compendium) -> list[PlayerCharacter]:
         from Resolute.models.objects.characters import PlayerCharacter
 
         query = (
@@ -535,7 +540,9 @@ class PlayerGuild(object):
     async def get_dashboards(self, bot: G0T0Bot) -> list[RefDashboard]:
         dashboards = []
 
-        rows = await bot.query(RefDashboard.ref_dashboard_table.select(), False)
+        rows = await bot.query(
+            RefDashboard.ref_dashboard_table.select(), QueryResultType.multiple
+        )
         db_dashboards: list[RefDashboard] = [
             RefDashboard.RefDashboardSchema(bot).load(row) for row in rows
         ]

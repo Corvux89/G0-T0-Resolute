@@ -1,19 +1,25 @@
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
 from math import floor
 import aiopg.sa
 import sqlalchemy as sa
 from marshmallow import Schema, fields, post_load
 from sqlalchemy.dialects.postgresql import ARRAY
 
-from Resolute.compendium import Compendium
 from Resolute.models import metadata
 from Resolute.models.categories import (
     CharacterArchetype,
     CharacterClass,
     CharacterSpecies,
+    Faction,
 )
-from Resolute.models.categories.categories import Faction
-from Resolute.models.objects.guilds import PlayerGuild
-from Resolute.models.objects.ref_objects import RefServerCalendar
+
+
+if TYPE_CHECKING:
+    from Resolute.compendium import Compendium
+    from Resolute.models.objects.guilds import PlayerGuild
+    from Resolute.models.objects.ref_objects import RefServerCalendar
 
 
 class CharacterRenown(object):

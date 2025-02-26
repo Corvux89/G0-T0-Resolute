@@ -37,7 +37,7 @@ class CharacterView(InteractiveView):
     async def commit(self):
         if not self.application.edit:
             await self.application.delete()
-            await self.application.upsert()
+            await self.application.insert()
 
 
 class CharacterSelectUI(CharacterView):

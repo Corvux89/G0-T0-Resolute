@@ -1,3 +1,6 @@
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
 import aiopg.sa
 import discord
 from discord.ext import commands
@@ -8,6 +11,9 @@ from sqlalchemy.dialects.postgresql import ARRAY, insert
 import Resolute.helpers.general_helpers as gh
 from Resolute.models import metadata
 from Resolute.models.objects.enum import WebhookType
+
+if TYPE_CHECKING:
+    from Resolute.bot import G0T0Bot
 
 
 class NPC(object):
@@ -126,7 +132,7 @@ class NPC(object):
                 content=content,
             )
 
-    async def register_command(self, bot):
+    async def register_command(self, bot: G0T0Bot):
         async def npc_command(ctx):
             from Resolute.models.objects.webhook import G0T0Webhook
 

@@ -177,7 +177,7 @@ class Arenas(commands.Cog):
         ui = CharacterArenaViewUI.new(self.bot)
         embed = ArenaStatusEmbed(ctx, arena)
 
-        message: WebhookMessage = await ui.send_to(ctx, embed=embed)
+        message: discord.Message = await ui.send_to(ctx, embed=embed)
 
         arena.pin_message_id = message.id
         await arena.upsert()
@@ -252,7 +252,7 @@ class Arenas(commands.Cog):
         else:
             ui = ArenaCharacterSelect.new(self.bot, player, ctx.author.id)
             await ui.send_to(ctx)
-            await ctx.delete()
+        await ctx.delete()
 
     @arena_commands.command(
         name="remove", description="Removes the specified player from this arena"
@@ -291,7 +291,6 @@ class Arenas(commands.Cog):
         )
         if remove_char:
             arena.player_characters.remove(remove_char)
-            arena.characters.remove(remove_char.id)
 
             if arena.completed_phases == 0:
                 arena.update_tier()

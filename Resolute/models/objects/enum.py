@@ -55,3 +55,10 @@ class WebhookType(Enum):
     npc = "npc"
     adventure = "adventure"
     say = "say"
+
+
+class QueryResultType(Enum):
+    single = "Single"
+    multiple = "Multiple"
+    scalar = "Scalar"
+    none = "None"

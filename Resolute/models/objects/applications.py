@@ -1,14 +1,18 @@
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
 import re
 
 import discord
 import sqlalchemy as sa
 from marshmallow import Schema, fields
-from sqlalchemy.sql.selectable import FromClause, TableClause
-
 from Resolute.models import metadata
-from Resolute.models.objects.enum import ApplicationType
-from Resolute.models.objects.characters import PlayerCharacter
+from Resolute.models.objects.enum import ApplicationType, QueryResultType
 from Resolute.models.objects.exceptions import G0T0Error
+
+if TYPE_CHECKING:
+    from Resolute.models.objects.characters import PlayerCharacter
+    from Resolute.bot import G0T0Bot
 
 
 class AppBaseScores(object):
@@ -411,7 +415,9 @@ class NewCharacterApplication(object):
             f"**Link:** {self.link}"
         )
 
-    async def load(self, bot, content: str = None, message: discord.Message = None):
+    async def load(
+        self, bot, content: str = None, message: discord.Message = None
+    ) -> "NewCharacterApplication":
         """
         Asynchronously loads a new character application from the provided content or message.
         Args:
@@ -538,31 +544,6 @@ class NewCharacterApplication(object):
         return application
 
 
-ref_applications_table = sa.Table(
-    "ref_character_applications",
-    metadata,
-    sa.Column("id", sa.BigInteger, primary_key=True),
-    sa.Column("application", sa.String, nullable=False),
-)
-
-
-class ApplicationSchema(Schema):
-    id = fields.Integer(required=True)
-    application = fields.String(required=True)
-
-
-def get_player_application(char_id: int) -> FromClause:
-    return ref_applications_table.select().where(ref_applications_table.c.id == char_id)
-
-
-def insert_player_application(char_id: int, application: str) -> TableClause:
-    return ref_applications_table.insert().values(id=char_id, application=application)
-
-
-def delete_player_application(char_id: int) -> TableClause:
-    return ref_applications_table.delete().where(ref_applications_table.c.id == char_id)
-
-
 def status(attributes=[]) -> str:
     """
     Determine the status of an application based on its attributes.
@@ -655,7 +636,9 @@ class LevelUpApplication(object):
             f"**Link:** {self.link}\n\n"
         )
 
-    async def load(self, bot, content: str = None, message: discord.Message = None):
+    async def load(
+        self, bot, content: str = None, message: discord.Message = None
+    ) -> "LevelUpApplication":
         """
         Asynchronously loads an application from the provided content or message.
         Args:
@@ -719,11 +702,22 @@ class PlayerApplication(object):
 
     cached: bool = False
 
-    def __init__(self, bot, owner: discord.Member | discord.User, **kwargs):
+    ref_applications_table = sa.Table(
+        "ref_character_applications",
+        metadata,
+        sa.Column("id", sa.BigInteger, primary_key=True),
+        sa.Column("application", sa.String, nullable=False),
+    )
+
+    class ApplicationSchema(Schema):
+        id = fields.Integer(required=True)
+        application = fields.String(required=True)
+
+    def __init__(self, bot: G0T0Bot, owner: discord.Member | discord.User, **kwargs):
         self._bot = bot
         self.owner = owner
-        type = kwargs.get("type", ApplicationType.new)
-        self.edit = kwargs.get("edit", False)
+        type: ApplicationType = kwargs.get("type", ApplicationType.new)
+        self.edit: bool = kwargs.get("edit", False)
 
         if type in [
             ApplicationType.new,
@@ -734,7 +728,7 @@ class PlayerApplication(object):
         else:
             self.application = LevelUpApplication()
 
-    async def upsert(self) -> None:
+    async def insert(self) -> None:
         """
         Asynchronously inserts or updates the player's application in the database.
         If the application exists, it formats the application data for the owner and
@@ -743,12 +737,10 @@ class PlayerApplication(object):
             None
         """
         if self.application:
-            async with self._bot.db.acquire() as conn:
-                await conn.execute(
-                    insert_player_application(
-                        self.owner.id, self.application.format_app(self.owner)
-                    )
-                )
+            query = PlayerApplication.ref_applications_table.insert().values(
+                id=self.owner.id, application=self.application.format_app(self.owner)
+            )
+            await self._bot.query(query, QueryResultType.none)
 
     async def delete(self) -> None:
         """
@@ -758,10 +750,13 @@ class PlayerApplication(object):
         Returns:
             None
         """
-        async with self._bot.db.acquire() as conn:
-            await conn.execute(delete_player_application(self.owner.id))
+        query = PlayerApplication.ref_applications_table.delete().where(
+            PlayerApplication.ref_applications_table.c.id == self.owner.id
+        )
 
-    async def load(self, message: discord.Message = None):
+        await self._bot.query(query, QueryResultType.none)
+
+    async def load(self, message: discord.Message = None) -> "PlayerApplication":
         """
         Asynchronously loads the application data for the player.
         If a message is provided, it uses the content of the message to load the application.
@@ -774,13 +769,16 @@ class PlayerApplication(object):
             G0T0Error: If the application type is unknown or if the application does not belong to the player.
         """
         if not message:
-            async with self._bot.db.acquire() as conn:
-                results = await conn.execute(get_player_application(self.owner.id))
-                row = await results.first()
+            query = PlayerApplication.ref_applications_table.select().where(
+                PlayerApplication.ref_applications_table.c.id == self.owner.id
+            )
+
+            row = await self._bot.query(query)
 
             if row is None:
                 return PlayerApplication(self._bot, self.owner)
-            application = ApplicationSchema().load(row)
+
+            application = PlayerApplication.ApplicationSchema().load(row)
             self.cached = True
             content = application["application"]
         else:

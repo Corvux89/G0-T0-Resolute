@@ -1,13 +1,12 @@
-import calendar
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
 from datetime import datetime, timezone
+
 
 import discord
 import sqlalchemy as sa
 from marshmallow import Schema, fields, post_load
-
-import Resolute.bot as b
-import Resolute.models.objects.characters as c
-import Resolute.models.objects.players as p
 from Resolute.constants import ZWSP3
 from Resolute.helpers.general_helpers import confirm
 from Resolute.models import metadata
@@ -15,21 +14,26 @@ from Resolute.models.categories import Activity
 from Resolute.models.categories.categories import Faction
 from Resolute.models.objects.exceptions import G0T0Error
 
+if TYPE_CHECKING:
+    from Resolute.bot import G0T0Bot
+    from Resolute.models.objects.characters import PlayerCharacter
+    from Resolute.models.objects.players import Player
+
 
 class DBLog(object):
     """
     DBLog class represents a log entry in the database.
     Attributes:
-        _bot (b.G0T0Bot): The bot instance.
+        _bot (G0T0Bot): The bot instance.
         id (int): The log entry ID.
-        author (p.Player): The author of the log entry.
+        author (Player): The author of the log entry.
         player_id (int): The ID of the player associated with the log entry.
-        player (p.Player): The player associated with the log entry.
+        player (Player): The player associated with the log entry.
         guild_id (int): The ID of the guild associated with the log entry.
         cc (int): The CC value associated with the log entry. Defaults to 0.
         credits (int): The credits value associated with the log entry. Defaults to 0.
         character_id (int): The ID of the character associated with the log entry.
-        character (c.PlayerCharacter): The character associated with the log entry.
+        character (PlayerCharacter): The character associated with the log entry.
         activity (Activity): The activity associated with the log entry.
         notes (str): Additional notes for the log entry.
         adventure_id (int): The ID of the adventure associated with the log entry.
@@ -63,7 +67,7 @@ class DBLog(object):
     )
 
     class LogSchema(Schema):
-        bot = None
+        bot: G0T0Bot = None
         id = fields.Integer(required=True)
         author = fields.Integer(required=True)
         cc = fields.Integer(required=True)
@@ -79,7 +83,7 @@ class DBLog(object):
         player_id = fields.Integer(required=True)
         guild_id = fields.Integer(required=True)
 
-        def __init__(self, bot, **kwargs):
+        def __init__(self, bot: G0T0Bot, **kwargs):
             super().__init__(**kwargs)
             self.bot = bot
 
@@ -92,14 +96,16 @@ class DBLog(object):
                 log.character = await self.bot.get_character(log.character_id)
             return log
 
-        def load_faction(self, value):
+        def load_faction(self, value: int) -> Faction:
             return self.bot.compendium.get_object(Faction, value)
 
-        def load_activity(self, value):
+        def load_activity(self, value: int) -> Activity:
             return self.bot.compendium.get_object(Activity, value)
 
         def load_timestamp(
-            self, value
+            self, value: datetime
+        ) -> (
+            datetime
         ):  # Marshmallow doesn't like loading DateTime for some reason. This is a workaround
             return datetime(
                 value.year,
@@ -112,16 +118,16 @@ class DBLog(object):
             )
 
     def __init__(self, bot, **kwargs):
-        self._bot: b.G0T0Bot = bot
+        self._bot: G0T0Bot = bot
         self.id = kwargs.get("id")
-        self.author: p.Player = kwargs.get("author")
+        self.author: Player = kwargs.get("author")
         self.player_id = kwargs.get("player_id")
-        self.player: p.Player = kwargs.get("player")
+        self.player: Player = kwargs.get("player")
         self.guild_id = kwargs.get("guild_id")
         self.cc = kwargs.get("cc", 0)
         self.credits = kwargs.get("credits", 0)
         self.character_id = kwargs.get("character_id")
-        self.character: c.PlayerCharacter = kwargs.get("character")
+        self.character: PlayerCharacter = kwargs.get("character")
         self.activity: Activity = kwargs.get("activity")
         self.notes = kwargs.get("notes")
         self.adventure_id = kwargs.get("adventure_id")
@@ -137,9 +143,9 @@ class DBLog(object):
         Returns:
             int: The creation timestamp in seconds since the epoch (UTC).
         """
-        return calendar.timegm(self.created_ts.utctimetuple())
+        return int(self.created_ts.timestamp())
 
-    async def upsert(self):
+    async def upsert(self) -> "DBLog":
         update_dict = {
             "activity": self.activity.id,
             "notes": getattr(self, "notes", None),

@@ -48,7 +48,9 @@ class MarketTransaction(object):
     def log_notes(self) -> str:
         return f"{self.format_type}\n\n{self.notes}"
 
-    async def get_request(bot: G0T0Bot, message: discord.Message):
+    async def get_request(
+        bot: G0T0Bot, message: discord.Message
+    ) -> "MarketTransaction":
 
         def get_match(pattern, text, group=1, default=None):
             match = re.search(pattern, text, re.DOTALL)

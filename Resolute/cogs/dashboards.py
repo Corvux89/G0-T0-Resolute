@@ -12,6 +12,7 @@ from Resolute.models.objects.dashboards import (
     RefDashboard,
     RPDashboardCategory,
 )
+from Resolute.models.objects.enum import QueryResultType
 from Resolute.models.views.dashboards import DashboardSettingsUI
 
 log = logging.getLogger(__name__)
@@ -218,7 +219,9 @@ class Dashboards(commands.Cog):
         """
         start = timer()
 
-        rows = await self.bot.query(RefDashboard.ref_dashboard_table.select(), False)
+        rows = await self.bot.query(
+            RefDashboard.ref_dashboard_table.select(), QueryResultType.multiple
+        )
 
         for row in rows:
             dashboard: RefDashboard = RefDashboard.RefDashboardSchema(self.bot).load(

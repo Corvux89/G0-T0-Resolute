@@ -47,7 +47,10 @@ class ArenaStatusEmbed(discord.Embed):
             )
 
     async def update(self):
-        message = await self.ctx.channel.fetch_message(self.arena.pin_message_id)
+        try:
+            message = await self.ctx.channel.fetch_message(self.arena.pin_message_id)
+        except:
+            message = None
 
         if message:
             await message.edit(embed=self)

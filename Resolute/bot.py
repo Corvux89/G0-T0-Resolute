@@ -35,7 +35,11 @@ from Resolute.models.objects.characters import (
 )
 from Resolute.models.objects.dashboards import RefDashboard
 from Resolute.models.objects.enum import QueryResultType
-from Resolute.models.objects.exceptions import G0T0Error, TransactionError
+from Resolute.models.objects.exceptions import (
+    G0T0CommandError,
+    G0T0Error,
+    TransactionError,
+)
 
 from Resolute.models.objects.financial import Financial
 from Resolute.models.objects.guilds import PlayerGuild
@@ -64,30 +68,51 @@ class G0T0Context(discord.ApplicationContext):
 
 class G0T0Bot(commands.Bot):
     """
-    G0T0Bot is a custom Discord bot that extends the functionality of discord.ext.commands.Bot.
-    It integrates with a database, a web application, and provides various methods to interact with game-related data.
-    Attributes:
-        db (Engine): The database engine.
-        compendium (Compendium): The compendium of game data.
-        web_app (Quart): The web application instance.
-        player_guilds (dict): A dictionary to store player guilds.
+    G0T0Bot is a custom bot class that extends the discord.ext.commands.Bot class.
+    It includes additional attributes and methods for managing a database, web application,
+    and various game-related functionalities.
+        db (Engine): The database engine used for database operations.
+        player_guilds (dict): A dictionary to cache player guilds.
     Methods:
-        __init__(**options): Initializes the bot with the given options.
-        on_ready(): Called when the bot is ready. Initializes the database and web server.
-        close(): Shuts down the bot and web server.
-        run(*args, **kwargs): Runs the bot and sets up signal handlers for graceful shutdown.
-        get_player_guild(guild_id: int) -> PlayerGuild: Retrieves the player guild for the given guild ID.
-        get_guilds_with_reset(day: int, hour: int) -> list[PlayerGuild]: Retrieves guilds with a reset scheduled at the given day and hour.
-        get_character(char_id: int) -> PlayerCharacter: Retrieves the character for the given character ID.
-        get_adventure_from_role(role_id: int) -> Adventure: Retrieves the adventure associated with the given role ID.
-        get_adventure_from_category(category_channel_id: int) -> Adventure: Retrieves the adventure associated with the given category channel ID.
-        get_arena(channel_id: int) -> Arena: Retrieves the arena associated with the given channel ID.
-        get_player(player_id: int, guild_id: int, **kwargs) -> Player: Retrieves the player for the given player ID and guild ID.
-        get_store_items() -> list[Store]: Retrieves the list of store items.
-        create_character(type: str, player: Player, new_character: PlayerCharacter, new_class: PlayerCharacterClass, **kwargs): Creates a new character for the player.
-        get_shatterpoint(guild_id: int) -> Shatterpoint: Retrieves the shatterpoint for the given guild ID.
-        get_dashboard_from_category(category_id: int) -> RefDashboard: Retrieves the dashboard associated with the given category ID.
-        get_dashboard_from_message(message_id: int) -> RefDashboard: Retrieves the dashboard associated with the given message ID.
+        __init__(self, **options):
+        on_ready(self):
+        close(self):
+        run(self, *args, **kwargs):
+            Runs the bot with the given arguments.
+        before_invoke_setup(self, ctx: G0T0Context):
+            Sets up the context before invoking a command.
+        bot_check(self, ctx: G0T0Context):
+            Checks if the bot is ready to execute commands.
+        error_handling(self, ctx: discord.ApplicationContext | commands.Context, error):
+        query(self, query: FromClause | TableClause, result_type: QueryResultType = QueryResultType.single):
+            Executes a database query and returns the result.
+        get_player_guild(self, guild_id: int) -> PlayerGuild:
+        get_busy_guilds(self) -> list[PlayerGuild]:
+            Retrieves a list of busy guilds.
+        get_character(self, char_id: int) -> PlayerCharacter:
+        get_adventure_from_role(self, role_id: int) -> Adventure:
+        get_adventure_from_category(self, category_channel_id: int) -> Adventure:
+        get_arena(self, channel_id: int) -> Arena:
+        get_player(self, player_id: int, guild_id: int = None, **kwargs) -> Player:
+        get_store_items(self) -> list[Store]:
+        create_character(self, type: str, player: Player, new_character: PlayerCharacter, new_class: PlayerCharacterClass, **kwargs):
+        get_shatterpoint(self, guild_id: int) -> Shatterpoint:
+        get_busy_shatterpoints(self) -> list[Shatterpoint]:
+            Retrieves a list of busy shatterpoints.
+        get_dashboard_from_category(self, category_id: int) -> RefDashboard:
+        get_dashboard_from_message(self, message_id: int) -> RefDashboard:
+        log(self, ctx: discord.ApplicationContext | discord.Interaction | None, player: discord.Member | discord.ClientUser | Player, author: discord.Member | discord.ClientUser | Player, activity: Activity | str, **kwargs) -> DBLog:
+        get_log(self, log_id: int) -> DBLog:
+        get_n_player_logs(self, player: Player, n: int = 5) -> list[DBLog]:
+        get_player_stats(self, player: Player) -> dict:
+        get_character_stats(self, character: PlayerCharacter) -> dict:
+        update_player_activity_points(self, player: Player, increment: bool = True):
+        manage_player_tier_roles(self, player: Player, reason: str = None):
+            Manages the tier roles of a player based on their character levels.
+        get_financial_data(self) -> Financial:
+            Retrieves financial data from the database.
+        get_all_npcs(self) -> list[NPC]:
+            Retrieves all NPCs from the database.
     """
 
     db: Engine
@@ -214,7 +239,7 @@ class G0T0Bot(commands.Bot):
                 f"Command in DM with {ctx.author} [{ctx.author.id}]: {ctx.command} {params}"
             )
 
-    async def bot_check(self, ctx: G0T0Context):
+    async def bot_check(self, ctx: discord.ApplicationContext | commands.Context):
         if (
             hasattr(self, "db")
             and self.db
@@ -222,7 +247,12 @@ class G0T0Bot(commands.Bot):
             and self.compendium
         ):
             return True
-        return False
+
+        if isinstance(ctx, commands.Context):
+            raise G0T0CommandError(
+                "Try again in a few seconds. I'm not fully awake yet"
+            )
+        raise G0T0Error("Try again in a few seconds. I'm not fully awake yet")
 
     async def error_handling(
         self, ctx: discord.ApplicationContext | commands.Context, error
@@ -263,13 +293,9 @@ class G0T0Bot(commands.Bot):
             return
 
         elif isinstance(
-            error, discord.CheckFailure
-        ) and "The global check functions" in str(error):
-            return await ctx.send(
-                embed=ErrorEmbed("Try again in a few seconds. I'm not fully awake yet")
-            )
-
-        elif isinstance(error, (G0T0Error, discord.CheckFailure)):
+            error,
+            (G0T0Error, discord.CheckFailure, G0T0CommandError, commands.CheckFailure),
+        ):
             return await ctx.send(embed=ErrorEmbed(error))
 
         if hasattr(ctx, "bot") and hasattr(ctx.bot, "db"):
@@ -300,7 +326,9 @@ class G0T0Bot(commands.Bot):
                 log.error(out_str)
 
         try:
-            return await ctx.send(f"Something went wrong. Let us know if it keeps up!")
+            return await ctx.send(
+                embed=ErrorEmbed(f"Something went wrong. Let us know if it keeps up!")
+            )
         except:
             log.warning("Unable to respond")
 
@@ -308,7 +336,21 @@ class G0T0Bot(commands.Bot):
         self,
         query: FromClause | TableClause,
         result_type: QueryResultType = QueryResultType.single,
-    ) -> result.RowProxy | list[result.RowProxy]:
+    ) -> result.RowProxy | list[result.RowProxy] | None:
+        """
+        Executes a database query and returns the result based on the specified result type.
+        Args:
+            query (FromClause | TableClause): The SQL query to be executed.
+            result_type (QueryResultType, optional): The type of result expected from the query.
+                Defaults to QueryResultType.single.
+        Returns:
+            result.RowProxy | list[result.RowProxy]: The result of the query. The type of the result
+                depends on the specified result_type:
+                - QueryResultType.single: Returns a single row.
+                - QueryResultType.multiple: Returns a list of rows.
+                - QueryResultType.scalar: Returns a single scalar value.
+                - None: If the result_type is has no return.
+        """
         async with self.db.acquire() as conn:
             results = await conn.execute(query)
 
@@ -344,6 +386,12 @@ class G0T0Bot(commands.Bot):
         return guild
 
     async def get_busy_guilds(self) -> list[PlayerGuild]:
+        """
+        Asynchronously retrieves a list of busy guilds.
+        A busy guild is defined as a guild that has an archive user.
+        Returns:
+            list[PlayerGuild]: A list of PlayerGuild objects representing the busy guilds.
+        """
         query = PlayerGuild.guilds_table.select().where(
             PlayerGuild.guilds_table.c.archive_user.isnot(None)
         )

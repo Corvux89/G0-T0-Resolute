@@ -633,9 +633,12 @@ class Player(object):
             )
         )
 
-        player = await Player.PlayerSchema(self._bot, inactive).load(
-            await self._bot.query(query)
-        )
+        row = await self._bot.query(query)
+
+        if row is None:
+            return None
+
+        player = await Player.PlayerSchema(self._bot, inactive).load(row)
 
         return player
 

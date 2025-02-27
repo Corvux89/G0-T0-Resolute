@@ -11,6 +11,7 @@ from sqlalchemy.dialects.postgresql import ARRAY, insert
 import Resolute.helpers.general_helpers as gh
 from Resolute.models import metadata
 from Resolute.models.objects.enum import WebhookType
+from Resolute.models.objects.exceptions import G0T0CommandError
 
 if TYPE_CHECKING:
     from Resolute.bot import G0T0Bot
@@ -142,4 +143,6 @@ class NPC(object):
             ).send()
 
         if bot.get_command(self.key) is None:
-            bot.add_command(commands.Command(npc_command, name=self.key))
+            cmd = commands.Command(npc_command, name=self.key)
+            cmd.add_check(gh.dm_check)
+            bot.add_command(cmd)

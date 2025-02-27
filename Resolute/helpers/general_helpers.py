@@ -8,10 +8,17 @@ from sqlalchemy.util import asyncio
 
 from Resolute.constants import BOT_OWNERS
 from Resolute.models.objects.characters import PlayerCharacter
+from Resolute.models.objects.exceptions import G0T0CommandError
 from Resolute.models.objects.guilds import PlayerGuild
 
 if TYPE_CHECKING:
     from Resolute.bot import G0T0Bot
+
+
+def dm_check(ctx: discord.ApplicationContext) -> bool:
+    if not ctx.guild:
+        raise G0T0CommandError("Command is not available in DM's")
+    return True
 
 
 def is_owner(ctx: discord.ApplicationContext) -> bool:

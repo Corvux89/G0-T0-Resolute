@@ -1,30 +1,29 @@
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
 import calendar
 from datetime import datetime, timedelta, timezone
 from math import floor
+
+from typing import TYPE_CHECKING
 
 import aiopg.sa
 import discord
 import sqlalchemy as sa
 from marshmallow import Schema, fields, post_load
 from sqlalchemy.dialects.postgresql import ARRAY, insert
-from sqlalchemy.sql import FromClause
-
 from Resolute.compendium import Compendium
+from Resolute.constants import BOT_OWNERS
 from Resolute.models import metadata
-from Resolute.models.objects.dashboards import (
-    RefDashboard,
-    RefDashboardSchema,
-    get_dashboards,
-)
-from Resolute.models.objects.npc import NPC, NPCSchema, get_guild_npcs_query
-from Resolute.models.objects.ref_objects import (
-    RefServerCalendar,
-    RefServerCalendarSchema,
-    RefWeeklyStipend,
-    RefWeeklyStipendSchema,
-    get_guild_weekly_stipends_query,
-    get_server_calendar,
-)
+from Resolute.models.objects.characters import PlayerCharacter
+from Resolute.models.objects.dashboards import RefDashboard
+from Resolute.models.objects.enum import QueryResultType
+from Resolute.models.objects.npc import NPC
+from Resolute.models.objects.ref_objects import RefServerCalendar, RefWeeklyStipend
+
+
+if TYPE_CHECKING:
+    from Resolute.bot import G0T0Bot
 
 
 class PlayerGuild(object):
@@ -98,6 +97,190 @@ class PlayerGuild(object):
         async get_dashboards(bot) -> list[RefDashboard]:
             Returns a list of dashboards for the guild.
     """
+
+    guilds_table = sa.Table(
+        "guilds",
+        metadata,
+        sa.Column("id", sa.BigInteger, primary_key=True, nullable=False),
+        sa.Column("max_level", sa.Integer, nullable=False, default=3),
+        sa.Column("weeks", sa.Integer, nullable=False, default=0),
+        sa.Column("reset_day", sa.Integer, nullable=True),
+        sa.Column("reset_hour", sa.Integer, nullable=True),
+        sa.Column("last_reset", sa.TIMESTAMP(timezone=timezone.utc)),
+        sa.Column("greeting", sa.String, nullable=True),
+        sa.Column("handicap_cc", sa.Integer, nullable=True),
+        sa.Column("max_characters", sa.Integer, nullable=False),
+        sa.Column("div_limit", sa.Integer, nullable=False),
+        sa.Column("reset_message", sa.String, nullable=True),
+        sa.Column("weekly_announcement", sa.ARRAY(sa.String), nullable=True),
+        sa.Column("server_date", sa.Integer, nullable=True),
+        sa.Column("epoch_notation", sa.String, nullable=True),
+        sa.Column("first_character_message", sa.String, nullable=True),
+        sa.Column("ping_announcement", sa.BOOLEAN, default=False, nullable=False),
+        sa.Column("reward_threshold", sa.Integer, nullable=True),
+        sa.Column("entry_role", sa.BigInteger, nullable=True),
+        sa.Column("member_role", sa.BigInteger, nullable=True),
+        sa.Column("tier_2_role", sa.BigInteger, nullable=True),
+        sa.Column("tier_3_role", sa.BigInteger, nullable=True),
+        sa.Column("tier_4_role", sa.BigInteger, nullable=True),
+        sa.Column("tier_5_role", sa.BigInteger, nullable=True),
+        sa.Column("tier_6_role", sa.BigInteger, nullable=True),
+        sa.Column("admin_role", sa.BigInteger, nullable=True),
+        sa.Column("staff_role", sa.BigInteger, nullable=True),
+        sa.Column("bot_role", sa.BigInteger, nullable=True),
+        sa.Column("quest_role", sa.BigInteger, nullable=True),
+        sa.Column("application_channel", sa.BigInteger, nullable=True),
+        sa.Column("market_channel", sa.BigInteger, nullable=True),
+        sa.Column("announcement_channel", sa.BigInteger, nullable=True),
+        sa.Column("staff_channel", sa.BigInteger, nullable=True),
+        sa.Column("help_channel", sa.BigInteger, nullable=True),
+        sa.Column("arena_board_channel", sa.BigInteger, nullable=True),
+        sa.Column("exit_channel", sa.BigInteger, nullable=True),
+        sa.Column("entrance_channel", sa.BigInteger, nullable=True),
+        sa.Column("activity_points_channel", sa.BigInteger, nullable=True),
+        sa.Column("rp_post_channel", sa.BigInteger, nullable=True),
+        sa.Column("dev_channels", ARRAY(sa.BigInteger), nullable=True, default=[]),
+        sa.Column("archive_user", sa.BigInteger, nullable=True),
+    )
+
+    class GuildSchema(Schema):
+        _db: aiopg.sa.Engine
+        _guild: discord.Guild
+
+        id = fields.Integer(required=True)
+        max_level = fields.Integer()
+        weeks = fields.Integer()
+        reset_day = fields.Integer(allow_none=True)
+        reset_hour = fields.Integer(allow_none=True)
+        last_reset = fields.Method(None, "load_timestamp")
+        greeting = fields.String(allow_none=True)
+        handicap_cc = fields.Integer(allow_none=True)
+        max_characters = fields.Integer(allow_none=False)
+        div_limit = fields.Integer(allow_none=False)
+        reset_message = fields.String(allow_none=True)
+        weekly_announcement = fields.List(fields.String, required=False)
+        server_date = fields.Integer(allow_none=True)
+        epoch_notation = fields.String(allow_none=True)
+        first_character_message = fields.String(allow_none=True)
+        ping_announcement = fields.Boolean(allow_none=False)
+        reward_threshold = fields.Integer(allow_none=True)
+        entry_role = fields.Method(None, "load_role", allow_none=True)
+        member_role = fields.Method(None, "load_role", allow_none=True)
+        tier_2_role = fields.Method(None, "load_role", allow_none=True)
+        tier_3_role = fields.Method(None, "load_role", allow_none=True)
+        tier_4_role = fields.Method(None, "load_role", allow_none=True)
+        tier_5_role = fields.Method(None, "load_role", allow_none=True)
+        tier_6_role = fields.Method(None, "load_role", allow_none=True)
+        admin_role = fields.Method(None, "load_role", allow_none=True)
+        staff_role = fields.Method(None, "load_role", allow_none=True)
+        bot_role = fields.Method(None, "load_role", allow_none=True)
+        quest_role = fields.Method(None, "load_role", allow_none=True)
+        application_channel = fields.Method(None, "load_channel", allow_none=True)
+        market_channel = fields.Method(None, "load_channel", allow_none=True)
+        announcement_channel = fields.Method(None, "load_channel", allow_none=True)
+        staff_channel = fields.Method(None, "load_channel", allow_none=True)
+        help_channel = fields.Method(None, "load_channel", allow_none=True)
+        arena_board_channel = fields.Method(None, "load_channel", allow_none=True)
+        exit_channel = fields.Method(None, "load_channel", allow_none=True)
+        entrance_channel = fields.Method(None, "load_channel", allow_none=True)
+        activity_points_channel = fields.Method(None, "load_channel", allow_none=True)
+        rp_post_channel = fields.Method(None, "load_channel", allow_none=True)
+        dev_channels = fields.Method(None, "load_channels", allow_none=True)
+        archive_user = fields.Method(None, "load_member", allow_none=True)
+
+        def __init__(self, db: aiopg.sa.Engine, guild: discord.Guild, **kwargs):
+            super().__init__(**kwargs)
+            self._db = db
+            self._guild = guild
+
+        @post_load
+        async def make_guild(self, data, **kwargs):
+            guild = PlayerGuild(self._db, **data)
+            guild.guild = self._guild
+            await self.load_calendar(guild)
+            await self.load_npcs(guild)
+            await self.load_weekly_stipends(guild)
+            return guild
+
+        def load_timestamp(
+            self, value: datetime
+        ):  # Marshmallow doesn't like loading DateTime for some reason. This is a workaround
+            return datetime(
+                value.year,
+                value.month,
+                value.day,
+                value.hour,
+                value.minute,
+                value.second,
+                tzinfo=timezone.utc,
+            )
+
+        def load_role(self, value: int) -> discord.Role:
+            return self._guild.get_role(value)
+
+        def load_channel(self, value: int) -> discord.TextChannel:
+            return self._guild.get_channel(value)
+
+        def load_channels(self, value: list[int]) -> list[discord.TextChannel]:
+            channels = []
+            for c in value:
+                channels.append(self._guild.get_channel(c))
+
+            return channels
+
+        def load_member(self, value: int) -> discord.Member:
+            return self._guild.get_member(value)
+
+        async def load_calendar(self, guild: "PlayerGuild") -> None:
+            query = (
+                RefServerCalendar.ref_server_calendar_table.select()
+                .where(
+                    RefServerCalendar.ref_server_calendar_table.c.guild_id == guild.id
+                )
+                .order_by(RefServerCalendar.ref_server_calendar_table.c.day_start.asc())
+            )
+
+            async with self._db.acquire() as conn:
+                results = await conn.execute(query)
+                rows = await results.fetchall()
+
+            guild.calendar = [
+                RefServerCalendar.RefServerCalendarSchema().load(row) for row in rows
+            ]
+
+        async def load_npcs(self, guild: "PlayerGuild") -> None:
+            query = (
+                NPC.npc_table.select()
+                .where(
+                    sa.and_(
+                        NPC.npc_table.c.guild_id == guild.id,
+                        NPC.npc_table.c.adventure_id == sa.null(),
+                    )
+                )
+                .order_by(NPC.npc_table.c.key.asc())
+            )
+
+            async with self._db.acquire() as conn:
+                results = await conn.execute(query)
+                rows = await results.fetchall()
+
+            guild.npcs = [NPC.NPCSchema(self._db).load(row) for row in rows]
+
+        async def load_weekly_stipends(self, guild: PlayerGuild) -> None:
+            query = (
+                RefWeeklyStipend.ref_weekly_stipend_table.select()
+                .where(RefWeeklyStipend.ref_weekly_stipend_table.c.guild_id == guild.id)
+                .order_by(RefWeeklyStipend.ref_weekly_stipend_table.c.amount.desc())
+            )
+
+            async with self._db.acquire() as conn:
+                results = await conn.execute(query)
+                rows = await results.fetchall()
+
+            guild.stipends = [
+                RefWeeklyStipend.RefWeeklyStipendSchema(self._db).load(row)
+                for row in rows
+            ]
 
     def __init__(self, db: aiopg.sa.Engine, **kwargs):
         self._db = db
@@ -273,51 +456,101 @@ class PlayerGuild(object):
 
     # Add event listener for this
     async def upsert(self):
+        update_dict = {
+            "max_level": self.max_level,
+            "weeks": self.weeks,
+            "reset_day": self._reset_day,
+            "reset_hour": self._reset_hour,
+            "last_reset": self._last_reset,
+            "handicap_cc": self.handicap_cc,
+            "max_characters": self.max_characters,
+            "div_limit": self.div_limit,
+            "reset_message": self.reset_message,
+            "weekly_announcement": self.weekly_announcement,
+            "server_date": self.server_date,
+            "epoch_notation": self.epoch_notation,
+            "greeting": self.greeting,
+            "first_character_message": self.first_character_message,
+            "ping_announcement": self.ping_announcement,
+            "reward_threshold": self.reward_threshold,
+            "archive_user": self.archive_user.id if self.archive_user else None,
+        }
+
+        insert_dict = {**update_dict, "id": self.id}
+
+        query = (
+            insert(PlayerGuild.guilds_table)
+            .values(**insert_dict)
+            .returning(PlayerGuild.guilds_table)
+        )
+
+        query = query.on_conflict_do_update(index_elements=["id"], set_=update_dict)
+
         async with self._db.acquire() as conn:
-            results = await conn.execute(upsert_guild(self))
+            results = await conn.execute(query)
             row = await results.first()
 
-        g = await GuildSchema(self._db, self.guild).load(row)
+        g = await PlayerGuild.GuildSchema(self._db, self.guild).load(row)
 
         return g
 
-    async def fetch(self):
+    async def fetch(self) -> "PlayerGuild":
+        query = PlayerGuild.guilds_table.select().where(
+            PlayerGuild.guilds_table.c.id == self.id
+        )
+
         async with self._db.acquire() as conn:
-            results = await conn.execute(get_guild_from_id(self.id))
+            results = await conn.execute(query)
             guild_row = await results.first()
 
             if guild_row is None:
                 guild = PlayerGuild(self._db, id=self.id)
                 guild: PlayerGuild = await guild.upsert()
             else:
-                guild = await GuildSchema(self._db, guild=self.guild).load(guild_row)
+                guild = await PlayerGuild.GuildSchema(self._db, guild=self.guild).load(
+                    guild_row
+                )
 
         return guild
 
-    async def get_all_characters(self, compendium: Compendium):
-        from Resolute.models.objects.characters import (
-            CharacterSchema,
-            get_guild_characters_query,
+    async def get_all_characters(self, compendium: Compendium) -> list[PlayerCharacter]:
+        from Resolute.models.objects.characters import PlayerCharacter
+
+        query = (
+            PlayerCharacter.characters_table.select()
+            .where(
+                sa.and_(
+                    PlayerCharacter.characters_table.c.active == True,
+                    PlayerCharacter.characters_table.c.guild_id == self.id,
+                )
+            )
+            .order_by(PlayerCharacter.characters_table.c.id.desc())
         )
 
         async with self._db.acquire() as conn:
-            results = await conn.execute(get_guild_characters_query(self.id))
+            results = await conn.execute(query)
             rows = await results.fetchall()
 
         character_list = [
-            await CharacterSchema(self._db, compendium).load(row) for row in rows
+            await PlayerCharacter.CharacterSchema(self._db, compendium).load(row)
+            for row in rows
         ]
 
         return character_list
 
-    async def get_dashboards(self, bot) -> list[RefDashboard]:
+    async def get_dashboards(self, bot: G0T0Bot) -> list[RefDashboard]:
         dashboards = []
 
-        async with self._db.acquire() as conn:
-            async for row in conn.execute(get_dashboards()):
-                dashboard: RefDashboard = RefDashboardSchema(bot).load(row)
-                if dashboard.channel.guild.id == self.id:
-                    dashboards.append(dashboard)
+        rows = await bot.query(
+            RefDashboard.ref_dashboard_table.select(), QueryResultType.multiple
+        )
+        db_dashboards: list[RefDashboard] = [
+            RefDashboard.RefDashboardSchema(bot).load(row) for row in rows
+        ]
+
+        for dashboard in db_dashboards:
+            if dashboard.channel.guild.id == self.id:
+                dashboards.append(dashboard)
 
         return dashboards
 
@@ -338,234 +571,19 @@ class PlayerGuild(object):
 
         return None
 
+    def is_admin(self, member: discord.Member):
+        if member in BOT_OWNERS:
+            return True
 
-guilds_table = sa.Table(
-    "guilds",
-    metadata,
-    sa.Column("id", sa.BigInteger, primary_key=True, nullable=False),
-    sa.Column("max_level", sa.Integer, nullable=False, default=3),
-    sa.Column("weeks", sa.Integer, nullable=False, default=0),
-    sa.Column("reset_day", sa.Integer, nullable=True),
-    sa.Column("reset_hour", sa.Integer, nullable=True),
-    sa.Column("last_reset", sa.TIMESTAMP(timezone=timezone.utc)),
-    sa.Column("greeting", sa.String, nullable=True),
-    sa.Column("handicap_cc", sa.Integer, nullable=True),
-    sa.Column("max_characters", sa.Integer, nullable=False),
-    sa.Column("div_limit", sa.Integer, nullable=False),
-    sa.Column("reset_message", sa.String, nullable=True),
-    sa.Column("weekly_announcement", sa.ARRAY(sa.String), nullable=True),
-    sa.Column("server_date", sa.Integer, nullable=True),
-    sa.Column("epoch_notation", sa.String, nullable=True),
-    sa.Column("first_character_message", sa.String, nullable=True),
-    sa.Column("ping_announcement", sa.BOOLEAN, default=False, nullable=False),
-    sa.Column("reward_threshold", sa.Integer, nullable=True),
-    sa.Column("entry_role", sa.BigInteger, nullable=True),
-    sa.Column("member_role", sa.BigInteger, nullable=True),
-    sa.Column("tier_2_role", sa.BigInteger, nullable=True),
-    sa.Column("tier_3_role", sa.BigInteger, nullable=True),
-    sa.Column("tier_4_role", sa.BigInteger, nullable=True),
-    sa.Column("tier_5_role", sa.BigInteger, nullable=True),
-    sa.Column("tier_6_role", sa.BigInteger, nullable=True),
-    sa.Column("admin_role", sa.BigInteger, nullable=True),
-    sa.Column("staff_role", sa.BigInteger, nullable=True),
-    sa.Column("bot_role", sa.BigInteger, nullable=True),
-    sa.Column("quest_role", sa.BigInteger, nullable=True),
-    sa.Column("application_channel", sa.BigInteger, nullable=True),
-    sa.Column("market_channel", sa.BigInteger, nullable=True),
-    sa.Column("announcement_channel", sa.BigInteger, nullable=True),
-    sa.Column("staff_channel", sa.BigInteger, nullable=True),
-    sa.Column("help_channel", sa.BigInteger, nullable=True),
-    sa.Column("arena_board_channel", sa.BigInteger, nullable=True),
-    sa.Column("exit_channel", sa.BigInteger, nullable=True),
-    sa.Column("entrance_channel", sa.BigInteger, nullable=True),
-    sa.Column("activity_points_channel", sa.BigInteger, nullable=True),
-    sa.Column("rp_post_channel", sa.BigInteger, nullable=True),
-    sa.Column("dev_channels", ARRAY(sa.BigInteger), nullable=True, default=[]),
-    sa.Column("archive_user", sa.BigInteger, nullable=True),
-)
+        elif self.admin_role and self.admin_role in member.roles:
+            return True
 
+        return False
 
-class GuildSchema(Schema):
-    _db: aiopg.sa.Engine
-    _guild: discord.Guild
+    def is_staff(self, member: discord.Member):
+        if self.is_admin(member) or (
+            self.staff_role and self.staff_role in member.roles
+        ):
+            return True
 
-    id = fields.Integer(required=True)
-    max_level = fields.Integer()
-    weeks = fields.Integer()
-    reset_day = fields.Integer(allow_none=True)
-    reset_hour = fields.Integer(allow_none=True)
-    last_reset = fields.Method(None, "load_timestamp")
-    greeting = fields.String(allow_none=True)
-    handicap_cc = fields.Integer(allow_none=True)
-    max_characters = fields.Integer(allow_none=False)
-    div_limit = fields.Integer(allow_none=False)
-    reset_message = fields.String(allow_none=True)
-    weekly_announcement = fields.List(fields.String, required=False)
-    server_date = fields.Integer(allow_none=True)
-    epoch_notation = fields.String(allow_none=True)
-    first_character_message = fields.String(allow_none=True)
-    ping_announcement = fields.Boolean(allow_none=False)
-    reward_threshold = fields.Integer(allow_none=True)
-    entry_role = fields.Method(None, "load_role", allow_none=True)
-    member_role = fields.Method(None, "load_role", allow_none=True)
-    tier_2_role = fields.Method(None, "load_role", allow_none=True)
-    tier_3_role = fields.Method(None, "load_role", allow_none=True)
-    tier_4_role = fields.Method(None, "load_role", allow_none=True)
-    tier_5_role = fields.Method(None, "load_role", allow_none=True)
-    tier_6_role = fields.Method(None, "load_role", allow_none=True)
-    admin_role = fields.Method(None, "load_role", allow_none=True)
-    staff_role = fields.Method(None, "load_role", allow_none=True)
-    bot_role = fields.Method(None, "load_role", allow_none=True)
-    quest_role = fields.Method(None, "load_role", allow_none=True)
-    application_channel = fields.Method(None, "load_channel", allow_none=True)
-    market_channel = fields.Method(None, "load_channel", allow_none=True)
-    announcement_channel = fields.Method(None, "load_channel", allow_none=True)
-    staff_channel = fields.Method(None, "load_channel", allow_none=True)
-    help_channel = fields.Method(None, "load_channel", allow_none=True)
-    arena_board_channel = fields.Method(None, "load_channel", allow_none=True)
-    exit_channel = fields.Method(None, "load_channel", allow_none=True)
-    entrance_channel = fields.Method(None, "load_channel", allow_none=True)
-    activity_points_channel = fields.Method(None, "load_channel", allow_none=True)
-    rp_post_channel = fields.Method(None, "load_channel", allow_none=True)
-    dev_channels = fields.Method(None, "load_channels", allow_none=True)
-    archive_user = fields.Method(None, "load_member", allow_none=True)
-
-    def __init__(self, db: aiopg.sa.Engine, guild: discord.Guild, **kwargs):
-        super().__init__(**kwargs)
-        self._db = db
-        self._guild = guild
-
-    @post_load
-    async def make_guild(self, data, **kwargs):
-        guild = PlayerGuild(self._db, **data)
-        guild.guild = self._guild
-        await self.load_calendar(guild)
-        await self.load_npcs(guild)
-        await self.load_weekly_stipends(guild)
-        return guild
-
-    def load_timestamp(
-        self, value
-    ):  # Marshmallow doesn't like loading DateTime for some reason. This is a workaround
-        return datetime(
-            value.year,
-            value.month,
-            value.day,
-            value.hour,
-            value.minute,
-            value.second,
-            tzinfo=timezone.utc,
-        )
-
-    def load_role(self, value):
-        return self._guild.get_role(value)
-
-    def load_channel(self, value):
-        return self._guild.get_channel(value)
-
-    def load_channels(self, value):
-        channels = []
-        for c in value:
-            channels.append(self._guild.get_channel(c))
-
-        return channels
-
-    def load_member(self, value):
-        return self._guild.get_member(value)
-
-    async def load_calendar(self, guild: PlayerGuild):
-        async with self._db.acquire() as conn:
-            results = await conn.execute(get_server_calendar(guild.id))
-            rows = await results.fetchall()
-
-        guild.calendar = [RefServerCalendarSchema().load(row) for row in rows]
-
-    async def load_npcs(self, guild: PlayerGuild):
-        async with self._db.acquire() as conn:
-            results = await conn.execute(get_guild_npcs_query(guild.id))
-            rows = await results.fetchall()
-        guild.npcs = [NPCSchema(self._db).load(row) for row in rows]
-
-    async def load_weekly_stipends(self, guild: PlayerGuild):
-        async with self._db.acquire() as conn:
-            results = await conn.execute(get_guild_weekly_stipends_query(guild.id))
-            rows = await results.fetchall()
-
-        guild.stipends = [RefWeeklyStipendSchema(self._db).load(row) for row in rows]
-
-
-def get_guild_from_id(guild_id: int) -> FromClause:
-    return guilds_table.select().where(guilds_table.c.id == guild_id)
-
-
-def get_guilds_with_reset_query(day: int, hour: int) -> FromClause:
-    six_days_ago = datetime.today() - timedelta(days=6)
-
-    return (
-        guilds_table.select()
-        .where(
-            sa.and_(
-                guilds_table.c.reset_day == day,
-                guilds_table.c.reset_hour == hour,
-                guilds_table.c.last_reset < six_days_ago,
-            )
-        )
-        .order_by(guilds_table.c.id.desc())
-    )
-
-
-def get_busy_guilds_query() -> FromClause:
-    return guilds_table.select().where(guilds_table.c.archive_user.isnot(None))
-
-
-def upsert_guild(guild: PlayerGuild):
-    insert_statment = (
-        insert(guilds_table)
-        .values(
-            id=guild.id,
-            max_level=guild.max_level,
-            weeks=guild.weeks,
-            reset_day=guild._reset_day,
-            reset_hour=guild._reset_hour,
-            last_reset=guild._last_reset,
-            greeting=guild.greeting,
-            handicap_cc=guild.handicap_cc,
-            max_characters=guild.max_characters,
-            div_limit=guild.div_limit,
-            reset_message=guild.reset_message,
-            weekly_announcement=guild.weekly_announcement,
-            server_date=guild.server_date,
-            epoch_notation=guild.epoch_notation,
-            first_character_message=guild.first_character_message,
-            ping_announcement=guild.ping_announcement,
-            reward_threshold=guild.reward_threshold,
-            archive_user=guild.archive_user.id if guild.archive_user else None,
-        )
-        .returning(guilds_table)
-    )
-
-    update_dict = {
-        "max_level": guild.max_level,
-        "weeks": guild.weeks,
-        "reset_day": guild._reset_day,
-        "reset_hour": guild._reset_hour,
-        "last_reset": guild._last_reset,
-        "handicap_cc": guild.handicap_cc,
-        "max_characters": guild.max_characters,
-        "div_limit": guild.div_limit,
-        "reset_message": guild.reset_message,
-        "weekly_announcement": guild.weekly_announcement,
-        "server_date": guild.server_date,
-        "epoch_notation": guild.epoch_notation,
-        "greeting": guild.greeting,
-        "first_character_message": guild.first_character_message,
-        "ping_announcement": guild.ping_announcement,
-        "reward_threshold": guild.reward_threshold,
-        "archive_user": guild.archive_user.id if guild.archive_user else None,
-    }
-
-    upsert_statement = insert_statment.on_conflict_do_update(
-        index_elements=["id"], set_=update_dict
-    )
-
-    return upsert_statement
+        return False

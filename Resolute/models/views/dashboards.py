@@ -226,12 +226,12 @@ class _ManageDashboardUI(DashboardSettings):
             await interaction.channel.send(
                 embed=ErrorEmbed(f"Select a channel to exclude"), delete_after=5
             )
-        elif self.channel.id in self.dashboard.excluded_channel_ids:
+        elif self.channel in self.dashboard.excluded_channels:
             await interaction.channel.send(
                 embed=ErrorEmbed(f"Channel already excluded"), delete_after=5
             )
         else:
-            self.dashboard.excluded_channel_ids.append(self.channel.id)
+            self.dashboard.excluded_channels.append(self.channel)
             await self.dashboard.upsert()
         await self.refresh_content(interaction)
 
@@ -245,12 +245,12 @@ class _ManageDashboardUI(DashboardSettings):
             await interaction.channel.send(
                 embed=ErrorEmbed(f"Select a channel to exclude"), delete_after=5
             )
-        elif self.channel.id not in self.dashboard.excluded_channel_ids:
+        elif self.channel not in self.dashboard.excluded_channels:
             await interaction.channel.send(
                 embed=ErrorEmbed(f"Channel not excluded"), delete_after=5
             )
         else:
-            self.dashboard.excluded_channel_ids.remove(self.channel.id)
+            self.dashboard.excluded_channels.remove(self.channel)
             await self.dashboard.upsert()
         await self.refresh_content(interaction)
 

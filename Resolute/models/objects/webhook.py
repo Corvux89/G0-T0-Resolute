@@ -8,8 +8,6 @@ from Resolute.bot import G0T0Context
 from Resolute.constants import ACTIVITY_POINT_MINIMUM
 from Resolute.helpers.general_helpers import (
     get_selection,
-    is_admin,
-    is_staff,
     split_content,
 )
 from Resolute.models.objects.adventures import Adventure
@@ -250,8 +248,9 @@ class G0T0Webhook(object):
         if self.type == WebhookType.npc:
             user_roles = [role.id for role in self.player.member.roles]
 
-            return bool(set(user_roles) & set(self.npc.roles)) or await is_admin(
-                self.ctx
+            return bool(set(user_roles) & set(self.npc.roles)) or (
+                self.player.guild.admin_role
+                and self.player.guild.admin_role in self.player.member.roles
             )
 
         elif self.type == WebhookType.adventure:
@@ -261,7 +260,10 @@ class G0T0Webhook(object):
                 )
 
             if self.adventure:
-                return self.player.id in self.adventure.dms or await is_staff(self.ctx)
+                return (
+                    self.player.id in self.adventure.dms
+                    or self.player.guild.is_staff(self.player.member)
+                )
 
         return False
 

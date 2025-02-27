@@ -1,8 +1,13 @@
 import discord
-from discord.ext.commands import CommandError
+from discord.ext import commands
 
 
 # Aplication Command Errors
+class G0T0CommandError(commands.CommandError):
+    def __init__(self, message):
+        super().__init__(f"{message}")
+
+
 class G0T0Error(discord.ApplicationCommandError):
     def __init__(self, message):
         super().__init__(f"{message}")

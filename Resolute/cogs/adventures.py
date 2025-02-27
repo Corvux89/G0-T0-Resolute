@@ -8,13 +8,11 @@ from Resolute.helpers.autocomplete import get_faction_autocomplete
 from Resolute.models.categories.categories import Faction
 from Resolute.models.embeds.adventures import AdventuresEmbed
 from Resolute.models.objects.adventures import Adventure
-from Resolute.models.objects.enum import WebhookType
 from Resolute.models.objects.exceptions import (
     AdventureNotFound,
     CharacterNotFound,
     G0T0Error,
 )
-from Resolute.models.objects.webhook import G0T0Webhook
 from Resolute.models.views.adventures import AdventureSettingsUI
 
 log = logging.getLogger(__name__)
@@ -311,6 +309,6 @@ class Adventures(commands.Cog):
         if adventure is None:
             raise AdventureNotFound()
 
-        ui = AdventureSettingsUI.new(self.bot, ctx.author, adventure)
+        ui = AdventureSettingsUI.new(self.bot, ctx.author, adventure, ctx.playerGuild)
         await ui.send_to(ctx)
         await ctx.delete()

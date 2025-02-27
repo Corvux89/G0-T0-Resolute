@@ -10,7 +10,7 @@ log = logging.getLogger(__name__)
 async def get_table_values(conn, comp: CompendiumObject) -> list:
     d1, d2 = {}, {}
 
-    async for row in conn.execute(get_category_table(comp.table)):
+    async for row in conn.execute(comp.table.select()):
         val = comp.schema().load(row)
 
         d1[val.id] = val
@@ -45,23 +45,7 @@ class Compendium:
     """
 
     def __init__(self) -> None:
-        self.categories = [
-            rarity,
-            char_class,
-            char_archetype,
-            char_species,
-            arena_tier,
-            activity,
-            dashboard_type,
-            cc_conversion,
-            arena_type,
-            transaction_type,
-            transaction_subtype,
-            level_cost,
-            faction,
-            activity_points,
-            level_tier,
-        ]
+        self.categories = CATEGORY_LIST
 
         for category in self.categories:
             setattr(self, category.key, [])

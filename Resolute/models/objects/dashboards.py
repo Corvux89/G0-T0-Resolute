@@ -1,13 +1,19 @@
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
 import aiopg.sa
 import discord
 import sqlalchemy as sa
 from marshmallow import Schema, fields, post_load
 from sqlalchemy.dialects.postgresql import ARRAY, insert
-from sqlalchemy.sql.selectable import FromClause, TableClause
 
 from Resolute.constants import ZWSP3
 from Resolute.models import metadata
 from Resolute.models.categories.categories import DashboardType
+from Resolute.models.objects import RelatedList
+
+if TYPE_CHECKING:
+    from Resolute.bot import G0T0Bot
 
 
 class RPDashboardCategory(object):
@@ -76,6 +82,52 @@ class RefDashboard(object):
         Asynchronously deletes the dashboard from the database.
     """
 
+    ref_dashboard_table = sa.Table(
+        "ref_dashboards",
+        metadata,
+        sa.Column("post_id", sa.BigInteger, primary_key=True, nullable=False),
+        sa.Column("category_channel_id", sa.BigInteger, nullable=True),
+        sa.Column("channel_id", sa.BigInteger, nullable=False),
+        sa.Column(
+            "excluded_channel_ids", ARRAY(sa.BigInteger), nullable=True, default=[]
+        ),
+        sa.Column(
+            "dashboard_type", sa.Integer, nullable=False
+        ),  # ref: > c_dashboard_type.id
+    )
+
+    class RefDashboardSchema(Schema):
+        bot: G0T0Bot = None
+        category_channel_id = fields.Integer(required=False, allow_none=True)
+        channel_id = fields.Integer(required=True)
+        post_id = fields.Integer(required=True)
+        excluded_channel_ids = fields.List(fields.Integer)
+        dashboard_type = fields.Method(None, "get_dashboard_type")
+
+        def __init__(self, bot: G0T0Bot, **kwargs):
+            super().__init__(**kwargs)
+            self.bot = bot
+
+        @post_load
+        def make_dashboard(self, data, **kwargs) -> "RefDashboard":
+            dashboard = RefDashboard(self.bot.db, **data)
+            self.get_channels(dashboard)
+            return dashboard
+
+        def get_dashboard_type(self, value) -> DashboardType:
+            return self.bot.compendium.get_object(DashboardType, value)
+
+        def get_channels(self, dashboard: "RefDashboard"):
+            dashboard.channel = self.bot.get_channel(dashboard.channel_id)
+            dashboard.excluded_channels = RelatedList(
+                dashboard,
+                dashboard.update_channels,
+                [self.bot.get_channel(c) for c in dashboard.excluded_channel_ids],
+            )
+            dashboard.category_channel = self.bot.get_channel(
+                dashboard.category_channel_id
+            )
+
     def __init__(self, db: aiopg.sa.Engine, **kwargs):
         self._db = db
 
@@ -86,9 +138,13 @@ class RefDashboard(object):
         self.dashboard_type: DashboardType = kwargs.get("dashboard_type")
         self.channel: discord.TextChannel = kwargs.get("channel")
         self.category_channel: discord.CategoryChannel = kwargs.get("category_channel")
-        self.excluded_channels: list[discord.TextChannel] = kwargs.get(
-            "excluded_channels"
+
+        self.excluded_channels: RelatedList[discord.TextChannel] = RelatedList(
+            self, self.update_channels, kwargs.get("excluded_channels", [])
         )
+
+    def update_channels(self):
+        self.excluded_channel_ids = [c.id for c in self.excluded_channels]
 
     def channels_to_search(self) -> list[discord.TextChannel]:
         if self.category_channel:
@@ -114,130 +170,58 @@ class RefDashboard(object):
         return None
 
     async def upsert(self) -> None:
+        update_dict = {
+            "category_channel_id": (
+                self.category_channel.id
+                if hasattr(self, "category_channel") and self.category_channel
+                else self.category_channel_id
+            ),
+            "channel_id": (
+                self.channel.id
+                if hasattr(self, "channel") and self.channel
+                else self.channel_id
+            ),
+            "post_id": self.post_id,
+            "excluded_channel_ids": (
+                [c.id for c in self.excluded_channels]
+                if hasattr(self, "excluded_channels") and self.excluded_channels
+                else self.excluded_channel_ids
+            ),
+            "dashboard_type": self.dashboard_type.id,
+        }
+
+        insert_dict = {**update_dict}
+
+        query = insert(RefDashboard.ref_dashboard_table).values(**insert_dict)
+
+        query = query.on_conflict_do_update(
+            index_elements=["post_id"], set_=update_dict
+        )
+
         async with self._db.acquire() as conn:
-            await conn.execute(upsert_dashboard_query(self))
+            await conn.execute(query)
 
     async def delete(self) -> None:
-        async with self._db.acquire() as conn:
-            await conn.execute(delete_dashboard_query(self))
-
-
-ref_dashboard_table = sa.Table(
-    "ref_dashboards",
-    metadata,
-    sa.Column("post_id", sa.BigInteger, primary_key=True, nullable=False),
-    sa.Column("category_channel_id", sa.BigInteger, nullable=True),
-    sa.Column("channel_id", sa.BigInteger, nullable=False),
-    sa.Column("excluded_channel_ids", ARRAY(sa.BigInteger), nullable=True, default=[]),
-    sa.Column(
-        "dashboard_type", sa.Integer, nullable=False
-    ),  # ref: > c_dashboard_type.id
-)
-
-
-class RefDashboardSchema(Schema):
-    bot = None
-    category_channel_id = fields.Integer(required=False, allow_none=True)
-    channel_id = fields.Integer(required=True)
-    post_id = fields.Integer(required=True)
-    excluded_channel_ids = fields.List(fields.Integer)
-    dashboard_type = fields.Method(None, "get_dashboard_type")
-
-    def __init__(self, bot, **kwargs):
-        super().__init__(**kwargs)
-        self.bot = bot
-
-    @post_load
-    def make_dashboard(self, data, **kwargs):
-        dashboard = RefDashboard(self.bot.db, **data)
-        self.get_channels(dashboard)
-        return dashboard
-
-    def get_dashboard_type(self, value):
-        return self.bot.compendium.get_object(DashboardType, value)
-
-    def get_channels(self, dashboard: RefDashboard):
-        dashboard.channel = self.bot.get_channel(dashboard.channel_id)
-        dashboard.excluded_channels = [
-            self.bot.get_channel(c) for c in dashboard.excluded_channel_ids
-        ]
-        dashboard.category_channel = self.bot.get_channel(dashboard.category_channel_id)
-
-
-def get_dashboard_by_category_channel_query(category_channel_id: int) -> FromClause:
-    return ref_dashboard_table.select().where(
-        ref_dashboard_table.c.category_channel_id == category_channel_id
-    )
-
-
-def get_dashboard_by_post_id(post_id: int) -> FromClause:
-    return ref_dashboard_table.select().where(ref_dashboard_table.c.post_id == post_id)
-
-
-def upsert_dashboard_query(dashboard: RefDashboard):
-    insert_statment = (
-        insert(ref_dashboard_table)
-        .values(
-            category_channel_id=dashboard.category_channel_id,
-            channel_id=dashboard.channel_id,
-            post_id=dashboard.post_id,
-            excluded_channel_ids=dashboard.excluded_channel_ids,
-            dashboard_type=dashboard.dashboard_type.id,
+        query = RefDashboard.ref_dashboard_table.delete().where(
+            RefDashboard.ref_dashboard_table.c.post_id == self.post_id
         )
-        .returning(ref_dashboard_table)
-    )
 
-    update_dict = {
-        "category_channel_id": dashboard.category_channel_id,
-        "channel_id": dashboard.channel_id,
-        "post_id": dashboard.post_id,
-        "excluded_channel_ids": dashboard.excluded_channel_ids,
-        "dashboard_type": dashboard.dashboard_type.id,
-    }
-
-    upsert_statement = insert_statment.on_conflict_do_update(
-        index_elements=["post_id"], set_=update_dict
-    )
-
-    return upsert_statement
-
-
-def get_dashboards() -> FromClause:
-    return ref_dashboard_table.select()
-
-
-def get_dashboard_by_type(type: int) -> FromClause:
-    return ref_dashboard_table.select().where(
-        ref_dashboard_table.c.dashboard_type == type
-    )
-
-
-def delete_dashboard_query(dashboard: RefDashboard) -> TableClause:
-    return ref_dashboard_table.delete().where(
-        ref_dashboard_table.c.post_id == dashboard.post_id
-    )
+        async with self._db.acquire() as conn:
+            await conn.execute(query)
 
 
 # PGSQL Views
-class_census_table = sa.Table(
-    "Class Census",
-    metadata,
-    sa.Column("Class", sa.String, nullable=False),
-    sa.Column("#", sa.Integer, nullable=False),
-)
+class DashboardViews(object):
+    class_census_table = sa.Table(
+        "Class Census",
+        metadata,
+        sa.Column("Class", sa.String, nullable=False),
+        sa.Column("#", sa.Integer, nullable=False),
+    )
 
-
-def get_class_census() -> FromClause:
-    return class_census_table.select()
-
-
-level_distribution_table = sa.Table(
-    "Level Distribution",
-    metadata,
-    sa.Column("level", sa.Integer, nullable=False),
-    sa.Column("#", sa.Integer, nullable=False, default=0),
-)
-
-
-def get_level_distribution() -> FromClause:
-    return level_distribution_table.select()
+    level_distribution_table = sa.Table(
+        "Level Distribution",
+        metadata,
+        sa.Column("level", sa.Integer, nullable=False),
+        sa.Column("#", sa.Integer, nullable=False, default=0),
+    )

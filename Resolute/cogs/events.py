@@ -81,7 +81,11 @@ class Events(commands.Cog):
         else:
             g: PlayerGuild = await self.bot.get_player_guild(payload.guild_id)
             player: Player = Player(
-                payload.user.id, payload.guild_id, member=payload.user, guild=g
+                self.bot,
+                payload.user.id,
+                payload.guild_id,
+                member=payload.user,
+                guild=g,
             )
 
         try:

@@ -3,7 +3,6 @@ from typing import Mapping
 import discord
 
 from Resolute.bot import G0T0Bot
-from Resolute.helpers.general_helpers import is_admin
 from Resolute.models.embeds import ErrorEmbed
 from Resolute.models.embeds.npc import NPCEmbed
 from Resolute.models.objects.adventures import Adventure
@@ -121,7 +120,7 @@ class NPCSettingsUI(NPCSettings):
             self.remove_item(self.remove_npc_role)
             self.remove_item(self.role_select)
 
-            if not is_admin:
+            if not self.guild.is_admin(self.owner):
                 self.remove_item(self.new_npc)
                 self.remove_item(self.delete_npc_button)
                 self.remove_item(self.edit_npc)
@@ -157,7 +156,12 @@ class NPCSettingsUI(NPCSettings):
 
     @discord.ui.select(placeholder="Select an NPC", row=1, custom_id="npc_select")
     async def npc_select(self, n: discord.ui.Select, interaction: discord.Interaction):
-        self.npc = next((i for i in self.guild.npcs if i.key == n.values[0]), None)
+        if self.adventure:
+            self.npc = next(
+                (i for i in self.adventure.npcs if i.key == n.values[0]), None
+            )
+        else:
+            self.npc = next((i for i in self.guild.npcs if i.key == n.values[0]), None)
         await self.refresh_content(interaction)
 
     @discord.ui.role_select(placeholder="Select a role", custom_id="role_select", row=2)
@@ -255,8 +259,11 @@ class NPCModal(discord.ui.Modal):
         name = self.children[1].value if not self.npc else self.children[0].value
         url = self.children[2].value if not self.npc else self.children[1].value
 
-        if not self.npc and (
-            npc := next((n for n in self.guild.npcs if n.key == key), None)
+        if (
+            not self.npc
+            and (npc := next((n for n in self.guild.npcs if n.key == key), None))
+            and self.adventure
+            and (npc := next(n for n in self.adventure.npcs if n.key == key), None)
         ):
             await interaction.response.send_message(
                 embed=ErrorEmbed(f"An NPC already exists with that key"), ephemeral=True

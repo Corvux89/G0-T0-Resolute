@@ -5,10 +5,10 @@ from discord.ext import commands
 
 from Resolute.bot import G0T0Bot
 from Resolute.constants import APPROVAL_EMOJI, DENIED_EMOJI
-from Resolute.helpers.general_helpers import try_delete
+from Resolute.helpers.general_helpers import dm_check, try_delete
 from Resolute.models.embeds.players import PlayerOverviewEmbed
 from Resolute.bot import G0T0Context
-from Resolute.models.objects.enum import ApplicationType, WebhookType
+from Resolute.models.objects.enum import ApplicationType
 from Resolute.models.objects.applications import PlayerApplication
 from Resolute.models.objects.exceptions import (
     ApplicationNotFound,
@@ -72,6 +72,7 @@ class Character(commands.Cog):
         log.info(f"Cog 'Characters' loaded")
 
     @commands.command(name="say", guild_only=True)
+    @commands.check(dm_check)
     async def character_say(self, ctx: G0T0Context):
         """
         Handles the character say command, allowing a player to send a message as one of their characters.

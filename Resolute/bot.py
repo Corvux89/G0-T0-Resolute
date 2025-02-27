@@ -7,14 +7,17 @@ from timeit import default_timer as timer
 import traceback
 
 import discord
-from aiopg.sa import Engine, SAConnection, create_engine
+from aiopg.sa import Engine, SAConnection, create_engine, result
+import sqlalchemy as sa
 from discord.ext import commands
 from quart import Quart
 from sqlalchemy.schema import CreateTable
+from sqlalchemy.sql import FromClause, TableClause
+
 
 from Resolute.compendium import Compendium
 from Resolute.constants import DB_URL, ERROR_CHANNEL, PORT
-from Resolute.helpers.general_helpers import get_selection, is_admin
+from Resolute.helpers.general_helpers import get_selection
 from Resolute.models import metadata
 from Resolute.models.categories.categories import (
     Activity,
@@ -24,64 +27,28 @@ from Resolute.models.categories.categories import (
 )
 from Resolute.models.embeds import ErrorEmbed
 from Resolute.models.embeds.logs import LogEmbed
-from Resolute.models.objects.adventures import (
-    Adventure,
-    AdventureSchema,
-    get_adventure_by_category_channel_query,
-    get_adventure_by_role_query,
-)
-from Resolute.models.objects.arenas import (
-    Arena,
-    ArenaSchema,
-    get_arena_by_channel_query,
-)
+from Resolute.models.objects.adventures import Adventure
+from Resolute.models.objects.arenas import Arena
 from Resolute.models.objects.characters import (
-    CharacterSchema,
     PlayerCharacter,
     PlayerCharacterClass,
-    get_character_from_id,
-    upsert_character_query,
 )
-from Resolute.models.objects.dashboards import (
-    RefDashboard,
-    RefDashboardSchema,
-    get_dashboard_by_category_channel_query,
-    get_dashboard_by_post_id,
+from Resolute.models.objects.dashboards import RefDashboard
+from Resolute.models.objects.enum import QueryResultType
+from Resolute.models.objects.exceptions import (
+    G0T0CommandError,
+    G0T0Error,
+    TransactionError,
 )
-from Resolute.models.objects.exceptions import G0T0Error, TransactionError
-from Resolute.models.objects.financial import (
-    Financial,
-    FinancialSchema,
-    get_financial_query,
-)
-from Resolute.models.objects.guilds import (
-    GuildSchema,
-    PlayerGuild,
-    get_busy_guilds_query,
-)
-from Resolute.models.objects.logs import (
-    DBLog,
-    LogSchema,
-    character_stats_query,
-    get_log_by_id,
-    get_n_player_logs_query,
-    player_stats_query,
-    upsert_log,
-)
-from Resolute.models.objects.npc import NPC, NPCSchema, get_all_npc_query
-from Resolute.models.objects.players import (
-    Player,
-    PlayerSchema,
-    get_player_query,
-    upsert_player_query,
-)
-from Resolute.models.objects.shatterpoint import (
-    Shatterpoint,
-    ShatterPointSchema,
-    get_busy_shatterpoints_query,
-    get_shatterpoint_query,
-)
-from Resolute.models.objects.store import Store, StoreSchema, get_store_items_query
+
+from Resolute.models.objects.financial import Financial
+from Resolute.models.objects.guilds import PlayerGuild
+from Resolute.models.objects.logs import DBLog
+from Resolute.models.objects.npc import NPC
+from Resolute.models.objects.players import Player
+from Resolute.models.objects.shatterpoint import Shatterpoint
+from Resolute.models.objects.store import Store
+
 
 log = logging.getLogger(__name__)
 
@@ -96,34 +63,56 @@ class G0T0Context(discord.ApplicationContext):
         super(G0T0Context).__init__(**kwargs)
 
         self.player: Player = None
+        self.playerGuild: PlayerGuild = None
 
 
 class G0T0Bot(commands.Bot):
     """
-    G0T0Bot is a custom Discord bot that extends the functionality of discord.ext.commands.Bot.
-    It integrates with a database, a web application, and provides various methods to interact with game-related data.
-    Attributes:
-        db (Engine): The database engine.
-        compendium (Compendium): The compendium of game data.
-        web_app (Quart): The web application instance.
-        player_guilds (dict): A dictionary to store player guilds.
+    G0T0Bot is a custom bot class that extends the discord.ext.commands.Bot class.
+    It includes additional attributes and methods for managing a database, web application,
+    and various game-related functionalities.
+        db (Engine): The database engine used for database operations.
+        player_guilds (dict): A dictionary to cache player guilds.
     Methods:
-        __init__(**options): Initializes the bot with the given options.
-        on_ready(): Called when the bot is ready. Initializes the database and web server.
-        close(): Shuts down the bot and web server.
-        run(*args, **kwargs): Runs the bot and sets up signal handlers for graceful shutdown.
-        get_player_guild(guild_id: int) -> PlayerGuild: Retrieves the player guild for the given guild ID.
-        get_guilds_with_reset(day: int, hour: int) -> list[PlayerGuild]: Retrieves guilds with a reset scheduled at the given day and hour.
-        get_character(char_id: int) -> PlayerCharacter: Retrieves the character for the given character ID.
-        get_adventure_from_role(role_id: int) -> Adventure: Retrieves the adventure associated with the given role ID.
-        get_adventure_from_category(category_channel_id: int) -> Adventure: Retrieves the adventure associated with the given category channel ID.
-        get_arena(channel_id: int) -> Arena: Retrieves the arena associated with the given channel ID.
-        get_player(player_id: int, guild_id: int, **kwargs) -> Player: Retrieves the player for the given player ID and guild ID.
-        get_store_items() -> list[Store]: Retrieves the list of store items.
-        create_character(type: str, player: Player, new_character: PlayerCharacter, new_class: PlayerCharacterClass, **kwargs): Creates a new character for the player.
-        get_shatterpoint(guild_id: int) -> Shatterpoint: Retrieves the shatterpoint for the given guild ID.
-        get_dashboard_from_category(category_id: int) -> RefDashboard: Retrieves the dashboard associated with the given category ID.
-        get_dashboard_from_message(message_id: int) -> RefDashboard: Retrieves the dashboard associated with the given message ID.
+        __init__(self, **options):
+        on_ready(self):
+        close(self):
+        run(self, *args, **kwargs):
+            Runs the bot with the given arguments.
+        before_invoke_setup(self, ctx: G0T0Context):
+            Sets up the context before invoking a command.
+        bot_check(self, ctx: G0T0Context):
+            Checks if the bot is ready to execute commands.
+        error_handling(self, ctx: discord.ApplicationContext | commands.Context, error):
+        query(self, query: FromClause | TableClause, result_type: QueryResultType = QueryResultType.single):
+            Executes a database query and returns the result.
+        get_player_guild(self, guild_id: int) -> PlayerGuild:
+        get_busy_guilds(self) -> list[PlayerGuild]:
+            Retrieves a list of busy guilds.
+        get_character(self, char_id: int) -> PlayerCharacter:
+        get_adventure_from_role(self, role_id: int) -> Adventure:
+        get_adventure_from_category(self, category_channel_id: int) -> Adventure:
+        get_arena(self, channel_id: int) -> Arena:
+        get_player(self, player_id: int, guild_id: int = None, **kwargs) -> Player:
+        get_store_items(self) -> list[Store]:
+        create_character(self, type: str, player: Player, new_character: PlayerCharacter, new_class: PlayerCharacterClass, **kwargs):
+        get_shatterpoint(self, guild_id: int) -> Shatterpoint:
+        get_busy_shatterpoints(self) -> list[Shatterpoint]:
+            Retrieves a list of busy shatterpoints.
+        get_dashboard_from_category(self, category_id: int) -> RefDashboard:
+        get_dashboard_from_message(self, message_id: int) -> RefDashboard:
+        log(self, ctx: discord.ApplicationContext | discord.Interaction | None, player: discord.Member | discord.ClientUser | Player, author: discord.Member | discord.ClientUser | Player, activity: Activity | str, **kwargs) -> DBLog:
+        get_log(self, log_id: int) -> DBLog:
+        get_n_player_logs(self, player: Player, n: int = 5) -> list[DBLog]:
+        get_player_stats(self, player: Player) -> dict:
+        get_character_stats(self, character: PlayerCharacter) -> dict:
+        update_player_activity_points(self, player: Player, increment: bool = True):
+        manage_player_tier_roles(self, player: Player, reason: str = None):
+            Manages the tier roles of a player based on their character levels.
+        get_financial_data(self) -> Financial:
+            Retrieves financial data from the database.
+        get_all_npcs(self) -> list[NPC]:
+            Retrieves all NPCs from the database.
     """
 
     db: Engine
@@ -224,6 +213,9 @@ class G0T0Bot(commands.Bot):
         ctx.player = await self.get_player(
             ctx.author.id, ctx.guild.id if ctx.guild else None
         )
+        ctx.playerGuild = (
+            await self.get_player_guild(ctx.guild.id) if ctx.guild else None
+        )
 
         await ctx.player.update_command_count(str(ctx.command))
         params = "".join(
@@ -247,7 +239,7 @@ class G0T0Bot(commands.Bot):
                 f"Command in DM with {ctx.author} [{ctx.author.id}]: {ctx.command} {params}"
             )
 
-    async def bot_check(self, ctx: G0T0Context):
+    async def bot_check(self, ctx: discord.ApplicationContext | commands.Context):
         if (
             hasattr(self, "db")
             and self.db
@@ -255,10 +247,12 @@ class G0T0Bot(commands.Bot):
             and self.compendium
         ):
             return True
-        await ctx.send(
-            embed=ErrorEmbed(f"Try again in a few seconds. I'm not fully awake yet.")
-        )
-        return False
+
+        if isinstance(ctx, commands.Context):
+            raise G0T0CommandError(
+                "Try again in a few seconds. I'm not fully awake yet"
+            )
+        raise G0T0Error("Try again in a few seconds. I'm not fully awake yet")
 
     async def error_handling(
         self, ctx: discord.ApplicationContext | commands.Context, error
@@ -293,12 +287,15 @@ class G0T0Bot(commands.Bot):
 
         elif (
             hasattr(ctx.command, "on_error")
-            or isinstance(error, (commands.CommandNotFound, discord.CheckFailure))
+            or isinstance(error, (commands.CommandNotFound))
             or "Unknown interaction" in str(error)
         ):
             return
 
-        elif isinstance(error, G0T0Error):
+        elif isinstance(
+            error,
+            (G0T0Error, discord.CheckFailure, G0T0CommandError, commands.CheckFailure),
+        ):
             return await ctx.send(embed=ErrorEmbed(error))
 
         if hasattr(ctx, "bot") and hasattr(ctx.bot, "db"):
@@ -319,8 +316,7 @@ class G0T0Bot(commands.Bot):
                 f"```"
             )
 
-            # At this time...I don't want DM Errors...cause those are going to happen a lot for now.
-            if ERROR_CHANNEL and ctx.guild:
+            if ERROR_CHANNEL:
                 try:
                     await ctx.bot.get_channel(int(ERROR_CHANNEL)).send(out_str)
                 except:
@@ -329,9 +325,42 @@ class G0T0Bot(commands.Bot):
                 log.error(out_str)
 
         try:
-            return await ctx.send(f"Something went wrong. Let us know if it keeps up!")
+            return await ctx.send(
+                embed=ErrorEmbed(f"Something went wrong. Let us know if it keeps up!")
+            )
         except:
             log.warning("Unable to respond")
+
+    async def query(
+        self,
+        query: FromClause | TableClause,
+        result_type: QueryResultType = QueryResultType.single,
+    ) -> result.RowProxy | list[result.RowProxy] | None:
+        """
+        Executes a database query and returns the result based on the specified result type.
+        Args:
+            query (FromClause | TableClause): The SQL query to be executed.
+            result_type (QueryResultType, optional): The type of result expected from the query.
+                Defaults to QueryResultType.single.
+        Returns:
+            result.RowProxy | list[result.RowProxy]: The result of the query. The type of the result
+                depends on the specified result_type:
+                - QueryResultType.single: Returns a single row.
+                - QueryResultType.multiple: Returns a list of rows.
+                - QueryResultType.scalar: Returns a single scalar value.
+                - None: If the result_type is has no return.
+        """
+        async with self.db.acquire() as conn:
+            results = await conn.execute(query)
+
+            if result_type == QueryResultType.single:
+                return await results.first()
+            elif result_type == QueryResultType.multiple:
+                return await results.fetchall()
+            elif result_type == QueryResultType.scalar:
+                return await results.scalar()
+            else:
+                return None
 
     async def get_player_guild(self, guild_id: int) -> PlayerGuild:
         """
@@ -356,15 +385,22 @@ class G0T0Bot(commands.Bot):
         return guild
 
     async def get_busy_guilds(self) -> list[PlayerGuild]:
-        if not is_admin:
-            return
+        """
+        Asynchronously retrieves a list of busy guilds.
+        A busy guild is defined as a guild that has an archive user.
+        Returns:
+            list[PlayerGuild]: A list of PlayerGuild objects representing the busy guilds.
+        """
+        query = PlayerGuild.guilds_table.select().where(
+            PlayerGuild.guilds_table.c.archive_user.isnot(None)
+        )
 
-        async with self.db.acquire() as conn:
-            results = await conn.execute(get_busy_guilds_query())
-            rows = await results.fetchall()
+        rows = await self.query(query, QueryResultType.multiple)
 
         guilds = [
-            await GuildSchema(self.db, guild=self.get_guild(row["id"])).load(row)
+            await PlayerGuild.GuildSchema(
+                self.db, guild=self.get_guild(row["id"])
+            ).load(row)
             for row in rows
         ]
 
@@ -378,12 +414,16 @@ class G0T0Bot(commands.Bot):
         Returns:
             PlayerCharacter: The character object corresponding to the provided ID.
         """
+        query = PlayerCharacter.characters_table.select().where(
+            PlayerCharacter.characters_table.c.id == char_id
+        )
 
-        async with self.db.acquire() as conn:
-            results = await conn.execute(get_character_from_id(char_id))
-            row = await results.first()
+        row = await self.query(query)
 
-        character: PlayerCharacter = await CharacterSchema(
+        if row is None:
+            return None
+
+        character: PlayerCharacter = await PlayerCharacter.CharacterSchema(
             self.db, self.compendium
         ).load(row)
 
@@ -397,15 +437,19 @@ class G0T0Bot(commands.Bot):
         Returns:
             Adventure: The adventure associated with the given role ID, or None if no such adventure exists.
         """
+        query = Adventure.adventures_table.select().where(
+            sa.and_(
+                Adventure.adventures_table.c.role_id == role_id,
+                Adventure.adventures_table.c.end_ts == sa.null(),
+            )
+        )
 
-        async with self.db.acquire() as conn:
-            results = await conn.execute(get_adventure_by_role_query(role_id))
-            row = await results.first()
+        row = await self.query(query)
 
         if row is None:
             return None
 
-        adventure = await AdventureSchema(self).load(row)
+        adventure = await Adventure.AdventureSchema(self).load(row)
 
         return adventure
 
@@ -417,17 +461,19 @@ class G0T0Bot(commands.Bot):
         Returns:
             Adventure: The adventure associated with the given category channel ID, or None if no adventure is found.
         """
-
-        async with self.db.acquire() as conn:
-            results = await conn.execute(
-                get_adventure_by_category_channel_query(category_channel_id)
+        query = Adventure.adventures_table.select().where(
+            sa.and_(
+                Adventure.adventures_table.c.category_channel_id == category_channel_id,
+                Adventure.adventures_table.c.end_ts == sa.null(),
             )
-            row = await results.first()
+        )
+
+        row = await self.query(query)
 
         if row is None:
             return None
 
-        adventure = await AdventureSchema(self).load(row)
+        adventure = await Adventure.AdventureSchema(self).load(row)
 
         return adventure
 
@@ -439,19 +485,25 @@ class G0T0Bot(commands.Bot):
         Returns:
             Arena: The Arena object associated with the given channel ID, or None if no such Arena exists.
         """
+        query = Arena.arenas_table.select().where(
+            sa.and_(
+                Arena.arenas_table.c.channel_id == channel_id,
+                Arena.arenas_table.c.end_ts == sa.null(),
+            )
+        )
 
-        async with self.db.acquire() as conn:
-            results = await conn.execute(get_arena_by_channel_query(channel_id))
-            row = await results.first()
+        row = await self.query(query)
 
         if row is None:
             return None
 
-        arena: Arena = await ArenaSchema(self).load(row)
+        arena: Arena = await Arena.ArenaSchema(self).load(row)
 
         return arena
 
-    async def get_player(self, player_id: int, guild_id: int, **kwargs) -> Player:
+    async def get_player(
+        self, player_id: int, guild_id: int = None, **kwargs
+    ) -> Player:
         """
         Retrieve a player from the database based on player_id and guild_id.
         Args:
@@ -471,47 +523,38 @@ class G0T0Bot(commands.Bot):
         lookup_only = kwargs.get("lookup_only", False)
         ctx = kwargs.get("ctx")
 
-        async with self.db.acquire() as conn:
-            results = await conn.execute(get_player_query(player_id, guild_id))
-            rows = await results.fetchall()
+        player = None
 
-            if len(rows) == 0 and guild_id and not lookup_only:
-                player = Player(id=player_id, guild_id=guild_id)
-                results = await conn.execute(upsert_player_query(player))
-                row = await results.first()
-            elif len(rows) == 0 and lookup_only:
-                return None
-            elif len(rows) == 0 and not guild_id:
-                if ctx:
-                    guilds = [g for g in self.guilds if g.get_member(player_id)]
+        if guild_id:
+            query = Player.player_table.select().where(
+                sa.and_(
+                    Player.player_table.c.id == player_id,
+                    Player.player_table.c.guild_id == guild_id,
+                )
+            )
+        else:
+            query = Player.player_table.select().where(
+                Player.player_table.c.id == player_id
+            )
 
-                    if len(guilds) == 1:
-                        row = None
-                        player = Player(id=player_id, guild_id=guilds[0].id)
-                        results = await conn.execute(upsert_player_query(player))
-                        row = await results.first()
-                    elif len(guilds) > 1:
-                        guild = await get_selection(
-                            ctx,
-                            guilds,
-                            True,
-                            True,
-                            None,
-                            False,
-                            "Which guild is the command for?\n",
-                        )
+        rows = await self.query(query, QueryResultType.multiple)
 
-                        if guild:
-                            player = Player(id=player_id, guild_id=guild.id)
-                            results = await conn.execute(upsert_player_query(player))
-                            row = await results.first()
-                        else:
-                            raise G0T0Error("No guild selected.")
-                else:
-                    raise G0T0Error("Unable to find player")
-            else:
-                if ctx:
-                    guilds = [self.get_guild(r["guild_id"]).name for r in rows]
+        if len(rows) == 0 and guild_id and not lookup_only:
+            player = await Player(self, player_id, guild_id).upsert(inactive=inactive)
+
+        elif len(rows) == 0 and lookup_only:
+            return None
+
+        elif len(rows) == 0 and not guild_id:
+            if ctx:
+                guilds = [g for g in self.guilds if g.get_member(player_id)]
+
+                if len(guilds) == 1:
+                    player = await Player(self, player_id, guilds[0].id).upsert(
+                        inactive=inactive
+                    )
+                    return player
+                elif len(guilds) > 1:
                     guild = await get_selection(
                         ctx,
                         guilds,
@@ -519,13 +562,46 @@ class G0T0Bot(commands.Bot):
                         True,
                         None,
                         False,
-                        "Which guild is the command for?\n",
+                        "Which guild is this command for?\n",
                     )
-                    row = rows[guilds.index(guild)]
-                else:
-                    row = rows[0]
 
-        player: Player = await PlayerSchema(self, inactive).load(row)
+                    if guild:
+                        player = await Player(self, player_id, guild.id).upsert(
+                            inactive=inactive
+                        )
+                    else:
+                        raise G0T0Error("No guild selected/found.")
+                else:
+                    raise G0T0Error("Unable to find player")
+        else:
+            if ctx:
+                guilds = [g for g in self.guilds if g.get_member(player_id)]
+
+                if len(guilds) == 1:
+                    player = await Player(self, player_id, guilds[0].id).fetch()
+
+                else:
+                    choices = [g.name for g in guilds]
+                    choice = await get_selection(
+                        ctx,
+                        choices,
+                        True,
+                        True,
+                        None,
+                        False,
+                        "Which guild is this command for?\n",
+                    )
+
+                    if choice and (
+                        guild := next((g for g in guilds if g.name == choice), None)
+                    ):
+                        player = await Player(self, player_id, guild.id).fetch(
+                            inactive=inactive
+                        )
+            else:
+                player = await Player(self, player_id, rows[0]["guild_id"]).fetch(
+                    inactive=inactive
+                )
 
         return player
 
@@ -537,12 +613,9 @@ class G0T0Bot(commands.Bot):
         Returns:
             list[Store]: A list of Store objects representing the store items.
         """
+        rows = await self.query(Store.store_table.select(), QueryResultType.multiple)
 
-        async with self.db.acquire() as conn:
-            results = await conn.execute(get_store_items_query())
-            rows = await results.fetchall()
-
-        store_items = [StoreSchema().load(row) for row in rows]
+        store_items = [Store.StoreSchema().load(row) for row in rows]
 
         return store_items
 
@@ -613,27 +686,30 @@ class G0T0Bot(commands.Bot):
         Returns:
             Shatterpoint: The Shatterpoint object associated with the given guild ID, or None if not found.
         """
+        query = Shatterpoint.ref_gb_staging_table.select().where(
+            Shatterpoint.ref_gb_staging_table.c.guild_id == guild_id
+        )
 
-        async with self.db.acquire() as conn:
-            results = await conn.execute(get_shatterpoint_query(guild_id))
-            row = await results.first()
+        row = await self.query(query)
 
         if row is None:
             return None
 
-        shatterpoint: Shatterpoint = await ShatterPointSchema(self).load(row)
+        shatterpoint: Shatterpoint = await Shatterpoint.ShatterPointSchema(self).load(
+            row
+        )
 
         return shatterpoint
 
     async def get_busy_shatterpoints(self) -> list[Shatterpoint]:
-        if not is_admin:
-            return
+        query = Shatterpoint.ref_gb_staging_table.select().where(
+            Shatterpoint.ref_gb_staging_table.c.busy_member.isnot(None)
+        )
 
-        async with self.db.acquire() as conn:
-            results = await conn.execute(get_busy_shatterpoints_query())
-            rows = await results.fetchall()
-
-        shatterpoints = [await ShatterPointSchema(self).load(row) for row in rows]
+        shatterpoints = [
+            await Shatterpoint.ShatterPointSchema(self).load(row)
+            for row in await self.query(query, QueryResultType.multiple)
+        ]
 
         return shatterpoints
 
@@ -646,16 +722,16 @@ class G0T0Bot(commands.Bot):
             RefDashboard: The dashboard associated with the given category ID, or None if no dashboard is found.
         """
 
-        async with self.db.acquire() as conn:
-            results = await conn.execute(
-                get_dashboard_by_category_channel_query(category_id)
-            )
-            row = await results.first()
+        query = RefDashboard.ref_dashboard_table.select().where(
+            RefDashboard.ref_dashboard_table.c.category_channel_id == category_id
+        )
+
+        row = await self.query(query)
 
         if row is None:
             return None
 
-        d = RefDashboardSchema(self).load(row)
+        d = RefDashboard.RefDashboardSchema(self).load(row)
 
         return d
 
@@ -668,15 +744,16 @@ class G0T0Bot(commands.Bot):
             RefDashboard: The dashboard reference associated with the given message ID.
             None: If no dashboard is found for the given message ID.
         """
+        query = RefDashboard.ref_dashboard_table.select().where(
+            RefDashboard.ref_dashboard_table.c.post_id == message_id
+        )
 
-        async with self.db.acquire() as conn:
-            results = await conn.execute(get_dashboard_by_post_id(message_id))
-            row = await results.first()
+        row = await self.query(query)
 
         if row is None:
             return None
 
-        d = RefDashboardSchema(self).load(row)
+        d = RefDashboard.RefDashboardSchema(self).load(row)
 
         return d
 
@@ -833,16 +910,12 @@ class G0T0Bot(commands.Bot):
             faction=faction,
         )
 
-        async with self.db.acquire() as conn:
-            results = await conn.execute(upsert_log(log_entry))
-            row = await results.first()
+        await player.upsert()
 
-            await conn.execute(upsert_player_query(player))
+        if character:
+            await character.upsert()
 
-            if character:
-                await conn.execute(upsert_character_query(character))
-
-        log_entry = await LogSchema(self).load(row)
+        log_entry = await log_entry.upsert()
 
         # Author Rewards
         if author.guild.reward_threshold and activity.value != "LOG_REWARD":
@@ -870,8 +943,7 @@ class G0T0Bot(commands.Bot):
                         embed=LogEmbed(reward_log, True)
                     )
 
-                async with self.db.acquire() as conn:
-                    await conn.execute(upsert_player_query(author))
+                await author.upsert()
 
         # Send output
         if silent is False and ctx:
@@ -891,14 +963,14 @@ class G0T0Bot(commands.Bot):
         Returns:
             DBLog: The log entry corresponding to the given ID, or None if no entry is found.
         """
-        async with self.db.acquire() as conn:
-            results = await conn.execute(get_log_by_id(log_id))
-            row = await results.first()
+        query = DBLog.log_table.select().where(DBLog.log_table.c.id == log_id)
+
+        row = await self.query(query)
 
         if not row:
             return None
 
-        log_entry = await LogSchema(self).load(row)
+        log_entry = await DBLog.LogSchema(self).load(row)
 
         return log_entry
 
@@ -911,16 +983,24 @@ class G0T0Bot(commands.Bot):
         Returns:
             list[DBLog]: A list of the most recent logs for the given player.
         """
-        async with self.db.acquire() as conn:
-            results = await conn.execute(
-                get_n_player_logs_query(player.id, player.guild.id, n)
+        query = (
+            DBLog.log_table.select()
+            .where(
+                sa.and_(
+                    DBLog.log_table.c.player_id == player.id,
+                    DBLog.log_table.c.guild_id == player.guild.id,
+                )
             )
-            rows = await results.fetchall()
+            .order_by(DBLog.log_table.c.id.desc())
+            .limit(n)
+        )
+
+        rows = await self.query(query, QueryResultType.multiple)
 
         if not rows:
             return None
 
-        logs = [await LogSchema(self).load(row) for row in rows]
+        logs = [await DBLog.LogSchema(self).load(row) for row in rows]
 
         return logs
 
@@ -932,11 +1012,81 @@ class G0T0Bot(commands.Bot):
         Returns:
             dict: A dictionary containing the player's statistics.
         """
-        async with self.db.acquire() as conn:
-            results = await conn.execute(
-                player_stats_query(self.compendium, player.id, player.guild_id)
+        new_character_activity = self.compendium.get_activity("NEW_CHARACTER")
+        activities = [
+            x
+            for x in self.compendium.activity[0].values()
+            if x.value in ["RP", "ARENA", "ARENA_HOST", "GLOBAL", "SNAPSHOT"]
+        ]
+        columns = [
+            sa.func.sum(
+                sa.case([(DBLog.log_table.c.activity == act.id, 1)], else_=0)
+            ).label(f"Activity {act.value}")
+            for act in activities
+        ]
+
+        query = (
+            sa.select(
+                DBLog.log_table.c.player_id,
+                sa.func.count(DBLog.log_table.c.id).label("#"),
+                sa.func.sum(
+                    sa.case(
+                        [
+                            (
+                                sa.and_(
+                                    DBLog.log_table.c.cc > 0,
+                                    DBLog.log_table.c.activity
+                                    != new_character_activity.id,
+                                ),
+                                DBLog.log_table.c.cc,
+                            )
+                        ],
+                        else_=0,
+                    )
+                ).label("debt"),
+                sa.func.sum(
+                    sa.case(
+                        [
+                            (
+                                sa.and_(
+                                    DBLog.log_table.c.cc < 0,
+                                    DBLog.log_table.c.activity
+                                    != new_character_activity.id,
+                                ),
+                                DBLog.log_table.c.cc,
+                            )
+                        ],
+                        else_=0,
+                    )
+                ).label("credit"),
+                sa.func.sum(
+                    sa.case(
+                        [
+                            (
+                                sa.and_(
+                                    DBLog.log_table.c.cc > 0,
+                                    DBLog.log_table.c.activity
+                                    == new_character_activity.id,
+                                ),
+                                DBLog.log_table.c.cc,
+                            )
+                        ],
+                        else_=0,
+                    )
+                ).label("starting"),
+                *columns,
             )
-            row = await results.first()
+            .group_by(DBLog.log_table.c.player_id)
+            .where(
+                sa.and_(
+                    DBLog.log_table.c.player_id == player.player_id,
+                    DBLog.log_table.c.guild_id == player.guild_id,
+                    DBLog.log_table.c.invalid == False,
+                )
+            )
+        )
+
+        row = await self.query(query)
 
         return dict(row)
 
@@ -948,11 +1098,125 @@ class G0T0Bot(commands.Bot):
         Returns:
             dict: A dictionary containing the character's statistics if found, otherwise None.
         """
-        async with self.db.acquire() as conn:
-            results = await conn.execute(
-                character_stats_query(self.compendium, character.id)
+        new_character_activity = self.compendium.get_activity("NEW_CHARACTER")
+        conversion_activity = self.compendium.get_activity("CONVERSION")
+
+        query = (
+            sa.select(
+                DBLog.log_table.c.character_id,
+                sa.func.count(DBLog.log_table.c.id).label("#"),
+                sa.func.sum(
+                    sa.case(
+                        [
+                            (
+                                sa.and_(
+                                    DBLog.log_table.c.cc > 0,
+                                    DBLog.log_table.c.activity
+                                    != new_character_activity.id,
+                                ),
+                                DBLog.log_table.c.cc,
+                            )
+                        ],
+                        else_=0,
+                    )
+                ).label("cc debt"),
+                sa.func.sum(
+                    sa.case(
+                        [
+                            (
+                                sa.and_(
+                                    DBLog.log_table.c.cc > 0,
+                                    DBLog.log_table.c.activity
+                                    != new_character_activity.id,
+                                ),
+                                DBLog.log_table.c.cc,
+                            )
+                        ],
+                        else_=0,
+                    )
+                ).label("cc credit"),
+                sa.func.sum(
+                    sa.case(
+                        [
+                            (
+                                sa.and_(
+                                    DBLog.log_table.c.cc > 0,
+                                    DBLog.log_table.c.activity
+                                    == new_character_activity.id,
+                                ),
+                                DBLog.log_table.c.cc,
+                            )
+                        ],
+                        else_=0,
+                    )
+                ).label("cc starting"),
+                sa.func.sum(
+                    sa.case(
+                        [
+                            (
+                                sa.and_(
+                                    DBLog.log_table.c.credits > 0,
+                                    DBLog.log_table.c.activity
+                                    != new_character_activity.id,
+                                ),
+                                DBLog.log_table.c.credits,
+                            )
+                        ],
+                        else_=0,
+                    )
+                ).label("credit debt"),
+                sa.func.sum(
+                    sa.case(
+                        [
+                            (
+                                sa.and_(
+                                    DBLog.log_table.c.cc < 0,
+                                    DBLog.log_table.c.activity
+                                    != new_character_activity.id,
+                                ),
+                                DBLog.log_table.c.credits,
+                            )
+                        ],
+                        else_=0,
+                    )
+                ).label("credit credit"),
+                sa.func.sum(
+                    sa.case(
+                        [
+                            (
+                                sa.and_(
+                                    DBLog.log_table.c.credits > 0,
+                                    DBLog.log_table.c.activity
+                                    == new_character_activity.id,
+                                ),
+                                DBLog.log_table.c.credits,
+                            )
+                        ],
+                        else_=0,
+                    )
+                ).label("credit starting"),
+                sa.func.sum(
+                    sa.case(
+                        [
+                            (
+                                DBLog.log_table.c.activity == conversion_activity.id,
+                                DBLog.log_table.c.credits,
+                            )
+                        ],
+                        else_=0,
+                    )
+                ).label("credits converted"),
             )
-            row = await results.first()
+            .group_by(DBLog.log_table.c.character_id)
+            .where(
+                sa.and_(
+                    DBLog.log_table.c.character_id == character.id,
+                    DBLog.log_table.c.invalid == False,
+                )
+            )
+        )
+
+        row = await self.query(query)
 
         if row is None:
             return None
@@ -1028,8 +1292,7 @@ class G0T0Bot(commands.Bot):
                 await player.member.send(embed=LogEmbed(activity_log))
 
         else:
-            async with self.db.acquire() as conn:
-                await conn.execute(upsert_player_query(player))
+            await player.upsert()
 
     async def manage_player_tier_roles(self, player: Player, reason: str = None):
         # Primary Role handling
@@ -1106,25 +1369,22 @@ class G0T0Bot(commands.Bot):
                 )
 
     async def get_financial_data(self) -> Financial:
-        async with self.db.acquire() as conn:
-            results = await conn.execute(get_financial_query())
-            row = await results.first()
+
+        row = await self.query(Financial.financial_table.select())
 
         if row is None:
             return None
 
-        fin = FinancialSchema(self.db).load(row)
+        fin = Financial.FinancialSchema(self.db).load(row)
 
         return fin
 
     async def get_all_npcs(self) -> list[NPC]:
-        if not is_admin:
-            return
+        query = NPC.npc_table.select().order_by(NPC.npc_table.c.key.asc())
 
-        async with self.db.acquire() as conn:
-            results = await conn.execute(get_all_npc_query())
-            rows = await results.fetchall()
-
-        npcs = [NPCSchema(self.db).load(row) for row in rows]
+        npcs = [
+            NPC.NPCSchema(self.db).load(row)
+            for row in await self.query(query, QueryResultType.multiple)
+        ]
 
         return npcs

@@ -91,13 +91,13 @@ class AdventureSettingsEmbed(discord.Embed):
             inline=False,
         )
 
-        if adventure.player_characters:
+        if adventure._player_characters:
             self.add_field(
                 name="Players",
                 value="\n".join(
                     [
                         f"{ZWSP3}- {character.name} ({ctx.guild.get_member(character.player_id).mention})"
-                        for character in adventure.player_characters
+                        for character in adventure._player_characters
                         if ctx.guild.get_member(character.player_id)
                     ]
                 ),
@@ -136,13 +136,13 @@ class AdventureRewardEmbed(discord.Embed):
             inline=False,
         )
 
-        if adventure.player_characters:
+        if adventure._player_characters:
             self.add_field(
                 name="Players",
                 value="\n".join(
                     [
                         f"{ZWSP3}- {character.name} ({ctx.guild.get_member(character.player_id).mention})"
-                        for character in adventure.player_characters
+                        for character in adventure._player_characters
                         if ctx.guild.get_member(character.player_id)
                     ]
                 ),

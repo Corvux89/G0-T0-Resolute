@@ -1,3 +1,6 @@
+from __future__ import annotations
+from typing import TYPE_CHECKING, Union
+
 import re
 
 import discord
@@ -5,7 +8,17 @@ from sqlalchemy.util import asyncio
 
 from Resolute.constants import BOT_OWNERS
 from Resolute.models.objects.characters import PlayerCharacter
+from Resolute.models.objects.exceptions import G0T0CommandError
 from Resolute.models.objects.guilds import PlayerGuild
+
+if TYPE_CHECKING:
+    from Resolute.bot import G0T0Bot
+
+
+def dm_check(ctx: discord.ApplicationContext) -> bool:
+    if not ctx.guild:
+        raise G0T0CommandError("Command is not available in DM's")
+    return True
 
 
 def is_owner(ctx: discord.ApplicationContext) -> bool:
@@ -23,31 +36,27 @@ def is_owner(ctx: discord.ApplicationContext) -> bool:
     return author.id in BOT_OWNERS
 
 
-async def is_admin(ctx: discord.ApplicationContext | discord.Interaction) -> bool:
+async def is_admin(ctx: Union[discord.ApplicationContext, discord.Interaction]) -> bool:
     """
     User is a designated administrator
 
     :param ctx: Context
     :return: True if user is a bot owner, can manage the guild, or has a listed role, otherwise False
     """
-
-    g = await ctx.bot.get_player_guild(ctx.guild.id)
-
-    r_list = [g.admin_role] if g.admin_role else []
+    guild: PlayerGuild = await ctx.bot.get_player_guild(ctx.guild.id)
 
     if hasattr(ctx, "author"):
         author = ctx.author
     else:
         author = ctx.user
 
-    if is_owner(ctx):
-        return True
-    elif any(r in r_list for r in author.roles):
+    if is_owner(ctx) or guild.is_admin(author):
         return True
     else:
         return False
 
 
+# TODO: This too
 async def is_staff(ctx: discord.ApplicationContext | discord.Interaction) -> bool:
     """
     Check if the user is a staff member.
@@ -58,24 +67,14 @@ async def is_staff(ctx: discord.ApplicationContext | discord.Interaction) -> boo
     Returns:
         bool: True if the user is a staff member or the owner, False otherwise.
     """
-    g = await ctx.bot.get_player_guild(ctx.guild.id)
-
-    r_list = []
-
-    if g.admin_role:
-        r_list.append(g.admin_role)
-
-    if g.staff_role:
-        r_list.append(g.staff_role)
+    guild: PlayerGuild = await ctx.bot.get_player_guild(ctx.guild.id)
 
     if hasattr(ctx, "author"):
         author = ctx.author
     else:
         author = ctx.user
 
-    if is_owner(ctx):
-        return True
-    elif any(r in r_list for r in author.roles):
+    if is_owner(ctx) or guild.is_staff(author):
         return True
     else:
         return False

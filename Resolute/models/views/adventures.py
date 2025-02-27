@@ -5,7 +5,7 @@ from typing import Mapping, Type
 import discord
 
 from Resolute.bot import G0T0Bot
-from Resolute.helpers.general_helpers import confirm, is_admin
+from Resolute.helpers.general_helpers import confirm
 from Resolute.models.categories.categories import Faction
 from Resolute.models.embeds import ErrorEmbed
 from Resolute.models.embeds.adventures import (
@@ -15,6 +15,7 @@ from Resolute.models.embeds.adventures import (
 from Resolute.models.objects.adventures import Adventure
 from Resolute.models.objects.characters import PlayerCharacter
 from Resolute.models.objects.exceptions import G0T0Error
+from Resolute.models.objects.guilds import PlayerGuild
 from Resolute.models.views.base import InteractiveView
 from Resolute.models.views.npc import NPCSettingsUI
 
@@ -38,13 +39,14 @@ class AdventureView(InteractiveView):
         refresh_content(interaction, **kwargs): Refreshes the content of the view.
     """
 
-    __menu_copy_attrs__ = ("bot", "adventure", "dm_select")
+    __menu_copy_attrs__ = ("bot", "adventure", "dm_select", "guild")
     bot: G0T0Bot
     owner: discord.Member = None
     adventure: Adventure
     dm_select: bool = False
     member: discord.Member = None
     character: PlayerCharacter = None
+    guild: PlayerGuild = None
 
     async def commit(self):
         await self.adventure.upsert()
@@ -114,10 +116,17 @@ class AdventureSettingsUI(AdventureView):
     """
 
     @classmethod
-    def new(cls, bot: G0T0Bot, owner: discord.Member, adventure: Adventure):
+    def new(
+        cls,
+        bot: G0T0Bot,
+        owner: discord.Member,
+        adventure: Adventure,
+        guild: PlayerGuild,
+    ):
         inst = cls(owner=owner)
         inst.bot = bot
         inst.adventure = adventure
+        inst.guild = guild
 
         return inst
 
@@ -163,7 +172,7 @@ class AdventureSettingsUI(AdventureView):
 
             player_reward = response.cc
 
-            for character in self.adventure.player_characters:
+            for character in self.adventure._player_characters:
                 player = await self.bot.get_player(
                     character.player_id, interaction.guild.id
                 )
@@ -225,7 +234,7 @@ class AdventureSettingsUI(AdventureView):
                 elif not renown:
                     amount = 1 if len(self.adventure.factions) > 1 else 2
 
-                    for char in self.adventure.player_characters:
+                    for char in self.adventure._player_characters:
                         player = await self.bot.get_player(
                             char.player_id, self.adventure.guild_id
                         )
@@ -261,7 +270,9 @@ class AdventureSettingsUI(AdventureView):
         await self.on_timeout()
 
     async def _before_send(self):
-        if self.owner.id not in self.adventure.dms and not is_admin:
+        if self.owner.id not in self.adventure.dms and not self.guild.is_admin(
+            self.owner
+        ):
             self.remove_item(self.adventure_dm)
             self.remove_item(self.adventure_players)
             self.remove_item(self.adventure_close)
@@ -309,7 +320,7 @@ class _AdventureMemberSelect(AdventureView):
             elif character := next(
                 (
                     ch
-                    for ch in self.adventure.player_characters
+                    for ch in self.adventure._player_characters
                     if ch.player_id == self.player.id
                 ),
                 None,
@@ -344,7 +355,7 @@ class _AdventureMemberSelect(AdventureView):
             elif character := next(
                 (
                     ch
-                    for ch in self.adventure.player_characters
+                    for ch in self.adventure._player_characters
                     if ch.player_id == self.player.id
                 ),
                 None,
@@ -356,7 +367,7 @@ class _AdventureMemberSelect(AdventureView):
                     delete_after=5,
                 )
             else:
-                self.adventure.player_characters.append(self.character)
+                self.adventure._player_characters.append(self.character)
                 self.adventure.characters.append(self.character.id)
 
                 if self.adventure.role not in self.member.roles:
@@ -398,12 +409,12 @@ class _AdventureMemberSelect(AdventureView):
             if character := next(
                 (
                     ch
-                    for ch in self.adventure.player_characters
+                    for ch in self.adventure._player_characters
                     if ch.player_id == self.player.id
                 ),
                 None,
             ):
-                self.adventure.player_characters.remove(character)
+                self.adventure._player_characters.remove(character)
                 self.adventure.characters.remove(character.id)
 
                 if self.adventure.role in self.member.roles:
@@ -439,7 +450,7 @@ class _AdventureMemberSelect(AdventureView):
                 char_list = []
                 for char in self.player.characters:
                     char_list.append(
-                        discord.ui.SelectOption(
+                        discord.SelectOption(
                             label=f"{char.name}",
                             value=f"{self.player.characters.index(char)}",
                             default=(
@@ -470,7 +481,7 @@ class _AdventureFactions(AdventureView):
 
     async def _before_send(self):
         faction_list = [
-            discord.ui.SelectOption(
+            discord.SelectOption(
                 label=f"{f.value}",
                 value=f"{f.id}",
                 default=True if self.faction and self.faction.id == f.id else False,
@@ -495,7 +506,9 @@ class _AdventureFactions(AdventureView):
         if self.faction and self.faction.id not in [
             f.id for f in self.adventure.factions
         ]:
-            if len(self.adventure.factions) >= 2 and not is_admin:
+            if len(self.adventure.factions) >= 2 and not self.guild.is_admin(
+                self.owner
+            ):
                 await interaction.channel.send(
                     embed=ErrorEmbed(
                         f"You do not have the ability to add more than 2 factions to an adventure"

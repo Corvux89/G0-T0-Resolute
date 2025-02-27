@@ -6,7 +6,7 @@ import re
 import discord
 from sqlalchemy.util import asyncio
 
-from Resolute.constants import BOT_OWNERS
+from Resolute.constants import BOT_OWNERS, STAT_ABBR_MAP
 from Resolute.models.objects.characters import PlayerCharacter
 from Resolute.models.objects.exceptions import G0T0CommandError
 from Resolute.models.objects.guilds import PlayerGuild
@@ -56,7 +56,6 @@ async def is_admin(ctx: Union[discord.ApplicationContext, discord.Interaction]) 
         return False
 
 
-# TODO: This too
 async def is_staff(ctx: discord.ApplicationContext | discord.Interaction) -> bool:
     """
     Check if the user is a staff member.
@@ -418,3 +417,11 @@ def split_content(content: str, chunk_size: int = 2000) -> list[str]:
         out.append(current_chunk)
 
     return out
+
+
+def camel_to_title(string):
+    return re.sub(r"((?<=[a-z])[A-Z]|(?<!\A)[A-Z](?=[a-z]))", r" \1", string).title()
+
+
+def verbose_stat(stat):
+    return STAT_ABBR_MAP[stat.lower()]

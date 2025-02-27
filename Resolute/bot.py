@@ -316,8 +316,7 @@ class G0T0Bot(commands.Bot):
                 f"```"
             )
 
-            # At this time...I don't want DM Errors...cause those are going to happen a lot for now.
-            if ERROR_CHANNEL and ctx.guild:
+            if ERROR_CHANNEL:
                 try:
                     await ctx.bot.get_channel(int(ERROR_CHANNEL)).send(out_str)
                 except:

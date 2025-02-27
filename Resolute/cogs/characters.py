@@ -13,7 +13,6 @@ from Resolute.models.objects.applications import PlayerApplication
 from Resolute.models.objects.exceptions import (
     ApplicationNotFound,
     CharacterNotFound,
-    G0T0CommandError,
     G0T0Error,
 )
 from Resolute.models.objects.webhook import G0T0Webhook

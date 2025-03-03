@@ -332,7 +332,7 @@ class Arenas(commands.Cog):
             - Responds with the phase result embed.
             - Closes the arena if the maximum number of phases is reached or the result is "LOSS".
         """
-
+        await ctx.defer()
         arena = await self.bot.get_arena(ctx.channel.id)
 
         if arena is None:

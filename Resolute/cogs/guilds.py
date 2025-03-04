@@ -250,7 +250,8 @@ class Guilds(commands.Cog):
         await self.bot.query(
             Player.player_table.update()
             .where(Player.player_table.c.guild_id == g.id)
-            .values(div_cc=0, activity_points=0, activity_level=0)
+            .values(div_cc=0, activity_points=0, activity_level=0),
+            QueryResultType.none,
         )
 
         # Stipends

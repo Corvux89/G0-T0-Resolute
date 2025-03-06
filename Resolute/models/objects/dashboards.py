@@ -1,5 +1,13 @@
 from __future__ import annotations
+import calendar
+import datetime
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING
+
+import requests
+from PIL import Image, ImageDraw, ImageFilter
+from texttable import Texttable
+from io import BytesIO
 
 import aiopg.sa
 import discord
@@ -7,10 +15,14 @@ import sqlalchemy as sa
 from marshmallow import Schema, fields, post_load
 from sqlalchemy.dialects.postgresql import ARRAY, insert
 
-from Resolute.constants import ZWSP3
+from Resolute.constants import CHANNEL_BREAK, ZWSP3
 from Resolute.models import metadata
 from Resolute.models.categories.categories import DashboardType
+from Resolute.models.embeds.dashboards import RPDashboardEmbed
 from Resolute.models.objects import RelatedList
+from Resolute.helpers import get_last_message_in_channel
+from Resolute.models.objects.enum import QueryResultType
+from Resolute.models.objects.financial import Financial
 
 if TYPE_CHECKING:
     from Resolute.bot import G0T0Bot
@@ -37,6 +49,7 @@ class RPDashboardCategory(object):
         self.title = kwargs.get("title")
         self.name = kwargs.get("name")
         self.channels: list[discord.TextChannel] = kwargs.get("channels", [])
+        self.hide_if_empty: bool = kwargs.get("hide", False)
 
     def channel_output(self) -> str:
         if self.channels:
@@ -47,6 +60,24 @@ class RPDashboardCategory(object):
             return "\n".join([f"{c.mention}" for c in sorted_channels])
 
         return ZWSP3
+
+    def setup_channels(self, bot: G0T0Bot, embed: discord.Embed) -> None:
+
+        def strip_field(str) -> int:
+            if str.replace(" ", "") == ZWSP3.replace(" ", "") or str == "":
+                return
+            return int(str.replace("\u200b", "").replace("<#", "").replace(">", ""))
+
+        if self.hide_if_empty:
+            channels = [x.value if self.title in x.name else "" for x in embed.fields][
+                0
+            ].split("\n")
+        else:
+            channels = [x.value for x in embed.fields if self.title in x.name][0].split(
+                "\n"
+            )
+
+        self.channels = [bot.get_channel(strip_field(x)) for x in channels if x != ""]
 
 
 class RefDashboard(object):
@@ -208,6 +239,221 @@ class RefDashboard(object):
 
         async with self._db.acquire() as conn:
             await conn.execute(query)
+
+    async def refresh(self, bot: G0T0Bot, message: discord.Message = None) -> None:
+        original_message = await self.get_pinned_post()
+
+        if isinstance(original_message, bool):
+            return
+
+        if not original_message or not original_message.pinned:
+            return await self.delete()
+
+        guild = await bot.get_player_guild(original_message.guild.id)
+
+        if self.dashboard_type.value.upper() == "RP":
+            staff_name = guild.staff_role.name if guild.staff_role else "Archivist"
+            staff_field = RPDashboardCategory(
+                title=f"{staff_name}",
+                name=f"<:pencil:989284061786808380> -- Awaiting {staff_name}",
+                hide=True,
+            )
+            available_field = RPDashboardCategory(
+                title="Available",
+                name="<:white_check_mark:983576747381518396> -- Available",
+            )
+            unavailable_field = RPDashboardCategory(
+                title="Unavailable", name="<:x:983576786447245312> -- Unavailable"
+            )
+
+            all_fields = [staff_field, available_field, unavailable_field]
+            update = False
+
+            if message:
+                embed = original_message.embeds[0]
+
+                staff_field.setup_channels(bot, embed)
+                available_field.setup_channels(bot, embed)
+                unavailable_field.setup_channels(bot, embed)
+
+                node = ""
+
+                for field in all_fields:
+                    if message.channel in field.channels:
+                        node = field.title
+                        field.channels.remove(message.channel)
+
+                if not message.content or message.content in [
+                    CHANNEL_BREAK,
+                    CHANNEL_BREAK.replace(" ", ""),
+                ]:
+                    available_field.channels.append(message.channel)
+                    update = True if available_field.title != node else False
+                elif guild.staff_role and guild.staff_role.mention in message.content:
+                    staff_field.channels.append(message.channel)
+                    update = True if staff_field.title != node else False
+                else:
+                    unavailable_field.channels.append(message.channel)
+                    update = True if unavailable_field.title != node else False
+
+            else:
+                update = True
+                for channel in self.channels_to_search():
+                    if last_message := await get_last_message_in_channel(channel):
+                        if last_message.content in [
+                            CHANNEL_BREAK,
+                            CHANNEL_BREAK.replace(" ", ""),
+                        ]:
+                            available_field.channels.append(channel)
+                        elif (
+                            guild.staff_role
+                            and guild.staff_role.mention in last_message.content
+                        ):
+                            staff_field.channels.append(channel)
+                        else:
+                            unavailable_field.channels.append(channel)
+
+            all_fields = [
+                f for f in all_fields if len(f.channels) > 0 or f.hide_if_empty == False
+            ]
+
+            if update:
+                return await original_message.edit(
+                    content="",
+                    embed=RPDashboardEmbed(all_fields, self.category_channel.name),
+                )
+
+        elif self.dashboard_type.value.upper() == "CCENSUS":
+            census = []
+            result = await bot.query(
+                DashboardViews.class_census_table.select(), QueryResultType.multiple
+            )
+
+            for row in result:
+                census.append([row["Class"], row["#"]])
+
+            class_table = Texttable()
+            class_table.set_cols_align(["l", "r"])
+            class_table.set_cols_valign(["m", "m"])
+            class_table.set_cols_width([15, 5])
+            class_table.header(["Class", "#"])
+            class_table.add_rows(census, header=False)
+
+            footer = f"Last Updated - <t:{calendar.timegm(datetime.now(timezone.utc).timetuple())}:F>"
+
+            return await original_message.edit(
+                content=f"```\n{class_table.draw()}```{footer}", embed=None
+            )
+
+        elif self.dashboard_type.value.upper() == "LDIST":
+            dist = []
+
+            result = await bot.query(
+                DashboardViews.level_distribution_table.select(),
+                QueryResultType.multiple,
+            )
+
+            for row in result:
+                dist.append([row["level"], row["#"]])
+
+            dist_table = Texttable()
+            dist_table.set_cols_align(["l", "r"])
+            dist_table.set_cols_valign(["m", "m"])
+            dist_table.set_cols_width([10, 5])
+            dist_table.header(["Level", "#"])
+            dist_table.add_rows(dist, header=False)
+
+            footer = f"Last Updated - <t:{calendar.timegm(datetime.now(timezone.utc).timetuple())}:F>"
+
+            return await original_message.edit(
+                content=f"```\n{dist_table.draw()}```{footer}", embed=None
+            )
+
+        elif self.dashboard_type.value.upper() == "FINANCIAL":
+            fin: Financial = await bot.get_financial_data()
+            res = requests.get(
+                "https://res.cloudinary.com/jerrick/image/upload/d_642250b563292b35f27461a7.png,f_jpg,fl_progressive,q_auto,w_1024/y3mdgvccfyvmemabidd0.jpg"
+            )
+            if res.status_code != 200:
+                raise Exception("Failed to download image")
+
+            background = Image.open(BytesIO(res.content)).convert("RGBA")
+            background = background.resize((800, 400))
+
+            background = Image.open(BytesIO(res.content)).convert("RGBA")
+            background = background.resize((800, 400))
+
+            # Progress bar properties
+            bar_width = 700
+            bar_height = 50
+            bar_x = 50
+            bar_y = 300
+            corner_radius = 20
+            shadow_offset = 10
+
+            # Calculate progress
+            progress = min(
+                fin.adjusted_total / fin.monthly_goal, 1
+            )  # Cap progress at 100% for the main bar
+
+            shadow = Image.new("RGBA", background.size, (0, 0, 0, 0))
+            shadow_draw = ImageDraw.Draw(shadow)
+
+            shadow_color = (0, 0, 0, 100)
+
+            shadow_rect = [
+                bar_x + shadow_offset,
+                bar_y + shadow_offset,
+                bar_x + bar_width + shadow_offset,
+                bar_y + bar_height + shadow_offset,
+            ]
+            shadow_draw.rounded_rectangle(
+                shadow_rect, fill=shadow_color, radius=corner_radius
+            )
+            shadow = shadow.filter(ImageFilter.GaussianBlur(10))
+
+            background = Image.alpha_composite(background, shadow)
+
+            draw = ImageDraw.Draw(background)
+
+            draw.rounded_rectangle(
+                [bar_x, bar_y, bar_x + bar_width, bar_y + bar_height],
+                fill="gray",
+                outline="white",
+                width=2,
+                radius=corner_radius,
+            )
+
+            draw.rounded_rectangle(
+                [bar_x, bar_y, bar_x + int(bar_width * progress), bar_y + bar_height],
+                fill="green",
+                radius=corner_radius,
+            )
+
+            image_buffer = BytesIO()
+            background.save(image_buffer, format="PNG")
+            image_buffer.seek(0)
+
+            embed = discord.Embed(
+                title="G0-T0 Financial Progress",
+                description=f"Current Monthly Progress: ${fin.adjusted_total:.2f}\n"
+                f"Monthly Goal: ${fin.monthly_goal:.2f}\n"
+                f"Reserve: ${fin.reserve:.2f}",
+                color=discord.Color.gold(),
+                timestamp=discord.utils.utcnow(),
+            )
+
+            embed.add_field(
+                name="Stretch Goals",
+                value="If we end up with enough reserve funds, we will look at making a website to house our content rulings / updates and work on better integrations with the bot.",
+            )
+
+            embed.set_image(url="attachment://progress.png")
+            embed.set_footer(text="Last Updated")
+
+            file = discord.File(image_buffer, filename="progress.png")
+            original_message.attachments.clear()
+            return await original_message.edit(file=file, embed=embed, content="")
 
 
 # PGSQL Views

@@ -6,7 +6,7 @@ from discord.ext import commands
 
 from Resolute.bot import G0T0Context
 from Resolute.constants import ACTIVITY_POINT_MINIMUM
-from Resolute.helpers.general_helpers import (
+from Resolute.helpers import (
     get_selection,
     split_content,
 )

@@ -6,7 +6,7 @@ from discord.ext import commands
 
 from Resolute.bot import G0T0Bot, G0T0Context
 from Resolute.constants import APPROVAL_EMOJI, DENIED_EMOJI, EDIT_EMOJI, NULL_EMOJI
-from Resolute.helpers.general_helpers import confirm, is_admin, is_staff
+from Resolute.helpers import confirm, is_admin, is_staff
 from Resolute.models.embeds.logs import LogEmbed
 from Resolute.models.objects.enum import WebhookType
 from Resolute.models.objects.market import MarketTransaction

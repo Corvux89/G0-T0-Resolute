@@ -8,8 +8,7 @@ from discord.ext import commands, tasks
 
 from Resolute.bot import G0T0Bot, G0T0Context
 from Resolute.constants import ADMIN_GUILDS
-from Resolute.helpers.dashboards import update_financial_dashboards
-from Resolute.helpers.general_helpers import is_admin, is_owner
+from Resolute.helpers import is_admin, is_owner
 from Resolute.models.objects.guilds import PlayerGuild
 from Resolute.models.views.admin import AdminMenuUI
 from Resolute.models.views.automation_request import AutomationRequestView
@@ -178,5 +177,5 @@ class Admin(commands.Cog):
             fin.monthly_total = 0
             fin.month_count += 1
             await fin.update()
-            await update_financial_dashboards(self.bot)
+            await self.bot.update_financial_dashboards()
             log.info("Finanical month reset")

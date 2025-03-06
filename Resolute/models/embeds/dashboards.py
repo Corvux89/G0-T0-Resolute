@@ -1,6 +1,10 @@
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
 import discord
 
-from Resolute.models.objects.dashboards import RefDashboard, RPDashboardCategory
+if TYPE_CHECKING:
+    from Resolute.models.objects.dashboards import RefDashboard, RPDashboardCategory
 
 
 class DashboardEditEmbed(discord.Embed):

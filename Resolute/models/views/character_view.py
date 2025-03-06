@@ -5,7 +5,7 @@ import discord
 
 from Resolute.bot import G0T0Bot
 from Resolute.compendium import Compendium
-from Resolute.helpers.general_helpers import get_webhook, process_message
+from Resolute.helpers import get_webhook, process_message
 from Resolute.models.categories import CharacterClass, CharacterSpecies
 from Resolute.models.categories.categories import CharacterArchetype, Faction
 from Resolute.models.embeds import ErrorEmbed

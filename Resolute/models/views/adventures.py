@@ -5,7 +5,7 @@ from typing import Mapping, Type
 import discord
 
 from Resolute.bot import G0T0Bot
-from Resolute.helpers.general_helpers import confirm
+from Resolute.helpers import confirm
 from Resolute.models.categories.categories import Faction
 from Resolute.models.embeds import ErrorEmbed
 from Resolute.models.embeds.adventures import (

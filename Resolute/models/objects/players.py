@@ -13,7 +13,7 @@ from sqlalchemy.dialects.postgresql import insert
 import Resolute.models.objects.logs as logs
 import Resolute.models.objects.npc as npc
 from Resolute.compendium import Compendium
-from Resolute.helpers.general_helpers import get_webhook
+from Resolute.helpers import get_webhook
 from Resolute.models import metadata
 from Resolute.models.categories.categories import Activity, ArenaType, LevelTier
 from Resolute.models.embeds.arenas import ArenaStatusEmbed

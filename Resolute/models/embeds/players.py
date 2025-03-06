@@ -2,7 +2,7 @@ import discord
 
 from Resolute.compendium import Compendium
 from Resolute.constants import ZWSP3
-from Resolute.helpers.general_helpers import get_webhook
+from Resolute.helpers import get_webhook
 from Resolute.models.objects.players import ArenaPost, Player, RPPost
 
 

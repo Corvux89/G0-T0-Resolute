@@ -4,7 +4,7 @@ import discord
 
 from Resolute.bot import G0T0Bot
 from Resolute.constants import DAYS_OF_WEEK
-from Resolute.helpers.general_helpers import get_positivity
+from Resolute.helpers import get_positivity
 from Resolute.models.embeds import ErrorEmbed
 from Resolute.models.embeds.guilds import GuildEmbed, ResetEmbed
 from Resolute.models.objects.guilds import PlayerGuild

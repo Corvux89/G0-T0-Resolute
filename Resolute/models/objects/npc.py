@@ -8,7 +8,7 @@ import sqlalchemy as sa
 from marshmallow import Schema, fields, post_load
 from sqlalchemy.dialects.postgresql import ARRAY, insert
 
-import Resolute.helpers.general_helpers as gh
+import Resolute.helpers as gh
 from Resolute.models import metadata
 from Resolute.models.objects.enum import WebhookType
 from Resolute.models.objects.exceptions import G0T0CommandError

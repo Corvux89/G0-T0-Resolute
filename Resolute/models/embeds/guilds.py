@@ -1,7 +1,7 @@
 import discord
 
 from Resolute.constants import THUMBNAIL
-from Resolute.helpers.general_helpers import process_message
+from Resolute.helpers import process_message
 from Resolute.models.objects.guilds import PlayerGuild
 
 

@@ -4,7 +4,6 @@ import discord
 from discord.ext import commands
 
 from Resolute.bot import G0T0Bot, G0T0Context
-from Resolute.helpers.autocomplete import get_faction_autocomplete
 from Resolute.models.categories.categories import Faction
 from Resolute.models.embeds.adventures import AdventuresEmbed
 from Resolute.models.objects.adventures import Adventure
@@ -94,6 +93,9 @@ class Adventures(commands.Cog):
 
         return await ctx.respond(embed=AdventuresEmbed(player, phrases))
 
+    async def faction_autocomplete(self, ctx: discord.AutocompleteContext) -> list[str]:
+        return [f.value for f in self.bot.compendium.faction[0].values()] or []
+
     @adventure_commands.command(name="create", description="Creates a new adventure")
     async def adventure_create(
         self,
@@ -118,13 +120,13 @@ class Adventures(commands.Cog):
         faction1: discord.Option(
             str,
             description="First faction this adventure is for",
-            autocomplete=get_faction_autocomplete,
+            autocomplete=faction_autocomplete,
             required=False,
         ),
         faction2: discord.Option(
             str,
             description="Second faction this adventure is for",
-            autocomplete=get_faction_autocomplete,
+            autocomplete=faction_autocomplete,
             required=False,
         ),
     ):

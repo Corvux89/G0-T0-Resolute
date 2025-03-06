@@ -9,7 +9,7 @@ import discord
 from discord.ext import commands, tasks
 
 from Resolute.bot import G0T0Bot, G0T0Context
-from Resolute.helpers.general_helpers import confirm, is_admin
+from Resolute.helpers import confirm, is_admin
 from Resolute.models.embeds.guilds import ResetEmbed
 from Resolute.models.objects.characters import PlayerCharacter
 from Resolute.models.objects.enum import QueryResultType

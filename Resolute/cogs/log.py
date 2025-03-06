@@ -5,7 +5,7 @@ from discord.ext import commands
 
 from Resolute.bot import G0T0Bot, G0T0Context
 from Resolute.constants import ZWSP3
-from Resolute.helpers.general_helpers import is_admin, is_staff
+from Resolute.helpers import is_admin, is_staff
 from Resolute.models.embeds.logs import LogHxEmbed, LogStatsEmbed
 from Resolute.models.objects.exceptions import (
     CharacterNotFound,

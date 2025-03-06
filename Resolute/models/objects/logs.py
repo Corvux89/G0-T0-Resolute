@@ -8,7 +8,7 @@ import discord
 import sqlalchemy as sa
 from marshmallow import Schema, fields, post_load
 from Resolute.constants import ZWSP3
-from Resolute.helpers.general_helpers import confirm
+from Resolute.helpers import confirm
 from Resolute.models import metadata
 from Resolute.models.categories import Activity
 from Resolute.models.categories.categories import Faction

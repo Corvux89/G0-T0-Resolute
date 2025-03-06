@@ -6,11 +6,8 @@ from discord.ext import commands, tasks
 
 from Resolute.bot import G0T0Bot, G0T0Context
 from Resolute.constants import DASHBOARD_REFRESH_INTERVAL, ZWSP3
-from Resolute.helpers.dashboards import update_dashboard
-from Resolute.models.embeds.dashboards import RPDashboardEmbed
 from Resolute.models.objects.dashboards import (
     RefDashboard,
-    RPDashboardCategory,
 )
 from Resolute.models.objects.enum import QueryResultType
 from Resolute.models.views.dashboards import DashboardSettingsUI
@@ -90,90 +87,7 @@ class Dashboards(commands.Cog):
             if not dashboard or message.channel.id in dashboard.excluded_channel_ids:
                 return
 
-            post_message = await dashboard.get_pinned_post()
-
-            if isinstance(post_message, bool):
-                return
-
-            if not post_message or not post_message.pinned:
-                return await dashboard.delete()
-
-            guild = await self.bot.get_player_guild(message.guild.id)
-
-            if dashboard.dashboard_type.value.upper() == "RP":
-                embed = post_message.embeds[0]
-
-                staff_field = RPDashboardCategory(
-                    title="Archivist",
-                    name="<:pencil:989284061786808380> -- Awaiting Archivist",
-                    channels=[
-                        self.bot.get_channel(self.strip_field(x))
-                        for x in [
-                            x.value if "Archivist" in x.name else ""
-                            for x in embed.fields
-                        ][0].split("\n")
-                        if x != ""
-                    ],
-                )
-                available_field = RPDashboardCategory(
-                    title="Available",
-                    name="<:white_check_mark:983576747381518396> -- Available",
-                    channels=[
-                        self.bot.get_channel(self.strip_field(x))
-                        for x in [
-                            x.value for x in embed.fields if "Available" in x.name
-                        ][0].split("\n")
-                        if x != ""
-                    ],
-                )
-
-                unavailable_field = RPDashboardCategory(
-                    title="Unavailable",
-                    name="<:x:983576786447245312> -- Unavailable",
-                    channels=[
-                        self.bot.get_channel(self.strip_field(x))
-                        for x in [
-                            x.value for x in embed.fields if "Unavailable" in x.name
-                        ][0].split("\n")
-                        if x != ""
-                    ],
-                )
-
-                all_fields = [staff_field, available_field, unavailable_field]
-                node = ""
-                update = False
-
-                for field in all_fields:
-                    if message.channel in field.channels:
-                        node = field.title
-                        field.channels.remove(message.channel)
-
-                if not message.content or message.content in [
-                    "```\n​\n```",
-                    "```\n \n```",
-                ]:
-                    available_field.channels.append(message.channel)
-                    update = True if available_field.title != node else False
-                elif guild.staff_role and guild.staff_role.mention in message.content:
-                    staff_field.channels.append(message.channel)
-                    update = True if staff_field.title != node else False
-                else:
-                    unavailable_field.channels.append(message.channel)
-                    update = True if unavailable_field.title != node else False
-
-                all_fields = [
-                    f
-                    for f in all_fields
-                    if len(f.channels) > 0 or f.title != "Archivist"
-                ]
-
-                if update:
-                    return await post_message.edit(
-                        content="",
-                        embed=RPDashboardEmbed(
-                            all_fields, message.channel.category.name
-                        ),
-                    )
+            await dashboard.refresh(self.bot, message)
 
     @dashboard_commands.command(
         name="manage",
@@ -227,12 +141,7 @@ class Dashboards(commands.Cog):
             dashboard: RefDashboard = RefDashboard.RefDashboardSchema(self.bot).load(
                 row
             )
-            await update_dashboard(self.bot, dashboard)
-
-        # async with self.bot.db.acquire() as conn:
-        #     async for row in conn.execute(get_dashboards()):
-        #         dashboard: RefDashboard = RefDashboardSchema(self.bot).load(row)
-        #         await update_dashboard(self.bot, dashboard)
+            await dashboard.refresh(self.bot)
         end = timer()
         log.info(
             f"DASHBOARD: Channel status dashboards updated in [ {end - start:.2f} ]s"

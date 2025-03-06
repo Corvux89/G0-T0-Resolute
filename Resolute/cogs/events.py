@@ -4,8 +4,7 @@ import discord
 from discord.ext import commands
 
 from Resolute.bot import G0T0Bot
-from Resolute.helpers.dashboards import update_financial_dashboards
-from Resolute.helpers.general_helpers import process_message
+from Resolute.helpers import process_message
 from Resolute.models.embeds.events import MemberLeaveEmbed
 from Resolute.models.objects.applications import PlayerApplication
 from Resolute.models.objects.guilds import PlayerGuild
@@ -161,4 +160,4 @@ class Events(commands.Cog):
                 )
 
         await fin.update()
-        await update_financial_dashboards(self.bot)
+        await self.bot.update_financial_dashboards()

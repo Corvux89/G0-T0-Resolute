@@ -2,7 +2,7 @@ from typing import Mapping
 
 import discord
 
-from Resolute.helpers.general_helpers import get_webhook
+from Resolute.helpers import get_webhook
 from Resolute.models.embeds.applications import NewCharacterRequestEmbed
 from Resolute.models.objects.applications import (
     LevelUpApplication,

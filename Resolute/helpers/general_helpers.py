@@ -9,10 +9,10 @@ from sqlalchemy.util import asyncio
 from Resolute.constants import BOT_OWNERS
 from Resolute.models.objects.characters import PlayerCharacter
 from Resolute.models.objects.exceptions import G0T0CommandError
-from Resolute.models.objects.guilds import PlayerGuild
 
 if TYPE_CHECKING:
     from Resolute.bot import G0T0Bot
+    from Resolute.models.objects.guilds import PlayerGuild
 
 
 def dm_check(ctx: discord.ApplicationContext) -> bool:
@@ -56,7 +56,6 @@ async def is_admin(ctx: Union[discord.ApplicationContext, discord.Interaction]) 
         return False
 
 
-# TODO: This too
 async def is_staff(ctx: discord.ApplicationContext | discord.Interaction) -> bool:
     """
     Check if the user is a staff member.
@@ -418,3 +417,28 @@ def split_content(content: str, chunk_size: int = 2000) -> list[str]:
         out.append(current_chunk)
 
     return out
+
+
+async def get_last_message_in_channel(channel: discord.TextChannel) -> discord.Message:
+    """
+    Retrieve the last message in a given text channel.
+    This function attempts to get the last message in the specified channel.
+    It first checks if the channel's `last_message` attribute is set. If not,
+    it tries to fetch the last message from the channel's history. If that
+    also fails, it attempts to fetch the message using the channel's
+    `last_message_id`. If all attempts fail, it returns None.
+    Args:
+        channel (TextChannel): The text channel from which to retrieve the last message.
+    Returns:
+        Message: The last message in the channel, or None if it cannot be retrieved.
+    """
+    if not (last_message := channel.last_message):
+        try:
+            last_message = next((msg for msg in channel.history(limit=1)), None)
+        except:
+            try:
+                last_message = await channel.fetch_message(channel.last_message_id)
+            except:
+                return None
+
+    return last_message

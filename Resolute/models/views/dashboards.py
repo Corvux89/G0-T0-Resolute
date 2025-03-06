@@ -4,7 +4,6 @@ from typing import Mapping
 import discord
 
 from Resolute.bot import G0T0Bot
-from Resolute.helpers.dashboards import update_dashboard
 from Resolute.models.categories.categories import DashboardType
 from Resolute.models.embeds import ErrorEmbed
 from Resolute.models.embeds.dashboards import DashboardEditEmbed
@@ -147,7 +146,7 @@ class _NewDashboardUI(DashboardSettings):
 
         self.new_dashboard = await self.bot.get_dashboard_from_message(d_message.id)
 
-        await update_dashboard(self.bot, self.new_dashboard)
+        await self.new_dashboard.refresh(self.bot)
 
         await self.defer_to(DashboardSettingsUI, interaction)
 

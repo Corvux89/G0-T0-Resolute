@@ -1,5 +1,3 @@
-from datetime import datetime, timezone
-
 import discord
 
 from Resolute.constants import THUMBNAIL
@@ -8,7 +6,7 @@ from Resolute.models.objects.players import Player
 
 
 class LogEmbed(discord.Embed):
-    def __init__(self, log_entry: DBLog, show_values: bool = False):
+    def __init__(self, log_entry: DBLog, show_values: bool = False, **kwargs):
         super().__init__(
             title=f"{log_entry.activity.value} Logged - {log_entry.character.name if log_entry.character else log_entry.player.member.display_name}",
             color=discord.Color.random(),
@@ -55,7 +53,7 @@ class LogStatsEmbed(discord.Embed):
         super().__init__(
             title=f"Log statistics for {player.member.name}",
             color=discord.Color.random(),
-            timestamp=datetime.now(timezone.utc),
+            timestamp=discord.utils.utcnow(),
         )
 
         self.set_thumbnail(url=player.member.display_avatar.url)

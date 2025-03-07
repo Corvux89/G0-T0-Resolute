@@ -4,8 +4,9 @@ import discord
 from discord.ext import commands
 
 from Resolute.bot import G0T0Bot, G0T0Context
+from Resolute.constants import ZWSP3
 from Resolute.models.categories.categories import Faction
-from Resolute.models.embeds.adventures import AdventuresEmbed
+from Resolute.models.embeds import PlayerEmbed
 from Resolute.models.objects.adventures import Adventure
 from Resolute.models.objects.exceptions import (
     AdventureNotFound,
@@ -91,7 +92,59 @@ class Adventures(commands.Cog):
 
         phrases = [p for p in [phrase, phrase2] if p]
 
-        return await ctx.respond(embed=AdventuresEmbed(player, phrases))
+        embed = PlayerEmbed(
+            player.member,
+            title=f"Adventure information for {player.member.display_name}",
+        )
+
+        dm_str = (
+            "\n".join(
+                [
+                    f"{ZWSP3}{adventure.name} ({adventure.role.mention})"
+                    for adventure in player.adventures
+                    if player.id in adventure.dms
+                ]
+            )
+            if len(player.adventures) > 0
+            else None
+        )
+
+        if dm_str:
+            embed.add_field(name="DM'ing Adventures", value=dm_str, inline=False)
+
+        for character in player.characters:
+            adventure_str = (
+                "\n".join(
+                    [
+                        f"{ZWSP3}{adventure.name} ({adventure.role.mention})"
+                        for adventure in player.adventures
+                        if character.id in adventure.characters
+                    ]
+                )
+                if len(player.adventures) > 0
+                else "None"
+            )
+
+            class_str = ",".join(
+                [f" {c.get_formatted_class()}" for c in character.classes]
+            )
+
+            embed.add_field(
+                name=f"{character.name} - Level {character.level} [{class_str}]",
+                value=adventure_str or "None",
+                inline=False,
+            )
+
+        if phrases:
+            for p in phrases:
+                out_str = p.split("|")
+                embed.add_field(
+                    name=out_str[0],
+                    value=f"{out_str[1] if len(out_str) > 1 else ''}",
+                    inline=False,
+                )
+
+        return await ctx.respond(embed=embed)
 
     async def faction_autocomplete(self, ctx: discord.AutocompleteContext) -> list[str]:
         return [f.value for f in self.bot.compendium.faction[0].values()] or []

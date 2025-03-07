@@ -18,7 +18,6 @@ from sqlalchemy.dialects.postgresql import ARRAY, insert
 from Resolute.constants import CHANNEL_BREAK, ZWSP3
 from Resolute.models import metadata
 from Resolute.models.categories.categories import DashboardType
-from Resolute.models.embeds.dashboards import RPDashboardEmbed
 from Resolute.models.objects import RelatedList
 from Resolute.helpers import get_last_message_in_channel
 from Resolute.models.objects.enum import QueryResultType
@@ -318,10 +317,19 @@ class RefDashboard(object):
             ]
 
             if update:
-                return await original_message.edit(
-                    content="",
-                    embed=RPDashboardEmbed(all_fields, self.category_channel.name),
+                embed = discord.Embed(
+                    color=discord.Color.dark_gray,
+                    title=f"Channel Statuses - {self.category_channel.name}",
+                    timestamp=discord.utils.utcnow(),
                 )
+                embed.set_footer(text="Last Updated")
+
+                for field in all_fields:
+                    embed.add_field(
+                        name=field.name, value=field.channel_output(), inline=False
+                    )
+
+                return await original_message.edit(content="", embed=embed)
 
         elif self.dashboard_type.value.upper() == "CCENSUS":
             census = []

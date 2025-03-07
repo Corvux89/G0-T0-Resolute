@@ -7,8 +7,9 @@ import chat_exporter
 import discord
 
 from Resolute.bot import G0T0Bot
-from Resolute.models.embeds import ErrorEmbed
-from Resolute.models.embeds.channel_admin import ChannelEmbed
+from Resolute.constants import ZWSP3
+from Resolute.helpers.general_helpers import split_content
+from Resolute.models.embeds import ErrorEmbed, PlayerEmbed
 from Resolute.models.objects.exceptions import G0T0Error
 from Resolute.models.objects.players import Player
 from Resolute.models.views.base import InteractiveView
@@ -53,6 +54,48 @@ class ChannelAdmin(InteractiveView):
 
     async def commit(self):
         self.player = await self.bot.get_player(self.player.id, self.player.guild.id)
+
+    async def get_content(self) -> Mapping:
+        if not self.channel:
+            return {"embed": None, "content": "Pick an option"}
+        else:
+            chunk_size = 1000
+
+            embed = PlayerEmbed(
+                self.owner,
+                title=f"{self.channel.name} Summary",
+                description=(
+                    f"**Category**: {self.channel.category.mention if self.channel.category else ''}\n"
+                ),
+            )
+
+            category_overwrites = (
+                self.channel.category.overwrites if self.channel.category else {}
+            )
+            category_string = "\n".join(get_overwrite_string(category_overwrites))
+            category_chunks = split_content(category_string, chunk_size)
+
+            for i, chunk in enumerate(category_chunks):
+                embed.add_field(
+                    name=f"Category Overwrites {f'{i+1}' if len(category_chunks)>1 else ''}",
+                    value=chunk,
+                    inline=False,
+                )
+
+            channel_overwrites = (
+                self.channel.overwrites if hasattr(self.channel, "overwrites") else {}
+            )
+            channel_string = "\n".join(get_overwrite_string(channel_overwrites))
+            channel_chunks = split_content(channel_string, chunk_size)
+
+            for i, chunk in enumerate(channel_chunks):
+                embed.add_field(
+                    name=f"Channel Overwrites {f'{i+1}' if len(channel_chunks)>1 else ''}",
+                    value=chunk,
+                    inline=False,
+                )
+
+            return {"embed": embed, "content": ""}
 
 
 class ChannelAdminUI(ChannelAdmin):
@@ -163,12 +206,6 @@ class ChannelAdminUI(ChannelAdmin):
     async def exit(self, *_):
         await self.on_timeout()
 
-    async def get_content(self) -> Mapping:
-        if not self.channel:
-            return {"embed": None, "content": "Pick an option"}
-        else:
-            return {"embed": ChannelEmbed(self.channel), "content": ""}
-
 
 class _EditPlayerChannel(ChannelAdmin):
     member: discord.Member = None
@@ -219,9 +256,6 @@ class _EditPlayerChannel(ChannelAdmin):
     @discord.ui.button(label="Back", style=discord.ButtonStyle.grey, row=3)
     async def back(self, _: discord.ui.Button, interaction: discord.Interaction):
         await self.defer_to(ChannelAdminUI, interaction)
-
-    async def get_content(self) -> Mapping:
-        return {"embed": ChannelEmbed(self.channel), "content": ""}
 
 
 class _NewPlayerchannel(ChannelAdmin):
@@ -367,3 +401,20 @@ async def _archive_channel(
     await player.member.send(file=transcript_file)
     player.guild.archive_user = None
     await player.guild.upsert()
+
+
+def get_overwrite_string(
+    overwrites: dict[discord.Role | discord.Member, discord.PermissionOverwrite],
+):
+    out = []
+    for target in overwrites:
+        value = f"**{target.mention}**:\n"
+        ovr = [x for x in overwrites[target] if x[1] is not None]
+
+        if ovr:
+            value += "\n".join([f"{ZWSP3}{o[0]} - {o[1]}" for o in ovr])
+        else:
+            value += "None\n"
+
+        out.append(value)
+    return out

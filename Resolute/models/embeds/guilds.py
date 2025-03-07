@@ -5,43 +5,6 @@ from Resolute.helpers import process_message
 from Resolute.models.objects.guilds import PlayerGuild
 
 
-class GuildEmbed(discord.Embed):
-    def __init__(self, g: PlayerGuild):
-        super().__init__(
-            title=f"Server Settings for {g.guild.name}", colour=discord.Color.random()
-        )
-        self.set_thumbnail(url=THUMBNAIL)
-
-        self.add_field(
-            name="**Settings**",
-            value=f"**Max Level**: {g.max_level}\n"
-            f"**Max Characters**: {g.max_characters}\n"
-            f"**Handicap CC Amount**: {g.handicap_cc}\n"
-            f"**Diversion Limit**: {g.div_limit}\n"
-            f"**Log Reward Point Threshold**: {g.reward_threshold or ''}\n",
-            inline=False,
-        )
-
-        reset_str = (
-            f"**Approx Next Run**: <t:{g.get_next_reset}>\n" if g.get_next_reset else ""
-        )
-        reset_str += f"**Last Reset: ** <t:{g.get_last_reset}>"
-
-        self.add_field(name="**Reset Schedule**", value=reset_str, inline=False)
-
-        if len(g.stipends) > 0:
-            self.add_field(
-                name="Stipends (* = Leadership Role and only applies highest amount)",
-                value="\n".join(
-                    [
-                        f"{discord.utils.get(g.guild.roles, id=s.role_id).mention} ({s.amount} CC's){'*' if s.leadership else ''}{f' - {s.reason}' if s.reason else ''}"
-                        for s in g.stipends
-                    ]
-                ),
-                inline=False,
-            )
-
-
 class ResetEmbed(discord.Embed):
     def __init__(self, g: PlayerGuild, is_primary: bool = False, **kwargs):
         super().__init__(color=discord.Color.random())

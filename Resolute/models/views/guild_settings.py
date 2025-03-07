@@ -3,10 +3,10 @@ import re
 import discord
 
 from Resolute.bot import G0T0Bot
-from Resolute.constants import DAYS_OF_WEEK
+from Resolute.constants import DAYS_OF_WEEK, THUMBNAIL
 from Resolute.helpers import get_positivity
 from Resolute.models.embeds import ErrorEmbed
-from Resolute.models.embeds.guilds import GuildEmbed, ResetEmbed
+from Resolute.models.embeds.guilds import ResetEmbed
 from Resolute.models.objects.guilds import PlayerGuild
 from Resolute.models.objects.ref_objects import RefWeeklyStipend
 from Resolute.models.views.base import InteractiveView
@@ -33,6 +33,48 @@ class GuildSettings(InteractiveView):
     async def commit(self):
         self.guild = await self.guild.upsert()
         self.bot.dispatch("refresh_guild_cache", self.guild)
+
+    async def get_content(self):
+        embed = discord.Embed(
+            title=f"Server settings for {self.guild.guild.name}",
+            color=discord.Color.random(),
+        )
+
+        embed.set_thumbnail(url=THUMBNAIL)
+
+        embed.add_field(
+            name="**Settings**",
+            value=f"**Max Level**: {self.guild.max_level}\n"
+            f"**Max Characters**: {self.guild.max_characters}\n"
+            f"**Handicap CC Amount**: {self.guild.handicap_cc}\n"
+            f"**Diversion Limit**: {self.guild.div_limit}\n"
+            f"**Log Reward Point Threshold**: {self.guild.reward_threshold or ''}\n",
+            inline=False,
+        )
+
+        reset_str = (
+            f"**Approx Next Run**: <t:{self.guild.get_next_reset}>\n"
+            if self.guild.get_next_reset
+            else ""
+        )
+        reset_str += f"**Last Reset: ** <t:{self.guild.get_last_reset}>"
+
+        embed.add_field(name="**Reset Schedule**", value=reset_str, inline=False)
+
+        if len(self.guild.stipends) > 0:
+            embed.add_field(
+                name="Stipends (* = Leadership Role and only applies highest amount)",
+                value="\n".join(
+                    [
+                        f"{self.guild.guild.get_role(s.role_id).mention} ({s.amount:,} CC's){'*' if s.leadership else ''}{f' - {s.reason}' if s.reason else ''}"
+                        for s in self.guild.stipends
+                        if self.guild.guild.get_role(s.role_id)
+                    ]
+                ),
+                inline=False,
+            )
+
+        return {"embed": embed, "content": None}
 
 
 class GuildSettingsUI(GuildSettings):
@@ -62,11 +104,6 @@ class GuildSettingsUI(GuildSettings):
         inst.bot = bot
         inst.guild = guild
         return inst
-
-    async def get_content(self):
-        embed = GuildEmbed(self.guild)
-
-        return {"embed": embed, "content": None}
 
     @discord.ui.button(label="Guild Limits", style=discord.ButtonStyle.primary, row=1)
     async def guild_limits(
@@ -134,11 +171,6 @@ class _GuildSettings2(GuildSettings):
     @discord.ui.button(label="Back", style=discord.ButtonStyle.grey, row=3)
     async def back(self, _: discord.ui.Button, interaction: discord.Interaction):
         await self.defer_to(GuildSettingsUI, interaction)
-
-    async def get_content(self):
-        embed = GuildEmbed(self.guild)
-
-        return {"embed": embed, "content": None}
 
 
 class _GuildResetView(GuildSettings):
@@ -208,12 +240,6 @@ class _GuildResetView(GuildSettings):
 
         self.reset_time.options = time_options
         self.reset_day.options = day_options
-        pass
-
-    async def get_content(self):
-        embed = GuildEmbed(self.guild)
-
-        return {"embed": embed, "content": None}
 
 
 class _GuildStipendView(GuildSettings):
@@ -266,11 +292,6 @@ class _GuildStipendView(GuildSettings):
     @discord.ui.button(label="Back", style=discord.ButtonStyle.grey, row=3)
     async def back(self, _: discord.ui.Button, interaction: discord.Interaction):
         await self.defer_to(GuildSettingsUI, interaction)
-
-    async def get_content(self):
-        embed = GuildEmbed(self.guild)
-
-        return {"embed": embed, "content": None}
 
 
 class GuildLimitsModal(discord.ui.Modal):

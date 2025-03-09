@@ -355,10 +355,12 @@ class NewCharacterApplication(object):
             self.homeworld,
             self.good_motivation,
         ]
-
-        if all("Complete" in field or field for field in required_fields):
-            return True
-        else:
+        try:
+            if all("Complete" in field or field for field in required_fields):
+                return True
+            else:
+                return False
+        except:
             return False
 
     def format_app(self, owner: discord.Member, staff: discord.Role = None) -> str:

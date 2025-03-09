@@ -3,8 +3,7 @@ from typing import Mapping
 import discord
 
 from Resolute.bot import G0T0Bot
-from Resolute.models.embeds import ErrorEmbed
-from Resolute.models.embeds.npc import NPCEmbed
+from Resolute.models.embeds import ErrorEmbed, PlayerEmbed
 from Resolute.models.objects.adventures import Adventure
 from Resolute.models.objects.guilds import PlayerGuild
 from Resolute.models.objects.npc import NPC
@@ -40,18 +39,39 @@ class NPCSettings(InteractiveView):
     role: discord.Role = None
 
     async def get_content(self) -> Mapping:
-        embed = NPCEmbed(
-            self.guild,
-            (
-                self.adventure.npcs
-                if self.adventure and self.adventure.npcs
-                else (
-                    []
-                    if self.adventure
-                    else self.guild.npcs if self.guild and self.guild.npcs else []
-                )
-            ),
-            self.npc,
+        embed = PlayerEmbed(self.owner, title="Manage NPCs")
+
+        npc_list = (
+            self.adventure.npcs
+            if self.adventure and self.adventure.npcs
+            else (
+                []
+                if self.adventure
+                else self.guild.npcs if self.guild and self.guild.npcs else []
+            )
+        )
+
+        npc = self.npc if self.npc else npc_list[0] if npc_list else None
+
+        embed.set_thumbnail(url=npc.avatar_url if npc and npc.avatar_url else None)
+
+        embed.description = (
+            f"Avatar for `{npc.key}`: {npc.name}" if npc and npc.avatar_url else ""
+        )
+
+        npc_list_str = "\n".join(
+            [f"`{n.key}`: {n.name}{'*' if n.avatar_url else ''}" for n in npc_list]
+        )
+
+        if npc and len(npc.roles) > 0:
+            roles = []
+            for rid in npc.roles:
+                if role := self.guild.guild.get_role(rid):
+                    roles.append(role.mention)
+            embed.add_field(name="Available to roles", value="\n".join(roles))
+
+        embed.add_field(
+            name="Available NPCs (* = Has avatar)", value=npc_list_str, inline=False
         )
 
         return {"content": "", "embed": embed}

@@ -424,4 +424,8 @@ class ArenaRequestCharacterSelect(ArenaRequest):
     async def exit_application(
         self, _: discord.ui.Button, interaction: discord.Interaction
     ):
+
+        if self.post.message:
+            await self.post.message.clear_reactions()
+
         await self.on_timeout()

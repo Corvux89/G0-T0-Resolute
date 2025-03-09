@@ -5,7 +5,8 @@ import discord
 from Resolute.bot import G0T0Bot
 from Resolute.constants import DAYS_OF_WEEK, THUMBNAIL
 from Resolute.helpers import get_positivity
-from Resolute.models.embeds import ErrorEmbed
+from Resolute.helpers.general_helpers import process_message
+from Resolute.models.embeds import ErrorEmbed, PaginatedEmbed
 from Resolute.models.embeds.guilds import ResetEmbed
 from Resolute.models.objects.guilds import PlayerGuild
 from Resolute.models.objects.ref_objects import RefWeeklyStipend
@@ -192,11 +193,28 @@ class _GuildResetView(GuildSettings):
     async def preview_reset(
         self, _: discord.ui.Button, interaction: discord.Interaction
     ):
-        await interaction.channel.send(
-            embed=ResetEmbed(self.guild, 1.23),
-            content=f"{f'{self.guild.entry_role.name} {self.guild.member_role.name}' if self.guild.ping_announcement else ''}",
-            delete_after=5,
-        )
+
+        embed = ResetEmbed(self.guild)
+        pageinated_embed = PaginatedEmbed(embed)
+
+        for announcement in self.guild.weekly_announcement:
+            parts = announcement.split("|")
+            title = parts[0] if len(parts) > 1 else "Announcement"
+            body = parts[1] if len(parts) > 1 else parts[0]
+            processed_announcement = process_message(body, self.guild)
+
+            pageinated_embed.add_field(name=title, value=processed_announcement)
+
+        for i, e in enumerate(pageinated_embed.embeds):
+            await interaction.channel.send(
+                embed=e,
+                content=(
+                    f"{f'{self.guild.entry_role.name} {self.guild.member_role.name}' if self.guild.ping_announcement else ''}"
+                    if i == 0
+                    else ""
+                ),
+                delete_after=5,
+            )
         await self.refresh_content(interaction)
 
     @discord.ui.select(placeholder="Reset Day", row=2)

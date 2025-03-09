@@ -60,7 +60,7 @@ class ChannelAdmin(InteractiveView):
             return {"embed": None, "content": "Pick an option"}
         else:
             chunk_size = 1000
-
+            # TODO: Paginated Embed
             embed = PlayerEmbed(
                 self.owner,
                 title=f"{self.channel.name} Summary",

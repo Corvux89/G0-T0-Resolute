@@ -6,10 +6,8 @@ from discord.ext import commands
 
 from Resolute.bot import G0T0Context
 from Resolute.constants import ACTIVITY_POINT_MINIMUM
-from Resolute.helpers import (
-    get_selection,
-    split_content,
-)
+from Resolute.helpers import get_selection
+from Resolute.helpers.general_helpers import chunk_text
 from Resolute.models.objects.adventures import Adventure
 from Resolute.models.objects.characters import PlayerCharacter
 from Resolute.models.objects.enum import WebhookType
@@ -140,7 +138,10 @@ class G0T0Webhook(object):
             except:
                 pass
 
-            chunks = split_content(self.content)
+            chunks = chunk_text(
+                self.content,
+                2000,
+            )
 
             for chunk in chunks:
                 try:

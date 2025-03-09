@@ -73,10 +73,7 @@ class Messages(commands.Cog):
             player.guild.arena_board_channel
             and message.channel.id == player.guild.arena_board_channel.id
         ):
-            if (
-                not message.author.bot
-                or message.embeds[0].footer.text != f"{ctx.author.id}"
-            ):
+            if not self._is_user_the_author(ctx, message):
                 raise G0T0Error("You cannot edit this arena board post")
             elif (
                 len(player.characters) <= 1
@@ -88,6 +85,7 @@ class Messages(commands.Cog):
             post = ArenaPost(player)
             post.message = message
 
+            await message.add_reaction(EDIT_EMOJI[0])
             ui = ArenaRequestCharacterSelect.new(self.bot, player, post)
             await ui.send_to(ctx.author)
 
@@ -96,12 +94,10 @@ class Messages(commands.Cog):
             player.guild.rp_post_channel
             and message.channel.id == player.guild.rp_post_channel.id
         ):
-            if (
-                not message.author.bot
-                or message.embeds[0].footer.text != f"{ctx.author.id}"
-            ):
+            if not self._is_user_the_author(ctx, message):
                 raise G0T0Error("You cannot edit this roleplay board post")
 
+            await message.add_reaction(EDIT_EMOJI[0])
             ui = RPPostUI.new(self.bot, player, message)
             await ui.send_to(ctx.author)
 
@@ -126,10 +122,7 @@ class Messages(commands.Cog):
             player.guild.arena_board_channel
             and message.channel.id == player.guild.arena_board_channel.id
         ):
-            if (
-                not message.author.bot
-                or message.embeds[0].footer.text != f"{ctx.author.id}"
-            ):
+            if not self._is_user_the_author(ctx, message):
                 raise G0T0Error("You cannot edit this arena board post")
 
             await message.delete()
@@ -165,10 +158,7 @@ class Messages(commands.Cog):
             player.guild.rp_post_channel
             and message.channel.id == player.guild.rp_post_channel.id
         ):
-            if (
-                not message.author.bot
-                or message.embeds[0].footer.text != f"{ctx.author.id}"
-            ):
+            if not self._is_user_the_author(ctx, message):
                 raise G0T0Error("You cannot edit this roleplay board post")
 
             await message.delete()
@@ -314,3 +304,26 @@ class Messages(commands.Cog):
     def _get_match(self, pattern, text, group=1, default=None):
         match = re.search(pattern, text, re.DOTALL)
         return match.group(group) if match and match.group(group) != "None" else default
+
+    def _is_user_the_author(self, ctx: G0T0Context, message: discord.Message):
+        if not message.author.bot:
+            return False
+
+        try:
+            embed = message.embeds[0]
+        except:
+            return False
+
+        # Old embed method of putting the author id in the footer text
+        if embed.footer and embed.footer.text == f"{ctx.author.id}":
+            return True
+
+        # Checking if the author icon_url if for the author. avatars = default profile; users = server profile
+        elif (
+            embed.author
+            and self._get_match(r"(?:avatars|users)/(\d+)/", embed.author.icon_url)
+            == f"{ctx.author.id}"
+        ):
+            return True
+
+        return False

@@ -1,91 +1,47 @@
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
 import discord
 
 from Resolute.constants import THUMBNAIL
 from Resolute.helpers import process_message
-from Resolute.models.objects.guilds import PlayerGuild
+
+if TYPE_CHECKING:
+    from Resolute.models.objects.characters import PlayerCharacter
+    from Resolute.models.objects.guilds import PlayerGuild
 
 
 class ResetEmbed(discord.Embed):
-    def __init__(self, g: PlayerGuild, is_primary: bool = False, **kwargs):
-        super().__init__(color=discord.Color.random())
-        if is_primary:
-            title = kwargs.get("title", "Weekly Reset")
+    def __init__(self, g: PlayerGuild, **kwargs):
+        super().__init__(
+            color=discord.Color.random(),
+            title=kwargs.get("title", "Weekly Reset"),
+            timestamp=discord.utils.utcnow(),
+        )
 
-            self.set_thumbnail(url=THUMBNAIL)
+        self.set_thumbnail(url=THUMBNAIL)
 
-            if "reset" in title.lower() and g.reset_message:
-                self.description = f"{process_message(g.reset_message, g)}"
+        if "reset" in self.title.lower() and g.reset_message:
+            self.description = f"{process_message(g.reset_message, g)}"
 
-            if g.calendar and g.server_date:
-                self.add_field(
-                    name="Galactic Date",
-                    value=f"{g.formatted_server_date}",
-                    inline=False,
-                )
-
-                if (birthdays := kwargs.get("birthdays", [])) and len(birthdays) > 0:
-                    birthday_str = []
-
-                    for character in birthdays:
-                        if member := g.guild.get_member(character.player_id):
-                            birthday_str.append(
-                                f"{character.name} ({member.mention})\n - {character.dob_month(g).display_name}:{character.dob_day(g):02}, {character.age(g)} years"
-                            )
-
-                    self.add_field(
-                        name="Happy Birthday!", value="\n".join(birthday_str)
-                    )
-
-            if time := kwargs.get("complete_time", 0):
-                self.set_footer(text=f"Weekly reset complete in {time:.2f} seconds")
-        else:
-            title = kwargs.get("title", "Announcements")
-
-        self.title = title
-
-    @staticmethod
-    def chunk_announcements(g: PlayerGuild, complete_time: float = 0, **kwargs):
-        embeds = []
-        current_embed = None
-        total_chars = 0
-
-        if len(g.weekly_announcement) == 0:
-            return [ResetEmbed(g, True, complete_time=complete_time, **kwargs)]
-
-        for announcement in g.weekly_announcement:
-            parts = announcement.split("|")
-            title = parts[0] if len(parts) > 1 else "Announcement"
-            body = parts[1] if len(parts) > 1 else parts[0]
-            processed_announcement = process_message(body, g)
-
-            field_char_count = len(title) + len(processed_announcement)
-
-            if (
-                not current_embed
-                or total_chars + field_char_count > 5500
-                or len(current_embed.fields) >= 25
-            ):
-
-                if current_embed:
-                    embeds.append(current_embed)
-
-                current_embed = ResetEmbed(
-                    g, len(embeds) == 0, complete_time=complete_time, **kwargs
-                )
-                total_chars = (
-                    len(current_embed.title or "")
-                    + len(current_embed.description or "")
-                    + len(
-                        current_embed.footer.text if current_embed.footer else "" or ""
-                    )
-                )
-
-            current_embed.add_field(
-                name=title, value=processed_announcement, inline=False
+        if g.calendar and g.server_date:
+            self.add_field(
+                name="Galactic Date",
+                value=f"{g.formatted_server_date}",
+                inline=False,
             )
-            total_chars += field_char_count
 
-        if current_embed:
-            embeds.append(current_embed)
+            if (birthdays := kwargs.get("birthdays", [])) and len(birthdays) > 0:
+                birthday_str = []
+                birthdays: list[PlayerCharacter]
 
-        return embeds
+                for character in birthdays:
+                    if member := g.guild.get_member(character.player_id):
+                        birthday_str.append(
+                            f"{character.name} ({member.mention})\n - {character.dob_month(g).display_name}:{character.dob_day(g):02}, {character.age(g)} years"
+                        )
+
+                self.add_field(name="Happy Birthday!", value="\n".join(birthday_str))
+
+        if time := kwargs.get("complete_time", 0):
+            self.set_footer(text=f"Weekly reset complete in {time:.2f} seconds")

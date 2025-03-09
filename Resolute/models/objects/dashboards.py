@@ -318,7 +318,7 @@ class RefDashboard(object):
 
             if update:
                 embed = discord.Embed(
-                    color=discord.Color.dark_gray,
+                    color=discord.Color.dark_gray(),
                     title=f"Channel Statuses - {self.category_channel.name}",
                     timestamp=discord.utils.utcnow(),
                 )

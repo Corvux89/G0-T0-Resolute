@@ -307,6 +307,10 @@ class Player(object):
             return max(self.characters, key=lambda char: char.level)
         return None
 
+    @property
+    def discord_url(self) -> str:
+        return f"https://discordapp.com/users/{self.id}"
+
     def has_character_in_tier(self, compendium: Compendium, tier: int) -> bool:
         if hasattr(self, "characters") and self.characters:
             for character in self.characters:

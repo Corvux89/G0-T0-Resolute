@@ -79,7 +79,7 @@ class CharacterManage(InteractiveView):
             embed = CharacterViewEmbed(self.player, self.active_character)
 
         else:
-            embed = PlayerOverviewEmbed(self.player, self.bot.compendium)
+            embed = PlayerOverviewEmbed(self.owner, self.player, self.bot.compendium)
 
         return {"embed": embed, "content": ""}
 
@@ -1531,7 +1531,7 @@ class CharacterGet(InteractiveView):
         if self.active_character:
             embed = CharacterViewEmbed(self.player, self.active_character)
         else:
-            embed = PlayerOverviewEmbed(self.player, self.bot.compendium)
+            embed = PlayerOverviewEmbed(self.owner, self.player, self.bot.compendium)
 
         return {"content": "", "embed": embed}
 
@@ -1540,7 +1540,8 @@ class CharacterGet(InteractiveView):
             return
         try:
             await self.message.edit(
-                view=None, embed=PlayerOverviewEmbed(self.player, self.bot.compendium)
+                view=None,
+                embed=PlayerOverviewEmbed(self.owner, self.player, self.bot.compendium),
             )
         except discord.HTTPException:
             pass
@@ -1782,6 +1783,8 @@ class RPPostUI(RPPostView):
     async def exit_application(
         self, _: discord.ui.Button, interaction: discord.Interaction
     ):
+        if self.orig_message:
+            await self.orig_message.clear_reactions()
         await self.on_timeout()
 
     async def _build_rp_post(self) -> bool:
@@ -1792,6 +1795,7 @@ class RPPostUI(RPPostView):
                     await webhook.edit_message(
                         self.orig_message.id, embed=RPPostEmbed(self.player, self.posts)
                     )
+                    await self.orig_message.clear_reactions()
                 else:
                     await webhook.send(
                         username=self.player.member.display_name,

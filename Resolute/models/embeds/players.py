@@ -2,13 +2,14 @@ import discord
 
 from Resolute.compendium import Compendium
 from Resolute.constants import ZWSP3
-from Resolute.helpers.general_helpers import get_webhook
+from Resolute.helpers import get_webhook
+from Resolute.models.embeds import PlayerEmbed
 from Resolute.models.objects.players import ArenaPost, Player, RPPost
 
 
-class PlayerOverviewEmbed(discord.Embed):
-    def __init__(self, player: Player, compendium: Compendium):
-        super().__init__(title=f"Information for {player.member.display_name}")
+class PlayerOverviewEmbed(PlayerEmbed):
+    def __init__(self, author: discord.Member, player: Player, compendium: Compendium):
+        super().__init__(author, title=f"Information for {player.member.display_name}")
         self.set_thumbnail(url=player.member.display_avatar.url)
         self.color = player.member.color
 
@@ -60,31 +61,27 @@ class PlayerOverviewEmbed(discord.Embed):
             self.add_field(name=f"Character Information", value=val_str, inline=False)
 
 
-class ArenaPostEmbed(discord.Embed):
+class ArenaPostEmbed(PlayerEmbed):
     def __init__(self, post: ArenaPost):
-        super().__init__(
-            title=f"{post.type.value} Arena Request", color=discord.Color.random()
-        )
+        super().__init__(post.player.member, title=f"{post.type.value} Arena Request")
         self.post = post
-
-        self.set_thumbnail(url=post.player.member.avatar.url)
 
         char_str = "\n\n".join(
             [
-                f"[{post.characters.index(c)+1}] {c.inline_class_description()}"
+                f"{ZWSP3}{post.characters.index(c)+1}. {c.inline_class_description()}"
                 for c in post.characters
             ]
         )
 
         self.add_field(name="Character Priority", value=char_str, inline=False)
-
-        self.set_footer(text=f"{post.player.member.id}")
+        self.set_footer(text=f"{post.player.id}")
 
     async def build(self) -> bool:
         if self.post.player.guild.arena_board_channel:
             webhook = await get_webhook(self.post.player.guild.arena_board_channel)
             if self.post.message:
                 await webhook.edit_message(self.post.message.id, embed=self)
+                await self.post.message.clear_reactions()
             else:
                 await webhook.send(
                     username=self.post.player.member.display_name,
@@ -95,15 +92,12 @@ class ArenaPostEmbed(discord.Embed):
         return False
 
 
-class RPPostEmbed(discord.Embed):
+class RPPostEmbed(PlayerEmbed):
     def __init__(self, player: Player, posts: list[RPPost]):
-        super().__init__(title="Roleplay Request", color=discord.Color.random())
-
-        self.set_thumbnail(url=player.member.avatar.url)
+        super().__init__(player.member, title="Roleplay Request")
+        self.set_footer(text=f"{player.id}")
 
         for post in posts:
             self.add_field(
                 name=f"{post.character.name}", value=f"{post.note}", inline=False
             )
-
-        self.set_footer(text=f"{player.member.id}")

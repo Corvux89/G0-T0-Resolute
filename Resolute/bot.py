@@ -17,12 +17,13 @@ from sqlalchemy.sql import FromClause, TableClause
 
 from Resolute.compendium import Compendium
 from Resolute.constants import DB_URL, ERROR_CHANNEL, PORT
-from Resolute.helpers.general_helpers import get_selection
+from Resolute.helpers import get_selection
 from Resolute.models import metadata
 from Resolute.models.categories.categories import (
     Activity,
     ActivityPoints,
     CodeConversion,
+    DashboardType,
     Faction,
 )
 from Resolute.models.embeds import ErrorEmbed
@@ -1378,6 +1379,22 @@ class G0T0Bot(commands.Bot):
         fin = Financial.FinancialSchema(self.db).load(row)
 
         return fin
+
+    async def update_financial_dashboards(self) -> None:
+        dashboards = []
+
+        d_type = self.compendium.get_object(DashboardType, "FINANCIAL")
+
+        query = RefDashboard.ref_dashboard_table.select().where(
+            RefDashboard.ref_dashboard_table.c.dashboard_type == d_type.id
+        )
+
+        rows = await self.query(query, QueryResultType.multiple)
+
+        dashboards = [RefDashboard.RefDashboardSchema(self).load(row) for row in rows]
+
+        for dashboard in dashboards:
+            await dashboard.refresh(self)
 
     async def get_all_npcs(self) -> list[NPC]:
         query = NPC.npc_table.select().order_by(NPC.npc_table.c.key.asc())

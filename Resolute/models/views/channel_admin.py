@@ -7,25 +7,25 @@ import chat_exporter
 import discord
 
 from Resolute.bot import G0T0Bot
-from Resolute.models.embeds import ErrorEmbed
-from Resolute.models.embeds.channel_admin import ChannelEmbed
+from Resolute.constants import ZWSP3
+from Resolute.models.embeds import ErrorEmbed, PaginatedEmbed, PlayerEmbed
 from Resolute.models.objects.exceptions import G0T0Error
 from Resolute.models.objects.players import Player
 from Resolute.models.views.base import InteractiveView
 
 log = logging.getLogger(__name__)
 
-owner_overwrites = discord.PermissionOverwrite(
+OWNER_OVERWRITES = discord.PermissionOverwrite(
     view_channel=True, manage_messages=True, send_messages=True
 )
 
-general_overwrites = discord.PermissionOverwrite(view_channel=True, send_messages=False)
+GENERAL_OVERWRITES = discord.PermissionOverwrite(view_channel=True, send_messages=False)
 
-bot_overwrites = discord.PermissionOverwrite(
+BOT_OVERWRITES = discord.PermissionOverwrite(
     view_channel=True, send_messages=True, manage_messages=True, manage_channels=True
 )
 
-readonly_overwrites = discord.PermissionOverwrite(
+READONLY_OVERWRITES = discord.PermissionOverwrite(
     view_channel=True,
     send_messages=False,
     add_reactions=False,
@@ -53,6 +53,34 @@ class ChannelAdmin(InteractiveView):
 
     async def commit(self):
         self.player = await self.bot.get_player(self.player.id, self.player.guild.id)
+
+    async def get_content(self) -> Mapping:
+        if not self.channel:
+            return {"embed": None, "content": "Pick an option"}
+        else:
+            embed = PlayerEmbed(
+                self.owner,
+                title=f"{self.channel.name} Summary",
+                description=(
+                    f"**Category**: {self.channel.category.mention if self.channel.category else ''}\n"
+                ),
+            )
+
+            paginated_embed = PaginatedEmbed(embed)
+
+            category_overwrites = (
+                self.channel.category.overwrites if self.channel.category else {}
+            )
+            category_string = "\n".join(get_overwrite_string(category_overwrites))
+            paginated_embed.add_field(name="Category Overwrites", value=category_string)
+
+            channel_overwrites = (
+                self.channel.overwrites if hasattr(self.channel, "overwrites") else {}
+            )
+            channel_string = "\n".join(get_overwrite_string(channel_overwrites))
+            paginated_embed.add_field(name="Channel Overwrites", value=channel_string)
+
+            return {"embeds": paginated_embed.embeds, "content": ""}
 
 
 class ChannelAdminUI(ChannelAdmin):
@@ -163,12 +191,6 @@ class ChannelAdminUI(ChannelAdmin):
     async def exit(self, *_):
         await self.on_timeout()
 
-    async def get_content(self) -> Mapping:
-        if not self.channel:
-            return {"embed": None, "content": "Pick an option"}
-        else:
-            return {"embed": ChannelEmbed(self.channel), "content": ""}
-
 
 class _EditPlayerChannel(ChannelAdmin):
     member: discord.Member = None
@@ -194,7 +216,7 @@ class _EditPlayerChannel(ChannelAdmin):
             log.info(
                 f"CHANNEL ADMIN: {self.member} [ {self.member.id} ] added to {self.channel.name} [ {self.channel.id} ] by {interaction.user} [ {interaction.user.id} ]"
             )
-            await self.channel.set_permissions(self.member, overwrite=owner_overwrites)
+            await self.channel.set_permissions(self.member, overwrite=OWNER_OVERWRITES)
         await self.refresh_content(interaction)
 
     @discord.ui.button(label="Remove Owner", style=discord.ButtonStyle.red, row=2)
@@ -219,9 +241,6 @@ class _EditPlayerChannel(ChannelAdmin):
     @discord.ui.button(label="Back", style=discord.ButtonStyle.grey, row=3)
     async def back(self, _: discord.ui.Button, interaction: discord.Interaction):
         await self.defer_to(ChannelAdminUI, interaction)
-
-    async def get_content(self) -> Mapping:
-        return {"embed": ChannelEmbed(self.channel), "content": ""}
 
 
 class _NewPlayerchannel(ChannelAdmin):
@@ -301,16 +320,16 @@ class _NewPlayerchannel(ChannelAdmin):
         channel_overwrites = self.category.overwrites
         guild = await self.bot.get_player_guild(self.category.guild.id)
 
-        channel_overwrites[self.member] = owner_overwrites
+        channel_overwrites[self.member] = OWNER_OVERWRITES
 
         if guild.bot_role:
-            channel_overwrites[guild.bot_role] = bot_overwrites
+            channel_overwrites[guild.bot_role] = BOT_OVERWRITES
 
         if guild.member_role:
-            channel_overwrites[guild.member_role] = general_overwrites
+            channel_overwrites[guild.member_role] = GENERAL_OVERWRITES
 
         if guild.staff_role:
-            channel_overwrites[guild.staff_role] = general_overwrites
+            channel_overwrites[guild.staff_role] = GENERAL_OVERWRITES
 
         channel = await guild.guild.create_text_channel(
             name=name,
@@ -367,3 +386,20 @@ async def _archive_channel(
     await player.member.send(file=transcript_file)
     player.guild.archive_user = None
     await player.guild.upsert()
+
+
+def get_overwrite_string(
+    overwrites: dict[discord.Role | discord.Member, discord.PermissionOverwrite],
+):
+    out = []
+    for target in overwrites:
+        value = f"**{target.mention}**:\n"
+        ovr = [x for x in overwrites[target] if x[1] is not None]
+
+        if ovr:
+            value += "\n".join([f"{ZWSP3}{o[0]} - {o[1]}" for o in ovr])
+        else:
+            value += "None\n"
+
+        out.append(value)
+    return out

@@ -4,10 +4,8 @@ from typing import Mapping
 import discord
 
 from Resolute.bot import G0T0Bot
-from Resolute.helpers.dashboards import update_dashboard
 from Resolute.models.categories.categories import DashboardType
 from Resolute.models.embeds import ErrorEmbed
-from Resolute.models.embeds.dashboards import DashboardEditEmbed
 from Resolute.models.objects.dashboards import RefDashboard
 from Resolute.models.views.base import InteractiveView
 
@@ -147,7 +145,7 @@ class _NewDashboardUI(DashboardSettings):
 
         self.new_dashboard = await self.bot.get_dashboard_from_message(d_message.id)
 
-        await update_dashboard(self.bot, self.new_dashboard)
+        await self.new_dashboard.refresh(self.bot)
 
         await self.defer_to(DashboardSettingsUI, interaction)
 
@@ -270,4 +268,22 @@ class _ManageDashboardUI(DashboardSettings):
         )
 
     async def get_content(self) -> Mapping:
-        return {"embed": DashboardEditEmbed(self.dashboard), "content": ""}
+        embed = discord.Embed(
+            color=discord.Color.random(),
+            title="Edit Dashboard",
+            description=(
+                f"**Type**: {self.dashboard.dashboard_type.value}\n"
+                f"**In Channel**: {self.dashboard.channel.mention}\n"
+                f"**Post Link**: https://discord.com/channels/{self.dashboard.channel.guild.id}/{self.dashboard.channel.id}/{self.dashboard.post_id} \n"
+            ),
+        )
+
+        if self.dashboard.excluded_channels:
+            embed.add_field(
+                name="Excluded Channels",
+                value="\n".join(
+                    c.mention for c in self.dashboard.excluded_channels if c
+                ),
+            )
+
+        return {"embed": embed, "content": ""}

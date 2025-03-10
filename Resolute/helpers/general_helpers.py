@@ -9,10 +9,10 @@ from sqlalchemy.util import asyncio
 from Resolute.constants import BOT_OWNERS
 from Resolute.models.objects.characters import PlayerCharacter
 from Resolute.models.objects.exceptions import G0T0CommandError
-from Resolute.models.objects.guilds import PlayerGuild
 
 if TYPE_CHECKING:
     from Resolute.bot import G0T0Bot
+    from Resolute.models.objects.guilds import PlayerGuild
 
 
 def dm_check(ctx: discord.ApplicationContext) -> bool:
@@ -56,7 +56,6 @@ async def is_admin(ctx: Union[discord.ApplicationContext, discord.Interaction]) 
         return False
 
 
-# TODO: This too
 async def is_staff(ctx: discord.ApplicationContext | discord.Interaction) -> bool:
     """
     Check if the user is a staff member.
@@ -394,27 +393,66 @@ async def get_selection(
     return choices[idx]
 
 
-def split_content(content: str, chunk_size: int = 2000) -> list[str]:
+def chunk_text(
+    text, max_chunk_size=1024, chunk_on=("\n\n", "\n", ". ", ", ", " "), chunker_i=0
+):
     """
-    Splits the given content into chunks of specified size.
+    Recursively chunks *text* into a list of str, with each element no longer than *max_chunk_size*.
+    Prefers splitting on the elements of *chunk_on*, in order.
+    """
+
+    if len(text) <= max_chunk_size:  # the chunk is small enough
+        return [text]
+    if chunker_i >= len(chunk_on):  # we have no more preferred chunk_on characters
+        # optimization: instead of merging a thousand characters, just use list slicing
+        return [
+            text[:max_chunk_size],
+            *chunk_text(text[max_chunk_size:], max_chunk_size, chunk_on, chunker_i + 1),
+        ]
+
+    # split on the current character
+    chunks = []
+    split_char = chunk_on[chunker_i]
+    for chunk in text.split(split_char):
+        chunk = f"{chunk}{split_char}"
+        if len(chunk) > max_chunk_size:  # this chunk needs to be split more, recurse
+            chunks.extend(chunk_text(chunk, max_chunk_size, chunk_on, chunker_i + 1))
+        elif (
+            chunks and len(chunk) + len(chunks[-1]) <= max_chunk_size
+        ):  # this chunk can be merged
+            chunks[-1] += chunk
+        else:
+            chunks.append(chunk)
+
+    # if the last chunk is just the split_char, yeet it
+    if chunks[-1] == split_char:
+        chunks.pop()
+
+    # remove extra split_char from last chunk
+    chunks[-1] = chunks[-1][: -len(split_char)]
+    return chunks
+
+
+async def get_last_message_in_channel(channel: discord.TextChannel) -> discord.Message:
+    """
+    Retrieve the last message in a given text channel.
+    This function attempts to get the last message in the specified channel.
+    It first checks if the channel's `last_message` attribute is set. If not,
+    it tries to fetch the last message from the channel's history. If that
+    also fails, it attempts to fetch the message using the channel's
+    `last_message_id`. If all attempts fail, it returns None.
     Args:
-        content (str): The content to be split.
-        chunk_size (int, optional): The maximum size of each chunk. Defaults to 2000.
+        channel (TextChannel): The text channel from which to retrieve the last message.
     Returns:
-        list[str]: A list of content chunks, each with a size up to the specified chunk size.
+        Message: The last message in the channel, or None if it cannot be retrieved.
     """
-    lines = content.splitlines(keepends=True)
-    out = []
-    current_chunk = ""
+    if not (last_message := channel.last_message):
+        try:
+            last_message = next((msg for msg in channel.history(limit=1)), None)
+        except:
+            try:
+                last_message = await channel.fetch_message(channel.last_message_id)
+            except:
+                return None
 
-    for line in lines:
-        if len(current_chunk) + len(line) + 1 > chunk_size:
-            out.append(current_chunk)
-            current_chunk = ""
-
-        current_chunk += line
-
-    if current_chunk:
-        out.append(current_chunk)
-
-    return out
+    return last_message

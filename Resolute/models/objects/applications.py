@@ -48,6 +48,7 @@ class AppBaseScores(object):
         self.wis = kwargs.get("wis", "")
         self.cha = kwargs.get("cha", "")
 
+    @property
     def status(self) -> str:
         """
         Returns the status of the object based on its attributes.
@@ -116,6 +117,7 @@ class AppSpecies(object):
         else:
             return f"**{self.species}**\nASIs: {self.asi}\nFeatures: {self.feats}"
 
+    @property
     def status(self) -> str:
         """
         Retrieve the status of the application.
@@ -170,6 +172,7 @@ class AppClass(object):
         self.feats = kwargs.get("feats", "")
         self.equipment = kwargs.get("equipment", "")
 
+    @property
     def status(self) -> str:
         """
         Returns the status of the application by aggregating various attributes.
@@ -234,6 +237,7 @@ class AppBackground(object):
         self.feat = kwargs.get("feat", "")
         self.equipment = kwargs.get("equipment", "")
 
+    @property
     def status(self) -> str:
         """
         Returns the status of the application based on its attributes.
@@ -345,10 +349,10 @@ class NewCharacterApplication(object):
             bool: True if the application can be submitted, False otherwise.
         """
         required_fields = [
-            self.base_scores.status(),
-            self.species.status(),
-            self.char_class.status(),
-            self.background.status(),
+            self.base_scores.status,
+            self.species.status,
+            self.char_class.status,
+            self.background.status,
             self.join_motivation,
             self.name,
             self.link,

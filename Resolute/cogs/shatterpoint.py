@@ -4,7 +4,7 @@ from discord.commands import SlashCommandGroup
 from discord.ext import commands
 
 from Resolute.bot import G0T0Bot, G0T0Context
-from Resolute.helpers.general_helpers import is_admin
+from Resolute.helpers import is_admin
 from Resolute.models.embeds import ErrorEmbed
 from Resolute.models.views.shatterpoint import ShatterpointSettingsUI
 

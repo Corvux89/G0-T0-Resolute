@@ -2,12 +2,13 @@ from typing import Mapping
 
 import discord
 
-from Resolute.helpers.general_helpers import get_webhook
-from Resolute.models.embeds.applications import NewCharacterRequestEmbed
+from Resolute.helpers import get_webhook
+from Resolute.models.embeds import PlayerEmbed
 from Resolute.models.objects.applications import (
     LevelUpApplication,
     NewCharacterApplication,
     PlayerApplication,
+    status,
 )
 from Resolute.models.objects.enum import ApplicationType
 from Resolute.models.objects.exceptions import G0T0Error
@@ -335,8 +336,57 @@ class NewCharacterRequestUI(CharacterView):
             self.submit.disabled = True
 
     async def get_content(self) -> Mapping:
+        embed = PlayerEmbed(
+            self.owner, title=f"{self.application.application.type.value} Application"
+        )
+
+        embed.add_field(
+            name="__Character Name__",
+            value=f"{status([self.application.application.name])}",
+        )
+
+        embed.add_field(
+            name="__Base Scores__",
+            value=f"{self.application.application.base_scores.status}",
+        )
+
+        embed.add_field(
+            name="__Species__", value=f"{self.application.application.species.status}"
+        )
+
+        embed.add_field(
+            name="__Class__", value=f"{self.application.application.char_class.status}"
+        )
+
+        embed.add_field(
+            name="__Background__",
+            value=f"{self.application.application.background.status}",
+        )
+
+        embed.add_field(
+            name="__Joining Motivation__",
+            value=f"{status([self.application.application.join_motivation])}",
+        )
+
+        embed.add_field(
+            name="__Motivation for Good__",
+            value=f"{status([self.application.application.good_motivation])}",
+        )
+
+        embed.add_field(
+            name="__Starting Credits__", value=f"{self.application.application.credits}"
+        )
+
+        embed.add_field(
+            name="__Sheet Link__", value=f"{self.application.application.link}"
+        )
+
+        embed.set_footer(
+            text="Fill out all the required fields, or 'NA' if not applicable.\nReview and submit when ready."
+        )
+
         return {
-            "embed": NewCharacterRequestEmbed(self.application.application),
+            "embed": embed,
             "content": "",
         }
 

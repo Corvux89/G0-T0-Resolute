@@ -4,10 +4,10 @@ from typing import Mapping
 import discord
 
 from Resolute.bot import G0T0Bot
-from Resolute.helpers.general_helpers import confirm
+from Resolute.constants import THUMBNAIL, ZWSP3
+from Resolute.helpers import confirm
 from Resolute.models.categories.categories import CodeConversion, Faction
-from Resolute.models.embeds import ErrorEmbed
-from Resolute.models.embeds.shatterpoint import ShatterpointEmbed, ShatterpointLogEmbed
+from Resolute.models.embeds import ErrorEmbed, PaginatedEmbed, PlayerEmbed
 from Resolute.models.objects.characters import PlayerCharacter
 from Resolute.models.objects.enum import AdjustOperator
 from Resolute.models.objects.guilds import PlayerGuild
@@ -44,7 +44,92 @@ class ShatterpointSettings(InteractiveView):
             )
 
     async def get_content(self) -> Mapping:
-        return {"embed": ShatterpointEmbed(self.bot, self.shatterpoint)}
+        if hasattr(self, "player") and self.player:
+            self.player = next(
+                (
+                    p
+                    for p in self.shatterpoint.players
+                    if p.player_id == self.player.player_id
+                ),
+                None,
+            )
+
+        active_players: list[ShatterpointPlayer] = list(
+            filter(lambda p: p.active, self.shatterpoint.players)
+        )
+        override_players: list[ShatterpointPlayer] = list(
+            filter(lambda p: not p.update, self.shatterpoint.players)
+        )
+
+        embed = PlayerEmbed(
+            self.owner, title=f"Summary for shatterpoing: {self.shatterpoint.name}"
+        )
+        embed.set_thumbnail(url=THUMBNAIL)
+
+        paginated_embed = PaginatedEmbed(embed)
+
+        paginated_embed.description = (
+            f"**Base Chain Codes**: {self.shatterpoint.base_cc:,}\n"
+            f"**Total Participants**: {len(active_players):,}"
+        )
+
+        if hasattr(self, "player") and self.player:
+            char_str = "\n".join(
+                [f"{ZWSP3}{c.name}" for c in self.player.player_characters]
+            )
+
+            paginated_embed.add_field(
+                name=f"Information for {self.player.member.display_name}",
+                value=(
+                    f"**CC**: {self.player.cc:,}\n"
+                    f"**# Scraped Posts**: {self.player.num_messages}\n"
+                    "**Characters**:\n"
+                    f"{char_str}"
+                ),
+            )
+
+        if self.shatterpoint.renown:
+            paginated_embed.add_field(
+                name="Renown",
+                value="\n".join(
+                    [
+                        f"{ZWSP3}**{r.faction.value}**: {r.renown}"
+                        for r in self.shatterpoint.renown
+                        if r.renown > 0
+                    ]
+                ),
+            )
+
+        paginated_embed.add_field(
+            name="Scraped Channels",
+            value="\n".join(
+                [f"{ZWSP3}{c.mention}" for c in self.shatterpoint.channels]
+            ),
+        )
+
+        if override_players:
+            paginated_embed.add_field(
+                name="Manual Overrides (CC, Renown)",
+                value="\n".join(
+                    [
+                        f"{ZWSP3}{player.member.mention if player.member else f'Unkown Member {player.player_id}'} ({player.cc:,}, {player.renown_override if player.renown_override else 'NA'})"
+                        for player in override_players
+                    ]
+                ),
+            )
+
+        if hasattr(self, "player") or hasattr(self, "operator"):
+            paginated_embed.add_field(
+                name="All active players (Cc, # posts, # characters)",
+                value="\n".join(
+                    [
+                        f"{ZWSP3}{player.member.mention if player.member else f'Unkown Member {player.player_id}'} ({player.cc:,}, {player.num_messages:,}, {len(player.characters)})"
+                        for player in active_players
+                    ]
+                ),
+            )
+
+        return {"embeds": paginated_embed.embeds}
 
 
 class ShatterpointSettingsUI(ShatterpointSettings):
@@ -141,7 +226,10 @@ class ShatterpointSettingsUI(ShatterpointSettings):
                 embed=ErrorEmbed("Ok, cancelling"), delete_after=5
             )
         else:
-            for p in self.shatterpoint.players:
+            active_players: list[ShatterpointPlayer] = list(
+                filter(lambda p: p.active, self.shatterpoint.players)
+            )
+            for p in active_players:
                 player = await self.bot.get_player(p.player_id, interaction.guild.id)
                 await self.bot.log(
                     interaction,
@@ -191,9 +279,22 @@ class ShatterpointSettingsUI(ShatterpointSettings):
                         )
 
             await self.shatterpoint.delete()
-            await interaction.channel.send(
-                embed=ShatterpointLogEmbed(self.shatterpoint)
+            embed = discord.Embed(
+                title=f"Shatterpoint: {self.shatterpoint.name} - has been logged",
+                timestamp=discord.utils.utcnow(),
             )
+
+            embed.add_field(
+                name="# Players", value=f"{len(active_players):,}", inline=False
+            )
+
+            embed.add_field(
+                name="# Characters",
+                value=f"{sum(len(player.characters) for player in active_players)}",
+                inline=False,
+            )
+
+            await interaction.channel.send(embed=embed)
             await self.on_timeout()
 
     @discord.ui.button(label="Reset", style=discord.ButtonStyle.red, row=2)
@@ -321,26 +422,13 @@ class _ShatterpointPlayerManage(ShatterpointSettings):
     bot_player: Player = None
     character: PlayerCharacter = None
 
-    async def get_content(self) -> Mapping:
-        if self.player:
-            self.player = next(
-                (
-                    p
-                    for p in self.shatterpoint.players
-                    if p.player_id == self.player.player_id
-                ),
-                None,
-            )
-        return {
-            "embed": ShatterpointEmbed(self.bot, self.shatterpoint, True, self.player)
-        }
-
     async def _before_send(self):
         self.player_remove.disabled = (
             False
             if self.player and self.player.player_id and self.player.active
             else True
         )
+
         self.remove_item(self.character_select)
 
         if self.player:
@@ -355,12 +443,13 @@ class _ShatterpointPlayerManage(ShatterpointSettings):
                 for c in self.bot_player.characters
             ]
 
-            if len(char_list) > 0:
+            if char_list:
                 self.character_select.options = char_list
                 self.add_item(self.character_select)
 
         self.character_add.disabled = False if self.character else True
         self.character_remove.disabled = False if self.character else True
+        self.player_settings.disabled = False if self.player else True
 
     @discord.ui.user_select(placeholder="Select a player", row=1)
     async def player_select(
@@ -383,7 +472,9 @@ class _ShatterpointPlayerManage(ShatterpointSettings):
         self.character = None
         await self.refresh_content(interaction)
 
-    @discord.ui.select(placeholder="Select a character", row=2)
+    @discord.ui.select(
+        placeholder="Select a character", row=2, custom_id="character_select"
+    )
     async def character_select(
         self, c: discord.ui.Select, interaction: discord.Interaction
     ):
@@ -527,9 +618,6 @@ class _ShatterpointMassAdjust(ShatterpointSettings):
             for o in AdjustOperator
         ]
         self.select_operator.options = op_list
-
-    async def get_content(self) -> Mapping:
-        return {"embed": ShatterpointEmbed(self.bot, self.shatterpoint, True)}
 
 
 class _ShatterpointRenownManage(ShatterpointSettings):

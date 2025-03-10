@@ -54,30 +54,3 @@ class ArenaStatusEmbed(discord.Embed):
 
         if message:
             await message.edit(embed=self)
-
-
-class ArenaPhaseEmbed(discord.Embed):
-    def __init__(self, ctx: discord.ApplicationContext, arena: Arena, result: str):
-        super().__init__(
-            title=f"Phase {arena.completed_phases} Complete!",
-            description=f"Complete phases: **{arena.completed_phases} / {arena.tier.max_phases}**",
-            color=discord.Color.random(),
-        )
-
-        self.set_thumbnail(url=THUMBNAIL)
-
-        bonus = (arena.completed_phases > arena.tier.max_phases / 2) and result == "WIN"
-
-        field_str = [
-            f"{ctx.guild.get_member(arena.host_id).mention or 'Player not found'}: 'HOST'"
-        ]
-
-        for character in arena.player_characters:
-            text = f"{character.name} ({ctx.guild.get_member(character.player_id).mention or 'Player not found'}): '{result}'{f', `BONUS`' if bonus else ''}"
-            field_str.append(text)
-
-        self.add_field(
-            name="The following rewards have been applied:",
-            value="\n".join(field_str),
-            inline=False,
-        )

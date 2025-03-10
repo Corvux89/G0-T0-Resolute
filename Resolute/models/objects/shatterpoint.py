@@ -72,6 +72,7 @@ class Shatterpoint(object):
             shatterpoint = Shatterpoint(self.bot.db, **data)
             await self.get_players(shatterpoint)
             await self.get_renown(shatterpoint)
+            self.get_channels(shatterpoint)
             if shatterpoint.busy_member:
                 shatterpoint.busy_member = self.bot.get_user(shatterpoint.busy_member)
             return shatterpoint
@@ -100,12 +101,21 @@ class Shatterpoint(object):
                 for row in await self.bot.query(query, QueryResultType.multiple)
             ]
 
+        def get_channels(self, shatterpoint: "Shatterpoint") -> None:
+            channels = [
+                self.bot.get_channel(c)
+                for c in shatterpoint.channels
+                if self.bot.get_channel(c)
+            ]
+
+            shatterpoint.channels = channels
+
     def __init__(self, db: aiopg.sa.Engine, **kwargs):
         self._db = db
         self.guild_id = kwargs.get("guild_id")
         self.name = kwargs.get("name", "New Shatterpoint")
         self.base_cc = kwargs.get("base_cc", 0)
-        self.channels: list[int] = kwargs.get("channels", [])
+        self.channels: list[discord.abc.Messageable] = kwargs.get("channels", [])
         self.busy_member: discord.Member | discord.User = kwargs.get("busy_member")
 
         self.players: list[ShatterpointPlayer] = kwargs.get("players", [])
@@ -116,7 +126,7 @@ class Shatterpoint(object):
         update_dict = {
             "name": self.name,
             "base_cc": self.base_cc,
-            "channels": self.channels,
+            "channels": [c.id for c in self.channels] if self.channels else [],
             "busy_member": (self.busy_member.id if self.busy_member else None),
         }
 
@@ -220,14 +230,14 @@ class Shatterpoint(object):
             if player:
                 player.num_messages += 1
 
-                if message.channel.id not in player.channels:
-                    player.channels.append(message.channel.id)
+                if message.channel not in player.channels:
+                    player.channels.append(message.channel)
 
                 if player.player_id not in [p.player_id for p in self.players]:
                     self.players.append(player)
 
-        if message.channel.id not in channels:
-            channels.append(message.channel.id)
+        if message.channel not in channels:
+            channels.append(message.channel)
 
         shatterpoint: Shatterpoint = await bot.get_shatterpoint(self.guild_id)
         shatterpoint.busy_member = None
@@ -302,13 +312,26 @@ class ShatterpointPlayer(object):
         @post_load
         async def make_globPlayer(self, data, **kwargs):
             player = ShatterpointPlayer(self.bot.db, **data)
+            guild = self.bot.get_guild(player.guild_id)
+
             await self.get_characters(player)
+            self.get_channels(player)
+            player.member = guild.get_member(player.player_id)
             return player
 
         async def get_characters(self, player: "ShatterpointPlayer"):
             player.player_characters = [
                 await self.bot.get_character(c) for c in player.characters
             ]
+
+        def get_channels(self, player: "ShatterpointPlayer") -> None:
+            channels = [
+                self.bot.get_channel(c)
+                for c in player.channels
+                if self.bot.get_channel(c)
+            ]
+
+            player.channels = channels
 
     def __init__(self, db: aiopg.sa.Engine, **kwargs):
         self._db = db
@@ -319,7 +342,7 @@ class ShatterpointPlayer(object):
         self.update = kwargs.get("update", True)
         self.active = kwargs.get("active", True)
         self.num_messages = kwargs.get("num_messages", 0)
-        self.channels: list[int] = kwargs.get("channels", [])
+        self.channels: list[discord.abc.Messageable] = kwargs.get("channels", [])
         self.characters: list[int] = kwargs.get("characters", [])
         self.renown_override: int = kwargs.get("renown_override")
 
@@ -327,12 +350,14 @@ class ShatterpointPlayer(object):
             "player_characters", []
         )
 
+        self.member: discord.Member = kwargs.get("member")
+
     async def upsert(self) -> None:
         update_dict = {
             "cc": self.cc,
             "renown_override": self.renown_override,
             "num_messages": self.num_messages,
-            "channels": self.channels,
+            "channels": [c.id for c in self.channels] if self.channels else [],
             "update": self.update,
             "active": self.active,
             "characters": self.characters,

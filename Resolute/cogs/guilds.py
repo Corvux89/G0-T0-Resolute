@@ -9,7 +9,9 @@ import discord
 from discord.ext import commands, tasks
 
 from Resolute.bot import G0T0Bot, G0T0Context
-from Resolute.helpers.general_helpers import confirm, is_admin
+from Resolute.helpers import confirm, is_admin
+from Resolute.helpers.general_helpers import process_message
+from Resolute.models.embeds import PaginatedEmbed
 from Resolute.models.embeds.guilds import ResetEmbed
 from Resolute.models.objects.characters import PlayerCharacter
 from Resolute.models.objects.enum import QueryResultType
@@ -193,18 +195,33 @@ class Guilds(commands.Cog):
         """
         if guild.announcement_channel:
             try:
-                embeds = ResetEmbed.chunk_announcements(guild, complete_time, **kwargs)
+                embed = ResetEmbed(guild, complete_time=complete_time, **kwargs)
+                pageinated_embed = PaginatedEmbed(embed)
+
+                for announcement in guild.weekly_announcement:
+                    parts = announcement.split("|")
+                    title = parts[0] if len(parts) > 1 else "Announcement"
+                    body = parts[1] if len(parts) > 1 else parts[0]
+                    processed_announcement = process_message(body, guild)
+
+                    pageinated_embed.add_field(name=title, value=processed_announcement)
+
                 if (
                     guild.ping_announcement == True
                     and guild.entry_role
                     and guild.member_role
                 ):
-                    await guild.announcement_channel.send(
-                        embeds=embeds,
-                        content=f"{guild.entry_role.mention}{guild.member_role.mention}",
-                    )
+                    for i, e in enumerate(pageinated_embed.embeds):
+                        await guild.announcement_channel.send(
+                            embed=e,
+                            content=(
+                                f"{guild.entry_role.mention}{guild.member_role.mention}"
+                                if i == 0
+                                else ""
+                            ),
+                        )
                 else:
-                    await guild.announcement_channel.send(embeds=embeds)
+                    await pageinated_embed.send_to(guild.announcement_channel)
 
                 guild.weekly_announcement = []
                 guild.ping_announcement = False

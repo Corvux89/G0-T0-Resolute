@@ -5,17 +5,11 @@ import discord
 
 from Resolute.bot import G0T0Bot
 from Resolute.compendium import Compendium
-from Resolute.helpers.general_helpers import get_webhook, process_message
+from Resolute.constants import ZWSP3
+from Resolute.helpers import get_webhook, process_message
 from Resolute.models.categories import CharacterClass, CharacterSpecies
 from Resolute.models.categories.categories import CharacterArchetype, Faction
-from Resolute.models.embeds import ErrorEmbed
-from Resolute.models.embeds.characters import (
-    CharacterEmbed,
-    CharacterSettingsEmbed,
-    LevelUpEmbed,
-    NewcharacterEmbed,
-    NewCharacterSetupEmbed,
-)
+from Resolute.models.embeds import CharacterEmbed, ErrorEmbed
 from Resolute.models.embeds.players import PlayerOverviewEmbed, RPPostEmbed
 from Resolute.models.objects.characters import CharacterRenown, PlayerCharacterClass
 from Resolute.models.objects.enum import ApplicationType
@@ -23,6 +17,43 @@ from Resolute.models.objects.exceptions import G0T0Error
 from Resolute.models.objects.players import Player, PlayerCharacter, RPPost
 from Resolute.models.objects.webhook import G0T0Webhook
 from Resolute.models.views.base import InteractiveView
+
+
+class CharacterViewEmbed(CharacterEmbed):
+    def __init__(self, player: Player, character: PlayerCharacter):
+        super().__init__(
+            player,
+            character,
+            title=f"Character Info - [{character.level}] {character.name}",
+        )
+
+        class_str = f"\n{ZWSP3*2}".join(
+            [f"{c.get_formatted_class()}" for c in character.classes]
+        )
+        class_str = (
+            f"\n{ZWSP3*2}{class_str}" if len(character.classes) > 1 else class_str
+        )
+
+        self.description = (
+            f"**Player**: {player.member.mention}\n"
+            f"**Faction**: {character.faction.value if character.faction else '*None*'}\n"
+            f"**Total Renown**: {character.total_renown}\n"
+            f"**Species**: {character.species.value}\n"
+            f"**Credits**: {character.credits:,}\n"
+            f"**Class{'es' if len(character.classes) > 1 else ''}**: {class_str}\n"
+        )
+
+        if character.renown:
+            self.add_field(
+                name="Renown Breakdown",
+                value="\n".join(
+                    [
+                        f"{ZWSP3}**{r.faction.value}**: {r.renown}"
+                        for r in character.renown
+                    ]
+                ),
+                inline=True,
+            )
 
 
 # Character Manage Base setup
@@ -42,6 +73,15 @@ class CharacterManage(InteractiveView):
     owner: discord.Member = None
     player: Player
     active_character: PlayerCharacter = None
+
+    async def get_content(self) -> Mapping:
+        if self.active_character:
+            embed = CharacterViewEmbed(self.player, self.active_character)
+
+        else:
+            embed = PlayerOverviewEmbed(self.owner, self.player, self.bot.compendium)
+
+        return {"embed": embed, "content": ""}
 
 
 # Main Character Manage UI
@@ -146,11 +186,6 @@ class CharacterManageUI(CharacterManage):
         ):
             self.remove_item(self.inactivate_character)
 
-    async def get_content(self) -> Mapping:
-        embed = PlayerOverviewEmbed(self.player, self.bot.compendium)
-
-        return {"embed": embed, "content": ""}
-
 
 # Character Manage - New Character
 class _NewCharacter(CharacterManage):
@@ -233,7 +268,26 @@ class _NewCharacter(CharacterManage):
         self.player = await self.bot.get_player(self.player.id, self.player.guild_id)
         await self.bot.manage_player_tier_roles(self.player, "Character Created!")
 
-        await interaction.channel.send(embed=NewcharacterEmbed(log_entry))
+        embed = CharacterEmbed(
+            self.player,
+            self.new_character,
+            title=f"Character Created - {self.new_character.name}",
+            description=(
+                f"**Player**: {log_entry.player.member.mention}\n"
+                f"**Level**: {log_entry.character.level}\n"
+                f"**Species**: {log_entry.character.species.value}\n"
+                f"**Class**: {log_entry.character.classes[0].get_formatted_class()}\n"
+                f"**Starting Credits**: {log_entry.credits:,}\n"
+                f"{f'**CC Adjustment**: {log_entry.cc:,}' if log_entry.cc != 0 and log_entry.cc != None else ''}"
+            ),
+        )
+
+        embed.set_footer(
+            text=f"Created by: {log_entry.author.member.name} - Log #: {log_entry.id}",
+            icon_url=log_entry.author.member.display_avatar.url,
+        )
+
+        await interaction.channel.send(embed=embed)
 
         if (
             self.player.guild.first_character_message
@@ -314,13 +368,21 @@ class _NewCharacter(CharacterManage):
         pass
 
     async def get_content(self) -> Mapping:
-        embed = NewCharacterSetupEmbed(
+        embed = CharacterEmbed(
             self.player,
             self.new_character,
-            self.new_class,
-            self.new_credits,
-            self.new_cc,
+            title=f"Information for {self.player.member.display_name}",
+            description=(
+                f"**Name**: {self.new_character.name if self.new_character.name else ''}\n"
+                f"**Level**: {self.new_character.level}{f' (*Too high for server. Max server level is `{self.player.guild.max_level}`*)' if self.new_character.level > self.player.guild.max_level else ''}\n"
+                f"**Species**: {self.new_character.species.value if hasattr(self.new_character.species, 'value') else ''}\n"
+                f"**Class**: {self.new_class.get_formatted_class() if hasattr(self.new_class, 'primary_class') else ''}\n"
+                f"**Starting Credits**: {self.new_credits:,}\n"
+            ),
         )
+
+        if self.new_cc != 0:
+            embed.description += f"**CC Adjustment**: {self.new_cc}{f''' (*This would put the player at {self.player.cc + self.new_cc:,} CC*)''' if self.player.cc + self.new_cc < 0 else ''}\n"
         return {"embed": embed, "content": ""}
 
 
@@ -348,11 +410,8 @@ class _InactivateCharacter(CharacterManage):
     async def back(self, _: discord.ui.Button, interaction: discord.Interaction):
         await self.defer_to(CharacterManageUI, interaction)
 
-    async def get_content(self) -> Mapping:
-        return {
-            "embed": CharacterEmbed(self.player, self.active_character),
-            "content": "Are you sure you want to inactivate this character?",
-        }
+    async def _before_send(self):
+        pass
 
 
 # Character Manage - Edit Character
@@ -420,9 +479,19 @@ class _EditCharacter(CharacterManage):
 
         await self.bot.manage_player_tier_roles(self.player, "Level up")
 
-        await interaction.channel.send(
-            embed=LevelUpEmbed(self.player, self.active_character)
+        embed = CharacterEmbed(
+            self.player,
+            self.active_character,
+            title="Level up successful!",
+            description=f"{self.active_character.name} ({self.player.member.mention}) is now level {self.active_character.level}",
+            timestamp=discord.utils.utcnow(),
         )
+
+        embed.set_footer(
+            text=f"Logged by {self.owner.name}", icon_url=self.owner.display_avatar.url
+        )
+
+        await interaction.channel.send(embed=embed)
 
         await self.on_timeout()
 
@@ -463,12 +532,6 @@ class _EditCharacter(CharacterManage):
 
         if not self.player.guild.calendar:
             self.remove_item(self.dob_character)
-
-    async def get_content(self) -> Mapping:
-        return {
-            "embed": CharacterEmbed(self.player, self.active_character),
-            "content": "",
-        }
 
 
 # Character Manage - Edit Character Class
@@ -553,12 +616,6 @@ class _EditCharacterClass(CharacterManage):
                 )
             )
         self.select_class.options = class_list
-
-    async def get_content(self) -> Mapping:
-        return {
-            "embed": CharacterEmbed(self.player, self.active_character),
-            "content": "",
-        }
 
 
 # Character Manage - Edit Renown
@@ -1093,7 +1150,32 @@ class CharacterSettings(InteractiveView):
         self.player = await self.bot.get_player(self.player.id, self.player.guild.id)
 
     async def get_content(self) -> Mapping:
-        embed = CharacterSettingsEmbed(self.player, self.active_character)
+        embed = CharacterEmbed(
+            self.player,
+            self.active_character,
+            title=f"Settings for {self.player.member.display_name}",
+            description=(
+                f"**Character**: {self.active_character.name}{f' (*{self.active_character.nickname}*)' if self.active_character.nickname else ''}\n"
+                f"**Faction**: {self.active_character.faction.value if self.active_character.faction else '*None*'}\n"
+                f"**Global Character**: {'True' if self.active_character.primary_character else 'False'}"
+            ),
+        )
+        if self.player.guild.calendar and self.active_character.dob:
+            embed.description += (
+                f"\n**Birthday**: {self.active_character.formatted_dob(self.player.guild)}\n"
+                f"**Age**: {self.active_character.age(self.player.guild)}"
+            )
+
+        embed.add_field(
+            name="Active RP Channels",
+            value="\n".join(
+                [
+                    self.player.member.guild.get_channel(c).mention
+                    for c in self.active_character.channels
+                    if self.player.member.guild.get_channel(c)
+                ]
+            ),
+        )
 
         return {"embed": embed, "content": ""}
 
@@ -1447,9 +1529,9 @@ class CharacterGet(InteractiveView):
 
     async def get_content(self) -> Mapping:
         if self.active_character:
-            embed = CharacterEmbed(self.player, self.active_character)
+            embed = CharacterViewEmbed(self.player, self.active_character)
         else:
-            embed = PlayerOverviewEmbed(self.player, self.bot.compendium)
+            embed = PlayerOverviewEmbed(self.owner, self.player, self.bot.compendium)
 
         return {"content": "", "embed": embed}
 
@@ -1458,7 +1540,8 @@ class CharacterGet(InteractiveView):
             return
         try:
             await self.message.edit(
-                view=None, embed=PlayerOverviewEmbed(self.player, self.bot.compendium)
+                view=None,
+                embed=PlayerOverviewEmbed(self.owner, self.player, self.bot.compendium),
             )
         except discord.HTTPException:
             pass
@@ -1700,6 +1783,8 @@ class RPPostUI(RPPostView):
     async def exit_application(
         self, _: discord.ui.Button, interaction: discord.Interaction
     ):
+        if self.orig_message:
+            await self.orig_message.clear_reactions()
         await self.on_timeout()
 
     async def _build_rp_post(self) -> bool:
@@ -1710,6 +1795,7 @@ class RPPostUI(RPPostView):
                     await webhook.edit_message(
                         self.orig_message.id, embed=RPPostEmbed(self.player, self.posts)
                     )
+                    await self.orig_message.clear_reactions()
                 else:
                     await webhook.send(
                         username=self.player.member.display_name,

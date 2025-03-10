@@ -5,7 +5,7 @@ from discord.ext import commands
 
 from Resolute.bot import G0T0Bot
 from Resolute.constants import APPROVAL_EMOJI, DENIED_EMOJI
-from Resolute.helpers.general_helpers import dm_check, try_delete
+from Resolute.helpers import dm_check, try_delete
 from Resolute.models.embeds.players import PlayerOverviewEmbed
 from Resolute.bot import G0T0Context
 from Resolute.models.objects.enum import ApplicationType
@@ -152,7 +152,7 @@ class Character(commands.Cog):
 
         if len(player.characters) == 0:
             return await ctx.respond(
-                embed=PlayerOverviewEmbed(player, self.bot.compendium)
+                embed=PlayerOverviewEmbed(ctx.author, player, self.bot.compendium)
             )
 
         ui = CharacterGetUI.new(self.bot, ctx.author, player)

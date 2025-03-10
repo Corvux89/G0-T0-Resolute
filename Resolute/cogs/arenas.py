@@ -5,11 +5,11 @@ from discord.commands import SlashCommandGroup
 from discord.ext import commands
 
 from Resolute.bot import G0T0Bot, G0T0Context
-from Resolute.constants import CHANNEL_BREAK
-from Resolute.helpers.autocomplete import get_arena_type_autocomplete
-from Resolute.helpers.general_helpers import confirm
+from Resolute.constants import CHANNEL_BREAK, THUMBNAIL
+from Resolute.helpers import confirm
 from Resolute.models.categories import ArenaTier, ArenaType
-from Resolute.models.embeds.arenas import ArenaPhaseEmbed, ArenaStatusEmbed
+from Resolute.models.embeds import PlayerEmbed
+from Resolute.models.embeds.arenas import ArenaStatusEmbed
 from Resolute.models.embeds.players import ArenaPostEmbed
 from Resolute.models.objects.arenas import Arena
 from Resolute.models.objects.exceptions import (
@@ -130,6 +130,11 @@ class Arenas(commands.Cog):
 
         raise G0T0Error("Something went wrong")
 
+    async def arena_type_autocomplete(
+        self, ctx: discord.AutocompleteContext
+    ) -> list[str]:
+        return [f.value for f in self.bot.compendium.arena_type[0].values()] or []
+
     @arena_commands.command(
         name="claim", description="Opens an arena in this channel and sets you as host"
     )
@@ -139,7 +144,7 @@ class Arenas(commands.Cog):
         type: discord.Option(
             discord.SlashCommandOptionType(3),
             description="Arena Type",
-            autocomplete=get_arena_type_autocomplete,
+            autocomplete=arena_type_autocomplete,
             required=True,
             default="COMBAT",
         ),
@@ -337,6 +342,10 @@ class Arenas(commands.Cog):
 
         if arena is None:
             raise ArenaNotFound()
+        elif arena.completed_phases >= arena.tier.max_phases:
+            raise G0T0Error(
+                f"Cannot exceed arena max phases. Close this arena if completed"
+            )
 
         arena.completed_phases += 1
         await arena.upsert()
@@ -372,7 +381,32 @@ class Arenas(commands.Cog):
                 )
 
         await ArenaStatusEmbed(ctx, arena).update()
-        await ctx.respond(embed=ArenaPhaseEmbed(ctx, arena, result))
+
+        embed = PlayerEmbed(
+            ctx.author,
+            title=f"Phase {arena.completed_phases} Complete!",
+            description=f"Completed phases: **{arena.completed_phases} / {arena.tier.max_phases}**",
+        )
+
+        embed.set_thumbnail(url=THUMBNAIL)
+
+        bonus = (arena.completed_phases > arena.tier.max_phases / 2) and result == "WIN"
+
+        field_str = [
+            f"{ctx.guild.get_member(arena.host_id).mention or 'Player not found'}: 'HOST'"
+        ]
+
+        for character in arena.player_characters:
+            text = f"{character.name} ({ctx.guild.get_member(character.player_id).mention or 'Player not found'}): '{result}'{f', `BONUS`' if bonus else ''}"
+            field_str.append(text)
+
+        embed.add_field(
+            name="The following rewards have been applied:",
+            value="\n".join(field_str),
+            inline=False,
+        )
+
+        await ctx.respond(embed=embed)
 
         if arena.completed_phases >= arena.tier.max_phases or result == "LOSS":
             await arena.close()

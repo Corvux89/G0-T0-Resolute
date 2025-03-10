@@ -5,13 +5,10 @@ from typing import Mapping, Type
 import discord
 
 from Resolute.bot import G0T0Bot
-from Resolute.helpers.general_helpers import confirm
+from Resolute.constants import THUMBNAIL, ZWSP3
+from Resolute.helpers import confirm
 from Resolute.models.categories.categories import Faction
-from Resolute.models.embeds import ErrorEmbed
-from Resolute.models.embeds.adventures import (
-    AdventureRewardEmbed,
-    AdventureSettingsEmbed,
-)
+from Resolute.models.embeds import ErrorEmbed, PlayerEmbed
 from Resolute.models.objects.adventures import Adventure
 from Resolute.models.objects.characters import PlayerCharacter
 from Resolute.models.objects.exceptions import G0T0Error
@@ -71,8 +68,47 @@ class AdventureView(InteractiveView):
         await view.refresh_content(interaction)
 
     async def get_content(self, interaction: discord.Interaction) -> Mapping:
+        embed = PlayerEmbed(interaction.user, title=f"{self.adventure.name}")
+
+        embed.set_thumbnail(url=THUMBNAIL)
+
+        embed.description = (
+            f"**Adventure Role**: {self.adventure.role.mention}\n"
+            f"**CC Earned to date**: {self.adventure.cc}"
+        )
+
+        if len(self.adventure.factions) > 0:
+            embed.description += f"\n**Factions**:\n" + "\n".join(
+                [f"{ZWSP3}{f.value}" for f in self.adventure.factions]
+            )
+
+        embed.add_field(
+            name=f"DM{'s' if len(self.adventure.dms) > 1 else ''}",
+            value="\n".join(
+                [
+                    f"{ZWSP3}- {interaction.guild.get_member(dm).mention}"
+                    for dm in self.adventure.dms
+                    if interaction.guild.get_member(dm)
+                ]
+            ),
+            inline=False,
+        )
+
+        if self.adventure.player_characters:
+            embed.add_field(
+                name="Players",
+                value="\n".join(
+                    [
+                        f"{ZWSP3}- {character.name} ({interaction.guild.get_member(character.player_id).mention})"
+                        for character in self.adventure.player_characters
+                        if interaction.guild.get_member(character.player_id)
+                    ]
+                ),
+                inline=False,
+            )
+
         return {
-            "embed": AdventureSettingsEmbed(interaction, self.adventure),
+            "embed": embed,
             "content": "",
         }
 
@@ -187,9 +223,50 @@ class AdventureSettingsUI(AdventureView):
                     adventure=self.adventure,
                     silent=True,
                 )
-            await interaction.channel.send(
-                embed=AdventureRewardEmbed(interaction, self.adventure, response.cc)
+
+            embed = PlayerEmbed(
+                self.owner,
+                title="Adventure Rewards",
+                description=(
+                    f"**Adventure**: {self.adventure.name}\n"
+                    f"**CC Earned**: {response.cc:,}\n"
+                    f"**CC Earned to date**: {self.adventure.cc:,}\n"
+                ),
+                timestamp=discord.utils.utcnow(),
             )
+
+            embed.set_thumbnail(url=THUMBNAIL)
+            embed.set_footer(
+                text=f"Logged by {self.owner.name}",
+                icon_url=self.owner.display_avatar.url,
+            )
+
+            embed.add_field(
+                name=f"DM{'s' if len(self.adventure.dms) > 1 else ''}",
+                value="\n".join(
+                    [
+                        f"{ZWSP3}- {interaction.guild.get_member(dm).mention}"
+                        for dm in self.adventure.dms
+                        if interaction.guild.get_member(dm)
+                    ]
+                ),
+                inline=False,
+            )
+
+            if self.adventure.player_characters:
+                embed.add_field(
+                    name="Players",
+                    value="\n".join(
+                        [
+                            f"{ZWSP3}- {character.name} ({interaction.guild.get_member(character.player_id).mention})"
+                            for character in self.adventure.player_characters
+                            if interaction.guild.get_member(character.player_id)
+                        ]
+                    ),
+                    inline=False,
+                )
+
+            await interaction.channel.send(embed=embed)
         await self.refresh_content(interaction)
 
     @discord.ui.button(label="NPCs", style=discord.ButtonStyle.primary, row=2)

@@ -22,7 +22,10 @@ class PlayerEmbed(discord.Embed):
     def __init__(self, member: discord.Member, *args, **kwargs):
         super().__init__(**kwargs)
         self.color = member.color
-        self.set_author(name=member.display_name, icon_url=member.display_avatar.url)
+        self.set_author(
+            name=member.display_name,
+            icon_url=member.display_avatar.url if member.display_avatar else None,
+        )
 
 
 class CharacterEmbed(PlayerEmbed):
@@ -31,8 +34,8 @@ class CharacterEmbed(PlayerEmbed):
         self.set_thumbnail(
             url=(
                 player.member.display_avatar.url
-                if not character.avatar_url
-                else character.avatar_url
+                if player.member.display_avatar
+                else character.avatar_url if character.avatar_url else None
             )
         )
 

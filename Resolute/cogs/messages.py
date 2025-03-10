@@ -314,7 +314,7 @@ class Messages(commands.Cog):
         except:
             return False
 
-        # Old embed method of putting the author id in the footer text
+        # Author id in the footer text
         if embed.footer and embed.footer.text == f"{ctx.author.id}":
             return True
 

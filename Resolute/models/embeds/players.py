@@ -65,7 +65,6 @@ class ArenaPostEmbed(PlayerEmbed):
     def __init__(self, post: ArenaPost):
         super().__init__(post.player.member, title=f"{post.type.value} Arena Request")
         self.post = post
-        self.set_thumbnail(url=post.player.member.avatar.url)
 
         char_str = "\n\n".join(
             [
@@ -75,6 +74,7 @@ class ArenaPostEmbed(PlayerEmbed):
         )
 
         self.add_field(name="Character Priority", value=char_str, inline=False)
+        self.set_footer(text=f"{post.player.id}")
 
     async def build(self) -> bool:
         if self.post.player.guild.arena_board_channel:
@@ -95,8 +95,7 @@ class ArenaPostEmbed(PlayerEmbed):
 class RPPostEmbed(PlayerEmbed):
     def __init__(self, player: Player, posts: list[RPPost]):
         super().__init__(player.member, title="Roleplay Request")
-
-        self.set_thumbnail(url=player.member.avatar.url)
+        self.set_footer(text=f"{player.id}")
 
         for post in posts:
             self.add_field(

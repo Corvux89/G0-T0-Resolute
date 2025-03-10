@@ -8,25 +8,24 @@ import discord
 
 from Resolute.bot import G0T0Bot
 from Resolute.constants import ZWSP3
-from Resolute.helpers.general_helpers import split_content
-from Resolute.models.embeds import ErrorEmbed, PlayerEmbed
+from Resolute.models.embeds import ErrorEmbed, PaginatedEmbed, PlayerEmbed
 from Resolute.models.objects.exceptions import G0T0Error
 from Resolute.models.objects.players import Player
 from Resolute.models.views.base import InteractiveView
 
 log = logging.getLogger(__name__)
 
-owner_overwrites = discord.PermissionOverwrite(
+OWNER_OVERWRITES = discord.PermissionOverwrite(
     view_channel=True, manage_messages=True, send_messages=True
 )
 
-general_overwrites = discord.PermissionOverwrite(view_channel=True, send_messages=False)
+GENERAL_OVERWRITES = discord.PermissionOverwrite(view_channel=True, send_messages=False)
 
-bot_overwrites = discord.PermissionOverwrite(
+BOT_OVERWRITES = discord.PermissionOverwrite(
     view_channel=True, send_messages=True, manage_messages=True, manage_channels=True
 )
 
-readonly_overwrites = discord.PermissionOverwrite(
+READONLY_OVERWRITES = discord.PermissionOverwrite(
     view_channel=True,
     send_messages=False,
     add_reactions=False,
@@ -59,8 +58,6 @@ class ChannelAdmin(InteractiveView):
         if not self.channel:
             return {"embed": None, "content": "Pick an option"}
         else:
-            chunk_size = 1000
-            # TODO: Paginated Embed
             embed = PlayerEmbed(
                 self.owner,
                 title=f"{self.channel.name} Summary",
@@ -69,33 +66,21 @@ class ChannelAdmin(InteractiveView):
                 ),
             )
 
+            paginated_embed = PaginatedEmbed(embed)
+
             category_overwrites = (
                 self.channel.category.overwrites if self.channel.category else {}
             )
             category_string = "\n".join(get_overwrite_string(category_overwrites))
-            category_chunks = split_content(category_string, chunk_size)
-
-            for i, chunk in enumerate(category_chunks):
-                embed.add_field(
-                    name=f"Category Overwrites {f'{i+1}' if len(category_chunks)>1 else ''}",
-                    value=chunk,
-                    inline=False,
-                )
+            paginated_embed.add_field(name="Category Overwrites", value=category_string)
 
             channel_overwrites = (
                 self.channel.overwrites if hasattr(self.channel, "overwrites") else {}
             )
             channel_string = "\n".join(get_overwrite_string(channel_overwrites))
-            channel_chunks = split_content(channel_string, chunk_size)
+            paginated_embed.add_field(name="Channel Overwrites", value=channel_string)
 
-            for i, chunk in enumerate(channel_chunks):
-                embed.add_field(
-                    name=f"Channel Overwrites {f'{i+1}' if len(channel_chunks)>1 else ''}",
-                    value=chunk,
-                    inline=False,
-                )
-
-            return {"embed": embed, "content": ""}
+            return {"embeds": paginated_embed.embeds, "content": ""}
 
 
 class ChannelAdminUI(ChannelAdmin):
@@ -231,7 +216,7 @@ class _EditPlayerChannel(ChannelAdmin):
             log.info(
                 f"CHANNEL ADMIN: {self.member} [ {self.member.id} ] added to {self.channel.name} [ {self.channel.id} ] by {interaction.user} [ {interaction.user.id} ]"
             )
-            await self.channel.set_permissions(self.member, overwrite=owner_overwrites)
+            await self.channel.set_permissions(self.member, overwrite=OWNER_OVERWRITES)
         await self.refresh_content(interaction)
 
     @discord.ui.button(label="Remove Owner", style=discord.ButtonStyle.red, row=2)
@@ -335,16 +320,16 @@ class _NewPlayerchannel(ChannelAdmin):
         channel_overwrites = self.category.overwrites
         guild = await self.bot.get_player_guild(self.category.guild.id)
 
-        channel_overwrites[self.member] = owner_overwrites
+        channel_overwrites[self.member] = OWNER_OVERWRITES
 
         if guild.bot_role:
-            channel_overwrites[guild.bot_role] = bot_overwrites
+            channel_overwrites[guild.bot_role] = BOT_OVERWRITES
 
         if guild.member_role:
-            channel_overwrites[guild.member_role] = general_overwrites
+            channel_overwrites[guild.member_role] = GENERAL_OVERWRITES
 
         if guild.staff_role:
-            channel_overwrites[guild.staff_role] = general_overwrites
+            channel_overwrites[guild.staff_role] = GENERAL_OVERWRITES
 
         channel = await guild.guild.create_text_channel(
             name=name,

@@ -393,33 +393,6 @@ async def get_selection(
     return choices[idx]
 
 
-def split_content(content: str, chunk_size: int = 2000) -> list[str]:
-    """
-    Splits the given content into chunks of specified size.
-    Args:
-        content (str): The content to be split.
-        chunk_size (int, optional): The maximum size of each chunk. Defaults to 2000.
-    Returns:
-        list[str]: A list of content chunks, each with a size up to the specified chunk size.
-    """
-    lines = content.splitlines(keepends=True)
-    out = []
-    current_chunk = ""
-
-    for line in lines:
-        if len(current_chunk) + len(line) + 1 > chunk_size:
-            out.append(current_chunk)
-            current_chunk = ""
-
-        current_chunk += line
-
-    if current_chunk:
-        out.append(current_chunk)
-
-    return out
-
-
-# TODO: See if this will replace split_content
 def chunk_text(
     text, max_chunk_size=1024, chunk_on=("\n\n", "\n", ". ", ", ", " "), chunker_i=0
 ):

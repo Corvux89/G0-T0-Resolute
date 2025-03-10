@@ -365,7 +365,7 @@ class NewCharacterApplication(object):
             else:
                 return False
         except:
-            False
+            return False
 
     def format_app(self, owner: discord.Member, staff: discord.Role = None) -> str:
         """

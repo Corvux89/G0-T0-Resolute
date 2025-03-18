@@ -11,11 +11,12 @@ from sqlalchemy.dialects.postgresql import ARRAY
 from Resolute.models import metadata
 from Resolute.models.categories.categories import Faction
 from Resolute.models.objects import RelatedList
+from Resolute.models.objects.exceptions import AdventureNotFound
 from Resolute.models.objects.npc import NPC
 from Resolute.models.objects.characters import PlayerCharacter
 
 if TYPE_CHECKING:
-    from Resolute.bot import G0T0Bot
+    from Resolute.bot import G0T0Bot, G0T0Context
 
 
 class Adventure(object):
@@ -169,6 +170,9 @@ class Adventure(object):
         # Virtual attributes
         self.npcs: list[NPC] = []
 
+    def __repr__(self):
+        return f"<{self.__class__.__name__} id={self.id!r} name={self.name!r}>"
+
     def update_characters(self):
         self.characters = [c.id for c in self._player_characters]
 
@@ -296,3 +300,43 @@ class Adventure(object):
             )
 
         return None
+
+    @classmethod
+    async def fetch_from_ctx(
+        cls, ctx: G0T0Context, role_id: int = None, category_channel_id: int = None
+    ) -> "Adventure":
+        if role_id:
+            query = Adventure.adventures_table.select().where(
+                sa.and_(
+                    Adventure.adventures_table.c.role_id == role_id,
+                    Adventure.adventures_table.c.end_ts == sa.null(),
+                )
+            )
+
+        elif category_channel_id:
+            query = Adventure.adventures_table.select().where(
+                sa.and_(
+                    Adventure.adventures_table.c.category_channel_id
+                    == category_channel_id,
+                    Adventure.adventures_table.c.end_ts == sa.null(),
+                )
+            )
+        elif ctx.channel.category:
+            query = Adventure.adventures_table.select().where(
+                sa.and_(
+                    Adventure.adventures_table.c.category_channel_id
+                    == ctx.channel.category.id,
+                    Adventure.adventures_table.c.end_ts == sa.null(),
+                )
+            )
+        else:
+            raise AdventureNotFound()
+
+        row = await ctx.bot.query(query)
+
+        if row is None:
+            raise AdventureNotFound()
+
+        adventure = await Adventure.AdventureSchema(ctx.bot).load(row)
+
+        return adventure

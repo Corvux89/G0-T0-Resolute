@@ -115,9 +115,7 @@ class G0T0Webhook(object):
         elif self.type == WebhookType.adventure:
             if self.ctx.channel.category:
                 if not self.adventure:
-                    self.adventure = await self.ctx.bot.get_adventure_from_category(
-                        self.ctx.channel.category.id
-                    )
+                    self.adventure = await Adventure.fetch_from_ctx(self.ctx)
 
                 if self.adventure:
                     self.npc = self.adventure.get_npc(key=self.ctx.invoked_with)
@@ -293,9 +291,7 @@ class G0T0Webhook(object):
 
         elif self.type == WebhookType.adventure:
             if self.ctx.channel.category:
-                self.adventure = await self.ctx.bot.get_adventure_from_category(
-                    self.ctx.channel.category.id
-                )
+                self.adventure = await Adventure.fetch_from_ctx(self.ctx)
 
                 if self.adventure and (
                     npc := self.adventure.get_npc(name=self.message.author.name)

@@ -150,7 +150,7 @@ class Shatterpoint(object):
             Shatterpoint.ref_gb_staging_table.c.guild_id == self.guild_id
         )
 
-        player_query = Shatterpoint.ref_gb_staging_table.delete().where(
+        player_query = ShatterpointPlayer.ref_gb_staging_player_table.delete().where(
             ShatterpointPlayer.ref_gb_staging_player_table.c.guild_id == self.guild_id
         )
 

@@ -60,9 +60,10 @@ async def create_tables(conn: SAConnection):
 
 
 class G0T0Context(discord.ApplicationContext):
+    bot: "G0T0Bot"
+
     def __init__(self, **kwargs):
         super(G0T0Context).__init__(**kwargs)
-
         self.player: Player = None
         self.playerGuild: PlayerGuild = None
 

@@ -352,18 +352,11 @@ class Adventures(commands.Cog):
         AdventureNotFound
             If no adventure is found for the given role or channel category.
         """
-        if role:
-            adventure = await self.bot.get_adventure_from_role(role.id)
-        elif channel_category:
-            adventure = await self.bot.get_adventure_from_category(channel_category.id)
-        else:
-            adventure = await self.bot.get_adventure_from_category(
-                ctx.channel.category.id
-            )
-
-        if adventure is None:
-            raise AdventureNotFound()
-
+        adventure = await Adventure.fetch_from_ctx(
+            ctx,
+            role.id if role else None,
+            channel_category.id if channel_category else None,
+        )
         ui = AdventureSettingsUI.new(self.bot, ctx.author, adventure, ctx.playerGuild)
         await ui.send_to(ctx)
         await ctx.delete()

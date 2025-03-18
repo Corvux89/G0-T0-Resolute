@@ -198,6 +198,7 @@ class ShatterpointSettingsUI(ShatterpointSettings):
     async def shatterpoint_commit(
         self, _: discord.ui.Button, interaction: discord.Interaction
     ):
+        await interaction.response.defer()
         if self.shatterpoint.busy_member:
             await interaction.channel.send(
                 embed=ErrorEmbed(
@@ -301,6 +302,7 @@ class ShatterpointSettingsUI(ShatterpointSettings):
     async def shatterpoint_reset(
         self, _: discord.ui.Button, interaction: discord.Interaction
     ):
+        await interaction.response.defer()
         if self.shatterpoint.busy_member:
             await interaction.channel.send(
                 embed=ErrorEmbed(

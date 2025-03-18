@@ -86,7 +86,7 @@ class MarketTransaction(object):
         else:
             notes = None
 
-        player = await bot.get_player(int(player_id), message.guild.id)
+        player = await Player.get_player(bot, int(player_id), message.guild.id)
 
         if char_id:
             character = PlayerCharacter.get_character(bot, char_id)

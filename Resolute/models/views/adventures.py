@@ -13,6 +13,8 @@ from Resolute.models.objects.adventures import Adventure
 from Resolute.models.objects.characters import PlayerCharacter
 from Resolute.models.objects.exceptions import G0T0Error
 from Resolute.models.objects.guilds import PlayerGuild
+from Resolute.models.objects.logs import DBLog
+from Resolute.models.objects.players import Player
 from Resolute.models.views.base import InteractiveView
 from Resolute.models.views.npc import NPCSettingsUI
 
@@ -194,8 +196,9 @@ class AdventureSettingsUI(AdventureView):
 
             dm_reward = response.cc + ceil(response.cc * 0.25)
             for dm in self.adventure.dms:
-                player = await self.bot.get_player(dm, interaction.guild.id)
-                await self.bot.log(
+                player = await Player.get_player(self.bot, dm, self.adventure.guild_id)
+                await DBLog.create(
+                    self.bot,
                     interaction,
                     player,
                     self.owner,
@@ -208,11 +211,12 @@ class AdventureSettingsUI(AdventureView):
 
             player_reward = response.cc
 
-            for character in self.adventure._player_characters:
-                player = await self.bot.get_player(
-                    character.player_id, interaction.guild.id
+            for character in self.adventure.player_characters:
+                player = await Player.get_player(
+                    self.bot, character.player_id, self.adventure.guild_id
                 )
-                await self.bot.log(
+                await DBLog.create(
+                    self.bot,
                     interaction,
                     player,
                     self.owner,
@@ -271,7 +275,7 @@ class AdventureSettingsUI(AdventureView):
 
     @discord.ui.button(label="NPCs", style=discord.ButtonStyle.primary, row=2)
     async def npcs(self, _: discord.ui.Button, interaction: discord.Interaction):
-        guild = await self.bot.get_player_guild(self.adventure.guild_id)
+        guild = await PlayerGuild.get_player_guild(self.bot, self.adventure.guild_idd)
         view = NPCSettingsUI.new(
             self.bot, self.owner, guild, AdventureSettingsUI, adventure=self.adventure
         )
@@ -311,12 +315,14 @@ class AdventureSettingsUI(AdventureView):
                 elif not renown:
                     amount = 1 if len(self.adventure.factions) > 1 else 2
 
-                    for char in self.adventure._player_characters:
-                        player = await self.bot.get_player(
-                            char.player_id, self.adventure.guild_id
+                    for char in self.adventure.player_characters:
+                        player = await Player.get_player(
+                            self.bot, char.player_id, self.adventure.guild_id
                         )
+
                         for faction in self.adventure.factions:
-                            await self.bot.log(
+                            await DBLog.create(
+                                self.bot,
                                 interaction,
                                 player,
                                 self.owner,
@@ -366,7 +372,7 @@ class _AdventureMemberSelect(AdventureView):
     ):
         member: discord.Member = user.values[0]
         self.member = member
-        self.player = await self.bot.get_player(self.member.id, interaction.guild.id)
+        self.player = await Player.get_player(self.member.id, interaction.guild.id)
         self.character = None
         if not self.dm_select and self.get_item("char_select") is None:
             self.add_item(self.character_select)

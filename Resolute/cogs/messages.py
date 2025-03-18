@@ -26,6 +26,9 @@ def setup(bot: G0T0Bot):
     bot.add_cog(Messages(bot))
 
 
+# TODO: Manage command for adventures, shatterpoints, characters, and anything else?
+
+
 class Messages(commands.Cog):
     bot: G0T0Bot
 
@@ -220,7 +223,8 @@ class Messages(commands.Cog):
                 # Selling items
                 if transaction.type.value == "Sell Items":
                     await message.add_reaction(APPROVAL_EMOJI[0])
-                    log_entry = await self.bot.log(
+                    log_entry = await DBLog.create(
+                        self.bot,
                         ctx,
                         transaction.player,
                         ctx.author,
@@ -237,7 +241,8 @@ class Messages(commands.Cog):
 
                 else:
                     try:
-                        log_entry = await self.bot.log(
+                        log_entry = await DBLog.create(
+                            self.bot,
                             ctx,
                             transaction.player,
                             ctx.author,
@@ -273,7 +278,7 @@ class Messages(commands.Cog):
     @commands.message_command(name="Null")
     @commands.check(is_admin)
     async def message_null(self, ctx: G0T0Context, message: discord.Message):
-        await ctx.defer()
+
         log_entry = await self._get_log_from_entry(message)
 
         reason = await confirm(
@@ -294,8 +299,7 @@ class Messages(commands.Cog):
             embed = message.embeds[0]
             log_id = self._get_match(f"ID:\s*(\d+)", embed.footer.text)
 
-            log_entry = await self.bot.get_log(log_id)
-
+            log_entry = await DBLog.get_log(self.bot, log_id)
         except:
             raise LogNotFound()
 

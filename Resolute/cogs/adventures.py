@@ -13,6 +13,7 @@ from Resolute.models.objects.exceptions import (
     CharacterNotFound,
     G0T0Error,
 )
+from Resolute.models.objects.players import Player
 from Resolute.models.views.adventures import AdventureSettingsUI
 
 log = logging.getLogger(__name__)
@@ -77,13 +78,11 @@ class Adventures(commands.Cog):
         Returns:
             Coroutine: A coroutine that sends an embed with the player's adventure information.
         """
-        await ctx.defer()
-
         player = (
             ctx.player
             if not member
-            else await self.bot.get_player(
-                member.id, ctx.guild.id if ctx.guild else None
+            else await Player.get_player(
+                self.bot, member.id, ctx.guild.id if ctx.guild else None
             )
         )
 
@@ -197,9 +196,6 @@ class Adventures(commands.Cog):
         Returns:
             None
         """
-
-        await ctx.defer()
-
         # Create the role
         if discord.utils.get(ctx.guild.roles, name=role_name):
             raise G0T0Error(f"Role `@{role_name}` already exists")

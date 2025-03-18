@@ -13,6 +13,8 @@ from Resolute.models.objects.exceptions import (
     InvalidCurrencySelection,
     LogNotFound,
 )
+from Resolute.models.objects.logs import DBLog
+from Resolute.models.objects.players import Player
 from Resolute.models.views.logs import LogPromptUI
 
 log = logging.getLogger(__name__)
@@ -89,7 +91,7 @@ class Log(commands.Cog):
         """
 
         if host:
-            await self.bot.log(ctx, member, ctx.author, "RP_HOST")
+            await DBLog.create(self.bot, ctx, member, ctx.author, "RP_HOST")
         else:
             await self._prompt_log(ctx, member, "RP")
 
@@ -208,8 +210,9 @@ class Log(commands.Cog):
                 ctx, member, "BUY", item, 0, -cost, True, False, True
             )
         elif currency == "CC":
-            await ctx.defer()
-            await self.bot.log(
+
+            await DBLog.create(
+                self.bot,
                 ctx,
                 member,
                 ctx.author,
@@ -274,8 +277,9 @@ class Log(commands.Cog):
             )
 
         elif currency == "CC":
-            await ctx.defer()
-            await self.bot.log(
+
+            await DBLog.create(
+                self.bot,
                 ctx,
                 member,
                 ctx.author,
@@ -317,8 +321,8 @@ class Log(commands.Cog):
         Returns:
             None: Responds to the context with an embedded log entry.
         """
-        await ctx.defer()
-        log_entry = await self.bot.get_log(log_id)
+
+        log_entry = await DBLog.get_log(self.bot, log_id)
 
         if log_entry is None:
             raise LogNotFound(log_id)
@@ -335,9 +339,10 @@ class Log(commands.Cog):
             required=True,
         ),
     ):
-        await ctx.defer()
 
-        player = await self.bot.get_player(member.id, ctx.guild.id, inactive=True)
+        player = await Player.get_player(
+            self.bot, member.id, ctx.guild.id, inactive=True
+        )
         player_stats = await self.bot.get_player_stats(player)
 
         embeds = []
@@ -406,11 +411,12 @@ class Log(commands.Cog):
         Returns:
             None
         """
-        await ctx.defer()
 
-        player = await self.bot.get_player(member.id, ctx.guild.id, inactive=True)
+        player = await Player.get_player(
+            self.bot, member.id, ctx.guild.id, inactive=True
+        )
 
-        logs = await self.bot.get_n_player_logs(player, num_logs)
+        logs = await DBLog.get_n_player_logs(self.bot, player, num_logs)
 
         await ctx.respond(embed=LogHxEmbed(player, logs))
 
@@ -430,16 +436,16 @@ class Log(commands.Cog):
         conversion: bool = False,
         show_values: bool = False,
     ) -> None:
-        await ctx.defer()
 
-        player = await self.bot.get_player(member.id, ctx.guild_id)
+        player = await Player.get_player(self.bot, member.id, ctx.guild_id)
 
         if not player.characters:
             raise CharacterNotFound(player.member)
 
         if len(player.characters) == 1:
             character = player.characters[0]
-            await self.bot.log(
+            await DBLog.create(
+                self.bot,
                 ctx,
                 player,
                 ctx.player,

@@ -16,7 +16,6 @@ from Resolute.compendium import Compendium
 from Resolute.constants import BOT_OWNERS
 from Resolute.models import metadata
 from Resolute.models.objects.characters import PlayerCharacter
-from Resolute.models.objects.dashboards import RefDashboard
 from Resolute.models.objects.enum import QueryResultType
 from Resolute.models.objects.npc import NPC
 from Resolute.models.objects.ref_objects import RefServerCalendar, RefWeeklyStipend
@@ -24,6 +23,7 @@ from Resolute.models.objects.ref_objects import RefServerCalendar, RefWeeklyStip
 
 if TYPE_CHECKING:
     from Resolute.bot import G0T0Bot
+    from Resolute.models.objects.dashboards import RefDashboard
 
 
 class PlayerGuild(object):
@@ -539,6 +539,8 @@ class PlayerGuild(object):
         return character_list
 
     async def get_dashboards(self, bot: G0T0Bot) -> list[RefDashboard]:
+        from Resolute.models.objects.dashboards import RefDashboard
+
         dashboards = []
 
         rows = await bot.query(
@@ -604,3 +606,17 @@ class PlayerGuild(object):
         ]
 
         return guilds
+
+    @staticmethod
+    async def get_player_guild(bot: G0T0Bot, guild_id: int) -> "PlayerGuild":
+        if len(bot.player_guilds) > 0 and (
+            guild := bot.player_guilds.get(str(guild_id))
+        ):
+            return guild
+
+        guild = PlayerGuild(bot.db, guild=bot.get_guild(guild_id))
+        guild: PlayerGuild = await guild.fetch()
+
+        bot.player_guilds[str(guild_id)] = guild
+
+        return guild

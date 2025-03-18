@@ -10,6 +10,7 @@ import sqlalchemy as sa
 from marshmallow import Schema, fields, post_load
 from sqlalchemy.dialects.postgresql import insert
 
+from Resolute.helpers.general_helpers import get_selection
 import Resolute.models.objects.logs as logs
 import Resolute.models.objects.npc as npc
 from Resolute.compendium import Compendium
@@ -112,7 +113,7 @@ class Player(object):
             await self.get_adventures(player)
             await self.get_arenas(player)
             player.member = self.bot.get_guild(player.guild_id).get_member(player.id)
-            player.guild = await self.bot.get_player_guild(player.guild_id)
+            player.guild = await PlayerGuild.get_player_guild(self.bot, player.guild_id)
             return player
 
         async def get_characters(self, player: "Player") -> None:
@@ -300,6 +301,9 @@ class Player(object):
         self.guild: PlayerGuild = kwargs.get("guild")
         self.arenas: list[Arena] = []
         self.adventures: list[Adventure] = []
+
+    def __repr__(self):
+        return f"<{self.__class__.__name__} id={self.id} guild={self.guild_id!r} name={self.member.display_name if self.member else ''!r}>"
 
     @property
     def highest_level_character(self) -> PlayerCharacter:
@@ -644,6 +648,116 @@ class Player(object):
 
         player = await Player.PlayerSchema(self._bot, inactive).load(row)
 
+        return player
+
+    @staticmethod
+    async def get_player(
+        bot: G0T0Bot, player_id: int, guild_id: int = None, **kwargs
+    ) -> "Player":
+        inactive = kwargs.get("inactive", False)
+        lookup_only = kwargs.get("lookup_only", False)
+        ctx = kwargs.get("ctx")
+
+        player = None
+
+        if guild_id:
+            query = Player.player_table.select().where(
+                sa.and_(
+                    Player.player_table.c.id == player_id,
+                    Player.player_table.c.guild_id == guild_id,
+                )
+            )
+        else:
+            query = Player.player_table.select().where(
+                Player.player_table.c.id == player_id
+            )
+
+        rows = await bot.query(query, QueryResultType.multiple)
+
+        # Not found
+        if not rows:
+            if lookup_only:
+                return None
+            elif guild_id:
+                # Single guild -> Create new player
+                player = await Player(bot, player_id, guild_id).upsert(
+                    inactive=inactive
+                )
+            else:
+                if ctx:
+                    # Check for guilds the player is in
+                    guilds = [g for g in bot.guilds if g.get_member(player_id)]
+
+                    # One guild in common
+                    if len(guilds) == 1:
+                        player = await Player(bot, player_id, guilds[0].id).upsert(
+                            inactive=inactive
+                        )
+                        return player
+
+                    # Multiple guilds in common
+                    elif len(guilds) > 1:
+                        guild = await get_selection(
+                            ctx,
+                            guilds,
+                            True,
+                            True,
+                            None,
+                            False,
+                            "Which guild is this command for?\n",
+                        )
+
+                        if guild:
+                            player = await Player(bot, player_id, guild.id).upsert(
+                                inactive=inactive
+                            )
+                        else:
+                            raise G0T0Error("No guild selected/found.")
+                    else:
+                        raise G0T0Error("Unable to find player")
+                else:
+                    raise G0T0Error("Unable to find guild")
+
+        # Player(s) found in db
+        else:
+            # One match found
+            if len(rows) == 1:
+                player = await Player.PlayerSchema(bot, inactive).load(rows[0])
+
+            # Multiple matches
+            else:
+                if ctx:
+                    guilds = [g for g in bot.guilds if g.get_member(player_id)]
+
+                    if len(guilds) == 1:
+                        row = filter(
+                            lambda p: p["guild_id"] == str(guilds[0].id), guilds
+                        )
+                        player = await Player.PlayerSchema(bot, inactive).load(row)
+                        # player = await Player.get_player(bot, player_id, guilds[0].id, **kwargs)
+
+                    else:
+                        choices = [g.name for g in guilds]
+                        choice = await get_selection(
+                            ctx,
+                            choices,
+                            True,
+                            True,
+                            None,
+                            False,
+                            "Which guild is this command for?\n",
+                        )
+
+                        if choice and (
+                            guild := next((g for g in guilds if g.name == choice), None)
+                        ):
+                            player = await Player.get_player(
+                                bot, player_id, guild.id, **kwargs
+                            )
+                        else:
+                            raise G0T0Error("Unable to find player")
+                else:
+                    raise G0T0Error("Unable to find player")
         return player
 
 

@@ -1,7 +1,13 @@
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
 import sqlalchemy as sa
 from marshmallow import Schema, fields, post_load
-
 from Resolute.models import metadata
+from Resolute.models.objects.enum import QueryResultType
+
+if TYPE_CHECKING:
+    from Resolute.bot import G0T0Bot
 
 
 class Store(object):
@@ -40,3 +46,11 @@ class Store(object):
     def __init__(self, **kwargs):
         self.sku = kwargs.get("sku")
         self.user_cost: int = kwargs.get("user_cost", 0)
+
+    @staticmethod
+    async def get_items(bot: G0T0Bot) -> list["Store"]:
+        rows = await bot.query(Store.store_table.select(), QueryResultType.multiple)
+
+        store_items = [Store.StoreSchema.load(row) for row in rows]
+
+        return store_items

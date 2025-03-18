@@ -21,7 +21,9 @@ from Resolute.models.categories.categories import DashboardType
 from Resolute.models.objects import RelatedList
 from Resolute.helpers import get_last_message_in_channel
 from Resolute.models.objects.enum import QueryResultType
+from Resolute.models.objects.exceptions import G0T0Error
 from Resolute.models.objects.financial import Financial
+from Resolute.models.objects.guilds import PlayerGuild
 
 if TYPE_CHECKING:
     from Resolute.bot import G0T0Bot
@@ -239,6 +241,43 @@ class RefDashboard(object):
         async with self._db.acquire() as conn:
             await conn.execute(query)
 
+    @staticmethod
+    async def get_dashboard(bot: G0T0Bot, **kwargs) -> "RefDashboard":
+        """
+        Asynchronously retrieves a dashboard based on the provided lookup criteria.
+        Args:
+            bot (G0T0Bot): The bot instance used to execute the query.
+            **kwargs: Arbitrary keyword arguments. Supported keys are:
+                - category_id (int): The ID of the category channel to look up.
+                - message_id (int): The ID of the message to look up.
+        Returns:
+            RefDashboard: The retrieved dashboard object if found, otherwise None.
+        Raises:
+            G0T0Error: If no lookup criteria are passed.
+        """
+        category_id: int = kwargs.get("category_id")
+        message_id: int = kwargs.get("message_id")
+
+        if category_id:
+            query = RefDashboard.ref_dashboard_table.select().where(
+                RefDashboard.ref_dashboard_table.c.category_channel_id == category_id
+            )
+        elif message_id:
+            query = RefDashboard.ref_dashboard_table.select().where(
+                RefDashboard.ref_dashboard_table.c.post_id == message_id
+            )
+        else:
+            raise G0T0Error("No lookup criteria passed")
+
+        row = await bot.query(query)
+
+        if row is None:
+            return None
+
+        d = RefDashboard.RefDashboardSchema(bot).load(row)
+
+        return d
+
     async def refresh(self, bot: G0T0Bot, message: discord.Message = None) -> None:
         original_message = await self.get_pinned_post()
 
@@ -248,7 +287,7 @@ class RefDashboard(object):
         if not original_message or not original_message.pinned:
             return await self.delete()
 
-        guild = await bot.get_player_guild(original_message.guild.id)
+        guild = await PlayerGuild.get_player_guild(bot, original_message.guild.id)
 
         if self.dashboard_type.value.upper() == "RP":
             staff_name = guild.staff_role.name if guild.staff_role else "Archivist"

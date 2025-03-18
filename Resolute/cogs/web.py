@@ -5,6 +5,7 @@ from quart import abort, jsonify, request
 
 from Resolute.bot import G0T0Bot
 from Resolute.constants import AUTH_TOKEN, ERROR_CHANNEL
+from Resolute.models.objects.guilds import PlayerGuild
 
 log = logging.getLogger(__name__)
 
@@ -91,7 +92,7 @@ class WebCog(commands.Cog):
                 data = await request.json
             except:
                 return abort(401)
-            guild = await bot.get_player_guild(int(data["guild_id"]))
+            guild = await PlayerGuild.get_player_guild(bot, int(data["guild_id"]))
             bot.dispatch("refresh_guild_cache", guild)
             await bot.get_channel(int(ERROR_CHANNEL)).send(data["text"])
             return jsonify({"text": "Guild Cache Reloaded!"}), 200

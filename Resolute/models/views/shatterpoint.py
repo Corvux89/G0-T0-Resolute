@@ -11,6 +11,7 @@ from Resolute.models.embeds import ErrorEmbed, PaginatedEmbed, PlayerEmbed
 from Resolute.models.objects.characters import PlayerCharacter
 from Resolute.models.objects.enum import AdjustOperator
 from Resolute.models.objects.guilds import PlayerGuild
+from Resolute.models.objects.logs import DBLog
 from Resolute.models.objects.players import Player
 from Resolute.models.objects.shatterpoint import (
     Shatterpoint,
@@ -39,8 +40,8 @@ class ShatterpointSettings(InteractiveView):
     async def commit(self):
         if not self.shatterpoint.busy_member:
             await self.shatterpoint.upsert()
-            self.shatterpoint = await self.bot.get_shatterpoint(
-                self.shatterpoint.guild_id
+            self.shatterpoint = await Shatterpoint.get_shatterpoint(
+                self.bot, self.shatterpoint.guild_id
             )
 
     async def get_content(self) -> Mapping:
@@ -231,8 +232,10 @@ class ShatterpointSettingsUI(ShatterpointSettings):
                 filter(lambda p: p.active, self.shatterpoint.players)
             )
             for p in active_players:
-                player = await self.bot.get_player(p.player_id, interaction.guild.id)
-                await self.bot.log(
+                player = await Player.get_player(self.bot, p.player_id, p.guild_id)
+
+                await DBLog.create(
+                    self.bot,
                     interaction,
                     player,
                     self.owner,
@@ -251,7 +254,8 @@ class ShatterpointSettingsUI(ShatterpointSettings):
                         CodeConversion, character.level
                     )
                     credits = p.cc * conversion.value
-                    await self.bot.log(
+                    await DBLog.create(
+                        self.bot,
                         interaction,
                         player,
                         self.owner,
@@ -263,7 +267,8 @@ class ShatterpointSettingsUI(ShatterpointSettings):
                     )
 
                     for renown in self.shatterpoint.renown:
-                        await self.bot.log(
+                        await DBLog.create(
+                            self.bot,
                             interaction,
                             player,
                             self.owner,
@@ -374,7 +379,9 @@ class _ShatterpointManage(ShatterpointSettings):
                 delete_after=5,
             )
         else:
-            guild: PlayerGuild = await self.bot.get_player_guild(interaction.guild.id)
+            guild: PlayerGuild = await PlayerGuild.get_player_guild(
+                self.bot, interaction.guild.id
+            )
             self.shatterpoint.busy_member = interaction.user
             await self.shatterpoint.upsert()
             asyncio.create_task(
@@ -468,8 +475,8 @@ class _ShatterpointPlayerManage(ShatterpointSettings):
             ),
         )
         self.player = player
-        self.bot_player = await self.bot.get_player(
-            self.player.player_id, self.player.guild_id
+        self.bot_player = await Player.get_player(
+            self.bot, self.player.player_id, self.player.guild_id
         )
         self.character = None
         await self.refresh_content(interaction)

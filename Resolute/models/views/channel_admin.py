@@ -10,6 +10,7 @@ from Resolute.bot import G0T0Bot
 from Resolute.constants import ZWSP3
 from Resolute.models.embeds import ErrorEmbed, PaginatedEmbed, PlayerEmbed
 from Resolute.models.objects.exceptions import G0T0Error
+from Resolute.models.objects.guilds import PlayerGuild
 from Resolute.models.objects.players import Player
 from Resolute.models.views.base import InteractiveView
 
@@ -52,7 +53,7 @@ class ChannelAdmin(InteractiveView):
     channel: discord.TextChannel = None
 
     async def commit(self):
-        self.player = await self.bot.get_player(self.player.id, self.player.guild.id)
+        self.player = await self.player.fetch()
 
     async def get_content(self) -> Mapping:
         if not self.channel:
@@ -318,7 +319,7 @@ class _NewPlayerchannel(ChannelAdmin):
 
     async def _create_channel(self, name: str) -> discord.TextChannel:
         channel_overwrites = self.category.overwrites
-        guild = await self.bot.get_player_guild(self.category.guild.id)
+        guild = await PlayerGuild.get_player_guild(self.bot, self.category.guild.id)
 
         channel_overwrites[self.member] = OWNER_OVERWRITES
 

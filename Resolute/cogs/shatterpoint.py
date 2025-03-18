@@ -6,6 +6,7 @@ from discord.ext import commands
 from Resolute.bot import G0T0Bot, G0T0Context
 from Resolute.helpers import is_admin
 from Resolute.models.embeds import ErrorEmbed
+from Resolute.models.objects.shatterpoint import Shatterpoint
 from Resolute.models.views.shatterpoint import ShatterpointSettingsUI
 
 log = logging.getLogger(__name__)
@@ -53,7 +54,7 @@ class Shatterpoints(commands.Cog):
         """
         if self.check:
             self.check = False
-            busy_shatterpoints = await self.bot.get_busy_shatterpoints()
+            busy_shatterpoints = await Shatterpoint.get_busy_shatterpoints(self.bot)
 
             for shatterpoint in busy_shatterpoints:
                 if shatterpoint.busy_member:
@@ -76,7 +77,7 @@ class Shatterpoints(commands.Cog):
         Args:
             ctx (ApplicationContext): The context of the command invocation.
         """
-        shatterpoint = await self.bot.get_shatterpoint(ctx.guild.id)
+        shatterpoint = await Shatterpoint.get_shatterpoint(self.bot, ctx.guild.id)
 
         ui = ShatterpointSettingsUI.new(self.bot, ctx.author, shatterpoint)
         await ui.send_to(ctx)

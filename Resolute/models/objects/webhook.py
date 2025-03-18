@@ -72,8 +72,8 @@ class G0T0Webhook(object):
         if not self.player and hasattr(self.ctx, "player") and self.ctx.player:
             self.player = self.ctx.player
         else:
-            self.player = await self.ctx.bot.get_player(
-                self.ctx.author.id, self.ctx.guild.id
+            self.player = await Player.get_player(
+                self.ctx.bot, self.ctx.author.id, self.ctx.guild.id
             )
 
         # >say
@@ -186,8 +186,8 @@ class G0T0Webhook(object):
             if hasattr(self.ctx, "player") and self.ctx.player and not self.player:
                 self.player = self.ctx.player
             else:
-                self.player = await self.ctx.bot.get_player(
-                    self.ctx.author.id, self.ctx.guild.id
+                self.player = await Player.get_player(
+                    self.ctx.bot, self.ctx.author.id, self.ctx.guild.id
                 )
 
             await _handle_character_mentions(self)
@@ -277,8 +277,8 @@ class G0T0Webhook(object):
                         self.message.guild.members, display_name=name
                     )
                 ):
-                    self.player = await self.ctx.bot.get_player(
-                        member.id, member.guild.id
+                    self.player = await Player.get_player(
+                        self.ctx.bot, member.id, member.guild.id
                     )
                 else:
                     return False

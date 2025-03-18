@@ -263,6 +263,19 @@ class Arena(object):
             await message.delete(reason="Closing Arena")
 
     @staticmethod
-    # TODO: Left off here
     async def get_arena(bot: G0T0Bot, channel_id: int) -> "Arena":
-        pass
+        query = Arena.arenas_table.select().where(
+            sa.and_(
+                Arena.arenas_table.c.channel_id == channel_id,
+                Arena.arenas_table.c.end_ts == sa.null(),
+            )
+        )
+
+        row = await bot.query(query)
+
+        if row is None:
+            return None
+
+        arena: Arena = await Arena.ArenaSchema(bot).load(row)
+
+        return arena

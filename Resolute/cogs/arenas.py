@@ -17,7 +17,8 @@ from Resolute.models.objects.exceptions import (
     CharacterNotFound,
     G0T0Error,
 )
-from Resolute.models.objects.players import ArenaPost
+from Resolute.models.objects.logs import DBLog
+from Resolute.models.objects.players import ArenaPost, Player
 from Resolute.models.views.arena_view import (
     ArenaCharacterSelect,
     ArenaRequestCharacterSelect,
@@ -162,9 +163,7 @@ class Arenas(commands.Cog):
             None
         """
 
-        await ctx.defer()
-
-        arena: Arena = await self.bot.get_arena(ctx.channel_id)
+        arena: Arena = await Arena.get_arena(self.bot, ctx.channel.id)
 
         if arena:
             raise G0T0Error(
@@ -206,8 +205,7 @@ class Arenas(commands.Cog):
             Coroutine: A coroutine that sends the embedded arena status message.
         """
 
-        await ctx.defer()
-        arena = await self.bot.get_arena(ctx.channel.id)
+        arena = await Arena.get_arena(self.bot, ctx.channel.id)
 
         if arena is None:
             raise ArenaNotFound()
@@ -240,7 +238,7 @@ class Arenas(commands.Cog):
             CharacterNotFound: If the player does not have any characters.
         """
 
-        arena = await self.bot.get_arena(ctx.channel.id)
+        arena = await Arena.get_arena(self.bot, ctx.channel.id)
 
         if arena is None:
             raise ArenaNotFound()
@@ -248,7 +246,7 @@ class Arenas(commands.Cog):
         if member.id == arena.host_id:
             raise G0T0Error("Cannot add the host to an arena")
 
-        player = await self.bot.get_player(member.id, ctx.guild.id)
+        player = await Player.get_player(self.bot, member.id, ctx.guild.id)
 
         if not player.characters:
             raise CharacterNotFound(member)
@@ -283,7 +281,7 @@ class Arenas(commands.Cog):
             None: Sends a response indicating the player has been removed from the arena.
         """
 
-        arena = await self.bot.get_arena(ctx.channel.id)
+        arena = await Arena.get_arena(self.bot, ctx.channel.id)
 
         if arena is None:
             raise ArenaNotFound()
@@ -337,8 +335,8 @@ class Arenas(commands.Cog):
             - Responds with the phase result embed.
             - Closes the arena if the maximum number of phases is reached or the result is "LOSS".
         """
-        await ctx.defer()
-        arena = await self.bot.get_arena(ctx.channel.id)
+
+        arena = await Arena.get_arena(self.bot, ctx.channel.id)
 
         if arena is None:
             raise ArenaNotFound()
@@ -351,13 +349,16 @@ class Arenas(commands.Cog):
         await arena.upsert()
 
         # Host Log
-        host = await self.bot.get_player(arena.host_id, ctx.guild.id)
-        await self.bot.log(ctx, host, ctx.author, "ARENA_HOST", silent=True)
+        host = await Player.get_player(self.bot, arena.host_id, ctx.guild.id)
+        await DBLog.create(self.bot, ctx, host, ctx.author, "ARENA_HOST", silent=True)
 
         # Rewards
         for character in arena.player_characters:
-            player = await self.bot.get_player(character.player_id, ctx.guild.id)
-            await self.bot.log(
+            player = await Player.get_player(
+                self.bot, character.player_id, ctx.guild.id
+            )
+            await DBLog.create(
+                self.bot,
                 ctx,
                 player,
                 ctx.author,
@@ -371,7 +372,8 @@ class Arenas(commands.Cog):
                 arena.completed_phases % 2 == 0
                 or arena.completed_phases == arena.tier.max_phases
             ) and result == "WIN":
-                await self.bot.log(
+                await DBLog.create(
+                    self.bot,
                     ctx,
                     player,
                     ctx.author,
@@ -428,8 +430,7 @@ class Arenas(commands.Cog):
             None
         """
 
-        await ctx.defer()
-        arena = await self.bot.get_arena(ctx.channel.id)
+        arena = await Arena.get_arena(self.bot, ctx.channel.id)
 
         if arena is None:
             raise ArenaNotFound()

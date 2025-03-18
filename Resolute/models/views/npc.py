@@ -95,7 +95,7 @@ class NPCSettings(InteractiveView):
                 self.bot, self.adventure.category_channel_id
             )
         elif self.guild:
-            self.guild = await self.bot.get_player_guild(self.guild.id)
+            self.guild = await self.guild.fetch()
 
 
 class NPCSettingsUI(NPCSettings):

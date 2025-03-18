@@ -321,7 +321,8 @@ class ShatterpointPlayer(object):
 
         async def get_characters(self, player: "ShatterpointPlayer"):
             player.player_characters = [
-                await self.bot.get_character(c) for c in player.characters
+                await PlayerCharacter.get_character(self.bot, c)
+                for c in player.characters
             ]
 
         def get_channels(self, player: "ShatterpointPlayer") -> None:

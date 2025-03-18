@@ -205,7 +205,7 @@ class ArenaCharacterSelect(ArenaView):
         self, char: discord.ui.Select, interaction: discord.Interaction
     ):
         arena = await self.bot.get_arena(interaction.channel.id)
-        character = await self.bot.get_character(char.values[0])
+        character = await PlayerCharacter.get_character(self.bot, char.values[0])
 
         if not self.player:
             self.player = await self.bot.get_player(
@@ -352,7 +352,7 @@ class ArenaRequestCharacterSelect(ArenaRequest):
     async def character_select(
         self, char: discord.ui.Select, interaction: discord.Interaction
     ):
-        character = await self.bot.get_character(char.values[0])
+        character = await PlayerCharacter.get_character(self.bot, char.values[0])
 
         if (
             character.player_id != interaction.user.id

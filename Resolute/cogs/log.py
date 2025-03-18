@@ -289,6 +289,7 @@ class Log(commands.Cog):
         else:
             raise InvalidCurrencySelection()
 
+    # TODO: Allow the log_id to be a greedy list of ID's
     @log_commands.command(name="null", description="Nullifies a log")
     @commands.check(is_admin)
     async def null_log(

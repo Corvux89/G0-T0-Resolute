@@ -126,7 +126,7 @@ class Adventure(object):
         async def get_characters(self, adventure: "Adventure") -> None:
             if adventure.characters:
                 for char_id in adventure.characters:
-                    if char := await self.bot.get_character(char_id):
+                    if char := await PlayerCharacter.get_character(self.bot, char_id):
                         adventure._player_characters.append(char)
 
         async def get_npcs(self, adventure: "Adventure") -> None:
@@ -301,9 +301,9 @@ class Adventure(object):
 
         return None
 
-    @classmethod
+    @staticmethod
     async def fetch_from_ctx(
-        cls, ctx: G0T0Context, role_id: int = None, category_channel_id: int = None
+        ctx: G0T0Context, role_id: int = None, category_channel_id: int = None
     ) -> "Adventure":
         if role_id:
             query = Adventure.adventures_table.select().where(
@@ -338,5 +338,25 @@ class Adventure(object):
             raise AdventureNotFound()
 
         adventure = await Adventure.AdventureSchema(ctx.bot).load(row)
+
+        return adventure
+
+    @staticmethod
+    async def get_from_category_id(
+        bot: G0T0Bot, category_channel_id: int
+    ) -> "Adventure":
+        query = Adventure.adventures_table.select().where(
+            sa.and_(
+                Adventure.adventures_table.c.category_channel_id == category_channel_id,
+                Adventure.adventures_table.c.end_ts == sa.null(),
+            )
+        )
+
+        row = await bot.query(query)
+
+        if row is None:
+            return None
+
+        adventure = await Adventure.AdventureSchema(bot).load(row)
 
         return adventure

@@ -13,10 +13,11 @@ intents = discord.Intents.default()
 intents.members = True
 intents.message_content = True
 
+
 class MyHelpCommand(commands.MinimalHelpCommand):
     async def send_pages(self):
         destination = self.get_destination()
-        e = discord.Embed(color=discord.Color.blurple(), description='')
+        e = discord.Embed(color=discord.Color.blurple(), description="")
         for page in self.paginator.pages:
             e.description += page
         await destination.send(embed=e)
@@ -33,22 +34,24 @@ log = logging.getLogger("bot")
 if sys.version_info >= (3, 8) and sys.platform.lower().startswith("win"):
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
-bot = G0T0Bot(command_prefix=DEFAULT_PREFIX,
-              description='Resolute - Created and maintained by Corvux',
-              case_insensitive=True,
-              help_command=MyHelpCommand(),
-              intents=intents
-              )
+bot = G0T0Bot(
+    command_prefix=DEFAULT_PREFIX,
+    description="Resolute - Created and maintained by Corvux",
+    case_insensitive=True,
+    help_command=MyHelpCommand(),
+    intents=intents,
+)
 
 # Load the cogs!
-for filename in listdir('Resolute/cogs'):
-    if filename.endswith('.py'):
-        bot.load_extension(f'Resolute.cogs.{filename[:-3]}')
+for filename in listdir("Resolute/cogs"):
+    if filename.endswith(".py"):
+        bot.load_extension(f"Resolute.cogs.{filename[:-3]}")
 
 
 @bot.command()
 async def ping(ctx):
     print("Pong")
-    await ctx.send(f'Pong! Latency is {round(bot.latency * 1000)}ms.')
+    await ctx.send(f"Pong! Latency is {round(bot.latency * 1000)}ms.")
+
 
 bot.run(BOT_TOKEN)

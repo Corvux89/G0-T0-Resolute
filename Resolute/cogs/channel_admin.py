@@ -5,6 +5,7 @@ from discord.ext import commands
 
 from Resolute.bot import G0T0Bot, G0T0Context
 from Resolute.models.embeds import ErrorEmbed
+from Resolute.models.objects.guilds import PlayerGuild
 from Resolute.models.views.channel_admin import ChannelAdminUI
 
 log = logging.getLogger(__name__)
@@ -40,7 +41,7 @@ class ChannelAdmin(commands.Cog):
 
     @commands.Cog.listener()
     async def on_db_connected(self):
-        busy_guilds = await self.bot.get_busy_guilds()
+        busy_guilds = await PlayerGuild.get_busy_guilds(self.bot)
 
         for guild in busy_guilds:
             await guild.archive_user.send(

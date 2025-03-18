@@ -93,7 +93,9 @@ class DBLog(object):
             log.author = await self.bot.get_player(log.author, log.guild_id)
             log.player = await self.bot.get_player(log.player_id, log.guild_id)
             if log.character_id:
-                log.character = await self.bot.get_character(log.character_id)
+                log.character = await PlayerCharacter.get_character(
+                    self.bot, log.character_id
+                )
             return log
 
         def load_faction(self, value: int) -> Faction:

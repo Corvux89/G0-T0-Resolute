@@ -680,8 +680,8 @@ class _EditCharacterRenown(CharacterManage):
                 faction=self.faction,
                 show_values=True,
             )
-            self.active_character = await self.bot.get_character(
-                self.active_character.id
+            self.active_character = await PlayerCharacter.get_character(
+                self.bot, self.active_character.id
             )
             await self.on_timeout()
         else:
@@ -1717,7 +1717,7 @@ class RPPostUI(RPPostView):
     async def character_select(
         self, char: discord.ui.Select, interaction: discord.Interaction
     ):
-        character = await self.bot.get_character(char.values[0])
+        character = await PlayerCharacter.get_character(self.bot, char.values[0])
 
         if (
             character.player_id != interaction.user.id

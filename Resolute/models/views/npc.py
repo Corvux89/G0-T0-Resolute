@@ -91,9 +91,8 @@ class NPCSettings(InteractiveView):
 
     async def commit(self):
         if self.adventure:
-            # TODO: Add a reload function from id
-            self.adventure = await self.bot.get_adventure_from_category(
-                self.adventure.category_channel_id
+            self.adventure = Adventure.get_from_category_id(
+                self.bot, self.adventure.category_channel_id
             )
         elif self.guild:
             self.guild = await self.bot.get_player_guild(self.guild.id)

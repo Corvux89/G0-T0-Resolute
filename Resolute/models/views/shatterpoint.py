@@ -62,7 +62,7 @@ class ShatterpointSettings(InteractiveView):
         )
 
         embed = PlayerEmbed(
-            self.owner, title=f"Summary for shatterpoing: {self.shatterpoint.name}"
+            self.owner, title=f"Summary for shatterpoint: {self.shatterpoint.name}"
         )
         embed.set_thumbnail(url=THUMBNAIL)
 

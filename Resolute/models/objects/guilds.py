@@ -587,3 +587,20 @@ class PlayerGuild(object):
             return True
 
         return False
+
+    @staticmethod
+    async def get_busy_guilds(bot: G0T0Bot) -> list[PlayerGuild]:
+        query = PlayerGuild.guilds_table.select().where(
+            PlayerGuild.guilds_table.c.archive_user.isnot(None)
+        )
+
+        rows = await bot.query(query, QueryResultType.multiple)
+
+        guilds = [
+            await PlayerGuild.GuildSchema(bot.db, guild=bot.get_guild(row["id"])).load(
+                row
+            )
+            for row in rows
+        ]
+
+        return guilds

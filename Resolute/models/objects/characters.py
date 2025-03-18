@@ -20,6 +20,7 @@ if TYPE_CHECKING:
     from Resolute.compendium import Compendium
     from Resolute.models.objects.guilds import PlayerGuild
     from Resolute.models.objects.ref_objects import RefServerCalendar
+    from Resolute.bot import G0T0Bot
 
 
 class CharacterRenown(object):
@@ -579,3 +580,20 @@ class PlayerCharacter(object):
         await character_renown.upsert()
 
         return character_renown
+
+    @staticmethod
+    async def get_character(bot: G0T0Bot, char_id: int) -> "PlayerCharacter":
+        query = PlayerCharacter.characters_table.select().where(
+            PlayerCharacter.characters_table.c.id == char_id
+        )
+
+        row = await bot.query(query)
+
+        if row is None:
+            return None
+
+        character: PlayerCharacter = await PlayerCharacter.CharacterSchema(
+            bot.db, bot.compendium
+        ).load(row)
+
+        return character

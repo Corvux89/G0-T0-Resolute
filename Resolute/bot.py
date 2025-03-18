@@ -68,6 +68,7 @@ class G0T0Context(discord.ApplicationContext):
         self.playerGuild: PlayerGuild = None
 
 
+# TODO -> Fix a lot of these to be class methods
 class G0T0Bot(commands.Bot):
     """
     G0T0Bot is a custom bot class that extends the discord.ext.commands.Bot class.
@@ -380,104 +381,12 @@ class G0T0Bot(commands.Bot):
         ):
             return guild
 
-        guild = await PlayerGuild(self.db, guild=self.get_guild(guild_id)).fetch()
+        guild = PlayerGuild(self.db, guild=self.get_guild(guild_id))
+        guild: PlayerGuild = await guild.fetch()
 
         self.player_guilds[str(guild_id)] = guild
 
         return guild
-
-    async def get_busy_guilds(self) -> list[PlayerGuild]:
-        """
-        Asynchronously retrieves a list of busy guilds.
-        A busy guild is defined as a guild that has an archive user.
-        Returns:
-            list[PlayerGuild]: A list of PlayerGuild objects representing the busy guilds.
-        """
-        query = PlayerGuild.guilds_table.select().where(
-            PlayerGuild.guilds_table.c.archive_user.isnot(None)
-        )
-
-        rows = await self.query(query, QueryResultType.multiple)
-
-        guilds = [
-            await PlayerGuild.GuildSchema(
-                self.db, guild=self.get_guild(row["id"])
-            ).load(row)
-            for row in rows
-        ]
-
-        return guilds
-
-    async def get_character(self, char_id: int) -> PlayerCharacter:
-        """
-        Asynchronously retrieves a character from the database using the provided character ID.
-        Args:
-            char_id (int): The ID of the character to retrieve.
-        Returns:
-            PlayerCharacter: The character object corresponding to the provided ID.
-        """
-        query = PlayerCharacter.characters_table.select().where(
-            PlayerCharacter.characters_table.c.id == char_id
-        )
-
-        row = await self.query(query)
-
-        if row is None:
-            return None
-
-        character: PlayerCharacter = await PlayerCharacter.CharacterSchema(
-            self.db, self.compendium
-        ).load(row)
-
-        return character
-
-    async def get_adventure_from_role(self, role_id: int) -> Adventure:
-        """
-        Retrieve an adventure based on the given role ID.
-        Args:
-            role_id (int): The ID of the role to retrieve the adventure for.
-        Returns:
-            Adventure: The adventure associated with the given role ID, or None if no such adventure exists.
-        """
-        query = Adventure.adventures_table.select().where(
-            sa.and_(
-                Adventure.adventures_table.c.role_id == role_id,
-                Adventure.adventures_table.c.end_ts == sa.null(),
-            )
-        )
-
-        row = await self.query(query)
-
-        if row is None:
-            return None
-
-        adventure = await Adventure.AdventureSchema(self).load(row)
-
-        return adventure
-
-    async def get_adventure_from_category(self, category_channel_id: int) -> Adventure:
-        """
-        Retrieve an adventure based on the given category channel ID.
-        Args:
-            category_channel_id (int): The ID of the category channel to retrieve the adventure from.
-        Returns:
-            Adventure: The adventure associated with the given category channel ID, or None if no adventure is found.
-        """
-        query = Adventure.adventures_table.select().where(
-            sa.and_(
-                Adventure.adventures_table.c.category_channel_id == category_channel_id,
-                Adventure.adventures_table.c.end_ts == sa.null(),
-            )
-        )
-
-        row = await self.query(query)
-
-        if row is None:
-            return None
-
-        adventure = await Adventure.AdventureSchema(self).load(row)
-
-        return adventure
 
     async def get_arena(self, channel_id: int) -> Arena:
         """

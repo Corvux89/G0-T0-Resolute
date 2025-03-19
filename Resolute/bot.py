@@ -144,8 +144,7 @@ class G0T0Bot(commands.Bot):
 
     async def before_invoke_setup(self, ctx: commands.Context):
         ctx: G0T0Context = ctx
-        if hasattr(ctx, "defer"):
-            await ctx.defer()
+
         ctx.player = await Player.get_player(
             self, ctx.author.id, ctx.guild.id if ctx.guild else None, ctx=ctx
         )

@@ -269,7 +269,7 @@ class _NewCharacter(CharacterManage):
 
         self.player = await self.player.fetch()
 
-        await self.bot.manage_player_tier_roles(self.player, "Character Created!")
+        await self.player.manage_player_tier_roles(self.bot, "Character Created!")
 
         embed = CharacterEmbed(
             self.player,
@@ -407,7 +407,7 @@ class _InactivateCharacter(CharacterManage):
             notes="Inactivating Character",
         )
 
-        await self.bot.manage_player_tier_roles(self.player, "Inactivating character")
+        await self.player.manage_player_tier_roles(self.bot, "Inactivating Character")
         await self.on_timeout()
 
     @discord.ui.button(label="Back", style=discord.ButtonStyle.grey)
@@ -483,7 +483,7 @@ class _EditCharacter(CharacterManage):
             silent=True,
         )
 
-        await self.bot.manage_player_tier_roles(self.player, "Level up")
+        await self.player.manage_player_tier_roles(self.bot, "Level Up!")
 
         embed = CharacterEmbed(
             self.player,

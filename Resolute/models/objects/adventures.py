@@ -12,7 +12,7 @@ from Resolute.models import metadata
 from Resolute.models.categories.categories import Faction
 from Resolute.models.objects import RelatedList
 from Resolute.models.objects.exceptions import AdventureNotFound
-from Resolute.models.objects.npc import NPC
+from Resolute.models.objects.npc import NonPlayableCharacter
 from Resolute.models.objects.characters import PlayerCharacter
 
 if TYPE_CHECKING:
@@ -130,15 +130,17 @@ class Adventure(object):
                         adventure._player_characters.append(char)
 
         async def get_npcs(self, adventure: "Adventure") -> None:
-            query = NPC.npc_table.select().where(
-                sa.and_(NPC.npc_table.c.adventure_id == adventure.id)
+            query = NonPlayableCharacter.npc_table.select().where(
+                sa.and_(NonPlayableCharacter.npc_table.c.adventure_id == adventure.id)
             )
 
             async with self.bot.db.acquire() as conn:
                 results = await conn.execute(query)
                 rows = await results.fetchall()
 
-            adventure.npcs = [NPC.NPCSchema(self.bot.db).load(row) for row in rows]
+            adventure.npcs = [
+                NonPlayableCharacter.NPCSchema(self.bot.db).load(row) for row in rows
+            ]
 
     def __init__(
         self,
@@ -168,7 +170,7 @@ class Adventure(object):
         self._role: discord.Role = role
 
         # Virtual attributes
-        self.npcs: list[NPC] = []
+        self.npcs: list[NonPlayableCharacter] = []
 
     def __repr__(self):
         return f"<{self.__class__.__name__} id={self.id!r} name={self.name!r}>"
@@ -284,7 +286,7 @@ class Adventure(object):
                 overwrites[member] = discord.PermissionOverwrite(manage_messages=True)
             await channel.edit(overwrites=overwrites)
 
-    def get_npc(self, **kwargs) -> NPC:
+    def get_npc(self, **kwargs) -> NonPlayableCharacter:
         if kwargs.get("key"):
             return next(
                 (npc for npc in self.npcs if npc.key == kwargs.get("key")), None

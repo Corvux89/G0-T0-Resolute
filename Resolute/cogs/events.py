@@ -8,6 +8,8 @@ from Resolute.constants import ZWSP3
 from Resolute.helpers import process_message
 from Resolute.models.embeds import PlayerEmbed
 from Resolute.models.objects.applications import PlayerApplication
+from Resolute.models.objects.dashboards import RefDashboard
+from Resolute.models.objects.financial import Financial
 from Resolute.models.objects.guilds import PlayerGuild
 from Resolute.models.objects.players import Player
 from Resolute.models.objects.store import Store
@@ -225,7 +227,7 @@ class Events(commands.Cog):
         """
         store_items = await Store.get_items(self.bot)
 
-        fin = await self.bot.get_financial_data()
+        fin = await Financial.get_financial_data(self.bot)
 
         if store := next((s for s in store_items if s.sku == entitlement.sku_id), None):
             fin.monthly_total += store.user_cost
@@ -236,4 +238,4 @@ class Events(commands.Cog):
                 )
 
         await fin.update()
-        await self.bot.update_financial_dashboards()
+        await RefDashboard.update_financial_dashboards(self.bot)

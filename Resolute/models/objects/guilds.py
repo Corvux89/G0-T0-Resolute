@@ -17,7 +17,7 @@ from Resolute.constants import BOT_OWNERS
 from Resolute.models import metadata
 from Resolute.models.objects.characters import PlayerCharacter
 from Resolute.models.objects.enum import QueryResultType
-from Resolute.models.objects.npc import NPC
+from Resolute.models.objects.npc import NonPlayableCharacter
 from Resolute.models.objects.ref_objects import RefServerCalendar, RefWeeklyStipend
 
 
@@ -250,21 +250,23 @@ class PlayerGuild(object):
 
         async def load_npcs(self, guild: "PlayerGuild") -> None:
             query = (
-                NPC.npc_table.select()
+                NonPlayableCharacter.npc_table.select()
                 .where(
                     sa.and_(
-                        NPC.npc_table.c.guild_id == guild.id,
-                        NPC.npc_table.c.adventure_id == sa.null(),
+                        NonPlayableCharacter.npc_table.c.guild_id == guild.id,
+                        NonPlayableCharacter.npc_table.c.adventure_id == sa.null(),
                     )
                 )
-                .order_by(NPC.npc_table.c.key.asc())
+                .order_by(NonPlayableCharacter.npc_table.c.key.asc())
             )
 
             async with self._db.acquire() as conn:
                 results = await conn.execute(query)
                 rows = await results.fetchall()
 
-            guild.npcs = [NPC.NPCSchema(self._db).load(row) for row in rows]
+            guild.npcs = [
+                NonPlayableCharacter.NPCSchema(self._db).load(row) for row in rows
+            ]
 
         async def load_weekly_stipends(self, guild: PlayerGuild) -> None:
             query = (
@@ -309,7 +311,7 @@ class PlayerGuild(object):
         # Virtual attributes
         self.calendar: list[RefServerCalendar] = None
         self.guild: discord.Guild = kwargs.get("guild")
-        self.npcs: list[NPC] = []
+        self.npcs: list[NonPlayableCharacter] = []
         self.stipends: list[RefWeeklyStipend] = []
 
         # Roles
@@ -556,7 +558,7 @@ class PlayerGuild(object):
 
         return dashboards
 
-    def get_npc(self, **kwargs) -> NPC:
+    def get_npc(self, **kwargs) -> NonPlayableCharacter:
         if kwargs.get("key"):
             return next(
                 (npc for npc in self.npcs if npc.key == kwargs.get("key")), None

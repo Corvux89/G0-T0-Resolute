@@ -417,7 +417,7 @@ class RefDashboard(object):
             )
 
         elif self.dashboard_type.value.upper() == "FINANCIAL":
-            fin: Financial = await bot.get_financial_data()
+            fin: Financial = await Financial.get_financial_data(bot)
             res = requests.get(
                 "https://res.cloudinary.com/jerrick/image/upload/d_642250b563292b35f27461a7.png,f_jpg,fl_progressive,q_auto,w_1024/y3mdgvccfyvmemabidd0.jpg"
             )
@@ -501,6 +501,24 @@ class RefDashboard(object):
             file = discord.File(image_buffer, filename="progress.png")
             original_message.attachments.clear()
             return await original_message.edit(file=file, embed=embed, content="")
+
+    @staticmethod
+    async def update_financial_dashboards(bot: G0T0Bot) -> None:
+        dashboards = []
+
+        d_type = bot.compendium.get_object(DashboardType, "FINANCIAL")
+
+        query = RefDashboard.ref_dashboard_table.select().where(
+            RefDashboard.ref_dashboard_table.c.dashboard_type == d_type.id
+        )
+
+        rows = await bot.query(query, QueryResultType.multiple)
+
+        dashboards = [RefDashboard.RefDashboardSchema(bot).load(row) for row in rows]
+
+        for dashboard in dashboards:
+            dashboard: RefDashboard
+            await dashboard.refresh(bot)
 
 
 # PGSQL Views

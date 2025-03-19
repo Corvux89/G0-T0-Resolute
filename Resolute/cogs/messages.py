@@ -26,9 +26,6 @@ def setup(bot: G0T0Bot):
     bot.add_cog(Messages(bot))
 
 
-# TODO: Manage command for adventures, shatterpoints, characters, and anything else?
-
-
 class Messages(commands.Cog):
     bot: G0T0Bot
 

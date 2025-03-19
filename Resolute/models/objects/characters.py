@@ -597,3 +597,131 @@ class PlayerCharacter(object):
         ).load(row)
 
         return character
+
+    async def get_stats(self, bot: G0T0Bot) -> dict:
+        from Resolute.models.objects.logs import DBLog
+
+        new_character_activity = bot.compendium.get_activity("NEW_CHARACTER")
+        conversion_activity = bot.compendium.get_activity("CONVERSION")
+
+        query = (
+            sa.select(
+                DBLog.log_table.c.character_id,
+                sa.func.count(DBLog.log_table.c.id).label("#"),
+                sa.func.sum(
+                    sa.case(
+                        [
+                            (
+                                sa.and_(
+                                    DBLog.log_table.c.cc > 0,
+                                    DBLog.log_table.c.activity
+                                    != new_character_activity.id,
+                                ),
+                                DBLog.log_table.c.cc,
+                            )
+                        ],
+                        else_=0,
+                    )
+                ).label("cc debt"),
+                sa.func.sum(
+                    sa.case(
+                        [
+                            (
+                                sa.and_(
+                                    DBLog.log_table.c.cc > 0,
+                                    DBLog.log_table.c.activity
+                                    != new_character_activity.id,
+                                ),
+                                DBLog.log_table.c.cc,
+                            )
+                        ],
+                        else_=0,
+                    )
+                ).label("cc credit"),
+                sa.func.sum(
+                    sa.case(
+                        [
+                            (
+                                sa.and_(
+                                    DBLog.log_table.c.cc > 0,
+                                    DBLog.log_table.c.activity
+                                    == new_character_activity.id,
+                                ),
+                                DBLog.log_table.c.cc,
+                            )
+                        ],
+                        else_=0,
+                    )
+                ).label("cc starting"),
+                sa.func.sum(
+                    sa.case(
+                        [
+                            (
+                                sa.and_(
+                                    DBLog.log_table.c.credits > 0,
+                                    DBLog.log_table.c.activity
+                                    != new_character_activity.id,
+                                ),
+                                DBLog.log_table.c.credits,
+                            )
+                        ],
+                        else_=0,
+                    )
+                ).label("credit debt"),
+                sa.func.sum(
+                    sa.case(
+                        [
+                            (
+                                sa.and_(
+                                    DBLog.log_table.c.cc < 0,
+                                    DBLog.log_table.c.activity
+                                    != new_character_activity.id,
+                                ),
+                                DBLog.log_table.c.credits,
+                            )
+                        ],
+                        else_=0,
+                    )
+                ).label("credit credit"),
+                sa.func.sum(
+                    sa.case(
+                        [
+                            (
+                                sa.and_(
+                                    DBLog.log_table.c.credits > 0,
+                                    DBLog.log_table.c.activity
+                                    == new_character_activity.id,
+                                ),
+                                DBLog.log_table.c.credits,
+                            )
+                        ],
+                        else_=0,
+                    )
+                ).label("credit starting"),
+                sa.func.sum(
+                    sa.case(
+                        [
+                            (
+                                DBLog.log_table.c.activity == conversion_activity.id,
+                                DBLog.log_table.c.credits,
+                            )
+                        ],
+                        else_=0,
+                    )
+                ).label("credits converted"),
+            )
+            .group_by(DBLog.log_table.c.character_id)
+            .where(
+                sa.and_(
+                    DBLog.log_table.c.character_id == self.id,
+                    DBLog.log_table.c.invalid == False,
+                )
+            )
+        )
+
+        row = await bot.query(query)
+
+        if row is None:
+            return None
+
+        return dict(row)

@@ -1,3 +1,6 @@
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
 import datetime
 
 import aiopg.sa
@@ -5,6 +8,9 @@ import sqlalchemy as sa
 from marshmallow import Schema, fields, post_load
 
 from Resolute.models import metadata
+
+if TYPE_CHECKING:
+    from Resolute.bot import G0T0Bot
 
 
 class Financial(object):
@@ -101,3 +107,14 @@ class Financial(object):
 
         async with self._db.acquire() as conn:
             await conn.execute(query)
+
+    @staticmethod
+    async def get_financial_data(bot: G0T0Bot) -> "Financial":
+        row = await bot.query(Financial.financial_table.select())
+
+        if row is None:
+            return None
+
+        fin = Financial.FinancialSchema(bot.db).load(row)
+
+        return fin

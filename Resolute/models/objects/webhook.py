@@ -12,7 +12,7 @@ from Resolute.models.objects.adventures import Adventure
 from Resolute.models.objects.characters import PlayerCharacter
 from Resolute.models.objects.enum import WebhookType
 from Resolute.models.objects.exceptions import CharacterNotFound, Unauthorized
-from Resolute.models.objects.npc import NPC
+from Resolute.models.objects.npc import NonPlayableCharacter
 from Resolute.models.objects.players import Player
 
 log = logging.getLogger(__name__)
@@ -51,7 +51,7 @@ class G0T0Webhook(object):
     ctx: commands.Context | G0T0Context
     type: WebhookType
 
-    npc: NPC = None
+    npc: NonPlayableCharacter = None
     character: PlayerCharacter = None
     content: str = None
     message: discord.Message = None
@@ -158,9 +158,7 @@ class G0T0Webhook(object):
                         )
 
                         if len(chunk) > ACTIVITY_POINT_MINIMUM:
-                            await self.ctx.bot.update_player_activity_points(
-                                self.player
-                            )
+                            await self.player.update_activity_points(self.ctx.bot)
 
                 except:
                     await self.player.member.send(
@@ -209,14 +207,12 @@ class G0T0Webhook(object):
                         len(self.content) <= ACTIVITY_POINT_MINIMUM
                         and len(self.message.content) >= ACTIVITY_POINT_MINIMUM
                     ):
-                        await self.ctx.bot.update_player_activity_points(
-                            self.player, False
-                        )
+                        await self.player.update_activity_points(self.ctx.bot, False)
                     elif (
                         len(self.content) >= ACTIVITY_POINT_MINIMUM
                         and len(self.message.content) <= ACTIVITY_POINT_MINIMUM
                     ):
-                        await self.ctx.bot.update_player_activity_points(self.player)
+                        await self.player.update_activity_points(self.ctx.bot)
             except:
                 await self.player.member.send(
                     f"Error editing message in {self.ctx.channel.jump_url}. Try again."
@@ -236,7 +232,7 @@ class G0T0Webhook(object):
             )
 
             if len(self.message.content) >= ACTIVITY_POINT_MINIMUM:
-                await self.ctx.bot.update_player_activity_points(self.player, False)
+                await self.player.update_activity_points(self.ctx.bot, False)
 
         await self.message.delete()
 

@@ -201,7 +201,9 @@ class DBLog(object):
 
         return await DBLog.LogSchema(self._bot).load(row)
 
-    async def null(self, ctx: discord.ApplicationContext, reason: str) -> None:
+    async def null(
+        self, ctx: discord.ApplicationContext, reason: str, bulk: bool = False
+    ) -> None:
         """
         Nullifies the log entry for a given reason, if it is valid.
         Parameters:
@@ -220,22 +222,23 @@ class DBLog(object):
         if self.invalid:
             raise G0T0Error(f"Log [ {self.id} ] has already been invalidated")
 
-        conf = await confirm(
-            ctx,
-            f"Are you sure you want to nullify the `{self.activity.value}` log "
-            f"for {self.player.member.display_name if self.player.member else 'Player not found'} {f'[Character: {self.character.name}]' if self.character else ''}.\n"
-            f"**Refunding**\n"
-            f"{ZWSP3}**CC**: {self.cc}\n"
-            f"{ZWSP3}**Credits**: {self.credits}\n"
-            f"{ZWSP3}**Renown**: {self.renown} {f'for {self.faction.value}' if self.faction else ''}",
-            True,
-            self._bot,
-        )
+        if not bulk:
+            conf = await confirm(
+                ctx,
+                f"Are you sure you want to nullify the `{self.activity.value}` log "
+                f"for {self.player.member.display_name if self.player.member else 'Player not found'} {f'[Character: {self.character.name}]' if self.character else ''}.\n"
+                f"**Refunding**\n"
+                f"{ZWSP3}**CC**: {self.cc}\n"
+                f"{ZWSP3}**Credits**: {self.credits}\n"
+                f"{ZWSP3}**Renown**: {self.renown} {f'for {self.faction.value}' if self.faction else ''}",
+                True,
+                self._bot,
+            )
 
-        if conf is None:
-            raise TimeoutError()
-        elif not conf:
-            raise G0T0Error("Ok, cancelling")
+            if conf is None:
+                raise TimeoutError()
+            elif not conf:
+                raise G0T0Error("Ok, cancelling")
 
         if self.created_ts > self.player.guild._last_reset and self.activity.diversion:
             self.player.div_cc = max(self.player.div_cc - self.cc, 0)

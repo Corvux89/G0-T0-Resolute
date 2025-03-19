@@ -6,6 +6,7 @@ from discord.ext import commands
 from Resolute.bot import G0T0Bot, G0T0Context
 from Resolute.constants import ZWSP3
 from Resolute.helpers import is_admin, is_staff
+from Resolute.helpers.general_helpers import confirm
 from Resolute.models.embeds.logs import LogHxEmbed, LogStatsEmbed
 from Resolute.models.objects.exceptions import (
     CharacterNotFound,
@@ -293,15 +294,14 @@ class Log(commands.Cog):
         else:
             raise InvalidCurrencySelection()
 
-    # TODO: Allow the log_id to be a greedy list of ID's
     @log_commands.command(name="null", description="Nullifies a log")
     @commands.check(is_admin)
     async def null_log(
         self,
         ctx: G0T0Context,
         log_id: discord.Option(
-            discord.SlashCommandOptionType(4),
-            description="ID of the log to modify",
+            discord.SlashCommandOptionType(3),
+            description="ID of the log to modify or a comma list of logs to nullify",
             required=True,
         ),
         reason: discord.Option(
@@ -321,13 +321,35 @@ class Log(commands.Cog):
         Returns:
             None: Responds to the context with an embedded log entry.
         """
+        bulk = False
+        if "," in log_id:
+            bulk = True
+            log_ids = log_id.split(",")
 
-        log_entry = await DBLog.get_log(self.bot, log_id)
+            conf = await confirm(
+                ctx,
+                f"Are you sure you want to nullify these {len(log_ids)} logs?",
+                True,
+                self.bot,
+            )
 
-        if log_entry is None:
-            raise LogNotFound(log_id)
+            if conf is None:
+                raise TimeoutError()
+            elif not conf:
+                raise G0T0Error("Ok, cancelling")
+        else:
+            log_ids = [log_id]
 
-        await log_entry.null(ctx, reason)
+        for lid in log_ids:
+            try:
+                log_entry = await DBLog.get_log(self.bot, int(lid))
+            except:
+                raise G0T0Error(f"`{lid}` is not a valid number")
+
+            if log_entry is None:
+                raise LogNotFound(lid)
+
+            await log_entry.null(ctx, reason, bulk)
 
     @log_commands.command(name="stats", description="Log statistics for a character")
     async def log_stats(
@@ -343,7 +365,7 @@ class Log(commands.Cog):
         player = await Player.get_player(
             self.bot, member.id, ctx.guild.id, inactive=True
         )
-        player_stats = await self.bot.get_player_stats(player)
+        player_stats = await player.get_stats(self.bot)
 
         embeds = []
         embed = LogStatsEmbed(player, player_stats)
@@ -352,7 +374,7 @@ class Log(commands.Cog):
                 player.characters, key=lambda c: c.active, reverse=True
             )
             for character in sorted_characters:
-                char_stats = await self.bot.get_character_stats(character)
+                char_stats = await character.get_stats(self.bot)
                 if char_stats:
                     embed.add_field(
                         name=f"{character.name}{' (*inactive*)' if not character.active else ''}",

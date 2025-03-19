@@ -8,8 +8,11 @@ from Resolute.constants import ZWSP3
 from Resolute.helpers import process_message
 from Resolute.models.embeds import PlayerEmbed
 from Resolute.models.objects.applications import PlayerApplication
+from Resolute.models.objects.dashboards import RefDashboard
+from Resolute.models.objects.financial import Financial
 from Resolute.models.objects.guilds import PlayerGuild
 from Resolute.models.objects.players import Player
+from Resolute.models.objects.store import Store
 
 log = logging.getLogger(__name__)
 
@@ -59,9 +62,8 @@ class Events(commands.Cog):
         """
         # Reference Table Cleanup
         await PlayerApplication(self.bot, payload.user).delete()
-
-        if player := await self.bot.get_player(
-            int(payload.user.id), payload.guild_id, lookup_only=True
+        if player := await Player.get_player(
+            int(payload.user.id, payload.guild_id, lookup_only=True)
         ):
             # Cleanup Arena Board
             def predicate(message):
@@ -79,7 +81,9 @@ class Events(commands.Cog):
             if player.guild.exit_channel:
                 player.member = payload.user
         else:
-            g: PlayerGuild = await self.bot.get_player_guild(payload.guild_id)
+            g: PlayerGuild = await PlayerGuild.get_player_guild(
+                self.bot, payload.guild_id
+            )
             player: Player = Player(
                 self.bot,
                 payload.user.id,
@@ -180,7 +184,7 @@ class Events(commands.Cog):
         Returns:
             None
         """
-        g = await self.bot.get_player_guild(member.guild.id)
+        g = await PlayerGuild.get_player_guild(self.bot, member.guild.id)
 
         if g.entrance_channel and g.greeting != None and g.greeting != "":
             message = process_message(g.greeting, member.guild, member)
@@ -221,9 +225,9 @@ class Events(commands.Cog):
         Returns:
             None
         """
-        store_items = await self.bot.get_store_items()
+        store_items = await Store.get_items(self.bot)
 
-        fin = await self.bot.get_financial_data()
+        fin = await Financial.get_financial_data(self.bot)
 
         if store := next((s for s in store_items if s.sku == entitlement.sku_id), None):
             fin.monthly_total += store.user_cost
@@ -234,4 +238,4 @@ class Events(commands.Cog):
                 )
 
         await fin.update()
-        await self.bot.update_financial_dashboards()
+        await RefDashboard.update_financial_dashboards(self.bot)

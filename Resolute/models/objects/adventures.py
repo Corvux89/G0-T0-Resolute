@@ -11,11 +11,12 @@ from sqlalchemy.dialects.postgresql import ARRAY
 from Resolute.models import metadata
 from Resolute.models.categories.categories import Faction
 from Resolute.models.objects import RelatedList
-from Resolute.models.objects.npc import NPC
+from Resolute.models.objects.exceptions import AdventureNotFound
+from Resolute.models.objects.npc import NonPlayableCharacter
 from Resolute.models.objects.characters import PlayerCharacter
 
 if TYPE_CHECKING:
-    from Resolute.bot import G0T0Bot
+    from Resolute.bot import G0T0Bot, G0T0Context
 
 
 class Adventure(object):
@@ -125,19 +126,21 @@ class Adventure(object):
         async def get_characters(self, adventure: "Adventure") -> None:
             if adventure.characters:
                 for char_id in adventure.characters:
-                    if char := await self.bot.get_character(char_id):
+                    if char := await PlayerCharacter.get_character(self.bot, char_id):
                         adventure._player_characters.append(char)
 
         async def get_npcs(self, adventure: "Adventure") -> None:
-            query = NPC.npc_table.select().where(
-                sa.and_(NPC.npc_table.c.adventure_id == adventure.id)
+            query = NonPlayableCharacter.npc_table.select().where(
+                sa.and_(NonPlayableCharacter.npc_table.c.adventure_id == adventure.id)
             )
 
             async with self.bot.db.acquire() as conn:
                 results = await conn.execute(query)
                 rows = await results.fetchall()
 
-            adventure.npcs = [NPC.NPCSchema(self.bot.db).load(row) for row in rows]
+            adventure.npcs = [
+                NonPlayableCharacter.NPCSchema(self.bot.db).load(row) for row in rows
+            ]
 
     def __init__(
         self,
@@ -167,7 +170,10 @@ class Adventure(object):
         self._role: discord.Role = role
 
         # Virtual attributes
-        self.npcs: list[NPC] = []
+        self.npcs: list[NonPlayableCharacter] = []
+
+    def __repr__(self):
+        return f"<{self.__class__.__name__} id={self.id!r} name={self.name!r}>"
 
     def update_characters(self):
         self.characters = [c.id for c in self._player_characters]
@@ -280,7 +286,7 @@ class Adventure(object):
                 overwrites[member] = discord.PermissionOverwrite(manage_messages=True)
             await channel.edit(overwrites=overwrites)
 
-    def get_npc(self, **kwargs) -> NPC:
+    def get_npc(self, **kwargs) -> NonPlayableCharacter:
         if kwargs.get("key"):
             return next(
                 (npc for npc in self.npcs if npc.key == kwargs.get("key")), None
@@ -296,3 +302,63 @@ class Adventure(object):
             )
 
         return None
+
+    @staticmethod
+    async def fetch_from_ctx(
+        ctx: G0T0Context, role_id: int = None, category_channel_id: int = None
+    ) -> "Adventure":
+        if role_id:
+            query = Adventure.adventures_table.select().where(
+                sa.and_(
+                    Adventure.adventures_table.c.role_id == role_id,
+                    Adventure.adventures_table.c.end_ts == sa.null(),
+                )
+            )
+
+        elif category_channel_id:
+            query = Adventure.adventures_table.select().where(
+                sa.and_(
+                    Adventure.adventures_table.c.category_channel_id
+                    == category_channel_id,
+                    Adventure.adventures_table.c.end_ts == sa.null(),
+                )
+            )
+        elif ctx.channel.category:
+            query = Adventure.adventures_table.select().where(
+                sa.and_(
+                    Adventure.adventures_table.c.category_channel_id
+                    == ctx.channel.category.id,
+                    Adventure.adventures_table.c.end_ts == sa.null(),
+                )
+            )
+        else:
+            raise AdventureNotFound()
+
+        row = await ctx.bot.query(query)
+
+        if row is None:
+            raise AdventureNotFound()
+
+        adventure = await Adventure.AdventureSchema(ctx.bot).load(row)
+
+        return adventure
+
+    @staticmethod
+    async def get_from_category_id(
+        bot: G0T0Bot, category_channel_id: int
+    ) -> "Adventure":
+        query = Adventure.adventures_table.select().where(
+            sa.and_(
+                Adventure.adventures_table.c.category_channel_id == category_channel_id,
+                Adventure.adventures_table.c.end_ts == sa.null(),
+            )
+        )
+
+        row = await bot.query(query)
+
+        if row is None:
+            return None
+
+        adventure = await Adventure.AdventureSchema(bot).load(row)
+
+        return adventure

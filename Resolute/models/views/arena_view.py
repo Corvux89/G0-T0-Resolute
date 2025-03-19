@@ -6,6 +6,7 @@ import discord
 from Resolute.models.categories.categories import ArenaType
 from Resolute.models.embeds import ErrorEmbed
 from Resolute.models.embeds.players import ArenaPostEmbed
+from Resolute.models.objects.arenas import Arena
 from Resolute.models.objects.characters import PlayerCharacter
 from Resolute.models.objects.enum import ArenaPostType
 from Resolute.models.objects.exceptions import (
@@ -92,7 +93,7 @@ class ArenaView(discord.ui.View):
     async def refresh_content(self, interaction: discord.Interaction, **kwargs):
         await self._before_send()
         if interaction.response.is_done():
-            arena = await self.bot.get_arena(interaction.channel.id)
+            arena = await Arena.get_arena(self.bot, interaction.channel.id)
             message: discord.Message = await interaction.channel.fetch_message(
                 arena.pin_message_id
             )
@@ -144,7 +145,7 @@ class CharacterArenaViewUI(ArenaView):
     async def join_arena_button(
         self, _: discord.ui.Button, interaction: discord.Interaction
     ):
-        arena = await self.bot.get_arena(interaction.channel.id)
+        arena = await Arena.get_arena(self.bot, interaction.channel.id)
 
         if arena is None:
             raise ArenaNotFound()
@@ -152,8 +153,8 @@ class CharacterArenaViewUI(ArenaView):
         if interaction.user.id == arena.host_id:
             raise G0T0Error("You're already hosting this arena.")
 
-        self.player = await self.bot.get_player(
-            interaction.user.id, interaction.guild.id
+        self.player = await Player.get_player(
+            self.bot, interaction.user.id, interaction.guild.id
         )
 
         if not self.player.characters:
@@ -204,12 +205,12 @@ class ArenaCharacterSelect(ArenaView):
     async def character_select(
         self, char: discord.ui.Select, interaction: discord.Interaction
     ):
-        arena = await self.bot.get_arena(interaction.channel.id)
-        character = await self.bot.get_character(char.values[0])
+        arena = await Arena.get_arena(self.bot, interaction.channel.id)
+        character = await PlayerCharacter.get_character(self.bot, char.values[0])
 
         if not self.player:
-            self.player = await self.bot.get_player(
-                character.player_id, interaction.guild.id
+            self.player = await Player.get_player(
+                self.bot, character.player_id, interaction.guild.id
             )
 
         if (
@@ -233,7 +234,7 @@ class ArenaCharacterSelect(ArenaView):
     async def join_arena_button(
         self, _: discord.ui.Button, interaction: discord.Interaction
     ):
-        arena = await self.bot.get_arena(interaction.channel.id)
+        arena = await Arena.get_arena(self.bot, interaction.channel.id)
 
         if arena is None:
             raise ArenaNotFound()
@@ -241,8 +242,8 @@ class ArenaCharacterSelect(ArenaView):
         if interaction.user.id == arena.host_id:
             raise G0T0Error("You're already hosting this arena.")
 
-        self.player = await self.bot.get_player(
-            interaction.user.id, interaction.guild.id
+        self.player = await Player.get_player(
+            self.bot, interaction.user.id, interaction.guild.id
         )
 
         if not self.player.characters:
@@ -352,7 +353,7 @@ class ArenaRequestCharacterSelect(ArenaRequest):
     async def character_select(
         self, char: discord.ui.Select, interaction: discord.Interaction
     ):
-        character = await self.bot.get_character(char.values[0])
+        character = await PlayerCharacter.get_character(self.bot, char.values[0])
 
         if (
             character.player_id != interaction.user.id

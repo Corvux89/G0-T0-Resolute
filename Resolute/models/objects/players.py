@@ -1,4 +1,5 @@
 from __future__ import annotations
+import operator
 from typing import TYPE_CHECKING
 
 import json
@@ -10,12 +11,17 @@ import sqlalchemy as sa
 from marshmallow import Schema, fields, post_load
 from sqlalchemy.dialects.postgresql import insert
 
-import Resolute.models.objects.logs as logs
-import Resolute.models.objects.npc as npc
+from Resolute.helpers.general_helpers import get_selection
+from Resolute.models.embeds.logs import LogEmbed
 from Resolute.compendium import Compendium
 from Resolute.helpers import get_webhook
 from Resolute.models import metadata
-from Resolute.models.categories.categories import Activity, ArenaType, LevelTier
+from Resolute.models.categories.categories import (
+    Activity,
+    ActivityPoints,
+    ArenaType,
+    LevelTier,
+)
 from Resolute.models.embeds.arenas import ArenaStatusEmbed
 from Resolute.models.objects.enum import ApplicationType, ArenaPostType, QueryResultType
 from Resolute.models.objects.adventures import Adventure
@@ -31,6 +37,7 @@ from Resolute.models.objects.guilds import PlayerGuild
 
 if TYPE_CHECKING:
     from Resolute.bot import G0T0Bot
+    from .npc import NonPlayableCharacter
 
 log = logging.getLogger(__name__)
 
@@ -112,7 +119,7 @@ class Player(object):
             await self.get_adventures(player)
             await self.get_arenas(player)
             player.member = self.bot.get_guild(player.guild_id).get_member(player.id)
-            player.guild = await self.bot.get_player_guild(player.guild_id)
+            player.guild = await PlayerGuild.get_player_guild(self.bot, player.guild_id)
             return player
 
         async def get_characters(self, player: "Player") -> None:
@@ -180,6 +187,8 @@ class Player(object):
             player.characters = character_list
 
         async def get_player_quests(self, player: "Player") -> None:
+            from .logs import DBLog
+
             if len(player.characters) == 0 or (
                 player.highest_level_character
                 and player.highest_level_character.level >= 3
@@ -189,13 +198,13 @@ class Player(object):
             def build_query(activity: Activity):
                 query = (
                     sa.select([sa.func.count()])
-                    .select_from(logs.DBLog.log_table)
+                    .select_from(DBLog.log_table)
                     .where(
                         sa.and_(
-                            logs.DBLog.log_table.c.player_id == player.id,
-                            logs.DBLog.log_table.c.guild_id == player.guild_id,
-                            logs.DBLog.log_table.c.invalid == False,
-                            logs.DBLog.log_table.c.activity == activity.id,
+                            DBLog.log_table.c.player_id == player.id,
+                            DBLog.log_table.c.guild_id == player.guild_id,
+                            DBLog.log_table.c.invalid == False,
+                            DBLog.log_table.c.activity == activity.id,
                         )
                     )
                 )
@@ -301,6 +310,9 @@ class Player(object):
         self.arenas: list[Arena] = []
         self.adventures: list[Adventure] = []
 
+    def __repr__(self):
+        return f"<{self.__class__.__name__} id={self.id} guild={self.guild_id!r} name={self.member.display_name if self.member else ''!r}>"
+
     @property
     def highest_level_character(self) -> PlayerCharacter:
         if hasattr(self, "characters") and self.characters:
@@ -401,7 +413,10 @@ class Player(object):
         await self.upsert()
 
     async def update_post_stats(
-        self, character: PlayerCharacter | npc.NPC, post: discord.Message, **kwargs
+        self,
+        character: PlayerCharacter | NonPlayableCharacter,
+        post: discord.Message,
+        **kwargs,
     ) -> None:
         content = kwargs.get("content", post.content)
         retract = kwargs.get("retract", False)
@@ -645,6 +660,305 @@ class Player(object):
         player = await Player.PlayerSchema(self._bot, inactive).load(row)
 
         return player
+
+    async def get_stats(self, bot: G0T0Bot) -> dict:
+        from .logs import DBLog
+
+        new_character_activity = bot.compendium.get_activity("NEW_CHARACTER")
+        activities = [
+            x
+            for x in bot.compendium.activity[0].values()
+            if x.value in ["RP", "ARENA", "ARENA_HOST", "GLOBAL", "SNAPSHOT"]
+        ]
+        columns = [
+            sa.func.sum(
+                sa.case([(DBLog.log_table.c.activity == act.id, 1)], else_=0)
+            ).label(f"Activity {act.value}")
+            for act in activities
+        ]
+
+        query = (
+            sa.select(
+                DBLog.log_table.c.player_id,
+                sa.func.count(DBLog.log_table.c.id).label("#"),
+                sa.func.sum(
+                    sa.case(
+                        [
+                            (
+                                sa.and_(
+                                    DBLog.log_table.c.cc > 0,
+                                    DBLog.log_table.c.activity
+                                    != new_character_activity.id,
+                                ),
+                                DBLog.log_table.c.cc,
+                            )
+                        ],
+                        else_=0,
+                    )
+                ).label("debt"),
+                sa.func.sum(
+                    sa.case(
+                        [
+                            (
+                                sa.and_(
+                                    DBLog.log_table.c.cc < 0,
+                                    DBLog.log_table.c.activity
+                                    != new_character_activity.id,
+                                ),
+                                DBLog.log_table.c.cc,
+                            )
+                        ],
+                        else_=0,
+                    )
+                ).label("credit"),
+                sa.func.sum(
+                    sa.case(
+                        [
+                            (
+                                sa.and_(
+                                    DBLog.log_table.c.cc > 0,
+                                    DBLog.log_table.c.activity
+                                    == new_character_activity.id,
+                                ),
+                                DBLog.log_table.c.cc,
+                            )
+                        ],
+                        else_=0,
+                    )
+                ).label("starting"),
+                *columns,
+            )
+            .group_by(DBLog.log_table.c.player_id)
+            .where(
+                sa.and_(
+                    DBLog.log_table.c.player_id == self.id,
+                    DBLog.log_table.c.guild_id == self.guild_id,
+                    DBLog.log_table.c.invalid == False,
+                )
+            )
+        )
+
+        row = await bot.query(query)
+
+        return dict(row)
+
+    @staticmethod
+    async def get_player(
+        bot: G0T0Bot, player_id: int, guild_id: int = None, **kwargs
+    ) -> "Player":
+        inactive = kwargs.get("inactive", False)
+        lookup_only = kwargs.get("lookup_only", False)
+        ctx = kwargs.get("ctx")
+
+        player = None
+
+        if guild_id:
+            query = Player.player_table.select().where(
+                sa.and_(
+                    Player.player_table.c.id == player_id,
+                    Player.player_table.c.guild_id == guild_id,
+                )
+            )
+        else:
+            query = Player.player_table.select().where(
+                Player.player_table.c.id == player_id
+            )
+
+        rows = await bot.query(query, QueryResultType.multiple)
+
+        # Not found
+        if not rows:
+            if lookup_only:
+                return None
+            elif guild_id:
+                # Single guild -> Create new player
+                player = await Player(bot, player_id, guild_id).upsert(
+                    inactive=inactive
+                )
+            else:
+                if ctx:
+                    # Check for guilds the player is in
+                    guilds = [g for g in bot.guilds if g.get_member(player_id)]
+
+                    # One guild in common
+                    if len(guilds) == 1:
+                        player = await Player(bot, player_id, guilds[0].id).upsert(
+                            inactive=inactive
+                        )
+                        return player
+
+                    # Multiple guilds in common
+                    elif len(guilds) > 1:
+                        guild = await get_selection(
+                            ctx,
+                            guilds,
+                            True,
+                            True,
+                            None,
+                            False,
+                            "Which guild is this command for?\n",
+                        )
+
+                        if guild:
+                            player = await Player(bot, player_id, guild.id).upsert(
+                                inactive=inactive
+                            )
+                        else:
+                            raise G0T0Error("No guild selected/found.")
+                    else:
+                        raise G0T0Error("Unable to find player")
+                else:
+                    raise G0T0Error("Unable to find guild")
+
+        # Player(s) found in db
+        else:
+            # One match found
+            if len(rows) == 1:
+                player = await Player.PlayerSchema(bot, inactive).load(rows[0])
+
+            # Multiple matches
+            else:
+                if ctx:
+                    guilds = [g for g in bot.guilds if g.get_member(player_id)]
+
+                    if len(guilds) == 1:
+                        row = filter(
+                            lambda p: p["guild_id"] == str(guilds[0].id), guilds
+                        )
+                        player = await Player.PlayerSchema(bot, inactive).load(row)
+                        # player = await Player.get_player(bot, player_id, guilds[0].id, **kwargs)
+
+                    else:
+                        choices = [g.name for g in guilds]
+                        choice = await get_selection(
+                            ctx,
+                            choices,
+                            True,
+                            True,
+                            None,
+                            False,
+                            "Which guild is this command for?\n",
+                        )
+
+                        if choice and (
+                            guild := next((g for g in guilds if g.name == choice), None)
+                        ):
+                            player = await Player.get_player(
+                                bot, player_id, guild.id, **kwargs
+                            )
+                        else:
+                            raise G0T0Error("Unable to find player")
+                else:
+                    raise G0T0Error("Unable to find player")
+        return player
+
+    async def update_activity_points(
+        self, bot: G0T0Bot, increment: bool = True
+    ) -> None:
+        if increment:
+            self.activity_points += 1
+        else:
+            self.activity_points = max(self.activity_points - 1, 0)
+
+        points = sorted(
+            bot.compendium.activity_points[0].values(), key=operator.attrgetter("id")
+        )
+        activity_point: ActivityPoints = None
+
+        for point in points:
+            point: ActivityPoints
+            if self.activity_points >= point.points:
+                activity_point = point
+            elif self.activity_points < point.points:
+                break
+
+        if (activity_point and self.activity_level != activity_point.id) or (
+            increment == False and not activity_point
+        ):
+            from .logs import DBLog
+
+            revert = (
+                True
+                if not activity_point
+                or (activity_point and self.activity_level > activity_point.id)
+                else False
+            )
+            self.activity_level = activity_point.id if activity_point else 0
+
+            activity_log = await DBLog.create(
+                bot,
+                None,
+                self,
+                bot.user,
+                "ACTIVITY_REWARD",
+                notes=f"Activity Level {self.activity_level+1 if revert else self.activity_level}{' [REVERSION]' if revert else ''}",
+                cc=-1 if revert else 0,
+                silent=True,
+            )
+
+            if self.guild.activity_points_channel and not revert:
+                await self.guild.activity_points_channel.send(
+                    embed=LogEmbed(activity_log), content=f"{self.member.mention}"
+                )
+
+            if self.guild.staff_channel and revert:
+                await self.guild.staff_channel.send(embed=LogEmbed(activity_log))
+                await self.member.send(embed=LogEmbed(activity_log))
+
+        else:
+            await self.upsert()
+
+    async def manage_player_tier_roles(self, bot: G0T0Bot, reason: str = None) -> None:
+        # Primary Role handling
+        if self.highest_level_character and self.highest_level_character.level >= 3:
+            if (
+                self.guild.member_role
+                and self.guild.member_role not in self.member.roles
+            ):
+                await self.member.add_roles(self.guild.member_role, reason=reason)
+
+        # Character Tier Roles
+        if self.guild.entry_role:
+            if self.has_character_in_tier(bot.compendium, 1):
+                if self.guild.entry_role not in self.member.roles:
+                    await self.member.add_roles(self.guild.entry_role, reason=reason)
+            elif self.guild.entry_role in self.member.roles:
+                await self.member.remove_roles(self.guild.entry_role, reason=reason)
+
+        if self.guild.tier_2_role:
+            if self.has_character_in_tier(bot.compendium, 2):
+                if self.guild.tier_2_role not in self.member.roles:
+                    await self.member.add_roles(self.guild.tier_2_role, reason=reason)
+            elif self.guild.tier_2_role in self.member.roles:
+                await self.member.remove_roles(self.guild.tier_2_role, reason=reason)
+
+        if self.guild.tier_3_role:
+            if self.has_character_in_tier(bot.compendium, 3):
+                if self.guild.tier_3_role not in self.member.roles:
+                    await self.member.add_roles(self.guild.tier_3_role, reason=reason)
+            elif self.guild.tier_3_role in self.member.roles:
+                await self.member.remove_roles(self.guild.tier_3_role, reason=reason)
+
+        if self.guild.tier_4_role:
+            if self.has_character_in_tier(bot.compendium, 4):
+                if self.guild.tier_4_role not in self.member.roles:
+                    await self.member.add_roles(self.guild.tier_4_role, reason=reason)
+            elif self.guild.tier_4_role in self.member.roles:
+                await self.member.remove_roles(self.guild.tier_4_role, reason=reason)
+
+        if self.guild.tier_5_role:
+            if self.has_character_in_tier(bot.compendium, 5):
+                if self.guild.tier_5_role not in self.member.roles:
+                    await self.member.add_roles(self.guild.tier_5_role, reason=reason)
+            elif self.guild.tier_5_role in self.member.roles:
+                await self.member.remove_roles(self.guild.tier_5_role, reason=reason)
+
+        if self.guild.tier_6_role:
+            if self.has_character_in_tier(bot.compendium, 6):
+                if self.guild.tier_6_role not in self.member.roles:
+                    await self.member.add_roles(self.guild.tier_6_role, reason=reason)
+            elif self.guild.tier_6_role in self.member.roles:
+                await self.member.remove_roles(self.guild.tier_6_role, reason=reason)
 
 
 class ArenaPost(object):

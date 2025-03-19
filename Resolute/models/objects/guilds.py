@@ -16,14 +16,14 @@ from Resolute.compendium import Compendium
 from Resolute.constants import BOT_OWNERS
 from Resolute.models import metadata
 from Resolute.models.objects.characters import PlayerCharacter
-from Resolute.models.objects.dashboards import RefDashboard
 from Resolute.models.objects.enum import QueryResultType
-from Resolute.models.objects.npc import NPC
+from Resolute.models.objects.npc import NonPlayableCharacter
 from Resolute.models.objects.ref_objects import RefServerCalendar, RefWeeklyStipend
 
 
 if TYPE_CHECKING:
     from Resolute.bot import G0T0Bot
+    from Resolute.models.objects.dashboards import RefDashboard
 
 
 class PlayerGuild(object):
@@ -250,21 +250,23 @@ class PlayerGuild(object):
 
         async def load_npcs(self, guild: "PlayerGuild") -> None:
             query = (
-                NPC.npc_table.select()
+                NonPlayableCharacter.npc_table.select()
                 .where(
                     sa.and_(
-                        NPC.npc_table.c.guild_id == guild.id,
-                        NPC.npc_table.c.adventure_id == sa.null(),
+                        NonPlayableCharacter.npc_table.c.guild_id == guild.id,
+                        NonPlayableCharacter.npc_table.c.adventure_id == sa.null(),
                     )
                 )
-                .order_by(NPC.npc_table.c.key.asc())
+                .order_by(NonPlayableCharacter.npc_table.c.key.asc())
             )
 
             async with self._db.acquire() as conn:
                 results = await conn.execute(query)
                 rows = await results.fetchall()
 
-            guild.npcs = [NPC.NPCSchema(self._db).load(row) for row in rows]
+            guild.npcs = [
+                NonPlayableCharacter.NPCSchema(self._db).load(row) for row in rows
+            ]
 
         async def load_weekly_stipends(self, guild: PlayerGuild) -> None:
             query = (
@@ -309,7 +311,7 @@ class PlayerGuild(object):
         # Virtual attributes
         self.calendar: list[RefServerCalendar] = None
         self.guild: discord.Guild = kwargs.get("guild")
-        self.npcs: list[NPC] = []
+        self.npcs: list[NonPlayableCharacter] = []
         self.stipends: list[RefWeeklyStipend] = []
 
         # Roles
@@ -539,6 +541,8 @@ class PlayerGuild(object):
         return character_list
 
     async def get_dashboards(self, bot: G0T0Bot) -> list[RefDashboard]:
+        from Resolute.models.objects.dashboards import RefDashboard
+
         dashboards = []
 
         rows = await bot.query(
@@ -554,7 +558,7 @@ class PlayerGuild(object):
 
         return dashboards
 
-    def get_npc(self, **kwargs) -> NPC:
+    def get_npc(self, **kwargs) -> NonPlayableCharacter:
         if kwargs.get("key"):
             return next(
                 (npc for npc in self.npcs if npc.key == kwargs.get("key")), None
@@ -587,3 +591,34 @@ class PlayerGuild(object):
             return True
 
         return False
+
+    @staticmethod
+    async def get_busy_guilds(bot: G0T0Bot) -> list[PlayerGuild]:
+        query = PlayerGuild.guilds_table.select().where(
+            PlayerGuild.guilds_table.c.archive_user.isnot(None)
+        )
+
+        rows = await bot.query(query, QueryResultType.multiple)
+
+        guilds = [
+            await PlayerGuild.GuildSchema(bot.db, guild=bot.get_guild(row["id"])).load(
+                row
+            )
+            for row in rows
+        ]
+
+        return guilds
+
+    @staticmethod
+    async def get_player_guild(bot: G0T0Bot, guild_id: int) -> "PlayerGuild":
+        if len(bot.player_guilds) > 0 and (
+            guild := bot.player_guilds.get(str(guild_id))
+        ):
+            return guild
+
+        guild = PlayerGuild(bot.db, guild=bot.get_guild(guild_id))
+        guild: PlayerGuild = await guild.fetch()
+
+        bot.player_guilds[str(guild_id)] = guild
+
+        return guild

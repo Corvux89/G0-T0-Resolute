@@ -14,6 +14,7 @@ from Resolute.models.embeds.players import PlayerOverviewEmbed, RPPostEmbed
 from Resolute.models.objects.characters import CharacterRenown, PlayerCharacterClass
 from Resolute.models.objects.enum import ApplicationType
 from Resolute.models.objects.exceptions import G0T0Error
+from Resolute.models.objects.logs import DBLog
 from Resolute.models.objects.players import Player, PlayerCharacter, RPPost
 from Resolute.models.objects.webhook import G0T0Webhook
 from Resolute.models.views.base import InteractiveView
@@ -252,7 +253,8 @@ class _NewCharacter(CharacterManage):
             self.new_class,
             old_character=self.active_character,
         )
-        log_entry = await self.bot.log(
+        log_entry = await DBLog.create(
+            self.bot,
             interaction,
             self.player,
             self.owner,
@@ -265,8 +267,9 @@ class _NewCharacter(CharacterManage):
             silent=True,
         )
 
-        self.player = await self.bot.get_player(self.player.id, self.player.guild_id)
-        await self.bot.manage_player_tier_roles(self.player, "Character Created!")
+        self.player = await self.player.fetch()
+
+        await self.player.manage_player_tier_roles(self.bot, "Character Created!")
 
         embed = CharacterEmbed(
             self.player,
@@ -394,7 +397,8 @@ class _InactivateCharacter(CharacterManage):
     ):
         self.active_character.active = False
 
-        await self.bot.log(
+        await DBLog.create(
+            self.bot,
             interaction,
             self.player,
             self.owner,
@@ -403,7 +407,7 @@ class _InactivateCharacter(CharacterManage):
             notes="Inactivating Character",
         )
 
-        await self.bot.manage_player_tier_roles(self.player, "Inactivating character")
+        await self.player.manage_player_tier_roles(self.bot, "Inactivating Character")
         await self.on_timeout()
 
     @discord.ui.button(label="Back", style=discord.ButtonStyle.grey)
@@ -440,7 +444,8 @@ class _EditCharacter(CharacterManage):
         )
 
         if response.update:
-            await self.bot.log(
+            await DBLog.create(
+                self.bot,
                 interaction,
                 self.player,
                 self.owner,
@@ -467,7 +472,8 @@ class _EditCharacter(CharacterManage):
             )
 
         self.active_character.level += 1
-        await self.bot.log(
+        await DBLog.create(
+            self.bot,
             interaction,
             self.player,
             self.owner,
@@ -477,7 +483,7 @@ class _EditCharacter(CharacterManage):
             silent=True,
         )
 
-        await self.bot.manage_player_tier_roles(self.player, "Level up")
+        await self.player.manage_player_tier_roles(self.bot, "Level Up!")
 
         embed = CharacterEmbed(
             self.player,
@@ -503,7 +509,8 @@ class _EditCharacter(CharacterManage):
         modal = CharacterDOBModal(self.player, self.active_character)
 
         if self.active_character.dob != old_dob:
-            await self.bot.log(
+            await DBLog.create(
+                self.bot,
                 interaction,
                 self.player,
                 self.owner,
@@ -670,7 +677,8 @@ class _EditCharacterRenown(CharacterManage):
         response = await self.prompt_modal(interaction, modal)
 
         if response.amount != 0:
-            await self.bot.log(
+            await DBLog.create(
+                self.bot,
                 interaction,
                 self.player,
                 self.owner,
@@ -680,8 +688,8 @@ class _EditCharacterRenown(CharacterManage):
                 faction=self.faction,
                 show_values=True,
             )
-            self.active_character = await self.bot.get_character(
-                self.active_character.id
+            self.active_character = await PlayerCharacter.get_character(
+                self.bot, self.active_character.id
             )
             await self.on_timeout()
         else:
@@ -1147,7 +1155,7 @@ class CharacterSettings(InteractiveView):
 
     async def commit(self):
         await self.active_character.upsert()
-        self.player = await self.bot.get_player(self.player.id, self.player.guild.id)
+        self.player = await self.player.fetch()
 
     async def get_content(self) -> Mapping:
         embed = CharacterEmbed(
@@ -1717,7 +1725,7 @@ class RPPostUI(RPPostView):
     async def character_select(
         self, char: discord.ui.Select, interaction: discord.Interaction
     ):
-        character = await self.bot.get_character(char.values[0])
+        character = await PlayerCharacter.get_character(self.bot, char.values[0])
 
         if (
             character.player_id != interaction.user.id

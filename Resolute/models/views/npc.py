@@ -6,7 +6,7 @@ from Resolute.bot import G0T0Bot
 from Resolute.models.embeds import ErrorEmbed, PlayerEmbed
 from Resolute.models.objects.adventures import Adventure
 from Resolute.models.objects.guilds import PlayerGuild
-from Resolute.models.objects.npc import NPC
+from Resolute.models.objects.npc import NonPlayableCharacter
 from Resolute.models.views.base import InteractiveView
 
 
@@ -35,7 +35,7 @@ class NPCSettings(InteractiveView):
     adventure: Adventure
     back_menu: type[InteractiveView]
 
-    npc: NPC = None
+    npc: NonPlayableCharacter = None
     role: discord.Role = None
 
     async def get_content(self) -> Mapping:
@@ -91,11 +91,11 @@ class NPCSettings(InteractiveView):
 
     async def commit(self):
         if self.adventure:
-            self.adventure = await self.bot.get_adventure_from_category(
-                self.adventure.category_channel_id
+            self.adventure = Adventure.get_from_category_id(
+                self.bot, self.adventure.category_channel_id
             )
         elif self.guild:
-            self.guild = await self.bot.get_player_guild(self.guild.id)
+            self.guild = await self.guild.fetch()
 
 
 class NPCSettingsUI(NPCSettings):
@@ -239,7 +239,7 @@ class NPCModal(discord.ui.Modal):
     bot: G0T0Bot
     guild: PlayerGuild
     adventure: Adventure
-    npc: NPC
+    npc: NonPlayableCharacter
 
     def __init__(self, bot: G0T0Bot, **kwargs):
         super().__init__(title="New NPC")
@@ -295,7 +295,7 @@ class NPCModal(discord.ui.Modal):
             self.npc.name = name
             self.npc.avatar_url = url
         else:
-            self.npc = NPC(
+            self.npc = NonPlayableCharacter(
                 self.bot.db,
                 self.guild.id,
                 key,

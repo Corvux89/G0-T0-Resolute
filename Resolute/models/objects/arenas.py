@@ -123,7 +123,9 @@ class Arena(object):
 
         async def get_characters(self, arena: "Arena") -> None:
             for char in arena.characters:
-                arena.player_characters.append(await self.bot.get_character(char))
+                arena.player_characters.append(
+                    await PlayerCharacter.get_character(self.bot, char)
+                )
 
     def __init__(
         self,
@@ -259,3 +261,21 @@ class Arena(object):
 
         if message := await self.channel.fetch_message(self.pin_message_id):
             await message.delete(reason="Closing Arena")
+
+    @staticmethod
+    async def get_arena(bot: G0T0Bot, channel_id: int) -> "Arena":
+        query = Arena.arenas_table.select().where(
+            sa.and_(
+                Arena.arenas_table.c.channel_id == channel_id,
+                Arena.arenas_table.c.end_ts == sa.null(),
+            )
+        )
+
+        row = await bot.query(query)
+
+        if row is None:
+            return None
+
+        arena: Arena = await Arena.ArenaSchema(bot).load(row)
+
+        return arena

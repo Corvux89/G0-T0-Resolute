@@ -4,6 +4,7 @@ import discord
 
 from Resolute.bot import G0T0Bot
 from Resolute.models.objects.characters import PlayerCharacter
+from Resolute.models.objects.logs import DBLog
 from Resolute.models.objects.players import Player
 from Resolute.models.views.base import InteractiveView
 
@@ -92,7 +93,8 @@ class LogPromptUI(LogPrompt):
 
     @discord.ui.button(label="Confirm", style=discord.ButtonStyle.green, row=2)
     async def confirm_log(self, _: discord.ui.Button, interaction: discord.Interaction):
-        await self.bot.log(
+        await DBLog.create(
+            self.bot,
             interaction,
             self.player,
             self.author,

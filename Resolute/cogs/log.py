@@ -6,6 +6,7 @@ from discord.ext import commands
 from Resolute.bot import G0T0Bot, G0T0Context
 from Resolute.constants import ZWSP3
 from Resolute.helpers import is_admin, is_staff
+from Resolute.helpers.general_helpers import confirm
 from Resolute.models.embeds.logs import LogHxEmbed, LogStatsEmbed
 from Resolute.models.objects.exceptions import (
     CharacterNotFound,
@@ -13,6 +14,8 @@ from Resolute.models.objects.exceptions import (
     InvalidCurrencySelection,
     LogNotFound,
 )
+from Resolute.models.objects.logs import DBLog
+from Resolute.models.objects.players import Player
 from Resolute.models.views.logs import LogPromptUI
 
 log = logging.getLogger(__name__)
@@ -89,7 +92,7 @@ class Log(commands.Cog):
         """
 
         if host:
-            await self.bot.log(ctx, member, ctx.author, "RP_HOST")
+            await DBLog.create(self.bot, ctx, member, ctx.author, "RP_HOST")
         else:
             await self._prompt_log(ctx, member, "RP")
 
@@ -208,8 +211,9 @@ class Log(commands.Cog):
                 ctx, member, "BUY", item, 0, -cost, True, False, True
             )
         elif currency == "CC":
-            await ctx.defer()
-            await self.bot.log(
+
+            await DBLog.create(
+                self.bot,
                 ctx,
                 member,
                 ctx.author,
@@ -274,8 +278,9 @@ class Log(commands.Cog):
             )
 
         elif currency == "CC":
-            await ctx.defer()
-            await self.bot.log(
+
+            await DBLog.create(
+                self.bot,
                 ctx,
                 member,
                 ctx.author,
@@ -295,8 +300,8 @@ class Log(commands.Cog):
         self,
         ctx: G0T0Context,
         log_id: discord.Option(
-            discord.SlashCommandOptionType(4),
-            description="ID of the log to modify",
+            discord.SlashCommandOptionType(3),
+            description="ID of the log to modify or a comma list of logs to nullify",
             required=True,
         ),
         reason: discord.Option(
@@ -316,13 +321,35 @@ class Log(commands.Cog):
         Returns:
             None: Responds to the context with an embedded log entry.
         """
-        await ctx.defer()
-        log_entry = await self.bot.get_log(log_id)
+        bulk = False
+        if "," in log_id:
+            bulk = True
+            log_ids = log_id.split(",")
 
-        if log_entry is None:
-            raise LogNotFound(log_id)
+            conf = await confirm(
+                ctx,
+                f"Are you sure you want to nullify these {len(log_ids)} logs?",
+                True,
+                self.bot,
+            )
 
-        await log_entry.null(ctx, reason)
+            if conf is None:
+                raise TimeoutError()
+            elif not conf:
+                raise G0T0Error("Ok, cancelling")
+        else:
+            log_ids = [log_id]
+
+        for lid in log_ids:
+            try:
+                log_entry = await DBLog.get_log(self.bot, int(lid))
+            except:
+                raise G0T0Error(f"`{lid}` is not a valid number")
+
+            if log_entry is None:
+                raise LogNotFound(lid)
+
+            await log_entry.null(ctx, reason, bulk)
 
     @log_commands.command(name="stats", description="Log statistics for a character")
     async def log_stats(
@@ -334,10 +361,11 @@ class Log(commands.Cog):
             required=True,
         ),
     ):
-        await ctx.defer()
 
-        player = await self.bot.get_player(member.id, ctx.guild.id, inactive=True)
-        player_stats = await self.bot.get_player_stats(player)
+        player = await Player.get_player(
+            self.bot, member.id, ctx.guild.id, inactive=True
+        )
+        player_stats = await player.get_stats(self.bot)
 
         embeds = []
         embed = LogStatsEmbed(player, player_stats)
@@ -346,7 +374,7 @@ class Log(commands.Cog):
                 player.characters, key=lambda c: c.active, reverse=True
             )
             for character in sorted_characters:
-                char_stats = await self.bot.get_character_stats(character)
+                char_stats = await character.get_stats(self.bot)
                 if char_stats:
                     embed.add_field(
                         name=f"{character.name}{' (*inactive*)' if not character.active else ''}",
@@ -405,11 +433,12 @@ class Log(commands.Cog):
         Returns:
             None
         """
-        await ctx.defer()
 
-        player = await self.bot.get_player(member.id, ctx.guild.id, inactive=True)
+        player = await Player.get_player(
+            self.bot, member.id, ctx.guild.id, inactive=True
+        )
 
-        logs = await self.bot.get_n_player_logs(player, num_logs)
+        logs = await DBLog.get_n_player_logs(self.bot, player, num_logs)
 
         await ctx.respond(embed=LogHxEmbed(player, logs))
 
@@ -429,16 +458,16 @@ class Log(commands.Cog):
         conversion: bool = False,
         show_values: bool = False,
     ) -> None:
-        await ctx.defer()
 
-        player = await self.bot.get_player(member.id, ctx.guild_id)
+        player = await Player.get_player(self.bot, member.id, ctx.guild_id)
 
         if not player.characters:
             raise CharacterNotFound(player.member)
 
         if len(player.characters) == 1:
             character = player.characters[0]
-            await self.bot.log(
+            await DBLog.create(
+                self.bot,
                 ctx,
                 player,
                 ctx.player,

@@ -10,14 +10,13 @@ from sqlalchemy.dialects.postgresql import ARRAY, insert
 
 import Resolute.helpers as gh
 from Resolute.models import metadata
-from Resolute.models.objects.enum import WebhookType
-from Resolute.models.objects.exceptions import G0T0CommandError
+from Resolute.models.objects.enum import QueryResultType, WebhookType
 
 if TYPE_CHECKING:
     from Resolute.bot import G0T0Bot
 
 
-class NPC(object):
+class NonPlayableCharacter(object):
     """
     Represents a Non-Player Character (NPC) in the system.
     Attributes:
@@ -65,7 +64,7 @@ class NPC(object):
 
         @post_load
         def make_npc(self, data, **kwargs):
-            npc = NPC(self.db, **data)
+            npc = NonPlayableCharacter(self.db, **data)
             return npc
 
     def __init__(
@@ -80,10 +79,10 @@ class NPC(object):
         self.adventure_id: int = kwargs.get("adventure_id")
 
     async def delete(self) -> None:
-        query = NPC.npc_table.delete().where(
+        query = NonPlayableCharacter.npc_table.delete().where(
             sa.and_(
-                NPC.npc_table.c.guild_id == self.guild_id,
-                NPC.npc_table.c.key == self.key,
+                NonPlayableCharacter.npc_table.c.guild_id == self.guild_id,
+                NonPlayableCharacter.npc_table.c.key == self.key,
             )
         )
 
@@ -104,7 +103,11 @@ class NPC(object):
             "guild_id": self.guild_id,
         }
 
-        query = insert(NPC.npc_table).values(**insert_dict).returning(NPC.npc_table)
+        query = (
+            insert(NonPlayableCharacter.npc_table)
+            .values(**insert_dict)
+            .returning(NonPlayableCharacter.npc_table)
+        )
 
         query = query.on_conflict_do_update(
             index_elements=["guild_id", "key"], set_=update_dict
@@ -146,3 +149,16 @@ class NPC(object):
             cmd = commands.Command(npc_command, name=self.key)
             cmd.add_check(gh.dm_check)
             bot.add_command(cmd)
+
+    @staticmethod
+    async def get_all(bot: G0T0Bot) -> list["NonPlayableCharacter"]:
+        query = NonPlayableCharacter.npc_table.select().order_by(
+            NonPlayableCharacter.npc_table.c.key.asc()
+        )
+
+        npcs = [
+            NonPlayableCharacter.NPCSchema(bot.db).load(row)
+            for row in await bot.query(query, QueryResultType.multiple)
+        ]
+
+        return npcs

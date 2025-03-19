@@ -16,6 +16,7 @@ from Resolute.models.embeds.guilds import ResetEmbed
 from Resolute.models.objects.characters import PlayerCharacter
 from Resolute.models.objects.enum import QueryResultType
 from Resolute.models.objects.guilds import PlayerGuild
+from Resolute.models.objects.logs import DBLog
 from Resolute.models.objects.players import Player
 from Resolute.models.views.guild_settings import GuildSettingsUI
 
@@ -118,7 +119,7 @@ class Guilds(commands.Cog):
         Returns:
             None
         """
-        await ctx.defer()
+
         conf = await confirm(
             ctx,
             f"Are you sure you want to manually do a weekly reset? (Reply with yes/no)",
@@ -152,7 +153,6 @@ class Guilds(commands.Cog):
         Returns:
             None
         """
-        await ctx.defer()
 
         conf = await confirm(
             ctx,
@@ -287,12 +287,13 @@ class Guilds(commands.Cog):
                     )
 
                 player_list = await asyncio.gather(
-                    *(self.bot.get_player(m.id, g.id) for m in members)
+                    *(Player.get_player(self.bot, m.id, g.id) for m in members)
                 )
 
                 for player in player_list:
                     stipend_task.append(
-                        self.bot.log(
+                        DBLog.create(
+                            self.bot,
                             None,
                             player,
                             self.bot.user,
@@ -419,7 +420,7 @@ class Guilds(commands.Cog):
         cutoff_time = datetime.now(timezone.utc) - timedelta(hours=72)
 
         for guild in self.bot.guilds:
-            g: PlayerGuild = await self.bot.get_player_guild(guild.id)
+            g: PlayerGuild = await PlayerGuild.get_player_guild(self.bot, guild.id)
 
             def predicate(message: discord.Message):
                 return message.author.bot and message.webhook_id is not None

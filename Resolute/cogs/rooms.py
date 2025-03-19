@@ -5,7 +5,9 @@ from discord.ext import commands
 
 from Resolute.bot import G0T0Bot, G0T0Context
 from Resolute.helpers import is_admin
+from Resolute.models.objects.adventures import Adventure
 from Resolute.models.objects.exceptions import G0T0Error
+from Resolute.models.objects.guilds import PlayerGuild
 from Resolute.models.views.rooms import RoomSettingsUI
 
 log = logging.getLogger(__name__)
@@ -58,13 +60,9 @@ class Room(commands.Cog):
         channel: discord.TextChannel = ctx.guild.get_channel(ctx.channel.id)
         if ctx.author in channel.overwrites or await is_admin(ctx):
             roles = []
-            guild = await self.bot.get_player_guild(ctx.guild.id)
+            guild = await PlayerGuild.get_player_guild(self.bot, ctx.guild.id)
 
-            if (
-                adventure := await self.bot.get_adventure_from_category(
-                    ctx.channel.category.id
-                )
-            ) and guild.quest_role:
+            if (adventure := await Adventure.fetch_from_ctx(ctx)) and guild.quest_role:
                 roles.append(guild.quest_role)
             elif guild.entry_role and guild.member_role:
                 roles += [guild.entry_role, guild.member_role]

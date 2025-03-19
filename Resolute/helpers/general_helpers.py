@@ -7,12 +7,11 @@ import discord
 from sqlalchemy.util import asyncio
 
 from Resolute.constants import BOT_OWNERS
-from Resolute.models.objects.characters import PlayerCharacter
 from Resolute.models.objects.exceptions import G0T0CommandError
 
 if TYPE_CHECKING:
-    from Resolute.bot import G0T0Bot
     from Resolute.models.objects.guilds import PlayerGuild
+    from Resolute.models.objects.characters import PlayerCharacter
 
 
 def dm_check(ctx: discord.ApplicationContext) -> bool:
@@ -43,7 +42,9 @@ async def is_admin(ctx: Union[discord.ApplicationContext, discord.Interaction]) 
     :param ctx: Context
     :return: True if user is a bot owner, can manage the guild, or has a listed role, otherwise False
     """
-    guild: PlayerGuild = await ctx.bot.get_player_guild(ctx.guild.id)
+    from Resolute.models.objects.guilds import PlayerGuild
+
+    guild = await PlayerGuild.get_player_guild(ctx.bot, ctx.guild.id)
 
     if hasattr(ctx, "author"):
         author = ctx.author
@@ -66,7 +67,9 @@ async def is_staff(ctx: discord.ApplicationContext | discord.Interaction) -> boo
     Returns:
         bool: True if the user is a staff member or the owner, False otherwise.
     """
-    guild: PlayerGuild = await ctx.bot.get_player_guild(ctx.guild.id)
+    from Resolute.models.objects.guilds import PlayerGuild
+
+    guild = await PlayerGuild.get_player_guild(ctx.bot, ctx.guild.id)
 
     if hasattr(ctx, "author"):
         author = ctx.author

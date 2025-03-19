@@ -13,6 +13,7 @@ from Resolute.models.objects.exceptions import (
     CharacterNotFound,
     G0T0Error,
 )
+from Resolute.models.objects.players import Player
 from Resolute.models.views.adventures import AdventureSettingsUI
 
 log = logging.getLogger(__name__)
@@ -77,13 +78,11 @@ class Adventures(commands.Cog):
         Returns:
             Coroutine: A coroutine that sends an embed with the player's adventure information.
         """
-        await ctx.defer()
-
         player = (
             ctx.player
             if not member
-            else await self.bot.get_player(
-                member.id, ctx.guild.id if ctx.guild else None
+            else await Player.get_player(
+                self.bot, member.id, ctx.guild.id if ctx.guild else None
             )
         )
 
@@ -197,9 +196,6 @@ class Adventures(commands.Cog):
         Returns:
             None
         """
-
-        await ctx.defer()
-
         # Create the role
         if discord.utils.get(ctx.guild.roles, name=role_name):
             raise G0T0Error(f"Role `@{role_name}` already exists")
@@ -352,18 +348,11 @@ class Adventures(commands.Cog):
         AdventureNotFound
             If no adventure is found for the given role or channel category.
         """
-        if role:
-            adventure = await self.bot.get_adventure_from_role(role.id)
-        elif channel_category:
-            adventure = await self.bot.get_adventure_from_category(channel_category.id)
-        else:
-            adventure = await self.bot.get_adventure_from_category(
-                ctx.channel.category.id
-            )
-
-        if adventure is None:
-            raise AdventureNotFound()
-
+        adventure = await Adventure.fetch_from_ctx(
+            ctx,
+            role.id if role else None,
+            channel_category.id if channel_category else None,
+        )
         ui = AdventureSettingsUI.new(self.bot, ctx.author, adventure, ctx.playerGuild)
         await ui.send_to(ctx)
         await ctx.delete()

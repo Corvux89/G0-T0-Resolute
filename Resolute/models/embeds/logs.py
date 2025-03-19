@@ -1,8 +1,13 @@
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
 import discord
 
 from Resolute.constants import THUMBNAIL
-from Resolute.models.objects.logs import DBLog
-from Resolute.models.objects.players import Player
+
+if TYPE_CHECKING:
+    from Resolute.models.objects.logs import DBLog
+    from Resolute.models.objects.players import Player
 
 
 class LogEmbed(discord.Embed):

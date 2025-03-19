@@ -5,6 +5,7 @@ from Resolute.constants import APPROVAL_EMOJI, CHANNEL_BREAK
 from Resolute.models.categories.categories import Activity
 from Resolute.models.objects.characters import PlayerCharacter
 from Resolute.models.objects.exceptions import CharacterNotFound
+from Resolute.models.objects.logs import DBLog
 from Resolute.models.objects.players import Player
 from Resolute.models.views.base import InteractiveView
 
@@ -92,7 +93,7 @@ class MessageLogUI(MessageLog):
         inst.members = []
 
         for member in message.mentions:
-            player = await bot.get_player(member.id, owner.guild.id)
+            player = await Player.get_player(bot, member.id, message.guild.id)
 
             if len(player.characters) == 0:
                 raise CharacterNotFound(player.member)
@@ -217,7 +218,8 @@ class MessageLogUI(MessageLog):
     async def log(self, _: discord.ui.Button, interaction: discord.Interaction):
         for member in self.members:
             if self.activity.value == "RP_HOST":
-                await self.bot.log(
+                await DBLog.create(
+                    self.bot,
                     interaction,
                     member.player,
                     self.owner,
@@ -225,7 +227,8 @@ class MessageLogUI(MessageLog):
                     character=member.character,
                 )
             else:
-                await self.bot.log(
+                await DBLog.create(
+                    self.bot,
                     interaction,
                     member.player,
                     self.owner,

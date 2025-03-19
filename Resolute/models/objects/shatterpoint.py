@@ -239,7 +239,7 @@ class Shatterpoint(object):
         if message.channel not in channels:
             channels.append(message.channel)
 
-        shatterpoint: Shatterpoint = await bot.get_shatterpoint(self.guild_id)
+        shatterpoint = await Shatterpoint.get_shatterpoint(bot, self.guild_id)
         shatterpoint.busy_member = None
         for c in channels:
             if c not in shatterpoint.channels:
@@ -252,6 +252,36 @@ class Shatterpoint(object):
         await user.send(
             f"**{shatterpoint.name}**: Finished scraping {len(messages):,} messages in {channel.jump_url}"
         )
+
+    @staticmethod
+    async def get_shatterpoint(bot: G0T0Bot, guild_id: int) -> "Shatterpoint":
+        query = Shatterpoint.ref_gb_staging_table.select().where(
+            Shatterpoint.ref_gb_staging_table.c.guild_id == guild_id
+        )
+
+        row = await bot.query(query)
+
+        if row is None:
+            return None
+
+        shatterpoint: Shatterpoint = await Shatterpoint.ShatterPointSchema(bot).load(
+            row
+        )
+
+        return shatterpoint
+
+    @staticmethod
+    async def get_busy_shatterpoints(bot: G0T0Bot) -> list["Shatterpoint"]:
+        query = Shatterpoint.ref_gb_staging_table.select().where(
+            Shatterpoint.ref_gb_staging_table.c.busy_member.isnot(None)
+        )
+
+        shatterpoints = [
+            await Shatterpoint.ShatterPointSchema(bot).load(row)
+            for row in await bot.query(query, QueryResultType.multiple)
+        ]
+
+        return shatterpoints
 
 
 class ShatterpointPlayer(object):
@@ -321,7 +351,8 @@ class ShatterpointPlayer(object):
 
         async def get_characters(self, player: "ShatterpointPlayer"):
             player.player_characters = [
-                await self.bot.get_character(c) for c in player.characters
+                await PlayerCharacter.get_character(self.bot, c)
+                for c in player.characters
             ]
 
         def get_channels(self, player: "ShatterpointPlayer") -> None:

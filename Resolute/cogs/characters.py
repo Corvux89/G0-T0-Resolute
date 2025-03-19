@@ -15,6 +15,7 @@ from Resolute.models.objects.exceptions import (
     CharacterNotFound,
     G0T0Error,
 )
+from Resolute.models.objects.players import Player
 from Resolute.models.objects.webhook import G0T0Webhook
 from Resolute.models.views.applications import (
     CharacterSelectUI,
@@ -113,7 +114,7 @@ class Character(commands.Cog):
         Returns:
             None
         """
-        player = await self.bot.get_player(member.id, ctx.guild.id)
+        player = await Player.get_player(self.bot, member.id, ctx.guild.id)
 
         ui = CharacterManageUI.new(self.bot, ctx.author, player)
         await ui.send_to(ctx)
@@ -135,18 +136,23 @@ class Character(commands.Cog):
         """
         Retrieves and displays information about a player's characters.
         Parameters:
-            ctx (discord.ApplicationContext): The context in which the command was invoked.
+            ctx (G0T0Context): The context in which the command was invoked.
             member (discord.Option, optional): The player to get the information of. If not provided, defaults to the command author.
         Returns:
             None
         """
-        await ctx.defer()
-
         player = (
             ctx.player
             if not member
-            else await self.bot.get_player(
-                member.id, ctx.guild.id if ctx.guild else None, ctx=ctx
+            else await Player.get_player(
+                self.bot,
+                member.id,
+                (
+                    ctx.guild.id
+                    if ctx.guild
+                    else ctx.player.guild_id if ctx.player else None
+                ),
+                ctx=ctx,
             )
         )
 

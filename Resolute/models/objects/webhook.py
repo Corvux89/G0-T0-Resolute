@@ -12,7 +12,7 @@ from Resolute.models.objects.adventures import Adventure
 from Resolute.models.objects.characters import PlayerCharacter
 from Resolute.models.objects.enum import WebhookType
 from Resolute.models.objects.exceptions import CharacterNotFound, Unauthorized
-from Resolute.models.objects.npc import NPC
+from Resolute.models.objects.npc import NonPlayableCharacter
 from Resolute.models.objects.players import Player
 
 log = logging.getLogger(__name__)
@@ -51,7 +51,7 @@ class G0T0Webhook(object):
     ctx: commands.Context | G0T0Context
     type: WebhookType
 
-    npc: NPC = None
+    npc: NonPlayableCharacter = None
     character: PlayerCharacter = None
     content: str = None
     message: discord.Message = None
@@ -72,8 +72,8 @@ class G0T0Webhook(object):
         if not self.player and hasattr(self.ctx, "player") and self.ctx.player:
             self.player = self.ctx.player
         else:
-            self.player = await self.ctx.bot.get_player(
-                self.ctx.author.id, self.ctx.guild.id
+            self.player = await Player.get_player(
+                self.ctx.bot, self.ctx.author.id, self.ctx.guild.id
             )
 
         # >say
@@ -115,9 +115,7 @@ class G0T0Webhook(object):
         elif self.type == WebhookType.adventure:
             if self.ctx.channel.category:
                 if not self.adventure:
-                    self.adventure = await self.ctx.bot.get_adventure_from_category(
-                        self.ctx.channel.category.id
-                    )
+                    self.adventure = await Adventure.fetch_from_ctx(self.ctx)
 
                 if self.adventure:
                     self.npc = self.adventure.get_npc(key=self.ctx.invoked_with)
@@ -160,9 +158,7 @@ class G0T0Webhook(object):
                         )
 
                         if len(chunk) > ACTIVITY_POINT_MINIMUM:
-                            await self.ctx.bot.update_player_activity_points(
-                                self.player
-                            )
+                            await self.player.update_activity_points(self.ctx.bot)
 
                 except:
                     await self.player.member.send(
@@ -188,8 +184,8 @@ class G0T0Webhook(object):
             if hasattr(self.ctx, "player") and self.ctx.player and not self.player:
                 self.player = self.ctx.player
             else:
-                self.player = await self.ctx.bot.get_player(
-                    self.ctx.author.id, self.ctx.guild.id
+                self.player = await Player.get_player(
+                    self.ctx.bot, self.ctx.author.id, self.ctx.guild.id
                 )
 
             await _handle_character_mentions(self)
@@ -211,14 +207,12 @@ class G0T0Webhook(object):
                         len(self.content) <= ACTIVITY_POINT_MINIMUM
                         and len(self.message.content) >= ACTIVITY_POINT_MINIMUM
                     ):
-                        await self.ctx.bot.update_player_activity_points(
-                            self.player, False
-                        )
+                        await self.player.update_activity_points(self.ctx.bot, False)
                     elif (
                         len(self.content) >= ACTIVITY_POINT_MINIMUM
                         and len(self.message.content) <= ACTIVITY_POINT_MINIMUM
                     ):
-                        await self.ctx.bot.update_player_activity_points(self.player)
+                        await self.player.update_activity_points(self.ctx.bot)
             except:
                 await self.player.member.send(
                     f"Error editing message in {self.ctx.channel.jump_url}. Try again."
@@ -238,7 +232,7 @@ class G0T0Webhook(object):
             )
 
             if len(self.message.content) >= ACTIVITY_POINT_MINIMUM:
-                await self.ctx.bot.update_player_activity_points(self.player, False)
+                await self.player.update_activity_points(self.ctx.bot, False)
 
         await self.message.delete()
 
@@ -279,8 +273,8 @@ class G0T0Webhook(object):
                         self.message.guild.members, display_name=name
                     )
                 ):
-                    self.player = await self.ctx.bot.get_player(
-                        member.id, member.guild.id
+                    self.player = await Player.get_player(
+                        self.ctx.bot, member.id, member.guild.id
                     )
                 else:
                     return False
@@ -293,9 +287,7 @@ class G0T0Webhook(object):
 
         elif self.type == WebhookType.adventure:
             if self.ctx.channel.category:
-                self.adventure = await self.ctx.bot.get_adventure_from_category(
-                    self.ctx.channel.category.id
-                )
+                self.adventure = await Adventure.fetch_from_ctx(self.ctx)
 
                 if self.adventure and (
                     npc := self.adventure.get_npc(name=self.message.author.name)

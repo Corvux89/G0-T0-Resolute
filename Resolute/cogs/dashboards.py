@@ -82,7 +82,9 @@ class Dashboards(commands.Cog):
             and (category_channel_id := message.channel.category_id)
             and message.channel.type == discord.ChannelType.text
         ):
-            dashboard = await self.bot.get_dashboard_from_category(category_channel_id)
+            dashboard = await RefDashboard.get_dashboard(
+                self.bot, category_id=category_channel_id
+            )
 
             if not dashboard or message.channel.id in dashboard.excluded_channel_ids:
                 return

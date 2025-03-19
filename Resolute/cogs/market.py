@@ -48,7 +48,6 @@ class Market(commands.Cog):
         Raises:
             CharacterNotFound: If the player has no characters.
         """
-        await ctx.defer()
 
         if not ctx.player.characters:
             raise CharacterNotFound()

@@ -7,6 +7,7 @@ from Resolute.bot import G0T0Bot
 from Resolute.models.categories.categories import DashboardType
 from Resolute.models.embeds import ErrorEmbed
 from Resolute.models.objects.dashboards import RefDashboard
+from Resolute.models.objects.guilds import PlayerGuild
 from Resolute.models.views.base import InteractiveView
 
 log = logging.getLogger(__name__)
@@ -33,7 +34,9 @@ class DashboardSettingsUI(DashboardSettings):
     async def dashboard_select(
         self, dashboard: discord.ui.Select, interaction: discord.Interaction
     ):
-        self.dashboard = await self.bot.get_dashboard_from_message(dashboard.values[0])
+        self.dashboard = await RefDashboard.get_dashboard(
+            self.bot, message_id=dashboard.values[0]
+        )
         await self.refresh_content(interaction)
 
     @discord.ui.button(label="New Dashboard", style=discord.ButtonStyle.primary, row=2)
@@ -55,7 +58,7 @@ class DashboardSettingsUI(DashboardSettings):
         await self.on_timeout()
 
     async def _before_send(self):
-        g = await self.bot.get_player_guild(self.owner.guild.id)
+        g = await PlayerGuild.get_player_guild(self.bot, self.owner.guild.id)
         dashboards = await g.get_dashboards(self.bot)
         if len(dashboards) > 0:
             d_list = []
@@ -143,7 +146,9 @@ class _NewDashboardUI(DashboardSettings):
 
         await self.new_dashboard.upsert()
 
-        self.new_dashboard = await self.bot.get_dashboard_from_message(d_message.id)
+        self.new_dashboard = await RefDashboard.get_dashboard(
+            self.bot, message_id=d_message.id
+        )
 
         await self.new_dashboard.refresh(self.bot)
 
@@ -263,8 +268,8 @@ class _ManageDashboardUI(DashboardSettings):
             self.remove_item(self.add_exclusion)
 
     async def commit(self):
-        self.dashboard = await self.bot.get_dashboard_from_message(
-            self.dashboard.post_id
+        self.dashboard = await RefDashboard.get_dashboard(
+            self.bot, message_id=self.dashboard.post_id
         )
 
     async def get_content(self) -> Mapping:

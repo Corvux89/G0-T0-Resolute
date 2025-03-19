@@ -789,6 +789,12 @@ class Player(object):
 
                     # Multiple guilds in common
                     elif len(guilds) > 1:
+
+                        try:
+                            await ctx.defer()
+                        except:
+                            pass
+
                         guild = await get_selection(
                             ctx,
                             guilds,
@@ -830,6 +836,10 @@ class Player(object):
 
                     else:
                         choices = [g.name for g in guilds]
+                        try:
+                            await ctx.defer()
+                        except:
+                            pass
                         choice = await get_selection(
                             ctx,
                             choices,

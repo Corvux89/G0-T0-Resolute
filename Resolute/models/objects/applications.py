@@ -9,9 +9,9 @@ from marshmallow import Schema, fields
 from Resolute.models import metadata
 from Resolute.models.objects.enum import ApplicationType, QueryResultType
 from Resolute.models.objects.exceptions import G0T0Error
+from Resolute.models.objects.characters import PlayerCharacter
 
 if TYPE_CHECKING:
-    from Resolute.models.objects.characters import PlayerCharacter
     from Resolute.bot import G0T0Bot
 
 
@@ -545,7 +545,7 @@ class NewCharacterApplication(object):
         )
 
         if char_id:
-            application.character = await bot.get_character(char_id)
+            application.character = await PlayerCharacter.get_character(bot, char_id)
 
         return application
 
@@ -676,7 +676,7 @@ class LevelUpApplication(object):
         )
 
         if char_id:
-            application.character = await bot.get_character(char_id)
+            application.character = await PlayerCharacter.get_character(bot, char_id)
 
         return application
 

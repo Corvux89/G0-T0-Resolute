@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 import discord
 import sqlalchemy as sa
 from marshmallow import Schema, fields, post_load
-from Resolute.constants import ZWSP3
+from Resolute.constants import APPROVAL_EMOJI, ZWSP3
 from Resolute.helpers import confirm
 from Resolute.models import metadata
 from Resolute.models.embeds.logs import LogEmbed
@@ -346,6 +346,7 @@ class DBLog(object):
         silent = kwargs.get("silent", False)
         respond = kwargs.get("respond", True)
         show_values = kwargs.get("show_values", False)
+        reaction = kwargs.get("reaction")
 
         # Calculations
         reward_cc = cc if cc else activity.cc if activity.cc else 0
@@ -393,6 +394,8 @@ class DBLog(object):
                 ignore_handicap=True,
                 respond=False,
                 show_values=show_values,
+                silent=silent,
+                reaction=APPROVAL_EMOJI[0],
             )
 
         # Updates
@@ -462,9 +465,15 @@ class DBLog(object):
         if silent is False and ctx:
             embed = LogEmbed(log_entry, show_values)
             if respond:
-                await ctx.respond(embed=embed)
+                msg: discord.Message = await ctx.respond(embed=embed)
             else:
-                await ctx.channel.send(embed=embed)
+                msg: discord.Message = await ctx.channel.send(embed=embed)
+
+            if reaction:
+                try:
+                    await msg.add_reaction(reaction)
+                except:
+                    pass
 
         return log_entry
 

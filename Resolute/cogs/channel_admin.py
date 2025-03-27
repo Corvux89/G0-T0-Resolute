@@ -32,7 +32,7 @@ class ChannelAdmin(commands.Cog):
     bot: G0T0Bot
 
     channel_commands = discord.SlashCommandGroup(
-        "channel", "Channel commands", guild_only=True
+        "channel", "Channel commands", contexts=[discord.InteractionContextType.guild]
     )
 
     def __init__(self, bot):

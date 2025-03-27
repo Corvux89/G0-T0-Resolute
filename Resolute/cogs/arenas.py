@@ -63,7 +63,9 @@ class Arenas(commands.Cog):
     """
 
     bot: G0T0Bot
-    arena_commands = SlashCommandGroup("arena", "Commands for arenas!", guild_only=True)
+    arena_commands = SlashCommandGroup(
+        "arena", "Commands for arenas!", contexts=[discord.InteractionContextType.guild]
+    )
 
     def __init__(self, bot):
         self.bot = bot

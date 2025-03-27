@@ -1,5 +1,6 @@
 import logging
 
+import discord
 from discord.commands import SlashCommandGroup
 from discord.ext import commands
 
@@ -35,7 +36,7 @@ class Shatterpoints(commands.Cog):
     shatterpoint_commands = SlashCommandGroup(
         "shatterpoint",
         "Commands related to Shatterpoint event management.",
-        guild_only=True,
+        contexts=[discord.InteractionContextType.guild],
     )
     check: bool = True
 

@@ -42,7 +42,9 @@ class Dashboards(commands.Cog):
 
     bot: G0T0Bot
     dashboard_commands = discord.SlashCommandGroup(
-        "dashboard", "Dashboard commands", guild_only=True
+        "dashboard",
+        "Dashboard commands",
+        contexts=[discord.InteractionContextType.guild],
     )
 
     def __init__(self, bot: G0T0Bot):

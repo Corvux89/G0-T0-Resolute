@@ -65,14 +65,16 @@ class Character(commands.Cog):
 
     bot: G0T0Bot
     character_admin_commands = discord.SlashCommandGroup(
-        "character_admin", "Character administration commands", guild_only=True
+        "character_admin",
+        "Character administration commands",
+        contexts=[discord.InteractionContextType.guild],
     )
 
     def __init__(self, bot):
         self.bot = bot
         log.info(f"Cog 'Characters' loaded")
 
-    @commands.command(name="say", guild_only=True)
+    @commands.command(name="say", contexts=[discord.InteractionContextType.guild])
     @commands.check(dm_check)
     async def character_say(self, ctx: G0T0Context):
         """

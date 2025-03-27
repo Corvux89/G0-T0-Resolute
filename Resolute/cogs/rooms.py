@@ -33,7 +33,9 @@ class Room(commands.Cog):
 
     bot: G0T0Bot
 
-    room_commands = discord.SlashCommandGroup("room", "Room commands", guild_only=True)
+    room_commands = discord.SlashCommandGroup(
+        "room", "Room commands", contexts=[discord.InteractionContextType.guild]
+    )
 
     def __init__(self, bot):
         self.bot = bot

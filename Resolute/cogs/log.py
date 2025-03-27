@@ -57,7 +57,9 @@ class Log(commands.Cog):
 
     bot: G0T0Bot
     log_commands = discord.SlashCommandGroup(
-        "log", "Logging commands for staff", guild_only=True
+        "log",
+        "Logging commands for staff",
+        contexts=[discord.InteractionContextType.guild],
     )
 
     def __init__(self, bot):

@@ -58,7 +58,9 @@ class Guilds(commands.Cog):
 
     bot: G0T0Bot
     guilds_commands = discord.SlashCommandGroup(
-        "guild", "Commands related to guild specific settings", guild_only=True
+        "guild",
+        "Commands related to guild specific settings",
+        contexts=[discord.InteractionContextType.guild],
     )
 
     def __init__(self, bot):

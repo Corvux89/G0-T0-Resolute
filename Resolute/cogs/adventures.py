@@ -41,7 +41,9 @@ class Adventures(commands.Cog):
 
     bot: G0T0Bot
     adventure_commands = discord.SlashCommandGroup(
-        "adventure", "Adventure commands", guild_only=True
+        "adventure",
+        "Adventure commands",
+        contexts=[discord.InteractionContextType.guild],
     )
 
     def __init__(self, bot):

@@ -63,7 +63,7 @@ class Events(commands.Cog):
         # Reference Table Cleanup
         await PlayerApplication(self.bot, payload.user).delete()
         if player := await Player.get_player(
-            int(payload.user.id, payload.guild_id, lookup_only=True)
+            self.bot, int(payload.user.id), payload.guild_id, lookup_only=True
         ):
             # Cleanup Arena Board
             def predicate(message):
@@ -95,7 +95,7 @@ class Events(commands.Cog):
         embed = PlayerEmbed(
             player.member,
             title=f"{player.member.display_name} ({player.id}) has left the server",
-            timestampe=discord.utils.utcnow(),
+            timestamp=discord.utils.utcnow(),
         )
 
         dm_str = (

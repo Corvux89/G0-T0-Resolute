@@ -1,7 +1,7 @@
 import sqlalchemy as sa
 
 from marshmallow import Schema, post_load, fields
-from sqlalchemy import Column, Integer, String, BOOLEAN
+from sqlalchemy import Column, Integer, String, BOOLEAN, Float
 
 from Resolute.models import metadata
 
@@ -134,6 +134,7 @@ class Activity(object):
         Column("cc", Integer, nullable=True),
         Column("diversion", BOOLEAN, nullable=False),
         Column("points", Integer, nullable=False),
+        Column("credit_ratio", Float, nullable=True),
     )
 
     class ActivitySchema(Schema):
@@ -142,17 +143,21 @@ class Activity(object):
         cc = fields.Integer(data_key="cc", required=False, allow_none=True)
         diversion = fields.Boolean(data_key="diversion", required=True)
         points = fields.Integer(data_key="points", required=False, allow_none=False)
+        credit_ratio = fields.Float(
+            data_key="credit_ratio", required=False, allow_none=True
+        )
 
         @post_load
         def make_c_activity(self, data, **kwargs):
             return Activity(**data)
 
-    def __init__(self, id, value, cc, diversion, points):
+    def __init__(self, id, value, cc, diversion, points, credit_ratio):
         self.id = id
         self.value = value
         self.cc = cc
         self.diversion = diversion
         self.points = points
+        self.credit_ratio = credit_ratio
 
 
 class DashboardType(object):

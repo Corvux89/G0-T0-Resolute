@@ -14,7 +14,15 @@ async def get_table_values(conn, comp: CompendiumObject) -> list:
         val = comp.schema().load(row)
 
         d1[val.id] = val
-        attr_list = ["value", "avg_level", "name", "cc", "points", "tier"]
+        attr_list = [
+            "value",
+            "avg_level",
+            "name",
+            "cc",
+            "points",
+            "tier",
+            "credit_ratio",
+        ]
         key = next(
             (getattr(val, attr) for attr in attr_list if hasattr(val, attr)), None
         )

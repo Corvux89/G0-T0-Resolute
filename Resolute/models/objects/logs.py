@@ -360,6 +360,13 @@ class DBLog(object):
         )
         total_cc = reward_cc + handicap_adjustment
 
+        if activity.credit_ratio and character and credits == 0 and total_cc > 0:
+            rate: CodeConversion = bot.compendium.get_object(
+                CodeConversion, character.level
+            )
+            multiplier = rate.value * activity.credit_ratio
+            credits = ceil(total_cc * multiplier)
+
         # Verification
         if player.cc + total_cc < 0:
             raise TransactionError(

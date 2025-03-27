@@ -321,6 +321,7 @@ class Log(commands.Cog):
         Returns:
             None: Responds to the context with an embedded log entry.
         """
+        await ctx.defer()
         bulk = False
         if "," in log_id:
             bulk = True

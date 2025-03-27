@@ -275,9 +275,8 @@ class Messages(commands.Cog):
     @commands.message_command(name="Null")
     @commands.check(is_admin)
     async def message_null(self, ctx: G0T0Context, message: discord.Message):
-
+        await ctx.defer()
         log_entry = await self._get_log_from_entry(message)
-
         reason = await confirm(
             ctx,
             f"What is the reason for nulling the log?",

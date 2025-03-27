@@ -37,7 +37,7 @@ py-cord==2.5.0
 pytz==2025.1
 Quart==0.20.0
 requests==2.32.3
-SQLAlchemy==1.4.54
+SQLAlchemy==2.0.39
 taskgroup==0.2.2
 texttable==1.7.0
 tomli==2.2.1

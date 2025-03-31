@@ -569,7 +569,7 @@ class _AdventureFactions(AdventureView):
                 value=f"{f.id}",
                 default=True if self.faction and self.faction.id == f.id else False,
             )
-            for f in self.bot.compendium.faction[0].values()
+            for f in self.bot.compendium.get_values(Faction)
         ]
 
         self.faction_select.options = faction_list

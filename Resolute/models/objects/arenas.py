@@ -187,7 +187,7 @@ class Arena(object):
         """
         if self.player_characters:
             avg_level = mode(c.level for c in self.player_characters)
-            tiers = list(self._compendium.arena_tier[0].values())
+            tiers: list[ArenaTier] = self._compendium.get_values(ArenaTier)
             levels = sorted([t.avg_level for t in tiers])
 
             if avg_level > levels[-1]:

@@ -635,7 +635,7 @@ class _ShatterpointRenownManage(ShatterpointSettings):
     async def _before_send(self):
         faction_list = []
 
-        for faction in self.bot.compendium.faction[0].values():
+        for faction in self.bot.compendium.get_values(Faction):
             faction_list.append(
                 discord.SelectOption(
                     label=f"{faction.value}",

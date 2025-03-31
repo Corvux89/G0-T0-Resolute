@@ -121,6 +121,7 @@ class Admin(commands.Cog):
         :param ctx: Context
         :param cog: cog to reload, SHEET to reload sheets, ALL to reload all
         """
+
         if str(cog).upper() == "ALL":
             for file_name in os.listdir("./Resolute/cogs"):
                 if file_name.endswith(".py"):

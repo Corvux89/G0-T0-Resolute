@@ -148,7 +148,7 @@ class Adventures(commands.Cog):
         return await ctx.respond(embed=embed)
 
     async def faction_autocomplete(self, ctx: discord.AutocompleteContext) -> list[str]:
-        return [f.value for f in self.bot.compendium.faction[0].values()] or []
+        return [f.value for f in self.bot.compendium.get_values(Faction)] or []
 
     @adventure_commands.command(name="create", description="Creates a new adventure")
     async def adventure_create(

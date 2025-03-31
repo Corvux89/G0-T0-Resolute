@@ -260,7 +260,7 @@ class TransactionPromptUI(MarketPrompt):
                     else False
                 ),
             )
-            for x in self.bot.compendium.transaction_type[0].values()
+            for x in self.bot.compendium.get_values(TransactionType)
         ]
 
         subtypes = [
@@ -273,7 +273,7 @@ class TransactionPromptUI(MarketPrompt):
                     else False
                 ),
             )
-            for x in self.bot.compendium.transaction_subtype[0].values()
+            for x in self.bot.compendium.get_values(TransactionSubType)
             if self.transaction.type and self.transaction.type.id == x.parent
         ]
 

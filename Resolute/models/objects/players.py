@@ -667,7 +667,7 @@ class Player(object):
         new_character_activity = bot.compendium.get_activity("NEW_CHARACTER")
         activities = [
             x
-            for x in bot.compendium.activity[0].values()
+            for x in bot.compendium.get_values(Activity)
             if x.value in ["RP", "ARENA", "ARENA_HOST", "GLOBAL", "SNAPSHOT"]
         ]
         columns = [
@@ -871,7 +871,7 @@ class Player(object):
             self.activity_points = max(self.activity_points - 1, 0)
 
         points = sorted(
-            bot.compendium.activity_points[0].values(), key=operator.attrgetter("id")
+            bot.compendium.get_values(ActivityPoints), key=operator.attrgetter("id")
         )
         activity_point: ActivityPoints = None
 

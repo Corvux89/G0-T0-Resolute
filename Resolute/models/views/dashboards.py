@@ -164,7 +164,7 @@ class _NewDashboardUI(DashboardSettings):
         if not self.new_dashboard:
             self.new_dashboard = RefDashboard(self.bot.db)
 
-        for type in self.bot.compendium.dashboard_type[0].values():
+        for type in self.bot.compendium.get_values(DashboardType):
             type_list.append(
                 discord.SelectOption(
                     label=type.value,

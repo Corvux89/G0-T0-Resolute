@@ -136,7 +136,7 @@ class Arenas(commands.Cog):
     async def arena_type_autocomplete(
         self, ctx: discord.AutocompleteContext
     ) -> list[str]:
-        return [f.value for f in self.bot.compendium.arena_type[0].values()] or []
+        return [f.value for f in self.bot.compendium.get_values(ArenaType)] or []
 
     @arena_commands.command(
         name="claim", description="Opens an arena in this channel and sets you as host"

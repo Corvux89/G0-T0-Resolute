@@ -7,22 +7,22 @@ from Resolute.models import metadata
 
 
 class CompendiumObject:
-    def __init__(self, key: str, obj, table: sa.Table, schema: Schema) -> None:
-        self.key = key
-        self.obj = obj
-        self.table = table
-        self.schema = schema
+    __key__: str
+    __table__: sa.Table
+    __Schema__: Schema
 
 
-class Rarity(object):
-    c_rarity_table = sa.Table(
+class Rarity(CompendiumObject):
+    __key__ = "rarity"
+
+    __table__ = sa.Table(
         "c_rarity",
         metadata,
         Column("id", Integer, primary_key=True, autoincrement="auto"),
         Column("value", String, nullable=False),
     )
 
-    class RaritySchema(Schema):
+    class __Schema__(Schema):
         id = fields.Integer(data_key="id", required=True)
         value = fields.String(data_key="value", required=True)
 
@@ -35,15 +35,17 @@ class Rarity(object):
         self.value = value
 
 
-class CharacterClass(object):
-    c_character_class_table = sa.Table(
+class CharacterClass(CompendiumObject):
+    __key__ = "character_class"
+
+    __table__ = sa.Table(
         "c_character_class",
         metadata,
         Column("id", Integer, primary_key=True, autoincrement="auto"),
         Column("value", String, nullable=False),
     )
 
-    class CharacterClassSchema(Schema):
+    class __Schema__(Schema):
         id = fields.Integer(data_key="id", required=True)
         value = fields.String(data_key="value", required=True)
 
@@ -56,8 +58,10 @@ class CharacterClass(object):
         self.value = value
 
 
-class CharacterArchetype(object):
-    c_character_archetype_table = sa.Table(
+class CharacterArchetype(CompendiumObject):
+    __key__ = "archetype"
+
+    __table__ = sa.Table(
         "c_character_archetype",
         metadata,
         Column("id", Integer, primary_key=True, autoincrement="auto"),
@@ -65,7 +69,7 @@ class CharacterArchetype(object):
         Column("value", String, nullable=False),
     )
 
-    class CharacterArchetypeSchema(Schema):
+    class __Schema__(Schema):
         id = fields.Integer(data_key="id", required=True)
         parent = fields.Integer(data_key="parent", required=True)
         value = fields.String(data_key="value", required=True)
@@ -80,15 +84,17 @@ class CharacterArchetype(object):
         self.value = value
 
 
-class CharacterSpecies(object):
-    c_character_species_table = sa.Table(
+class CharacterSpecies(CompendiumObject):
+    __key__ = "species"
+
+    __table__ = sa.Table(
         "c_character_species",
         metadata,
         Column("id", Integer, primary_key=True, autoincrement="auto"),
         Column("value", String, nullable=False),
     )
 
-    class CharacterSpeciesSchema(Schema):
+    class __Schema__(Schema):
         id = fields.Integer(data_key="id", required=True)
         value = fields.String(data_key="value", required=True)
 
@@ -101,8 +107,10 @@ class CharacterSpecies(object):
         self.value = value
 
 
-class ArenaTier(object):
-    c_arena_tier_table = sa.Table(
+class ArenaTier(CompendiumObject):
+    __key__ = "arena_tier"
+
+    __table__ = sa.Table(
         "c_arena_tier",
         metadata,
         Column("id", Integer, primary_key=True, autoincrement="auto"),
@@ -110,7 +118,7 @@ class ArenaTier(object):
         Column("max_phases", Integer, nullable=False),
     )
 
-    class ArenaTierSchema(Schema):
+    class __Schema__(Schema):
         id = fields.Integer(data_key="id", required=True)
         avg_level = fields.Integer(data_key="avg_level", required=True)
         max_phases = fields.Integer(data_key="max_phases", required=True)
@@ -125,8 +133,10 @@ class ArenaTier(object):
         self.max_phases = max_phases
 
 
-class Activity(object):
-    c_activity_table = sa.Table(
+class Activity(CompendiumObject):
+    __key__ = "activity"
+
+    __table__ = sa.Table(
         "c_activity",
         metadata,
         Column("id", Integer, primary_key=True, autoincrement="auto"),
@@ -137,7 +147,7 @@ class Activity(object):
         Column("credit_ratio", Float, nullable=True),
     )
 
-    class ActivitySchema(Schema):
+    class __Schema__(Schema):
         id = fields.Integer(data_key="id", required=True)
         value = fields.String(data_key="value", required=True)
         cc = fields.Integer(data_key="cc", required=False, allow_none=True)
@@ -160,15 +170,17 @@ class Activity(object):
         self.credit_ratio = credit_ratio
 
 
-class DashboardType(object):
-    c_dashboard_type_table = sa.Table(
+class DashboardType(CompendiumObject):
+    __key__ = "dashboart_type"
+
+    __table__ = sa.Table(
         "c_dashboard_type",
         metadata,
         Column("id", Integer, primary_key=True, autoincrement="auto"),
         Column("value", String, nullable=False),
     )
 
-    class DashboardTypeSchema(Schema):
+    class __Schema__(Schema):
         id = fields.Integer(data_key="id", required=True)
         value = fields.String(data_key="value", required=True)
 
@@ -181,15 +193,17 @@ class DashboardType(object):
         self.value = value
 
 
-class CodeConversion(object):
-    c_code_conversion_table = sa.Table(
+class CodeConversion(CompendiumObject):
+    __key__ = "cc_conversion"
+
+    __table__ = sa.Table(
         "c_code_conversion",
         metadata,
         Column("id", Integer, primary_key=True),
         Column("value", Integer, nullable=False),
     )
 
-    class CodeConversionSchema(Schema):
+    class __Schema__(Schema):
         id = fields.Integer(data_key="id", require=True)
         value = fields.Integer(data_key="value", required=True)
 
@@ -202,15 +216,17 @@ class CodeConversion(object):
         self.value = value
 
 
-class ArenaType(object):
-    c_arena_type_table = sa.Table(
+class ArenaType(CompendiumObject):
+    __key__ = "arena_type"
+
+    __table__ = sa.Table(
         "c_arena_type",
         metadata,
         Column("id", Integer, primary_key=True),
         Column("value", String, nullable=False),
     )
 
-    class ArenaTypeSchema(Schema):
+    class __Schema__(Schema):
         id = fields.Integer(data_key="id", required=True)
         value = fields.String(data_key="value", required=True)
 
@@ -223,8 +239,10 @@ class ArenaType(object):
         self.value = value
 
 
-class TransactionType(object):
-    c_transaction_type_table = sa.Table(
+class TransactionType(CompendiumObject):
+    __key__ = "transaction_type"
+
+    __table__ = sa.Table(
         "c_transaction_type",
         metadata,
         Column("id", Integer, primary_key=True),
@@ -232,7 +250,7 @@ class TransactionType(object):
         Column("currency", String, nullable=False),
     )
 
-    class TransactionTypeSchema(Schema):
+    class __Schema__(Schema):
         id = fields.Integer(data_key="id", required=True)
         value = fields.String(data_key="value", required=True)
         currency = fields.String(data_key="currency", required=True)
@@ -247,8 +265,10 @@ class TransactionType(object):
         self.currency = currency
 
 
-class TransactionSubType(object):
-    c_transaction_subtype_table = sa.Table(
+class TransactionSubType(CompendiumObject):
+    __key__ = "transaction_subtype"
+
+    __table__ = sa.Table(
         "c_transaction_subtype",
         metadata,
         Column("id", Integer, primary_key=True),
@@ -256,7 +276,7 @@ class TransactionSubType(object):
         Column("value", String, nullable=False),
     )
 
-    class TransactionSubTypeSchema(Schema):
+    class __Schema__(Schema):
         id = fields.Integer(data_key="id", required=True)
         value = fields.String(data_key="value", required=True)
         parent = fields.Integer(data_key="parent", required=True)
@@ -271,15 +291,17 @@ class TransactionSubType(object):
         self.value = value
 
 
-class LevelCost(object):
-    c_level_cost_table = sa.Table(
+class LevelCost(CompendiumObject):
+    __key__ = "level_cost"
+
+    __table__ = sa.Table(
         "c_level_costs",
         metadata,
         Column("id", Integer, primary_key=True),
         Column("cc", Integer, nullable=False),
     )
 
-    class LevelCostSchema(Schema):
+    class __Schema__(Schema):
         id = fields.Integer(data_key="id", required=True)
         cc = fields.Integer(data_key="cc", required=True)
 
@@ -292,15 +314,17 @@ class LevelCost(object):
         self.cc = cc
 
 
-class Faction(object):
-    c_factions = sa.Table(
+class Faction(CompendiumObject):
+    __key__ = "faction"
+
+    __table__ = sa.Table(
         "c_factions",
         metadata,
         Column("id", Integer, primary_key=True),
         Column("value", String, nullable=False),
     )
 
-    class FactionSchema(Schema):
+    class __Schema__(Schema):
         id = fields.Integer(data_key="id", required=True)
         value = fields.String(data_key="value", required=True)
 
@@ -313,15 +337,17 @@ class Faction(object):
         self.value = value
 
 
-class ActivityPoints(object):
-    c_activity_points = sa.Table(
+class ActivityPoints(CompendiumObject):
+    __key__ = "activity_points"
+
+    __table__ = sa.Table(
         "c_activity_points",
         metadata,
         Column("id", Integer, primary_key=True),
         Column("points", Integer, nullable=False),
     )
 
-    class ActivityPointsSchema(Schema):
+    class __Schema__(Schema):
         id = fields.Integer(data_key="id", required=True)
         points = fields.Integer(data_key="points", required=True)
 
@@ -334,15 +360,17 @@ class ActivityPoints(object):
         self.points = points
 
 
-class LevelTier(object):
-    c_level_tier = sa.Table(
+class LevelTier(CompendiumObject):
+    __key__ = "level_tier"
+
+    __table__ = sa.Table(
         "c_level_tier",
         metadata,
         Column("id", Integer, primary_key=True),
         Column("tier", Integer, nullable=False),
     )
 
-    class LevelTierSchema(Schema):
+    class __Schema__(Schema):
         id = fields.Integer(data_key="id", required=True)
         tier = fields.Integer(data_key="tier", required=True)
 
@@ -356,69 +384,19 @@ class LevelTier(object):
 
 
 CATEGORY_LIST = [
-    CompendiumObject("rarity", Rarity, Rarity.c_rarity_table, Rarity.RaritySchema),
-    CompendiumObject(
-        "character_class",
-        CharacterClass,
-        CharacterClass.c_character_class_table,
-        CharacterClass.CharacterClassSchema,
-    ),
-    CompendiumObject(
-        "archetype",
-        CharacterArchetype,
-        CharacterArchetype.c_character_archetype_table,
-        CharacterArchetype.CharacterArchetypeSchema,
-    ),
-    CompendiumObject(
-        "species",
-        CharacterSpecies,
-        CharacterSpecies.c_character_species_table,
-        CharacterSpecies.CharacterSpeciesSchema,
-    ),
-    CompendiumObject(
-        "arena_tier", ArenaTier, ArenaTier.c_arena_tier_table, ArenaTier.ArenaTierSchema
-    ),
-    CompendiumObject(
-        "activity", Activity, Activity.c_activity_table, Activity.ActivitySchema
-    ),
-    CompendiumObject(
-        "dashboard_type",
-        DashboardType,
-        DashboardType.c_dashboard_type_table,
-        DashboardType.DashboardTypeSchema,
-    ),
-    CompendiumObject(
-        "cc_conversion",
-        CodeConversion,
-        CodeConversion.c_code_conversion_table,
-        CodeConversion.CodeConversionSchema,
-    ),
-    CompendiumObject(
-        "arena_type", ArenaType, ArenaType.c_arena_type_table, ArenaType.ArenaTypeSchema
-    ),
-    CompendiumObject(
-        "transaction_type",
-        TransactionType,
-        TransactionType.c_transaction_type_table,
-        TransactionType.TransactionTypeSchema,
-    ),
-    CompendiumObject(
-        "transaction_subtype",
-        TransactionSubType,
-        TransactionSubType.c_transaction_subtype_table,
-        TransactionSubType.TransactionSubTypeSchema,
-    ),
-    CompendiumObject(
-        "level_cost", LevelCost, LevelCost.c_level_cost_table, LevelCost.LevelCostSchema
-    ),
-    CompendiumObject("faction", Faction, Faction.c_factions, Faction.FactionSchema),
-    CompendiumObject(
-        "activity_points",
-        ActivityPoints,
-        ActivityPoints.c_activity_points,
-        ActivityPoints.ActivityPointsSchema,
-    ),
-    CompendiumObject(
-        "level_tier", LevelTier, LevelTier.c_level_tier, LevelTier.LevelTierSchema
-    ),
+    Rarity,
+    CharacterClass,
+    CharacterArchetype,
+    CharacterSpecies,
+    ArenaTier,
+    Activity,
+    DashboardType,
+    CodeConversion,
+    ArenaType,
+    TransactionType,
+    TransactionSubType,
+    LevelCost,
+    Faction,
+    ActivityPoints,
+    LevelTier,
 ]

@@ -632,7 +632,7 @@ class _EditCharacterRenown(CharacterManage):
     async def _before_send(self):
         faction_list = []
 
-        for faction in self.bot.compendium.faction[0].values():
+        for faction in self.bot.compendium.get_values(Faction):
             faction_list.append(
                 discord.SelectOption(
                     label=f"{faction.value}",
@@ -1075,7 +1075,9 @@ def get_archetype(
     err_str: list = [],
 ):
     valid_archetypes = [
-        x for x in compendium.archetype[0].values() if x.parent == primary_class.id
+        x
+        for x in compendium.get_values(CharacterArchetype)
+        if x.parent == primary_class.id
     ]
 
     archetype = next(
@@ -1327,7 +1329,7 @@ class CharacterSettingsUI(CharacterSettings):
 class _CharacterSettings2UI(CharacterSettings):
     async def _before_send(self):
         faction_list = []
-        for faction in self.bot.compendium.faction[0].values():
+        for faction in self.bot.compendium.get_values(Faction):
             faction_list.append(
                 discord.SelectOption(
                     label=f"{faction.value}",

@@ -3,6 +3,7 @@ import discord
 from Resolute.compendium import Compendium
 from Resolute.constants import ZWSP3
 from Resolute.helpers import get_webhook
+from Resolute.models.categories.categories import ActivityPoints
 from Resolute.models.embeds import PlayerEmbed
 from Resolute.models.objects.players import ArenaPost, Player, RPPost
 
@@ -23,7 +24,7 @@ class PlayerOverviewEmbed(PlayerEmbed):
             self.description += f"\n**Booster enabled. All CC Rewards Doubled**"
 
         activity_limit = max(
-            compendium.activity_points[0].values(), key=lambda act: act.points
+            compendium.get_values(ActivityPoints), key=lambda act: act.points
         )
 
         # Diversion Limits

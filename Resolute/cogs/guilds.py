@@ -362,24 +362,13 @@ class Guilds(commands.Cog):
         birthdays = []
 
         start_days_in_year = start_date % guild.days_in_server_year
-        start_month = next(
-            (
-                month
-                for month in guild.calendar
-                if month.day_start <= start_days_in_year <= month.day_end
-            ),
-            None,
-        )
+        end_days_in_year = guild.server_date % guild.days_in_server_year
 
         for character in all_characters:
             if character.dob:
                 character_days_in_year = character.dob % guild.days_in_server_year
 
-                if (
-                    start_month.day_start
-                    <= character_days_in_year
-                    <= guild.server_month.day_end
-                ):
+                if start_days_in_year <= character_days_in_year <= end_days_in_year:
                     birthdays.append(character)
 
         return birthdays

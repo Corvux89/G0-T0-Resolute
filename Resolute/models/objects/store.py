@@ -49,8 +49,9 @@ class Store(object):
 
     @staticmethod
     async def get_items(bot: G0T0Bot) -> list["Store"]:
+        store_items = []
         rows = await bot.query(Store.store_table.select(), QueryResultType.multiple)
 
-        store_items = [Store.StoreSchema.load(row) for row in rows]
+        store_items = [Store.StoreSchema().load(row) for row in rows]
 
         return store_items

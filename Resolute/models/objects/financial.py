@@ -93,7 +93,7 @@ class Financial(object):
     @property
     def adjusted_total(self) -> float:
         # Adjusted for what Discord takes
-        return self.monthly_total * 0.9
+        return self.monthly_total * 0.8
 
     async def update(self) -> None:
         update_dict = {

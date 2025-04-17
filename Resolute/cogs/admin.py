@@ -12,6 +12,7 @@ from Resolute.helpers import is_admin, is_owner
 from Resolute.models.objects.dashboards import RefDashboard
 from Resolute.models.objects.financial import Financial
 from Resolute.models.objects.guilds import PlayerGuild
+from Resolute.models.objects.store import Store
 from Resolute.models.views.admin import AdminMenuUI
 from Resolute.models.views.automation_request import AutomationRequestView
 
@@ -168,6 +169,11 @@ class Admin(commands.Cog):
         current_time = datetime.datetime.now(datetime.timezone.utc)
 
         if fin.last_reset is None or fin.last_reset.month != current_time.month:
+            begin_month = current_time.replace(
+                day=1, hour=0, minute=0, second=0, microsecond=0
+            )
+            store_items = await Store.get_items(self.bot)
+
             fin.last_reset = current_time
             goal = fin.monthly_goal
 
@@ -177,6 +183,30 @@ class Admin(commands.Cog):
                 fin.reserve = max(fin.reserve - goal, 0)
             fin.monthly_total = 0
             fin.month_count += 1
+
+            for entitlement in await self.bot.entitlements(
+                exclude_ended=True, limit=None, after=begin_month
+            ).flatten():
+                entitlement: discord.Entitlement
+
+                if entitlement.type in [
+                    discord.EntitlementType.application_subscription,
+                    discord.EntitlementType.premium_subscription,
+                ]:
+                    if store := next(
+                        (s for s in store_items if s.sku == entitlement.sku_id), None
+                    ):
+                        fin.monthly_total += store.user_cost
+
+                        if fin.adjusted_total > fin.monthly_goal:
+                            fin.reserve += max(
+                                0,
+                                min(
+                                    store.user_cost,
+                                    fin.adjusted_total - fin.monthly_goal,
+                                ),
+                            )
+
             await fin.update()
             await RefDashboard.update_financial_dashboards(self.bot)
             log.info("Finanical month reset")

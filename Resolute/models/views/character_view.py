@@ -534,7 +534,7 @@ class _EditCharacter(CharacterManage):
             self.level_character.disabled = False
         pass
 
-        if not self.player.guild.is_admin(self.player.member):
+        if not self.player.guild.is_admin(self.owner):
             self.remove_item(self.manage_renown)
 
         if not self.player.guild.calendar:

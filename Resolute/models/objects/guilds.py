@@ -576,7 +576,7 @@ class PlayerGuild(object):
         return None
 
     def is_admin(self, member: discord.Member):
-        if member in BOT_OWNERS:
+        if member.id in BOT_OWNERS:
             return True
 
         elif self.admin_role and self.admin_role in member.roles:

@@ -168,7 +168,7 @@ class Arena(object):
     def channel(self, value: discord.TextChannel):
         self._channel = value
         try:
-            self.channel_id = getattr(value, "id", None)
+            self.channel_id = value.id
         except:
             # Having some issues ere. Should be temp
             log.error(f"Channel {value} issue for arena [{self.id}]")

@@ -1,4 +1,5 @@
 from __future__ import annotations
+import logging
 from typing import TYPE_CHECKING
 
 import bisect
@@ -19,6 +20,8 @@ from Resolute.models.objects.characters import PlayerCharacter
 if TYPE_CHECKING:
     from Resolute.bot import G0T0Bot
     from Resolute.compendium import Compendium
+
+log = logging.getLogger(__name__)
 
 
 class Arena(object):
@@ -164,7 +167,11 @@ class Arena(object):
     @channel.setter
     def channel(self, value: discord.TextChannel):
         self._channel = value
-        self.channel_id = getattr(value, "id")
+        try:
+            self.channel_id = getattr(value, "id", None)
+        except:
+            # Having some issues ere. Should be temp
+            log.error(f"Channel {value} issue for arena [{self.id}]")
 
     @property
     def player_characters(self) -> list[PlayerCharacter]:

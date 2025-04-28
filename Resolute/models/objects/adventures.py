@@ -194,7 +194,7 @@ class Adventure(object):
     @category_channel.setter
     def category_channel(self, value: discord.CategoryChannel):
         self._category_channel = value
-        self.category_channel_id = value.id
+        self.category_channel_id = value.id if value else None
 
     @property
     def role(self) -> discord.Role:
@@ -203,7 +203,7 @@ class Adventure(object):
     @role.setter
     def role(self, value: discord.Role):
         self.role = value
-        self.role_id = value.id
+        self.role_id = value.id if value else None
 
     async def upsert(self) -> None:
         """

@@ -167,11 +167,7 @@ class Arena(object):
     @channel.setter
     def channel(self, value: discord.TextChannel):
         self._channel = value
-        try:
-            self.channel_id = value.id
-        except:
-            # Having some issues ere. Should be temp
-            log.error(f"Channel {value} issue for arena [{self.id}]")
+        self.channel_id = value.id if value else None
 
     @property
     def player_characters(self) -> list[PlayerCharacter]:

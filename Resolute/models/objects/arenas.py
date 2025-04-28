@@ -96,7 +96,7 @@ class Arena(object):
         @post_load
         async def make_arena(self, data, **kwargs) -> "Arena":
             arena = Arena(self.bot.db, self.bot.compendium, **data)
-            arena.channel = self.bot.get_channel(data.get("channel_id"))
+            arena.channel = self.bot.get_channel(arena.channel_id)
             await self.get_characters(arena)
             return arena
 
@@ -164,7 +164,7 @@ class Arena(object):
     @channel.setter
     def channel(self, value: discord.TextChannel):
         self._channel = value
-        self.channel_id = value.id
+        self.channel_id = getattr(value, "id")
 
     @property
     def player_characters(self) -> list[PlayerCharacter]:

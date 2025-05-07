@@ -78,7 +78,14 @@ class _BotMessage(AdminView):
             log.info(
                 f"ADMIN: Bot message from {interaction.user} [ {interaction.user.id} ] to {self.channel.name} [ {self.channel.id} ]"
             )
-            await self.channel.send(response.message)
+            reply_message = None
+            if response.respond:
+                try:
+                    reply_message = await self.channel.fetch_message(response.respond)
+                except:
+                    pass
+
+            await self.channel.send(response.message, reference=reply_message)
 
         await self.refresh_content(interaction)
 
@@ -99,10 +106,18 @@ class _BotMessage(AdminView):
 
 class MessageModal(discord.ui.Modal):
     message: str = None
+    respond: str = None
 
     def __init__(self):
         super().__init__(title="Message Content")
-
+        self.add_item(
+            discord.ui.InputText(
+                label="Reponse Message ID",
+                style=discord.InputTextStyle.short,
+                max_length=100,
+                required=False,
+            )
+        )
         self.add_item(
             discord.ui.InputText(
                 label="Message Text", style=discord.InputTextStyle.long, max_length=2000
@@ -110,7 +125,8 @@ class MessageModal(discord.ui.Modal):
         )
 
     async def callback(self, interaction: discord.Interaction):
-        self.message = self.children[0].value
+        self.respond = self.children[0].value
+        self.message = self.children[1].value
 
         await interaction.response.defer()
         self.stop()

@@ -260,10 +260,8 @@ class Character(commands.Cog):
             ApplicationType.freeroll,
             ApplicationType.new,
         ]:
-            application.application = PlayerApplication(self.bot, ctx.author)
+            application = PlayerApplication(self.bot, ctx.author)
             application.cached = False
-        elif not application.application:
-            application.application = PlayerApplication(self.bot, ctx.author)
 
         if ctx.player.characters:
             ui = CharacterSelectUI.new(application, ctx.player)

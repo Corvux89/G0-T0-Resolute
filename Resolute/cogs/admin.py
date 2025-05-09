@@ -159,7 +159,7 @@ class Admin(commands.Cog):
 
     @admin.command(hidden=True, name="eval")
     @commands.check(is_owner)
-    async def admin_eval(self, ctx: discord.ApplicationContext, body: str):
+    async def admin_eval(self, ctx: discord.ApplicationContext, *, body: str):
         env = {
             "bot": self.bot,
             "ctx": ctx,

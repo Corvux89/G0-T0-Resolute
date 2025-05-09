@@ -23,7 +23,6 @@ from Resolute.models.objects.exceptions import (
 )
 
 from Resolute.models.objects.guilds import PlayerGuild
-from Resolute.models.objects.npc import NonPlayableCharacter
 from Resolute.models.objects.players import Player
 
 

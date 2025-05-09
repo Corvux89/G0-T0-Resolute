@@ -71,7 +71,8 @@ class CharacterSelectUI(CharacterView):
         inst.application = application
         inst.application.application.character = (
             player.characters[0]
-            if not application.application.character
+            if not hasattr(inst.application.application, "character")
+            or not application.application.character
             or application.application.character.active == False
             else next(
                 (

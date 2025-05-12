@@ -466,7 +466,7 @@ class DBLog(object):
                         embed=LogEmbed(reward_log, True)
                     )
 
-                await author.upsert()
+            await author.upsert()
 
         # Send output
         if silent is False and ctx:

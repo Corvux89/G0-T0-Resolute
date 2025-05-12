@@ -433,6 +433,7 @@ class DBLog(object):
         )
 
         await player.upsert()
+        await author.fetch()
 
         if character:
             await character.upsert()

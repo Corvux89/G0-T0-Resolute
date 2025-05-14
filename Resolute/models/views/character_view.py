@@ -182,7 +182,7 @@ class CharacterManageUI(CharacterManage):
             self.character_select.options = char_list
 
         if (
-            not self.player.guild.is_admin(self.player.member)
+            not self.player.guild.is_admin(self.owner)
             or len(self.player.characters) == 0
         ):
             self.remove_item(self.inactivate_character)

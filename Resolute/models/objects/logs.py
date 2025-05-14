@@ -433,7 +433,10 @@ class DBLog(object):
         )
 
         await player.upsert()
-        await author.fetch()
+
+        # Fetch wasn't working here...fixing
+        if author.id == player.id:
+            author = player
 
         if character:
             await character.upsert()

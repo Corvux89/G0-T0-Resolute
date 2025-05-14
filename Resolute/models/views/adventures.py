@@ -362,17 +362,15 @@ class AdventureSettingsUI(AdventureView):
 
 
 class _AdventureMemberSelect(AdventureView):
-    async def _before_send(self):
-        self.add_member.disabled = False if self.character else True
-        self.remove_member.disabled = False if self.character else True
-
     @discord.ui.user_select(placeholder="Select a Player", row=1)
     async def member_select(
         self, user: discord.ui.Select, interaction: discord.Interaction
     ):
         member: discord.Member = user.values[0]
         self.member = member
-        self.player = await Player.get_player(self.member.id, interaction.guild.id)
+        self.player = await Player.get_player(
+            self.bot, self.member.id, interaction.guild.id
+        )
         self.character = None
         if not self.dm_select and self.get_item("char_select") is None:
             self.add_item(self.character_select)
@@ -557,6 +555,13 @@ class _AdventureMemberSelect(AdventureView):
             self.member_select.placeholder = "Select a Player"
             self.add_member.label = "Add Player"
             self.remove_member.label = "Remove Player"
+
+        self.add_member.disabled = (
+            False if self.member and (not self.dm_select and self.character) else True
+        )
+        self.remove_member.disabled = (
+            False if self.member and (not self.dm_select and self.character) else True
+        )
 
 
 class _AdventureFactions(AdventureView):

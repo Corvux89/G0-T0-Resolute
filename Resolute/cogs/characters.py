@@ -159,9 +159,8 @@ class Character(commands.Cog):
         )
 
         if len(player.characters) == 0:
-            return await ctx.respond(
-                embed=PlayerOverviewEmbed(ctx.author, player, self.bot.compendium)
-            )
+            embed = PlayerOverviewEmbed(ctx.author, player, self.bot.compendium)
+            return await ctx.respond(embed=embed)
 
         ui = CharacterGetUI.new(self.bot, ctx.author, player)
         await ui.send_to(ctx)

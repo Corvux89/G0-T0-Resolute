@@ -6,7 +6,7 @@ from discord.ext import commands
 from Resolute.bot import G0T0Bot, G0T0Context
 from Resolute.helpers import is_admin
 from Resolute.models.objects.adventures import Adventure
-from Resolute.models.objects.exceptions import G0T0Error
+from Resolute.models.objects.exceptions import AdventureNotFound, G0T0Error
 from Resolute.models.objects.guilds import PlayerGuild
 from Resolute.models.views.rooms import RoomSettingsUI
 
@@ -62,14 +62,19 @@ class Room(commands.Cog):
         channel: discord.TextChannel = ctx.guild.get_channel(ctx.channel.id)
         if ctx.author in channel.overwrites or await is_admin(ctx):
             roles = []
+            adventure = None
             guild = await PlayerGuild.get_player_guild(self.bot, ctx.guild.id)
+            try:
+                if (
+                    adventure := await Adventure.fetch_from_ctx(ctx)
+                ) and guild.quest_role:
+                    roles.append(guild.quest_role)
+            except AdventureNotFound:
+                if guild.entry_role and guild.member_role:
+                    roles += [guild.entry_role, guild.member_role]
+                else:
+                    raise G0T0Error("Something went wrong")
 
-            if (adventure := await Adventure.fetch_from_ctx(ctx)) and guild.quest_role:
-                roles.append(guild.quest_role)
-            elif guild.entry_role and guild.member_role:
-                roles += [guild.entry_role, guild.member_role]
-            else:
-                raise G0T0Error("Something went wrong")
             if roles:
                 ui = RoomSettingsUI.new(self.bot, ctx.author, roles, adventure)
                 await ui.send_to(ctx)

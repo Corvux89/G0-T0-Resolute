@@ -9,7 +9,6 @@ from Resolute.models.categories.categories import Faction
 from Resolute.models.embeds import PlayerEmbed
 from Resolute.models.objects.adventures import Adventure
 from Resolute.models.objects.exceptions import (
-    AdventureNotFound,
     CharacterNotFound,
     G0T0Error,
 )

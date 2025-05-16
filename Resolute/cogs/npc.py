@@ -3,7 +3,9 @@ from discord.ext import commands
 from timeit import default_timer as timer
 
 from Resolute.bot import G0T0Bot
+from Resolute.models.objects.adventures import Adventure
 from Resolute.models.objects.enum import WebhookType
+from Resolute.models.objects.exceptions import AdventureNotFound, G0T0CommandError
 from Resolute.models.objects.npc import NonPlayableCharacter
 from Resolute.models.objects.webhook import G0T0Webhook
 
@@ -33,8 +35,18 @@ class NPC(commands.Cog):
 
     def create_npc_command(self, npc: NonPlayableCharacter):
         async def npc_command(ctx):
-            await G0T0Webhook(
-                ctx, type=WebhookType.adventure if npc.adventure_id else WebhookType.npc
-            ).send()
+            adventure = None
+            if npc.adventure_id:
+                try:
+                    adventure = Adventure.fetch_from_ctx(
+                        ctx, adventure_id=npc.adventure_id
+                    )
+                except AdventureNotFound:
+                    raise G0T0CommandError(
+                        "This npc can only be used in it's designated Adventure"
+                    )
+
+            type = WebhookType.adventure if npc.adventure_id else WebhookType.npc
+            await G0T0Webhook(ctx, type=type, adventure=adventure).send()
 
         return npc_command

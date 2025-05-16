@@ -106,6 +106,16 @@ class G0T0Webhook(object):
                     self.ctx.channel
                 )
 
+            if "{$channel}" in self.content:
+                for char in self.player.characters:
+                    if self.ctx.channel.id in char.channels:
+                        char.channels.remove(self.ctx.channel.id)
+                        await char.upsert()
+
+                self.character.channels.append(self.ctx.channel.id)
+                await self.character.upsert()
+                self.content = re.sub(r"\{\$channel\}", "", self.content)
+
         # Guild NPC
         elif self.type == WebhookType.npc:
             if npc := self.player.guild.get_npc(key=self.ctx.invoked_with):

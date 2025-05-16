@@ -275,7 +275,7 @@ class AdventureSettingsUI(AdventureView):
 
     @discord.ui.button(label="NPCs", style=discord.ButtonStyle.primary, row=2)
     async def npcs(self, _: discord.ui.Button, interaction: discord.Interaction):
-        guild = await PlayerGuild.get_player_guild(self.bot, self.adventure.guild_idd)
+        guild = await PlayerGuild.get_player_guild(self.bot, self.adventure.guild_id)
         view = NPCSettingsUI.new(
             self.bot, self.owner, guild, AdventureSettingsUI, adventure=self.adventure
         )

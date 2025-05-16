@@ -35,6 +35,9 @@ class NPC(commands.Cog):
 
     def create_npc_command(self, npc: NonPlayableCharacter):
         async def npc_command(ctx):
+            if ctx.invoked_with == "say":
+                return
+
             adventure = None
             if npc.adventure_id:
                 try:

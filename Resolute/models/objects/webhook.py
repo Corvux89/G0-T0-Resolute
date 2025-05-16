@@ -141,9 +141,9 @@ class G0T0Webhook(object):
                     self.npc = self.adventure.get_npc(key=self.ctx.invoked_with)
 
         # Final Checks
-        if not self.npc:
+        if not self.npc and not self.character:
             raise commands.CommandNotFound()
-        elif not await self.is_authorized():
+        elif self.npc and not await self.is_authorized():
             raise G0T0CommandError("You do not have authorization to do this.")
 
         if self.npc:

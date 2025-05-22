@@ -243,9 +243,9 @@ class G0T0Webhook(object):
                 return
 
     async def delete(self) -> None:
-        if not self.npc:
+        if self.type != WebhookType.say and not self.npc:
             raise commands.CommandNotFound()
-        elif not await self.is_authorized():
+        elif self.type != WebhookType.say and not await self.is_authorized():
             raise G0T0CommandError("You do not have authorization to do this.")
 
         if not self.player.guild.is_dev_channel(self.ctx.channel):

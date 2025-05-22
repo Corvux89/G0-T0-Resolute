@@ -883,7 +883,7 @@ class Player(object):
                 break
 
         if (activity_point and self.activity_level != activity_point.id) or (
-            increment == False and not activity_point
+            increment == False and not activity_point and self.activity_level != 0
         ):
             from .logs import DBLog
 

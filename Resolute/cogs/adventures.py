@@ -9,7 +9,6 @@ from Resolute.models.categories.categories import Faction
 from Resolute.models.embeds import PlayerEmbed
 from Resolute.models.objects.adventures import Adventure
 from Resolute.models.objects.exceptions import (
-    AdventureNotFound,
     CharacterNotFound,
     G0T0Error,
 )
@@ -352,8 +351,8 @@ class Adventures(commands.Cog):
         """
         adventure = await Adventure.fetch_from_ctx(
             ctx,
-            role.id if role else None,
-            channel_category.id if channel_category else None,
+            role_id=role.id if role else None,
+            channel_category_id=channel_category.id if channel_category else None,
         )
         ui = AdventureSettingsUI.new(self.bot, ctx.author, adventure, ctx.playerGuild)
         await ui.send_to(ctx)

@@ -11,7 +11,12 @@ from Resolute.helpers.general_helpers import chunk_text
 from Resolute.models.objects.adventures import Adventure
 from Resolute.models.objects.characters import PlayerCharacter
 from Resolute.models.objects.enum import WebhookType
-from Resolute.models.objects.exceptions import CharacterNotFound, Unauthorized
+from Resolute.models.objects.exceptions import (
+    AdventureNotFound,
+    CharacterNotFound,
+    G0T0CommandError,
+    Unauthorized,
+)
 from Resolute.models.objects.npc import NonPlayableCharacter
 from Resolute.models.objects.players import Player
 
@@ -106,6 +111,16 @@ class G0T0Webhook(object):
                     self.ctx.channel
                 )
 
+            if "{$channel}" in self.content:
+                for char in self.player.characters:
+                    if self.ctx.channel.id in char.channels:
+                        char.channels.remove(self.ctx.channel.id)
+                        await char.upsert()
+
+                self.character.channels.append(self.ctx.channel.id)
+                await self.character.upsert()
+                self.content = re.sub(r"\{\$channel\}", "", self.content)
+
         # Guild NPC
         elif self.type == WebhookType.npc:
             if npc := self.player.guild.get_npc(key=self.ctx.invoked_with):
@@ -115,14 +130,21 @@ class G0T0Webhook(object):
         elif self.type == WebhookType.adventure:
             if self.ctx.channel.category:
                 if not self.adventure:
-                    self.adventure = await Adventure.fetch_from_ctx(self.ctx)
+                    try:
+                        self.adventure = await Adventure.fetch_from_ctx(self.ctx)
+                    except AdventureNotFound:
+                        raise G0T0CommandError(
+                            "This npc can only be used in it's designated Adventure"
+                        )
 
                 if self.adventure:
                     self.npc = self.adventure.get_npc(key=self.ctx.invoked_with)
 
         # Final Checks
-        if self.npc and not await self.is_authorized():
-            raise Unauthorized()
+        if not self.npc and not self.character:
+            raise commands.CommandNotFound()
+        elif self.npc and not await self.is_authorized():
+            raise G0T0CommandError("You do not have authorization to do this.")
 
         if self.npc:
             self.content = self.message.content[len(self.npc.key) + 2 :]
@@ -221,8 +243,10 @@ class G0T0Webhook(object):
                 return
 
     async def delete(self) -> None:
-        if self.npc and not await self.is_authorized():
-            raise Unauthorized()
+        if not self.npc:
+            raise commands.CommandNotFound()
+        elif not await self.is_authorized():
+            raise G0T0CommandError("You do not have authorization to do this.")
 
         if not self.player.guild.is_dev_channel(self.ctx.channel):
             await self.player.update_post_stats(

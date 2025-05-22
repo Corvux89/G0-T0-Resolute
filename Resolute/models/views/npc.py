@@ -91,7 +91,7 @@ class NPCSettings(InteractiveView):
 
     async def commit(self):
         if self.adventure:
-            self.adventure = Adventure.get_from_category_id(
+            self.adventure = await Adventure.get_from_category_id(
                 self.bot, self.adventure.category_channel_id
             )
         elif self.guild:
@@ -283,7 +283,7 @@ class NPCModal(discord.ui.Modal):
             not self.npc
             and (npc := next((n for n in self.guild.npcs if n.key == key), None))
             and self.adventure
-            and (npc := next(n for n in self.adventure.npcs if n.key == key), None)
+            and (npc := next((n for n in self.adventure.npcs if n.key == key), None))
         ):
             await interaction.response.send_message(
                 embed=ErrorEmbed(f"An NPC already exists with that key"), ephemeral=True

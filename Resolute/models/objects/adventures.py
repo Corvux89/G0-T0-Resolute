@@ -304,9 +304,11 @@ class Adventure(object):
         return None
 
     @staticmethod
-    async def fetch_from_ctx(
-        ctx: G0T0Context, role_id: int = None, category_channel_id: int = None
-    ) -> "Adventure":
+    async def fetch_from_ctx(ctx: G0T0Context, **kwargs) -> "Adventure":
+        adventure_id = kwargs.get("adventure_id")
+        role_id = kwargs.get("role_id")
+        category_channel_id = kwargs.get("category_channel_id")
+
         if role_id:
             query = Adventure.adventures_table.select().where(
                 sa.and_(
@@ -323,6 +325,14 @@ class Adventure(object):
                     Adventure.adventures_table.c.end_ts == sa.null(),
                 )
             )
+        elif adventure_id:
+            query = Adventure.adventures_table.select().where(
+                sa.and_(
+                    Adventure.adventures_table.c.id == adventure_id,
+                    Adventure.adventures_table.c.end_ts == sa.null(),
+                )
+            )
+
         elif ctx.channel.category:
             query = Adventure.adventures_table.select().where(
                 sa.and_(

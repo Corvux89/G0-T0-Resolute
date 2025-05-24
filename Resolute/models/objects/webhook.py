@@ -311,7 +311,10 @@ class G0T0Webhook(object):
 
         elif self.type == WebhookType.adventure:
             if self.ctx.channel.category:
-                self.adventure = await Adventure.fetch_from_ctx(self.ctx)
+                try:
+                    self.adventure = await Adventure.fetch_from_ctx(self.ctx)
+                except AdventureNotFound:
+                    return False
 
                 if self.adventure and (
                     npc := self.adventure.get_npc(name=self.message.author.name)

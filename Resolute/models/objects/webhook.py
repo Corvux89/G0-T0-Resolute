@@ -98,6 +98,7 @@ class G0T0Webhook(object):
                         c
                         for c in self.player.characters
                         if search.lower() in c.name.lower()
+                        or (c.nickname and search.lower() in c.nickname.lower())
                     ),
                     None,
                 )

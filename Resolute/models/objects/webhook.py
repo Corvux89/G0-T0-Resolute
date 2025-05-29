@@ -282,8 +282,7 @@ class G0T0Webhook(object):
             user_roles = [role.id for role in self.player.member.roles]
 
             return bool(set(user_roles) & set(self.npc.roles)) or (
-                self.player.guild.admin_role
-                and self.player.guild.admin_role in self.player.member.roles
+                self.player.guild.is_admin(self.player.member)
             )
 
         elif self.type == WebhookType.adventure:

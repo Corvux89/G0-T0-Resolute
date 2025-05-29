@@ -136,6 +136,16 @@ class NonPlayableCharacter(object):
                 content=content,
             )
 
+    async def edit_webhook_message(
+        self, ctx: discord.ApplicationContext, message_id: int, content: str
+    ) -> None:
+        webhook = await gh.get_webhook(ctx.channel)
+
+        if isinstance(ctx.channel, discord.Thread):
+            await webhook.edit_message(message_id, content=content, thread=ctx.channel)
+        else:
+            await webhook.edit_message(message_id, content=content)
+
     async def register_command(self, bot: G0T0Bot):
         async def npc_command(ctx):
             from Resolute.models.objects.webhook import G0T0Webhook

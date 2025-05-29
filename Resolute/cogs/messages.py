@@ -108,6 +108,15 @@ class Messages(commands.Cog):
             modal = SayEditModal(self.bot, webhook)
             return await ctx.send_modal(modal)
 
+        # Admin NPC Edit
+        elif (
+            player.guild.is_admin(player.member)
+            and (webhook := G0T0Webhook(ctx, type=WebhookType.npc, message=message))
+            and await webhook.is_valid_message()
+        ):
+            modal = SayEditModal(self.bot, webhook)
+            return await ctx.send_modal(modal)
+
         else:
             raise G0T0Error("This message cannot be edited")
 

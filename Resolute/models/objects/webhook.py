@@ -242,6 +242,19 @@ class G0T0Webhook(object):
                 )
                 await self.player.member.send(f"```{self.content}```")
                 return
+        elif self.type == WebhookType.npc:
+            await _handle_character_mentions(self)
+
+            try:
+                await self.npc.edit_webhook_message(
+                    self.ctx, self.message.id, self.content
+                )
+            except:
+                await self.player.member.send(
+                    f"Error editing message in {self.ctx.channel.jump_url}. Try again."
+                )
+                await self.player.member.send(f"```{self.content}```")
+                return
 
     async def delete(self) -> None:
         if self.type != WebhookType.say and not self.npc:

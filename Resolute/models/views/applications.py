@@ -729,7 +729,7 @@ class SpeciesModal(discord.ui.Modal):
         self.add_item(
             discord.ui.InputText(
                 label="Ability Score Increase",
-                placeholder="Abilisty Score Increase",
+                placeholder="Ability Score Increase",
                 value=self.application.species.asi,
                 max_length=100,
             )

@@ -740,7 +740,7 @@ class ShatterpointPlayerSettingsModal(discord.ui.Modal):
             discord.ui.InputText(
                 label="Renown Reward",
                 required=False,
-                value=f"{self.spPlayer.renown_override}",
+                value=f"{self.spPlayer.renown_override if self.spPlayer.renown_override and self.spPlayer.renown_override != 'None' else ''}",
             )
         )
 
@@ -753,7 +753,9 @@ class ShatterpointPlayerSettingsModal(discord.ui.Modal):
             )
 
         self.spPlayer.renown_override = (
-            self.children[1].value if self.children[1].value != "" else None
+            self.children[1].value
+            if self.children[1].value != "" and self.children[1].value != "None"
+            else None
         )
 
         await interaction.response.defer()
@@ -761,6 +763,7 @@ class ShatterpointPlayerSettingsModal(discord.ui.Modal):
 
 
 class ShatterpointRenownModal(discord.ui.Modal):
+
     renown: ShatterpointRenown
 
     def __init__(self, renown):

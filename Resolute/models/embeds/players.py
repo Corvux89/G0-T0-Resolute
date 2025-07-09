@@ -11,7 +11,13 @@ from Resolute.models.objects.players import ArenaPost, Player, RPPost
 class PlayerOverviewEmbed(PlayerEmbed):
     def __init__(self, author: discord.Member, player: Player, compendium: Compendium):
         super().__init__(author, title=f"Information for {player.member.display_name}")
-        self.set_thumbnail(url=player.member.display_avatar.url)
+        self.set_thumbnail(
+            url=(
+                player.member.display_avatar.url
+                if player.member.display_avatar
+                else None
+            )
+        )
         self.color = player.member.color
 
         self.description = f"**Chain Codes**: {player.cc:,}"
@@ -86,7 +92,11 @@ class ArenaPostEmbed(PlayerEmbed):
             else:
                 await webhook.send(
                     username=self.post.player.member.display_name,
-                    avatar_url=self.post.player.member.display_avatar.url,
+                    avatar_url=(
+                        self.post.player.member.display_avatar.url
+                        if self.post.player.member.display_avatar
+                        else None
+                    ),
                     embed=self,
                 )
             return True

@@ -371,8 +371,8 @@ class Player(object):
                 username=f"[{character.level}] {character.name} // {self.member.display_name}",
                 avatar_url=(
                     self.member.display_avatar.url
-                    if not character.avatar_url
-                    else character.avatar_url
+                    if self.member.display_avatar and not character.avatar_url
+                    else None if not character.avatar_url else character.avatar_url
                 ),
                 content=content,
                 thread=ctx.channel,
@@ -382,8 +382,8 @@ class Player(object):
                 username=f"[{character.level}] {character.name} // {self.member.display_name}",
                 avatar_url=(
                     self.member.display_avatar.url
-                    if not character.avatar_url
-                    else character.avatar_url
+                    if self.member.display_avatar and not character.avatar_url
+                    else None if not character.avatar_url else character.avatar_url
                 ),
                 content=content,
             )

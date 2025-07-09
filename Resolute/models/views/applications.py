@@ -306,7 +306,7 @@ class NewCharacterRequestUI(CharacterView):
             else:
                 msg = await webhook.send(
                     username=f"{self.owner.display_name}",
-                    avatar_url=self.owner.avatar.url,
+                    avatar_url=self.owner.avatar.url if self.owner.avatar else None,
                     content=message,
                     wait=True,
                 )
@@ -967,7 +967,9 @@ class LevelUpRequestModal(discord.ui.Modal):
             else:
                 msg = await webhook.send(
                     username=interaction.user.display_name,
-                    avatar_url=interaction.user.avatar.url,
+                    avatar_url=(
+                        interaction.user.avatar.url if interaction.user.avatar else None
+                    ),
                     content=message,
                     wait=True,
                 )

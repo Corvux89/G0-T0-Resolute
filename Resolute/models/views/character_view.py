@@ -287,7 +287,11 @@ class _NewCharacter(CharacterManage):
 
         embed.set_footer(
             text=f"Created by: {log_entry.author.member.name} - Log #: {log_entry.id}",
-            icon_url=log_entry.author.member.display_avatar.url,
+            icon_url=(
+                log_entry.author.member.display_avatar.url
+                if log_entry.author.member.display_avatar
+                else None
+            ),
         )
 
         await interaction.channel.send(embed=embed)
@@ -494,7 +498,10 @@ class _EditCharacter(CharacterManage):
         )
 
         embed.set_footer(
-            text=f"Logged by {self.owner.name}", icon_url=self.owner.display_avatar.url
+            text=f"Logged by {self.owner.name}",
+            icon_url=(
+                self.owner.display_avatar.url if self.owner.display_avatar else None
+            ),
         )
 
         await interaction.channel.send(embed=embed)
@@ -1809,7 +1816,11 @@ class RPPostUI(RPPostView):
                 else:
                     await webhook.send(
                         username=self.player.member.display_name,
-                        avatar_url=self.player.member.display_avatar.url,
+                        avatar_url=(
+                            self.player.member.display_avatar.url
+                            if self.player.member.display_avatar
+                            else None
+                        ),
                         embed=RPPostEmbed(self.player, self.posts),
                     )
             except:

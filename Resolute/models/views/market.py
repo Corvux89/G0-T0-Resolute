@@ -20,7 +20,13 @@ class TransactionEmbed(discord.Embed):
             title=f"Market Request - {transaction.character.name if transaction.character else transaction.player.member.display_name}",
             color=discord.Color.random(),
         )
-        self.set_thumbnail(url=transaction.player.member.display_avatar.url)
+        self.set_thumbnail(
+            url=(
+                transaction.player.member.display_avatar.url
+                if transaction.player.member.display_avatar
+                else None
+            )
+        )
         self.description = f"**Player**: {transaction.player.member.mention}\n"
 
         self.description += (

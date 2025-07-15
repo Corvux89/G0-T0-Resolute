@@ -93,7 +93,7 @@ class RefWeeklyStipend(object):
 
     async def delete(self) -> None:
         query = RefWeeklyStipend.ref_weekly_stipend_table.delete().where(
-            RefWeeklyStipend.c.role_id == self.role_id
+            RefWeeklyStipend.ref_weekly_stipend_table.c.role_id == self.role_id
         )
 
         async with self._db.acquire() as conn:

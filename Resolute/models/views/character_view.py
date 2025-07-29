@@ -1011,9 +1011,29 @@ class CharacterInformationModal(discord.ui.Modal):
             )
         )
 
+        self.add_item(
+            discord.ui.InputText(
+                label="Level",
+                style=discord.InputTextStyle.short,
+                required=True,
+                placeholder="Level",
+                max_length=3,
+                value=(
+                    self.character.level if hasattr(self.character, "level") else ""
+                ),
+            )
+        )
+
     async def callback(self, interaction: discord.Interaction):
         if self.character.name != self.children[0].value:
             self.character.name = self.children[0].value
+            self.update = True
+
+        if (
+            self.character.level != int(self.children[2].value)
+            and int(self.children[2].value) <= self.character.level
+        ):
+            self.character.level = int(self.children[2].value)
             self.update = True
 
         if species := self.compendium.get_object(

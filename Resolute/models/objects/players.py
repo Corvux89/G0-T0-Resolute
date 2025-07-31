@@ -12,6 +12,7 @@ from marshmallow import Schema, fields, post_load
 from sqlalchemy.dialects.postgresql import insert
 
 from Resolute.helpers.general_helpers import get_selection
+from Resolute.models.embeds import ErrorEmbed
 from Resolute.models.embeds.logs import LogEmbed
 from Resolute.compendium import Compendium
 from Resolute.helpers import get_webhook
@@ -91,6 +92,8 @@ class Player(object):
         sa.Column("activity_points", sa.Integer),
         sa.Column("activity_level", sa.Integer),
         sa.Column("statistics", sa.String),
+        sa.Column("level_tokens", sa.Integer),
+        sa.Column("level_ups_earned", sa.Integer),
     )
 
     class PlayerSchema(Schema):
@@ -105,6 +108,8 @@ class Player(object):
         activity_points = fields.Integer()
         activity_level = fields.Integer()
         statistics = fields.String(default="{}")
+        level_tokens = fields.Integer()
+        level_ups_earned = fields.Integer()
 
         def __init__(self, bot: G0T0Bot, inactive: bool, **kwargs):
             super().__init__(**kwargs)
@@ -298,6 +303,8 @@ class Player(object):
         self.activity_points: int = kwargs.get("activity_points", 0)
         self.activity_level: int = kwargs.get("activity_level", 0)
         self.statistics: str = kwargs.get("statistics", "{}")
+        self.level_tokens: int = kwargs.get("level_tokens", 0)
+        self.level_ups_earned = kwargs.get("level_ups_earned", 0)
 
         # Virtual Attributes
         self.characters: list[PlayerCharacter] = []
@@ -618,6 +625,8 @@ class Player(object):
             "activity_points": self.activity_points,
             "activity_level": self.activity_level,
             "statistics": self.statistics,
+            "level_tokens": self.level_tokens,
+            "level_ups_earned": self.level_ups_earned,
         }
 
         insert_dict = {
@@ -894,6 +903,18 @@ class Player(object):
                 else False
             )
             self.activity_level = activity_point.id if activity_point else 0
+
+            # Leveling Tokens
+            if (
+                self.guild.earned_level_up_max
+                and self.guild.activity_level_reward
+                and self.guild.activity_level_reward == self.activity_level
+                and self.level_tokens < self.guild.earned_level_up_max
+                and self.level_ups_earned < self.guild.earned_level_up_max
+                and not revert
+            ):
+                self.level_tokens += 1
+                self.level_ups_earned += 1
 
             activity_log = await DBLog.create(
                 bot,

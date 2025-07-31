@@ -141,6 +141,8 @@ class PlayerGuild(object):
         sa.Column("rp_post_channel", sa.BigInteger, nullable=True),
         sa.Column("dev_channels", ARRAY(sa.BigInteger), nullable=True, default=[]),
         sa.Column("archive_user", sa.BigInteger, nullable=True),
+        sa.Column("earned_level_up_max", sa.Integer, nullable=True),
+        sa.Column("activity_level_reward", sa.Integer, nullable=True),
     )
 
     class GuildSchema(Schema):
@@ -187,6 +189,8 @@ class PlayerGuild(object):
         rp_post_channel = fields.Method(None, "load_channel", allow_none=True)
         dev_channels = fields.Method(None, "load_channels", allow_none=True)
         archive_user = fields.Method(None, "load_member", allow_none=True)
+        earned_level_up_max = fields.Integer(allow_none=True)
+        activity_level_reward = fields.Integer(allow_none=True)
 
         def __init__(self, db: aiopg.sa.Engine, guild: discord.Guild, **kwargs):
             super().__init__(**kwargs)
@@ -307,6 +311,8 @@ class PlayerGuild(object):
         self.ping_announcement: bool = kwargs.get("ping_announcement", False)
         self.reward_threshold: int = kwargs.get("reward_threshold")
         self.archive_user: discord.User | discord.Member = kwargs.get("archive_user")
+        self.earned_level_up_max: int = kwargs.get("earned_level_up_max")
+        self.activity_level_reward: int = kwargs.get("activity_level_reward")
 
         # Virtual attributes
         self.calendar: list[RefServerCalendar] = None
@@ -476,6 +482,12 @@ class PlayerGuild(object):
             "ping_announcement": self.ping_announcement,
             "reward_threshold": self.reward_threshold,
             "archive_user": self.archive_user.id if self.archive_user else None,
+            "earned_level_up_max": (
+                self.earned_level_up_max if self.earned_level_up_max else None
+            ),
+            "activity_level_reward": (
+                self.activity_level_reward if self.activity_level_reward else None
+            ),
         }
 
         insert_dict = {**update_dict, "id": self.id}

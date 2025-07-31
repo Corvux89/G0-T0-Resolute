@@ -145,6 +145,7 @@ class Activity(CompendiumObject):
         Column("diversion", BOOLEAN, nullable=False),
         Column("points", Integer, nullable=False),
         Column("credit_ratio", Float, nullable=True),
+        Column("level_up_token", BOOLEAN, nullable=False),
     )
 
     class __Schema__(Schema):
@@ -156,18 +157,20 @@ class Activity(CompendiumObject):
         credit_ratio = fields.Float(
             data_key="credit_ratio", required=False, allow_none=True
         )
+        level_up_token = fields.Boolean()
 
         @post_load
         def make_c_activity(self, data, **kwargs):
             return Activity(**data)
 
-    def __init__(self, id, value, cc, diversion, points, credit_ratio):
+    def __init__(self, id, value, cc, diversion, points, credit_ratio, level_up_token):
         self.id = id
         self.value = value
         self.cc = cc
         self.diversion = diversion
         self.points = points
         self.credit_ratio = credit_ratio
+        self.level_up_token = level_up_token
 
 
 class DashboardType(CompendiumObject):

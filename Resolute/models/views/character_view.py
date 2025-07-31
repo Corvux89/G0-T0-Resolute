@@ -114,9 +114,7 @@ class CharacterManageUI(CharacterManage):
         inst = cls(owner=owner)
         inst.bot = bot
         inst.player = player
-        inst.active_character = (
-            player.characters[0] if len(player.characters) > 0 else None
-        )
+        inst.active_character = None
 
         inst.new_character: PlayerCharacter = PlayerCharacter(
             bot.db, bot.compendium, player_id=player.id, guild_id=player.guild_id
@@ -131,16 +129,24 @@ class CharacterManageUI(CharacterManage):
     async def character_select(
         self, char: discord.ui.Select, interaction: discord.Interaction
     ):
-        self.active_character = next(
-            (c for c in self.player.characters if c.id == int(char.values[0])), None
-        )
+        try:
+            self.active_character = next(
+                (c for c in self.player.characters if c.id == int(char.values[0])), None
+            )
+        except:
+            self.active_character = None
         await self.refresh_content(interaction)
 
     @discord.ui.button(label="Edit", style=discord.ButtonStyle.primary, row=2)
     async def edit_character(
         self, _: discord.ui.Button, interaction: discord.Interaction
     ):
-        await self.defer_to(_EditCharacter, interaction)
+        if self.active_character:
+            await self.defer_to(_EditCharacter, interaction)
+        else:
+            modal = PlayerSettingsModal(self.bot, self.player)
+            await self.prompt_modal(interaction, modal)
+            await self.refresh_content(interaction)
 
     @discord.ui.button(label="New/Reroll", style=discord.ButtonStyle.green, row=2)
     async def new_character_create(
@@ -160,12 +166,17 @@ class CharacterManageUI(CharacterManage):
 
     async def _before_send(self):
         if len(self.player.characters) == 0:
-            self.remove_item(self.edit_character)
             self.remove_item(self.character_select)
             self.new_character_create.label = "New Character"
         else:
             # Build the Character List
-            char_list = []
+            char_list = [
+                discord.SelectOption(
+                    label=f"Player Overview",
+                    value="def",
+                    default=False if self.active_character else True,
+                )
+            ]
             for char in self.player.characters:
                 char_list.append(
                     discord.SelectOption(
@@ -181,11 +192,22 @@ class CharacterManageUI(CharacterManage):
                 )
             self.character_select.options = char_list
 
+            self.new_character_create.disabled = (
+                False
+                if (
+                    len(self.player.characters) < self.player.guild.max_characters
+                    or self.active_character
+                )
+                else True
+            )
+
         if (
             not self.player.guild.is_admin(self.owner)
             or len(self.player.characters) == 0
         ):
             self.remove_item(self.inactivate_character)
+
+        self.inactivate_character.disabled = False if self.active_character else True
 
 
 # Character Manage - New Character
@@ -442,7 +464,9 @@ class _EditCharacter(CharacterManage):
     async def edit_character_information(
         self, _: discord.ui.Button, interaction: discord.Interaction
     ):
-        modal = CharacterInformationModal(self.active_character, self.bot.compendium)
+        modal = CharacterInformationModal(
+            self.active_character, self.bot.compendium, self.player
+        )
         response: CharacterInformationModal = await self.prompt_modal(
             interaction, modal
         )
@@ -458,6 +482,10 @@ class _EditCharacter(CharacterManage):
                 notes="Character modifcation",
                 silent=True,
             )
+
+        if response.level_update:
+            await self.player.manage_player_tier_roles(self.bot, "Level change")
+
         await self.refresh_content(interaction)
 
     @discord.ui.button(label="Level Up", style=discord.ButtonStyle.primary, row=2)
@@ -474,8 +502,16 @@ class _EditCharacter(CharacterManage):
                 f"Completed RPs: {min(self.player.completed_rps, self.player.needed_rps)}/{self.player.needed_rps}\n"
                 f"Completed Arena Phases: {min(self.player.completed_arenas, self.player.needed_arenas)}/{self.player.needed_arenas}"
             )
+        elif (
+            self.player.highest_level_character.level >= 3
+            and self.player.level_tokens <= 0
+        ):
+            raise G0T0Error(
+                f"{self.player.member.mention} does not have enough leveling tokens to level up."
+            )
 
         self.active_character.level += 1
+        self.player.level_tokens -= 1
         await DBLog.create(
             self.bot,
             interaction,
@@ -708,6 +744,55 @@ class _EditCharacterRenown(CharacterManage):
 
 
 # Character Manage Modals
+class PlayerSettingsModal(discord.ui.Modal):
+    player: Player
+    bot: G0T0Bot
+
+    def __init__(self, bot: G0T0Bot, player: Player):
+        super().__init__(title="Player Settings")
+        self.player = player
+        self.bot = bot
+
+        self.add_item(
+            discord.ui.InputText(
+                label="Leveling Tokens",
+                style=discord.InputTextStyle.short,
+                required=True,
+                placeholder="Leveling Tokens",
+                max_length=4,
+                value=self.player.level_tokens if self.player.level_tokens else "",
+            )
+        )
+
+    async def callback(self, interaction: discord.Interaction):
+        try:
+            leveling_tokens = int(self.children[0].value)
+
+            if leveling_tokens > self.player.guild.earned_level_up_max:
+                await interaction.channel.send(
+                    embed=ErrorEmbed(
+                        f"Cannot exceed the guild allotment of `{self.player.guild.earned_level_up_max}` tokens."
+                    )
+                )
+            else:
+                self.player.level_tokens = leveling_tokens
+                await DBLog.create(
+                    self.bot,
+                    interaction,
+                    self.player,
+                    interaction.user,
+                    "MOD",
+                    notes=f"Leveling tokens adjusted to `{leveling_tokens}`",
+                    respond=False,
+                    silent=True,
+                )
+        except:
+            pass
+
+        await interaction.response.defer()
+        self.stop()
+
+
 class NewCharacterInformationModal(discord.ui.Modal):
     character: PlayerCharacter
     active_character: PlayerCharacter
@@ -985,6 +1070,7 @@ class CharacterInformationModal(discord.ui.Modal):
         self.character = character
         self.compendium = compendium
         self.update = False
+        self.level_update = False
 
         self.add_item(
             discord.ui.InputText(
@@ -1028,6 +1114,7 @@ class CharacterInformationModal(discord.ui.Modal):
         if self.character.name != self.children[0].value:
             self.character.name = self.children[0].value
             self.update = True
+            self.level_update = True
 
         if (
             self.character.level != int(self.children[2].value)

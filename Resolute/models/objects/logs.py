@@ -11,6 +11,7 @@ from marshmallow import Schema, fields, post_load
 from Resolute.constants import APPROVAL_EMOJI, ZWSP3
 from Resolute.helpers import confirm
 from Resolute.models import metadata
+from Resolute.models.embeds import ErrorEmbed
 from Resolute.models.embeds.logs import LogEmbed
 from Resolute.models.objects.enum import QueryResultType
 from Resolute.models.objects.exceptions import G0T0Error, TransactionError
@@ -240,8 +241,9 @@ class DBLog(object):
             elif not conf:
                 raise G0T0Error("Ok, cancelling")
 
-        if self.created_ts > self.player.guild._last_reset and self.activity.diversion:
-            self.player.div_cc = max(self.player.div_cc - self.cc, 0)
+        if self.created_ts > self.player.guild._last_reset:
+            if self.activity.diversion:
+                self.player.div_cc = max(self.player.div_cc - self.cc, 0)
 
         note = (
             f"{self.activity.value} log # {self.id} nulled by "
@@ -415,6 +417,15 @@ class DBLog(object):
 
         if faction:
             await character.update_renown(faction, renown)
+
+        if activity.level_up_token:
+            if (
+                player.guild.earned_level_up_max
+                and player.level_ups_earned < player.guild.earned_level_up_max
+                and player.level_tokens < player.guild.earned_level_up_max
+            ):
+                player.level_tokens += 1
+                player.level_ups_earned += 1
 
         # Log Entry
         log_entry = DBLog(

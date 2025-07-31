@@ -502,16 +502,7 @@ class _EditCharacter(CharacterManage):
                 f"Completed RPs: {min(self.player.completed_rps, self.player.needed_rps)}/{self.player.needed_rps}\n"
                 f"Completed Arena Phases: {min(self.player.completed_arenas, self.player.needed_arenas)}/{self.player.needed_arenas}"
             )
-        elif (
-            self.player.highest_level_character.level >= 3
-            and self.player.level_tokens <= 0
-        ):
-            raise G0T0Error(
-                f"{self.player.member.mention} does not have enough leveling tokens to level up."
-            )
 
-        self.active_character.level += 1
-        self.player.level_tokens -= 1
         await DBLog.create(
             self.bot,
             interaction,

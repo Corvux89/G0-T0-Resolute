@@ -228,16 +228,37 @@ class Character(commands.Cog):
         )
         if not ctx.player.characters:
             raise CharacterNotFound(ctx.player.member)
-        elif len(ctx.player.characters) == 1:
-            if ctx.player.characters[0].level >= ctx.player.guild.max_level:
-                raise G0T0Error("Character is already at max level for the server")
-            application.application.character = ctx.player.characters[0]
-            modal = LevelUpRequestModal(ctx.player.guild, application.application)
-            return await ctx.send_modal(modal)
+        elif ctx.player.highest_level_character.level < 3 and (
+            ctx.player.needed_rps > ctx.player.completed_rps
+            or ctx.player.needed_arenas > ctx.player.completed_arenas
+        ):
+            raise G0T0Error(
+                f"{ctx.player.member.mention} has not completed their requirements to level up.\n"
+                f"Completed RPs: {min(ctx.player.completed_rps, ctx.player.needed_rps)}/{ctx.player.needed_rps}\n"
+                f"Completed Arena Phases: {min(ctx.player.completed_arenas, ctx.player.needed_arenas)}/{ctx.player.needed_arenas}"
+            )
+        elif (
+            ctx.player.highest_level_character.level >= 3
+            and ctx.player.level_tokens <= 0
+        ):
+            raise G0T0Error(
+                f"{ctx.player.member.mention} does not have enough leveling tokens to level up."
+            )
         else:
-            ui = CharacterSelectUI.new(application, ctx.player)
-            await ui.send_to(ctx)
-            await ctx.delete()
+            if ctx.player.highest_level_character.level >= 3:
+                ctx.player.level_tokens -= 1
+                await ctx.player.upsert()
+
+            if len(ctx.player.characters) == 1:
+                if ctx.player.characters[0].level >= ctx.player.guild.max_level:
+                    raise G0T0Error("Character is already at max level for the server")
+                application.application.character = ctx.player.characters[0]
+                modal = LevelUpRequestModal(ctx.player.guild, application.application)
+                return await ctx.send_modal(modal)
+            else:
+                ui = CharacterSelectUI.new(application, ctx.player)
+                await ui.send_to(ctx)
+                await ctx.delete()
 
     @commands.slash_command(
         name="new_character_request", description="New Character Request"

@@ -464,9 +464,7 @@ class _EditCharacter(CharacterManage):
     async def edit_character_information(
         self, _: discord.ui.Button, interaction: discord.Interaction
     ):
-        modal = CharacterInformationModal(
-            self.active_character, self.bot.compendium, self.player
-        )
+        modal = CharacterInformationModal(self.active_character, self.bot.compendium)
         response: CharacterInformationModal = await self.prompt_modal(
             interaction, modal
         )
@@ -479,7 +477,7 @@ class _EditCharacter(CharacterManage):
                 self.owner,
                 "MOD_CHARACTER",
                 character=self.active_character,
-                notes="Character modifcation",
+                notes=f"Character modifcation{f'- Level {self.active_character.level}' if response.level_update else ''}",
                 silent=True,
             )
 
@@ -503,6 +501,8 @@ class _EditCharacter(CharacterManage):
                 f"Completed Arena Phases: {min(self.player.completed_arenas, self.player.needed_arenas)}/{self.player.needed_arenas}"
             )
 
+        self.active_character.level += 1
+
         await DBLog.create(
             self.bot,
             interaction,
@@ -510,7 +510,7 @@ class _EditCharacter(CharacterManage):
             self.owner,
             "LEVEL",
             character=self.active_character,
-            notes="Player level up",
+            notes=f"Player level up - Level {self.active_character.level}",
             silent=True,
         )
 
@@ -1105,7 +1105,6 @@ class CharacterInformationModal(discord.ui.Modal):
         if self.character.name != self.children[0].value:
             self.character.name = self.children[0].value
             self.update = True
-            self.level_update = True
 
         if (
             self.character.level != int(self.children[2].value)
@@ -1113,6 +1112,7 @@ class CharacterInformationModal(discord.ui.Modal):
         ):
             self.character.level = int(self.children[2].value)
             self.update = True
+            self.level_update = True
 
         if species := self.compendium.get_object(
             CharacterSpecies, self.children[1].value

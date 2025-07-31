@@ -436,6 +436,7 @@ class Log(commands.Cog):
         Returns:
             None
         """
+        await ctx.defer()
 
         player = await Player.get_player(
             self.bot, member.id, ctx.guild.id, inactive=True

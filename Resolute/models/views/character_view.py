@@ -8,7 +8,11 @@ from Resolute.compendium import Compendium
 from Resolute.constants import ZWSP3
 from Resolute.helpers import get_webhook, process_message
 from Resolute.models.categories import CharacterClass, CharacterSpecies
-from Resolute.models.categories.categories import CharacterArchetype, Faction
+from Resolute.models.categories.categories import (
+    CharacterArchetype,
+    CodeConversion,
+    Faction,
+)
 from Resolute.models.embeds import CharacterEmbed, ErrorEmbed
 from Resolute.models.embeds.players import PlayerOverviewEmbed, RPPostEmbed
 from Resolute.models.objects.characters import CharacterRenown, PlayerCharacterClass
@@ -21,7 +25,12 @@ from Resolute.models.views.base import InteractiveView
 
 
 class CharacterViewEmbed(CharacterEmbed):
-    def __init__(self, player: Player, character: PlayerCharacter):
+    def __init__(
+        self,
+        player: Player,
+        character: PlayerCharacter,
+        conversion_rate: CodeConversion = None,
+    ):
         super().__init__(
             player,
             character,
@@ -35,12 +44,18 @@ class CharacterViewEmbed(CharacterEmbed):
             f"\n{ZWSP3*2}{class_str}" if len(character.classes) > 1 else class_str
         )
 
+        if conversion_rate:
+            converted_credits = conversion_rate.value * player.cc
+            credit_str = f"{character.credits:,} ({converted_credits:,} available @ {conversion_rate.value} / CC)"
+        else:
+            credit_str = f"{character.credits:,}"
+
         self.description = (
             f"**Player**: {player.member.mention}\n"
             f"**Faction**: {character.faction.value if character.faction else '*None*'}\n"
             f"**Total Renown**: {character.total_renown}\n"
             f"**Species**: {character.species.value}\n"
-            f"**Credits**: {character.credits:,}\n"
+            f"**Credits**: {credit_str}\n"
             f"**Class{'es' if len(character.classes) > 1 else ''}**: {class_str}\n"
         )
 
@@ -1644,7 +1659,12 @@ class CharacterGet(InteractiveView):
 
     async def get_content(self) -> Mapping:
         if self.active_character:
-            embed = CharacterViewEmbed(self.player, self.active_character)
+            conversion_rate: CodeConversion = self.bot.compendium.get_object(
+                CodeConversion, self.active_character.level
+            )
+            embed = CharacterViewEmbed(
+                self.player, self.active_character, conversion_rate
+            )
         else:
             embed = PlayerOverviewEmbed(self.owner, self.player, self.bot.compendium)
 

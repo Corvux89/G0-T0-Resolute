@@ -244,21 +244,17 @@ class Character(commands.Cog):
             raise G0T0Error(
                 f"{ctx.player.member.mention} does not have enough leveling tokens to level up."
             )
-        else:
-            if ctx.player.highest_level_character.level >= 3:
-                ctx.player.level_tokens -= 1
-                await ctx.player.upsert()
 
-            if len(ctx.player.characters) == 1:
-                if ctx.player.characters[0].level >= ctx.player.guild.max_level:
-                    raise G0T0Error("Character is already at max level for the server")
-                application.application.character = ctx.player.characters[0]
-                modal = LevelUpRequestModal(ctx.player.guild, application.application)
-                return await ctx.send_modal(modal)
-            else:
-                ui = CharacterSelectUI.new(application, ctx.player)
-                await ui.send_to(ctx)
-                await ctx.delete()
+        if len(ctx.player.characters) == 1:
+            if ctx.player.characters[0].level >= ctx.player.guild.max_level:
+                raise G0T0Error("Character is already at max level for the server")
+            application.application.character = ctx.player.characters[0]
+            modal = LevelUpRequestModal(ctx.player, application.application)
+            return await ctx.send_modal(modal)
+        else:
+            ui = CharacterSelectUI.new(application, ctx.player)
+            await ui.send_to(ctx)
+            await ctx.delete()
 
     @commands.slash_command(
         name="new_character_request", description="New Character Request"
@@ -360,7 +356,7 @@ class Character(commands.Cog):
             if not ctx.player.characters:
                 raise CharacterNotFound(ctx.player.member)
             elif len(ctx.player.characters) == 1:
-                modal = LevelUpRequestModal(ctx.player.guild, application.application)
+                modal = LevelUpRequestModal(ctx.player, application.application)
                 return await ctx.send_modal(modal)
             else:
                 ui = CharacterSelectUI.new(application, ctx.player)

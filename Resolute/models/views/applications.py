@@ -119,7 +119,7 @@ class CharacterSelectUI(CharacterView):
         self, _: discord.ui.Button, interaction: discord.Interaction
     ):
         if self.application.application.type == ApplicationType.level:
-            modal = LevelUpRequestModal(self.player.guild, self.application.application)
+            modal = LevelUpRequestModal(self.player, self.application.application)
             await self.prompt_modal(interaction, modal)
             await self.on_timeout()
         else:
@@ -138,9 +138,7 @@ class CharacterSelectUI(CharacterView):
             ):
                 raise G0T0Error("Character is already at max level for the server")
             else:
-                modal = LevelUpRequestModal(
-                    self.player.guild, self.application.application
-                )
+                modal = LevelUpRequestModal(self.player, self.application.application)
                 await self.prompt_modal(interaction, modal)
                 await self.on_timeout()
         else:
@@ -899,12 +897,12 @@ class LevelUpRequestModal(discord.ui.Modal):
     """
 
     application: LevelUpApplication
-    guild: PlayerGuild
+    player: Player
 
-    def __init__(self, guild: PlayerGuild, application: LevelUpApplication = None):
+    def __init__(self, player: Player, application: LevelUpApplication = None):
         super().__init__(title=f"Level Up Request")
         self.application = application
-        self.guild = guild
+        self.player = player
 
         self.add_item(
             discord.ui.InputText(
@@ -947,7 +945,7 @@ class LevelUpRequestModal(discord.ui.Modal):
         )
 
     async def callback(self, interaction: discord.Interaction):
-        if self.guild.staff_role and self.guild.application_channel:
+        if self.player.guild.staff_role and self.player.guild.application_channel:
             self.application.level = self.children[0].value
             self.application.hp = self.children[1].value
             self.application.feats = self.children[2].value
@@ -955,9 +953,9 @@ class LevelUpRequestModal(discord.ui.Modal):
             self.application.link = self.children[4].value
 
             message = self.application.format_app(
-                interaction.user, self.guild.staff_role
+                interaction.user, self.player.guild.staff_role
             )
-            webhook = await get_webhook(self.guild.application_channel)
+            webhook = await get_webhook(self.player.guild.application_channel)
 
             if self.application.message:
                 await webhook.edit_message(self.application.message.id, content=message)
@@ -965,6 +963,9 @@ class LevelUpRequestModal(discord.ui.Modal):
                     "Request updated!", ephemeral=True
                 )
             else:
+                self.player.level_tokens -= 1
+                await self.player.upsert()
+
                 msg = await webhook.send(
                     username=interaction.user.display_name,
                     avatar_url=(

@@ -963,8 +963,9 @@ class LevelUpRequestModal(discord.ui.Modal):
                     "Request updated!", ephemeral=True
                 )
             else:
-                self.player.level_tokens -= 1
-                await self.player.upsert()
+                if self.player.highest_level_character.level >= 3:
+                    self.player.level_tokens -= 1
+                    await self.player.upsert()
 
                 msg = await webhook.send(
                     username=interaction.user.display_name,

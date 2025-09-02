@@ -242,7 +242,7 @@ class Character(commands.Cog):
             and ctx.player.level_tokens <= 0
         ):
             raise G0T0Error(
-                f"{ctx.player.member.mention} does not have enough leveling tokens to level up."
+                f"{ctx.player.member.mention} does not have enough Aurodium Ingots to level up."
             )
 
         if len(ctx.player.characters) == 1:

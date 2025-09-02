@@ -761,10 +761,10 @@ class PlayerSettingsModal(discord.ui.Modal):
 
         self.add_item(
             discord.ui.InputText(
-                label="Leveling Tokens",
+                label="Aurodium Ingots",
                 style=discord.InputTextStyle.short,
                 required=True,
-                placeholder="Leveling Tokens",
+                placeholder="Aurodium Ingots",
                 max_length=4,
                 value=self.player.level_tokens if self.player.level_tokens else "",
             )
@@ -788,7 +788,7 @@ class PlayerSettingsModal(discord.ui.Modal):
                     self.player,
                     interaction.user,
                     "MOD",
-                    notes=f"Leveling tokens adjusted to `{leveling_tokens}`",
+                    notes=f"Aurodium Ingots adjusted to `{leveling_tokens}`",
                     respond=False,
                     silent=True,
                 )

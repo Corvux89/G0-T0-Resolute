@@ -23,7 +23,7 @@ class PlayerOverviewEmbed(PlayerEmbed):
         self.description = f"**Chain Codes**: {player.cc:,}"
 
         if player.guild.earned_level_up_max:
-            self.description += f"\n**Leveling Tokens**: {player.level_tokens:,}/{player.guild.earned_level_up_max:,}"
+            self.description += f"\n**Aurodium Ingots**: {player.level_tokens:,}/{player.guild.earned_level_up_max:,}"
 
         # Guild Handicap
         if (

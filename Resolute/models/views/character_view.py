@@ -1296,16 +1296,32 @@ class CharacterSettings(InteractiveView):
                 f"**Age**: {self.active_character.age(self.player.guild)}"
             )
 
-        embed.add_field(
-            name="Active RP Channels",
-            value="\n".join(
-                [
-                    self.player.member.guild.get_channel(c).mention
-                    for c in self.active_character.channels
-                    if self.player.member.guild.get_channel(c)
-                ]
-            ),
-        )
+            # Chunk Active RP Channels into multiple fields if too long
+            channel_mentions = [
+                self.player.member.guild.get_channel(c).mention
+                for c in self.active_character.channels
+                if self.player.member.guild.get_channel(c)
+            ]
+            chunk = []
+            chunk_len = 0
+            max_len = 1024
+            field_count = 1
+            for mention in channel_mentions:
+                if chunk_len + len(mention) + 1 > max_len:
+                    embed.add_field(
+                        name=f"Active RP Channels{'' if field_count == 1 else f' (cont. {field_count})'}",
+                        value="\n".join(chunk),
+                    )
+                    chunk = []
+                    chunk_len = 0
+                    field_count += 1
+                chunk.append(mention)
+                chunk_len += len(mention) + 1
+            if chunk:
+                embed.add_field(
+                    name=f"Active RP Channels{'' if field_count == 1 else f' (cont. {field_count})'}",
+                    value="\n".join(chunk),
+                )
 
         return {"embed": embed, "content": ""}
 
